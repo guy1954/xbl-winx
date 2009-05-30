@@ -1,0 +1,34 @@
+#include <windows.h>
+
+WinXIcon ICON    WinX.ico
+
+1 24 res1.xml
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 0,6,0,1
+PRODUCTVERSION 0,6,0,1
+FILEFLAGSMASK 0x3F
+FILEFLAGS 0x0
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "140904E4"
+    BEGIN
+      VALUE "Comments", "Distributed under the GNU LGPL.  See COPYING_LIB, which should be included in the WinX distribution.\0"
+      VALUE "FileDescription", "WinX - GUI library for XBlite\0"
+      VALUE "FileVersion", "0.6.0.1\0"
+      VALUE "InternalName", "WINX\0"
+      VALUE "LegalCopyright", "(C) Callum Lowcay 2007-2008\0"
+      VALUE "OriginalFilename", "WINX.DLL\0"
+      VALUE "ProductName", "WinX\0"
+      VALUE "ProductVersion", "0.6.0.1\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x1409, 0x4E4
+  END
+END

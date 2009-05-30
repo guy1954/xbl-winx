@@ -1,0 +1,110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXAddEdit</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXAddEdit<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hEdit = WinXAddEdit (parent, STRING title, style, id) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Adds a new edit control to the specified window.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->parent<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The window to create the edit control in <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->STRING title <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The text that will appear the the edit control before the user starts editing it <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->style<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The style of the edit control. See remarks <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->id<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The unique constant that identifies this edit control<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle of the new edit control on success or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The style parameter is a standard windows style. Listed are some of the more usefull constants. See the Win32 docmentation for more information. These constants can be combined with the | (or) operator.</p>
+<dl>
+  <dt>$$ES_AUTOHSCROLL	</dt>
+  <dd>Scroll horizonally when the user enters too much information</dd>
+  <dt>$$ES_MULTILINE</dt>
+  <dd>Creates a multiline edit box</dd>
+  <dt>$$ES_WANTRETURN</dt>
+  <dd>For edit controls with the $$ES_MULTILINE style, causes the edit control to respond to the [ENTER] key by insterting a new line</dd>
+  <dt>$$ES_READONLY	</dt>
+  <dd>Prevents the user from editing the text</dd>
+  <dt>$$ES_PASSWORD</dt>
+  <dd>Hides what the user is typing. Be warned if you are getting a password, Use WinXSetText as soon as possible to erase the password from the edit control. There is nothing to stop a malicous program from spying on the contents of the edit control.</dd>
+  <dt>$$ES_NUMBER</dt>
+  <dd>Only allows entry of whole numbers. </dd>
+</dl>
+<p>The size and position of the edit control is set using either a custom control sizer function (<a href="../Callbacks.htm/controlSizer.htm">controlSizer</a> callback) or the auto sizer. To use the auto sizer, use the <a href="../Auto%20Sizer.htm/WinXAutoSizer_SetInfo.htm">WinXAutoSizer_SetInfo</a> function. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'define the constant for the id<br>
+        $$EDIT1 = 100 <br>
+        <br>
+      'make the control<br>
+      hEdit = WinXAddEdit (#hMain, &quot;An edit control&quot;, $$ES_AUTOHSCROLL, $$EDIT1)      </p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../Auto%20Sizer.htm/WinXAutoSizer_SetInfo.htm">WinXAutoSizer_SetInfo</a><br>
+<a href="../Callbacks.htm/controlSizer.htm">controlSizer (Callback)</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

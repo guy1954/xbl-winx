@@ -1,0 +1,81 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXRegOnMouseMove</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXRegOnMouseMove<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>WinXRegOnMouseMove (hWnd, FUNCADDR onMouseMove) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Registers the <a href="onMouseMove.htm">onMouseMove</a> callback function.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hWnd<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the window to register the callback for <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->FUNCADDR onMouseMove <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The address of the <a href="onMouseMove.htm">onMouseMove</a> callback function. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>$$TRUE on success or $$FALSE on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>Once registered, the <a href="onMouseMove.htm">onMouseMove</a> callback function will be called every time the mouse moves over your window. If you need the callback to be invoked when the mouse is not inside your window, use the SetCapture and ReleaseCapture Win32 API functions to capture and release the mouse. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'register the onMouseMove callback<br>
+      WinXRegOnMouseMove (#hMain, &amp;onMouseMove())      </p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="onMouseMove.htm">onMouseMove (Callback) </a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

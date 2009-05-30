@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXAddTrackBar</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXAddTrackBar<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>WinXAddTrackBar (parent, enableSelection, posToolTip, id)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Creates a new tracker and adds it to a window </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->parent<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the window to add the tracker to <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->enableSelection<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE if the trackbar allows selections, $$FALSE otherwise<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->posToolTip<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE to display a tooltip containing the position of the slider as it is dragged <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->id<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The unique id constant for this control <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle to the tracker control or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>none</p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'define ids<br>
+        $$ID_TRACKER = 100 </p>
+      <p class="codeStyle">'create a basic tracker<br>
+        WinXAddTrackBar (hMain, $$FALSE, $$TRUE, $$ID_TRACKER)    </p>
+    <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../Callbacks.htm/onTrackerPos.htm">onTrackerPos (Callback)</a><br>
+  <a href="WinXTracker_GetPos.htm">WinXTracker_GetPos</a><br>
+  <a href="WinXTracker_SetPos.htm">WinXTracker_SetPos</a><br>
+  <a href="WinXTracker_SetRange.htm">WinXTracker_SetRange</a><br>
+  <a href="WinXTracker_SetSelRange.htm">WinXTracker_SetSelRange</a><br>
+<a href="WinXTracker_SetLabels.htm">WinXTracker_SetLabels</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

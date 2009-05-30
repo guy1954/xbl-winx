@@ -1,0 +1,109 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXDrawArc</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXDrawArc<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hElement = WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Draws an arc </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hWnd<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the window to draw the arc on <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hPen<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the pen to draw the arc with <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->x1, y1 <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The upper left corner of the bounding rectangle of the ellipse (see remars) <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->x2, y2 <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The lower right corner of the bounding rectangle of the ellipse (see remarks) <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->theta1<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The starting angle of the ellipse in radians <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->theta2<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The ending angle of the ellipse in radians<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The id of the arc or -1 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>If you register the <a href="../Callbacks.htm/onPaint.htm">onPaint</a> callback, this function has no effect. This line will not be visible untill you call the <a href="WinXUpdate.htm">WinXUpdate</a> function. You can use the id returned by this function to undo the ellipse with the <a href="WinXUndo.htm">WinXUndo</a> function. </p>
+<p>The x1, y1, x2 and y2 parameters define a rectangle in which an ellipse can be thought to exist. The arc is draw by sweeping out part of this ellipse. A line from the center of the ellipse to the point at angle 0 touches the ellipse at its rightmost point. The angles theta1 and theta2 are measured anticlockwise from this point in radians. The arc is drawn from theta1 to theta2.</p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'create a pen<br>
+hPen = CreatePen ($$PS_SOLID, 3, 0x00FF0000)<br>
+<br>
+'Draw the arc <br>
+WinXDrawArc (#hMain, hPen, 100, 100, 300, 200, 0, $$PI/3.0)</p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXDrawEllipse.htm">WinXDrawEllipse</a><br>
+<a href="WinXDrawBezier.htm">WinXDrawBezier</a><br>
+<a href="../Callbacks.htm/onPaint.htm">onPaint (Callback) </a><br>
+  <a href="WinXUpdate.htm">WinXUpdate</a><br>
+<a href="WinXUndo.htm">WinXUndo</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

@@ -1,0 +1,57 @@
+What are the accessors?
+
+To deal with dynamically allocated objects, accessors.m4 defines macros which
+generate 5 accessor functions.  You uses these five functions to access the
+data.  Direct access to the data is possible, but I do not recommend it.
+
+The accessor functions store the data in resizeable 1D arrays.  These arrays
+have an initial capacity of 8.  When this runs out the array is doubled.
+This way, no more than half the memory allocated is wasted and array resizing
+is minimised.
+
+The accessor functions attempt to improve efficiency in several ways. The
+accessor functions use an additional array to keep track of which positions
+in the main array are available for use.  When you delete an item, the
+delete function simply marks that item as available for use.  This avoids the
+horribly inefficient practice of down shifting all the elements in the array.
+
+To  further improve efficiency, the accessor functions keep track of the
+earliest possible place where new items can be added.  When an item is added,
+this position is increased by 1.  When an item is deleted, this number is
+set to the location of the deleted item.  The result is that the accessors
+can usually find a place for your data in constant time. Sometimes, however,
+they will have to search through several items to find a place, which takes
+linear time.
+
+Using the accessors:
+
+To generate a set of accessor functions use the DeclareAccess and
+DefineAccess macros defined in accessors.m4.  These macros take one argument,
+the type to generate accessors for.  See example.x for an example of their
+use.  The five functions are:
+
+x_Init ()
+x_New (x item)
+x_Get (id, x @item)
+x_Update (id, x item)
+x_Delete (id)
+
+where x is the type of the accessor (example STRING_New, MYTYPE_New).
+
+An id is the index into the appropriate array of the item, + 1.  Because of
+this an id of 0 is always invalid.  Where an accessor returns an id, an
+id of 0 can always be assumed to mean there was an error.
+
+x_Init initialises the arrays.  If you fail to call it, your program will
+crash as soon it attempts to use any of the other accessors of the same
+type.  x_New adds an item to the array and returns the id of that item, an id
+of 0 means the function failed.  x_Get gets an item.  It performs bounds
+checking on the id and returns $$TRUE if the id passes and $$FALSE if it does
+not.  x_Update updates an item.  It performs the same bounds checking and
+returns the same values as x_Get.  Finnaly, x_Delete deletes an item.  It
+performs bounds checking as x_Get and x_Update and returns the same values
+as those functions do.
+
+Example:
+
+ADT implements some data structures based on the accessors

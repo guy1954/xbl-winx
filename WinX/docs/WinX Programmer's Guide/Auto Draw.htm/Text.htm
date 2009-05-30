@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Text and Fonts</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Text and Fonts<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>WinX Auto Draw has several functions for managing fonts and drawing text.</p>
+<p>To draw text you first need a font. A font is a GDI object, like a pen or a brush. To create a font, use the Win32 CreateFontIndirect function. This function takes a pointer to a LOGFONT structure as its argument. WinX has several functions to manage LOGFONT structures. You can initialise a LOGFONT structure for a specific font with the <a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_MakeLogFont.htm">WinXDraw_MakeLogFont</a> function. You can also get a font from the user with the <a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_GetFontDialog.htm">WinXDraw_GetFontDialog</a> function.</p>
+<p>The size of the font as specified by the height field of the LOGFONT structure is the size in device units. The physical size of a device unit can vary between devices and even within a single device. For this reason it is common for users to specify font sizes in points. You can convert between points and screen pixels with the <a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_PixelsPerPoint.htm">WinXDraw_PixelsPerPoint</a>. For printing, you can use the <a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_LogUnitsPerPoint.htm">WinXPrint_LogUnitsPerPoint</a> to get the fonts to come out at the correct physical size. </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawText.htm">WinXDrawText</a><br>
+<a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_GetFontDialog.htm">WinXDraw_GetFontDialog</a><br>
+<a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_GetTextWidth.htm">WinXDraw_GetTextWidth</a><br>
+<a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_MakeLogFont.htm">WinXDraw_MakeLogFont</a><br>
+<a href="../../WinX%20Function%20Reference/Text.htm/WinXDraw_PixelsPerPoint.htm">WinXDraw_PixelsPerPoint</a><br>
+<a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_LogUnitsPerPoint.htm">WinXPrint_LogUnitsPerPoint</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

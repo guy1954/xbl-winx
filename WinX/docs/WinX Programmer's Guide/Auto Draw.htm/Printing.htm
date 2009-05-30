@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Printing</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Printing<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>WinX has a set of functions to manage printing.</p>
+<p>Printing is acheived by drawing to a window with Auto Draw functions, then playing the Auto Draw records into a printer DC. To get a printer DC you use the <a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_Start.htm">WinXPrint_Start</a> function.</p>
+<p>Because the resolutions of printers vary depending on the page size and dpi, WinX provides a simple method to scale source Auto Draw records to fit the printer. The <a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_Start.htm">WinXPrint_Start</a> function returns the width and height of the printer in device units, minus the margins and unprintable area. The <a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_Page.htm">WinXPrint_Page</a> function takes as parameters the width and height in device units to scale the Auto Draw records to.</p>
+<p>If you want to print things at a particular physical size, you can use the <a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_LogUnitsPerPoint.htm">WinXPrint_LogUnitsPerPoint</a> and <a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_DevUnitsPerInch.htm">WinXPrint_DevUnitsPerInch</a> to get the conversion factors. The reason I use inches is because Windows uses them internally. If you find them unnatural, as I do, you can convert them to millimetres by multiplying by 25.4.</p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_Start.htm">WinXPrint_Start</a><br>
+<a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_PageSetup.htm">WinXPrint_PageSetup</a><br>
+<a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_Page.htm">WinXPrint_Page</a><br>
+<a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_Done.htm">WinXPrint_Done</a><br>
+<a href="../../WinX%20Function%20Reference/Printing.htm/WinXPrint_LogUnitsPerPoint.htm">WinXPrint_LogUnitsPerPoint</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

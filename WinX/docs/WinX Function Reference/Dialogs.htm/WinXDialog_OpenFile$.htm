@@ -1,0 +1,93 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXDialog_OpenFile$</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXDialog_OpenFile$<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>fileName$ = WinXDialog_OpenFile$ (parent, title$, extensions$, initalName$, multiSelect)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Displays a standard Windows open file dialog box to allow the user to select a file to open. </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->parent<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The parent window for the dialog box, 0 for none <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->title$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The title of the dialog box. Usually &quot;Open file...&quot; <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->extensions$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The file type filters, see remarks for more information <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->initialName$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The name of the file that is selected when the dialog box is first displayed, &quot;&quot; for none <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->multiSelect<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE if the user can select multiple files. The files will be seperated by semi colons (;) <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>A string containing the file the user selected, or the empty string if the user cancelled the action.</p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The extensions$ parameter is a list of file type filters. Each filter consists of a pair of strings, each ending with &quot;\0&quot;. The first string in each pair is the file type displayed to the user. Normally it is in the format &lt;type&gt; files (*.&lt;ex&nbsp;1&gt;, *.&lt;ex&nbsp;2&gt; ..., &lt;ex&nbsp;n&gt;) where &lt;type&gt; is the type of file and &lt;ex&nbsp;n&gt; is one of the possible extensions. For example, &quot;HTML files (*.htm, *.html)&quot;. The second string in each pair is a list of filters. For the HTML example, this string would be &quot;*.htm;*.html&quot;. The final string in the list is terminated with another \0. The over all string for a dialog to open HTML files might be: &quot;HTML&nbsp;files&nbsp;(*.htm,&nbsp;*.html)\0*.htm;*.html\0All files (*.*)\0*.*\0\0&quot;. Note the inclusion of the all files entry. This is found on most open dialog boxes.</p>
+<p>If the use can select multiple files, each file will be sperated in the return value by a semi colon (;). </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --><span class="codeStyle">'Get a file from the user<br>
+    fileName$ = WinXDialog_OpenFile$ (#hMain, &quot;Open file&quot;, &quot;All files (*.*)\0*.*\0\0&quot;, &quot;&quot;, $$FALSE)    </span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" --><a href="WinXDialog_SaveFile$.htm">WinXDialog_SaveFile$</a><!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

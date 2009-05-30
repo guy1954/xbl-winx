@@ -1,0 +1,73 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Untitled Document</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- TemplateBeginEditable name="head" --><!-- TemplateEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+<!-- InstanceEndEditable -->
+<link href="../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Page title here<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<!-- TemplateBeginEditable name="Prototype" -->
+<p>prototype</p>
+<!-- TemplateEndEditable --><!-- TemplateBeginEditable name="Description" -->
+<p>description </p>
+<!-- TemplateEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- TemplateBeginRepeat name="Parameter Table" -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- TemplateBeginEditable name="Parameter" -->&nbsp;<!-- TemplateEndEditable --></td>
+    <td><!-- TemplateBeginEditable name="Description" -->&nbsp;<!-- TemplateEndEditable --></td>
+  </tr>
+  <!-- TemplateEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- TemplateBeginEditable name="Return Info" -->
+<p>return info</p>
+<!-- TemplateEndEditable -->
+<h3>Remarks</h3>
+<!-- TemplateBeginEditable name="Remarks" -->
+<p>remarks</p>
+<!-- TemplateEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- TemplateBeginEditable name="Example Code" --><span class="codeStyle">example code</span><!-- TemplateEndEditable --></td>
+  </tr>
+</table>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p>links </p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

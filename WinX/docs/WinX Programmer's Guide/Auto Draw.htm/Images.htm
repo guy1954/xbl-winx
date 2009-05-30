@@ -1,0 +1,55 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Images</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Images<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>The WinX image API is designed to work with multiple image types. Currently only Windows BMP files are supported, but I hope to add support for JPEG and PNG later.</p>
+<p>WinX images are implemented as 32 bit Win32 DIB Sections. This means you can use a WinX image handle wherever you can use a Win32 bitmap handle, and you can directly mannipulate the image bits. For example, you can use an image loaded with <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_LoadImage.htm">WinXDraw_LoadImage</a> as the bitmap for a button or static control.</p>
+<p>Due to the way Auto Draw works, it is not efficient to support direct pixel mannipulations on a window. You can, however, mannipulate individual pixels on an image. If you need to modify individual pixels this is the best way to acheive it. </p>
+<p>WinX images can have alpha (transparancy) channels. To draw an image using the alpha channel for transparency effects you need to premultiply the image with <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_PremultiplyImage.htm">WinXDraw_PremultiplyImage</a> first. This causes loss of information, so you'll probably want to copy the image first. </p>
+<p>Apart from direct pixel mannipulations you cannot draw directly to a bitmap. You can play a window full of Auto Draw records into a bitmap, however. To do this, use the <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_Snapshot.htm">WinXDraw_Snapshot</a> function. </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawImage.htm">WinXDrawImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_CopyImage.htm">WinXDraw_CopyImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_CreateImage.htm">WinXDraw_CreateImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_DeleteImage.htm">WinXDraw_DeleteImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_GetImageChannel.htm">WinXDraw_GetImageChannel</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_GetImageInfo.htm">WinXDraw_GetImageInfo</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_GetImagePixel.htm">WinXDraw_GetImagePixel</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_LoadImage.htm">WinXDraw_LoadImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_PremultiplyImage.htm">WinXDraw_PremultiplyImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_ResizeImage.htm">WinXDraw_ResizeImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_SaveImage.htm">WinXDraw_SaveImage</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_SetConstantAlpha.htm">WinXDraw_SetConstantAlpha</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_SetImageChannel.htm">WinXDraw_SetImageChannel</a><br>
+  <a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_SetImagePixel.htm">WinXDraw_SetImagePixel</a><br>
+<a href="../../WinX%20Function%20Reference/Images.htm/WinXDraw_Snapshot.htm">WinXDraw_Snapshot</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

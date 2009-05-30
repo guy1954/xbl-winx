@@ -1,0 +1,95 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXListView_AddItem</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXListView_AddItem<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>iItem = WinXListView_AddItem (hLV, iItem, STRING item, iIcon)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Adds an item to a list view control </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hLV<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the list view control to add the item to <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->iItem<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The index at which to add the item or -1 to add to the end<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->STRING item <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The label for the item, plus the sub items demilited by &quot;\0&quot; <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->iIcon<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The index to the icon or -1 if there is no icon <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The 0 based index for the newly added item </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The item parameter describes not only the item label but also the text for the sub items. The strings are listed in order and delimited with &quot;\0&quot; . For example: The string &quot;Label \0SubItem 1\0SubItem 2&quot; defines the label as &quot;Label&quot;, sub item 1 as &quot;SubItem 1&quot; and sub item 2 as &quot;SubItem 2&quot; . </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --><span class="codeStyle">' Append an item to a list view control with no icon<br>
+    iItem = WinXListView_AddItem (hLV, -1, &quot;Item X \0123 \0456 \0789&quot;, -1)    </span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Programmer%27s%20Guide/Controls.htm/listviews.htm">List View Controls</a><br>
+  <a href="WinXAddListView.htm">WinXAddListView</a><br>
+  <a href="WinXAddListView.htm">WinXListView_AddColumn</a><br>
+  <a href="WinXListView_DeleteItem.htm">WinXListView_DeleteItem</a><br>
+<a href="WinXListView_SetItemText.htm">WinXListView_SetItemText</a><br>
+<a href="WinXListView_GetItemText.htm">WinXListView_GetItemText</a><br>
+<a href="WinXListView_Sort.htm">WinXListView_Sort</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

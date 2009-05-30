@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Auto Draw</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Auto Draw <!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>Auto Draw is a program built into WinX which automatically redraws your window. When you draw with Auto Draw, a record is added to a linked list describing the element you drew. When your window needs redrawing Auto Draw simply plays the records into the device. This structure allows Auto Draw to output the results of your drawing to bitmaps and printers.</p>
+<p>Auto Draw is very easy to use. Use <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXClear.htm">WinXClear</a> to clear all Auto Draw objects from the window. To draw to the window, use the WinXDraw functions (listed in the related links section of this page). To update the window to display the results of the drawing, call <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXUpdate.htm">WinXUpdate</a>.</p>
+<p>Auto Draw has a handy undo feature. You can use it to undo any drawing operation since the last <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXClear.htm">WinXClear</a> call. To use the undo feature, you need to store the return value from the WinXDraw function that drew the element you want to undo. You then pass that value to the <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXUndo.htm">WinXUndo</a> function and call <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXUpdate.htm">WinXUpdate</a> to see the results. </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" --><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawArc.htm">WinXDrawArc<br>
+</a><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawBezier.htm">WinXDrawBezier<br>
+</a><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawEllipse.htm">WinXDrawEllipse<br>
+</a><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawFilledArea.htm">WinXDrawFilledArea<br>
+</a><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawFilledEllipse.htm">WinXDrawFilledEllipse</a><br>
+  <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawFilledRect.htm">WinXDrawFilledRect<br>
+  </a><a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawLine.htm">WinXDrawLine</a><br>
+  <a href="../../WinX%20Function%20Reference/Auto%20Draw.htm/WinXDrawRect.htm">WinXDrawRect </a><!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

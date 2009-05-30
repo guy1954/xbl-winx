@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXRegistry_ReadBin</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXRegistry_ReadBin<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Reads binary data from the registry</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hKey<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the key to read from. See remarks for more on this parameter <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->subKey$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The subkey to read from, remember to double up the backslashes <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->value$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The value to read from <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->createOnOpenFail<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE to create the key if it doesn't exist<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->SECURITY_ATTRIBUTES sa<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The security attributes for the key if it needs to be created. You can create this with the <a href="../General.htm/WinXNewACL.htm">WinXNewACL</a> function and $$ACL_REG_STANDARD as the parameter<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->@result<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The default data for the value. When the function returns this will contain the data from the value<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>$$TRUE on success or $$FALSE on fail</p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The hKey parameter can the the handle of an open key, or, more likely, one of these open keys: $$HKEY_CLASSES_ROOT, $$HKEY_CURRENT_USER, $$HKEY_LOCAL_MACHINE, $$HKEY_USERS.</p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --><span class="codeStyle">' Read binary data from the registry<br>
+result$ = &quot;&quot; <br>
+WinXRegistry_ReadBin ($$HKEY_LOCAL_MACHINE, &quot;SOFTWARE\\myapp&quot;, &quot;binaryData&quot;, $$TRUE, WinXNewACL($$ACL_REG_STANDARD, $$TRUE), @result$)<br>
+PRINT &quot;First dword is: &quot;;HEXX$(XLONGAT(&amp;result$))</span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../General.htm/WinXNewACL.htm">WinXNewACL</a><br>
+<a href="WinXRegistry_ReadInt.htm">WinXRegistry_ReadInt</a><br>
+<a href="WinXRegistry_ReadString.htm">WinXRegistry_ReadString<br>
+</a><a href="WinXRegistry_WriteBin.htm">WinXRegistry_WriteBin</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

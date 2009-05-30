@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Handles and Windows</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Handles and Windows <!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<h3>What is a window?</h3>
+<p>It sounds like a dumb question, but the answer is crucial for understanding windows programming. A window isn't just that thing you see on the screen, it's a data structure representing a region on the screen which processes events (such as user input) or provides output (such as graphics or text). The &quot;window&quot; is used to implement not only application windows, but also controls such as buttons, edit boxes and even things like tooltips which look nothing like &quot;windows&quot;. A button is its own window. We call those small, borderless windows such as buttons &quot;child windows&quot; or &quot;child window controls&quot;. They are related to their parent window so that the parent can move and resize them when it is moved or resized and so that they can relay user input to the parent.</p>
+<h3>What is a handle?</h3>
+<p>Many WinX functions take handles as arguments or return them to the caller. A handle is simply a number used to identify a resource. The most important type of handle in WinX is the window handle. As a consequence of the previous section, window handles are used for windows and controls. Any window handle returned by WinX (and by extension and control handle) can be used in any Win32 API call because WinX uses standard window handles. The reverse, however, is not always true. Some WinX functions work with extra information attached to a window. These functions will fail if you give them a handle that doesn't have the extra information attached.</p>
+<h3>How WinX attaches meta data to windows</h3>
+<p>This is done in two ways. For windows created with WinXNewWindow, the extra data associated with the window is used to store the index of a BINDING structure. This structure contains, or links to, all the meta data associated with the window. If you call a function which requires meta data from the BINDING structure and the window's extra data doesn't contain a valid index, the function will fail.</p>
+<p>Meta data is also attached to controls when you add auto sizer information to the with the WinXAutoSizer_SetInfo function. This is attached using window properties so as not to destroy extra information used by the control. This data is used only to deallocate the auto sizer information when the control is destroyed.</p>
+<p>For more information, see the WinX source code (WinX.x) </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../intro.htm">Introduction</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

@@ -1,0 +1,63 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Introduction to WinX</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Introduction to WinX <!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<h3>What is WinX?</h3>
+<p>WinX is a GUI library for XBlite. It is designed to take care of all the annoying details of the Win32 API, while still allowing you to drop down to the Win32 code if you need it. To this end, the handles returned  by WinX  can be used with any Win32 function (although the reverse is not always true). </p>
+<h3>Features</h3>
+<ul>
+  <li>All native widgets, so your applications respect the user's choice of colour and visual style.</li>
+  <li>Easy creation of many kinds of <a href="WinX%20Programmer%27s%20Guide/Controls.htm/controls.htm">controls</a> </li>
+  <li>Easy creation of simple <a href="WinX%20Function%20Reference/General.htm/WinXNewMenu.htm">menus</a></li>
+  <li>Easy creation of <a href="WinX%20Programmer%27s%20Guide/toolbars.htm">toolbars and status</a> bars</li>
+  <li><a href="WinX%20Function%20Reference/Other%20Controls.htm/WinXAddTooltip.htm">Tooltips</a></li>
+  <li><a href="WinX%20Programmer%27s%20Guide/Auto%20Draw.htm/autodraw.htm">Auto Draw</a> feature - automatically redraws windows</li>
+  <li><a href="WinX%20Programmer%27s%20Guide/autosizer.htm">Auto Sizer</a> feature - automatically moves and resizes controls when the window is resized </li>
+  <li>Callbacks to replace Auto Draw and Auto Sizer features if you don't want them </li>
+  <li>Callbacks to process arbitrary messages, useful for using unsupported custom controls</li>
+  <li>Callbacks for command and <a href="WinX%20Programmer%27s%20Guide/mousekeyboard.htm">mouse and keyboard</a> events</li>
+  <li><a href="WinX%20Programmer%27s%20Guide/Scrolling.htm">Scrolling</a> support</li>
+  <li><a href="WinX%20Programmer%27s%20Guide/Auto%20Draw.htm/Printing.htm">Printing</a> support</li>
+  <li><a href="WinX%20Programmer%27s%20Guide/Auto%20Draw.htm/Images.htm">Image</a> support</li>
+</ul>
+<h3>The Structure of an WinX Program</h3>
+<p>There is a template of a WinX program in the templates folder. It is a good starting point for developing your own applications with WinX.</p>
+<p>Before using WinX it is necassary to initialise the library. WinX will crash if this is not done (a bug I'm working on). To initialise the library, use the <a href="WinX%20Function%20Reference/General.htm/WinX.htm">WinX</a> function. If it returns $$TRUE then the library hasn't initialised itself.</p>
+<p>Once the library is initialised, the next step is to create your main window. To do this you will need the <a href="WinX%20Function%20Reference/General.htm/WinXNewWindow.htm">WinXNewWindow</a> function. WinX assosiates extra information with a window, so it is important to create your window wth the WinXNewWindow function if you want to use any WinX functions with it. The next step is to create the controls you will be needing, such as toolbars and edit boxes. Register any callbacks you will be needing and display the window with <a href="WinX%20Function%20Reference/General.htm/WinXDisplay.htm">WinXDisplay</a>.</p>
+<p>Finnaly, call <a href="WinX%20Function%20Reference/General.htm/WinXDoEvents.htm">WinXDoEvents</a>. This function doesn't return untill the main window is destroyed. Once it is called, any events concerning the windows you have created are processed and the appropriate callback functions are executed.</p>
+<h3>Callback Functions</h3>
+<p>WinX makes extensive use of callback functions. These are functions you implement in your program which are called by the WinX library. You need to make sure you have the correct number and of parameters and that they are all of the correct type or your program will crash.</p>
+<h3>Flags</h3>
+<p>Some functions take a set of flags as a parameter. When this is the case you can specify one or more of the appropriate flag constants, combining them all with the | (OR) operator. </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinX%20Programmer%27s%20Guide/Handles.htm">Handles and Windows</a> </p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

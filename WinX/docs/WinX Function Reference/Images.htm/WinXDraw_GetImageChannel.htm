@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXDraw_GetImageChannel</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXDraw_GetImageChannel<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>WinXDraw_GetImageChannel (hImage, channel, UBYTE @data[])</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Retreives the channel data for an image channel </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hImage<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the image to get the channel data for <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->channel<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The id of the channel, see remarks for more info<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->UBYTE @data[] <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The array to store the channel data, this will be appropriately dimensioned by the function <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>$$TRUE on success or $$FALSE on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The channel parameter can be any one of :</p>
+<dl>
+  <dt>$$CHANNEL_RED</dt>
+  <dd>The red channel</dd>
+  <dt>$$CHANNEL_GREEN</dt>
+  <dd>The green channel</dd>
+  <dt>$$CHANNEL_BLUE</dt>
+  <dd>The blue channel</dd>
+  <dt>$$CHANNEL_ALPHA</dt>
+  <dd>The alpha (transparency) channel</dd>
+</dl>
+<p>Note that the data[] array is single dimensional, in row order, and with the last scanline at the top of the array. This orgainisation is a little wierd. It is to do with the way Windows stores and renders bitmaps.</p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'Declare the data array<br>
+      UBYTE data[]</p>
+      <p class="codeStyle">...      </p>
+      <p class="codeStyle">'invert the red channel<br>
+      WinXDraw_GetImageChannel (hImage, $$CHANNEL_RED, @data[])<br>
+      FOR i = 0 TO UBOUND(data[])<br>
+      &nbsp;&nbsp;data[i] = 255-data[i]<br>
+      NEXT<br>
+      WinXDraw_SetImageChannel (hImage, $$CHANNEL_RED, @data[])</p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Programmer%27s%20Guide/Auto%20Draw.htm/Images.htm">Images</a><br>
+  <a href="WinXDraw_LoadImage.htm">WinXDraw_LoadImage</a><br>
+  <a href="WinXDraw_SetImageChannel.htm">WinXDraw_SetImageChannel</a><br>
+<a href="WinXDraw_GetImageInfo.htm">WinXDraw_GetImageInfo</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

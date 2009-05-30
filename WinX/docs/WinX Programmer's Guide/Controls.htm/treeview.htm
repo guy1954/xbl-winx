@@ -1,0 +1,46 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Tree View Controls</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Tree View Controls<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p><img src="treeview.PNG" width="213" height="199"></p>
+<p>Tree view controls are used to display a tree of information. The user can expand and collapse items by double clicking them, or by clicking the expand/collapse buttons that appear next to nodes. </p>
+<h3>Tree View Label Editing</h3>
+<p>You can enable tree view label editing when creating a tree view. When tree view label editing is enabled, the user can edit tree view labels by clicking a selected item and waiting a few milliseconds for a timer. To implement tree view label editing you also need to write an <a href="../../WinX%20Function%20Reference/Callbacks.htm/onLabelEdit.htm">onLabelEdit</a> callback function and register it with the <a href="../../WinX%20Function%20Reference/Callbacks.htm/WinXRegOnLabelEdit.htm">WinXRegOnLabelEdit</a> function.</p>
+<h3>Tree View Item Dragging</h3>
+<p>You can enable tree view item dragging to allow the user to drag items from the tree view control. When the user drags an item, a semi transparent copy of that item is displayed under the mouse cursor. As the mouse moves over tree view items, they will become higlighted as drop targets. The user can drag tree view items out of the tree view control, but this will take a bit of work on the part of the programmer to implement. Also note that once a drag operation is complete, the programmer is responsible for actually moving or copying the dragged item.</p>
+<p>To implement dragging you will need to write an <a href="../../WinX%20Function%20Reference/Callbacks.htm/onDrag.htm">onDrag</a> callback function and register it with <a href="../../WinX%20Function%20Reference/Callbacks.htm/WinXRegOnDrag.htm">WinXRegOnDrag</a>. </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Function%20Reference/Treeview%20Controls.htm/WinXAddTreeView.htm">WinXAddTreeView</a><br>
+  <a href="../../WinX%20Function%20Reference/Treeview%20Controls.htm/WinXTreeView_AddItem.htm">WinXTreeView_AddItem</a><br>
+  <a href="../../WinX%20Function%20Reference/Treeview%20Controls.htm/WinXTreeView_GetNextItem.htm">WinXTreeView_GetNextItem</a><br>
+  <a href="../../WinX%20Function%20Reference/Treeview%20Controls.htm/WinXTreeView_GetSelection.htm">WinXTreeView_GetSelection</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

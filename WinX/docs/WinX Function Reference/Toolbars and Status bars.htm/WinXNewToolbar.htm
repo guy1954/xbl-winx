@@ -1,0 +1,121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXNewToolbar</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXNewToolbar<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hToolbar = WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, rgbTrans, tooltips, customisable) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Creates a new toolbar, using button images from bitmaps.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->wButton<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The width of a button image in pixels<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hButton<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The height of a button image in pixels<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->nButtons<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The number of button images <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hBmpButtons<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->A bitmap containing the button images, arrange in a row with no gaps between each image. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hBmpGray<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->Same as hBmpButtons, except that these are the images to display when the buttons are disabled. If this parameter is 0, grayed versions of the buttons are generated automatically from hBmpButtons. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hBmpHot<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->Same as hBmpButtons, except that these are the images to display when the mouse moves over the buttons. If this parameter is 0, hBmpButtons is used instead.<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->rgbTrans<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The transparent colour. Where ever this colour occurs in any of the bitmaps, it will be replaced with transparency. Note that toolbars do not support alpha blending. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->toolTips<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE to enable tooltips, $$FALSE to disable them <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->customisable<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->NOT IMPLEMENTED, SET TO $$FALSE <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle to the toolbar on success or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>hBmpGray and hBmpHot are optional. If you don't want to specify them explicitly, use 0 for these parameters. If you do not specify bitmaps for these parameters, WinX will generate default images. The images in hBmpButtons do not have to appear in the same order as the buttons on the toolbar will. You are also allowed to include images that will not be used for any buttons. It is very important that the hBmpGray and hBmpHot bitmaps are consistant with the hBmpButtons bitmap, i.e. the image for the first button must be in the same position in hBmpGray and hBmpHot as it is in hBmpButtons and the image for the second button must be in the same position in hBmpGray and hBmpHot as it is in hBmpButtons etc.</p>
+<p>wButton, hButton and nButtons refer to the button images, the actual size of the buttons on the toolbar is usually several pixels larger. The actual number of buttons on the toolbar is independant of nButtons, which represents the number of images in the bitmap. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --> <span class="codeStyle">'load the bitmap containing the images <br>
+      hBmpMain = LoadImageA (0, &amp;&quot;toolbar.bmp&quot;, $$IMAGE_BITMAP, 0,0, $$LR_LOADFROMFILE)<br>
+        <br>
+'this function creates a toolbar, notice that we only need to specify the main bitmap,<br>
+'the others are automatically generated if we don't supply them.<br>
+hToolbar = WinXNewToolbar (32, 32, 7, hBmpMain, 0, 0, 0x00FF00FF, $$TRUE, $$FALSE)</span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXNewToolbarUsingIls.htm">WinXNewToolbarUsingIls</a><a href="WinXToolbar_AddButton.htm"><br>
+  WinXToolbar_AddButton</a><br>
+<a href="WinXSetWindowToolbar.htm">WinXSetWindowToolbar</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

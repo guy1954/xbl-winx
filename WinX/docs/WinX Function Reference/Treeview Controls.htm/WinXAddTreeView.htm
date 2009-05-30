@@ -1,0 +1,110 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXAddTreeView</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXAddTreeView<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hTreeView = WinXAddTreeView (parent, hImages, editable, draggable, id)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Creates a new tree view control and adds it to a window </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->parent<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the window to add the tree view control to <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hImages<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the image list containing the images for the tree view control, 0 if there are no images <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->editable<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE if the user can edit the labels, $$FALSE otherwise <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->draggable<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE if the user can drag items, $$FALSE otherwise <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->id<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The unique id constant for this control <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle to the new tree view control or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>To implement label edit you need to provide and register an <a href="../Callbacks.htm/onLabelEdit.htm">onLabelEdit</a> callback. To implement dragging you need to provide and register te <a href="../Callbacks.htm/onDrag.htm">onDrag</a> callback.</p>
+<p>The hImages parameter is a handle to an image list control. See the Win32 documentation for more information on image lists. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'define the id<br>
+      $$ID_TREE = 100
+      </p>
+      <p class="codeStyle">'first, make an image list <br>
+        hIml = ImageList_Create (16, 16, $$ILC_COLOR32|$$ILC_MASK, 3, 0)<br>
+        'add a bitmap<br>
+        ImageList_AddMasked (hIml, LoadImageA (0, &amp;&quot;images.bmp&quot;, $$IMAGE_BITMAP, 0, 0, $$LR_LOADFROMFILE), 0x00FF00FF)</p>
+      <p class="codeStyle">'now create the tree view control <br>
+        hTV = WinXAddTreeView (#hMain, hIml, $$FALSE, $$FALSE, $$ID_TREE) </p>
+    <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXTreeView_AddItem.htm">WinXTreeView_AddItem</a><br>
+  <a href="WinXTreeView_DeleteItem.htm">WinXTreeView_DeleteItem</a><br>
+  <a href="WinXTreeView_GetSelection.htm">WinXTreeView_GetSelection</a><br> 
+  <a href="WinXTreeView_CopyItem.htm">WinXTreeView_CopyItem</a><br>
+  <a href="../Callbacks.htm/onDrag.htm">onDrag (Callback)
+  </a><br>
+  <a href="../Callbacks.htm/onLabelEdit.htm">onLabelEdit (Callback)</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

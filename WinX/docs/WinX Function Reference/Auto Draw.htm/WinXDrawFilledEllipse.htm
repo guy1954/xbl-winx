@@ -1,0 +1,113 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXDrawFilledEllipse</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXDrawFilledEllipse<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hElement = WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Draws a filled ellipse (a circle is just a special kind of ellipse with both radii equal) on the specified window.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hWnd<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the window to draw the ellipse on <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hPen<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the pen to use to draw the ellipse with. 0 to use the same pen as the last drawing function. This is a standard GDI pen, you can create it with CreatePen or use a stock pen. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hBrush<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the brush to paint the inside of the ellipse with. 0 to use the same brush as the last drawing function. This is a standard GDI pen, you can create it using any of the GDI brush creation functions or use a stock brush. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->x1<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The x coordinate of the upper left hand corner <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->y1<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The y coordinate of the upper left hand corner <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->x2<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The x coordinate of the lower right hand corner <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->y2<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The y coordinate of the lowe right hand corner <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The id of the ellipse or -1 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The coordinate parameters specify a rectangle in which the ellipse will be drawn. If you register the <a href="../Callbacks.htm/onPaint.htm">onPaint</a> callback, this function has no effect. This line will not be visible untill you call the <a href="WinXUpdate.htm">WinXUpdate</a> function. You can use the id returned by this function to undo the ellipse with the <a href="WinXUndo.htm">WinXUndo</a> function. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'create a pen and a brush <br>
+        hPen = CreatePen ($$PS_SOLID, 3, 0x00FF0000)<br>
+        hBrush = CreateSolidBrush (0x000000FF)<br>
+        <br> 
+        'Draw the ellipse (or in this case, circle) <br>
+  WinXDrawFilledEllipse(#hMain, hPen, hBrush, 0, 0, 60, 60)</p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXDrawEllipse.htm">WinXDrawEllipse</a><br>
+  <a href="../Callbacks.htm/onPaint.htm">onPaint (Callback) </a><br>
+  <a href="WinXUpdate.htm">WinXUpdate</a><br>
+<a href="WinXUndo.htm">WinXUndo</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>
