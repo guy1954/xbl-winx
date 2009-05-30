@@ -1,0 +1,94 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXNewMenu</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXNewMenu<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hMenu = WinXNewMenu (STRING menu, firstID, isPopup) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Generates anew menu.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->STRING menu <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->A string listing the menu items in the order they appear in the final menu <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->firstID<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The id of the first menu item <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->isPopup<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE if this is a popup menu, $$FALSE if it is the main menu for a window. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle to the menu (which is a standard windows menu handle), or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>This command does not allow you to add sub menus. To add sub menus: call this function to generate each of the sub menus, then use <a href="WinXMenu_Attach.htm">WinXMenu_Attach</a> function to attach the sub menus to the appropriate menu items.</p>
+<p>The menu parameter is a list of menu items, seperated by commas. To add a seperator, use two commas with only whitespace inside them. If you prefix a character with the ampersand (&amp;), that character will be underlined when the user presses alt. The user can then press the approprite key to jump to that menu item. To include literal ampersands, use &amp;&amp;.</p>
+<p>WinXNewMenu assigns ids to the menus items sequentially. The first item gets the id firstID, the second gets firstID+1 etc. When a menu item is clicked, the onCommand callback is invoked (assuming it has been properly registered). The id parameter will be the id of the menu item. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'define ids for the menu items<br>
+      $$ID_FILE =100<br>
+      $$ID_EDIT = 101<br>
+      $$ID_VIEW = 102 <br>
+      $$ID_HELP
+      =103<br>
+        <br>
+      WinXNewMenu (&quot;&amp;File, &amp;Edit, &amp;View, &amp;Help&quot;, $$ID_FILE)</p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXMenu_Attach.htm">WinXMenu_Attach</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

@@ -1,0 +1,136 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXNewWindow</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXNewWindow<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hWnd = WinXNewWindow (STRING title, x, y, w, h, simpleStyle, exStyle, icon, menu) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Creates a new window</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hOwner<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the owner for this window. Can be 0 if the window has no owner <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->STRING title<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The title of the new window<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->x<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The x coordinate of the new window, relative to the upper left hand corner of the screen. If this parameter is -1, the window is centered horizontally <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->y<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The y coordinate of the new window, relative to the upper left hand corner of the screen. If this parameter is -1, the window is centered vertically <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->w<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The width of the window, in pixels<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->h<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The height of the window, in pixels <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->simpleStyle<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->A simple style constant, see remarks for a list of simple style constants <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->exStyle<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The extended style. See the CreateWindowEx function in the Win32 documentation for a list of extended window styles <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->icon<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the icon to use for the window. If 0, the default icon will be used. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->menu<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the menu to use. If 0, the window will not have a menu <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>If this function is sucessful, the return value is the handle to the newly created window. If the function fails, the return value is 0. </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The window is not visible until you call the <a href="WinXDisplay.htm">WinXDisplay</a> function. This gives you time to create controls.</p>
+<p>Simple style constants:</p>
+<dl>
+  <dt>$$XWSS_APP</dt>
+  <dd>Creates a standard window application window</dd>
+  <dt>$$XWSS_APPNORESIZE</dt>
+  <dd>Same as $$XWSS_APP except it cannot be resized or maximised</dd>
+  <dt>$$XWSS_POPUP</dt>
+  <dd>Creates a popup window. Popup windows cannot be minimised or maximised</dd>
+  <dt>$$XWSS_POPUPNOTITLE</dt>
+  <dd>Same as XWSS_POPUP except without a title bar</dd>
+  <dt>$$XWSS_NOBORDER</dt>
+  <dd>Creates a window with no border or title. Usefull for fullscreen applications. </dd>
+</dl>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --><span class="codeStyle">'Make a new window of width 400, height 300 and no icon or menu<br>
+  #hMain = WinXNewWindow (&quot;My Window&quot;, -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)</span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXNewMenu.htm">WinXNewMenu</a><br>
+<a href="../Buttons.htm/WinXAddButton.htm">WinXAddButton</a><br>
+<a href="../Toolbars%20and%20Status%20bars.htm/WinXNewToolbar.htm">WinXNewToolbar</a><br>
+<a href="../Toolbars%20and%20Status%20bars.htm/WinXAddStatusBar.htm">WinXAddStatusBar</a><br>
+<a href="WinXDisplay.htm">  WinXDisplay</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

@@ -1,0 +1,39 @@
+h1 {
+	font-size: xx-large;
+	font-style: normal;
+	font-weight: bold;
+	color: #000066;
+}
+h2 {
+	font-size: x-large;
+	font-weight: bold;
+	color: #000066;
+	font-style: normal;
+}
+h3 {
+	font-size: large;
+	font-weight: bold;
+	color: #000066;
+	font-style: normal;
+}
+a:link {
+	color: #000099;
+	text-decoration: underline;
+}
+a:hover {
+	color: #0000FF;
+	text-decoration: underline;
+}
+.codeStyle {
+	font-family: "Courier New", Courier, mono;
+	font-size: small;
+}
+th {
+	font-size: large;
+	font-weight: bold;
+	color: #000066;
+	font-style: normal;
+}
+body {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}

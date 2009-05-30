@@ -1,0 +1,58 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Scrolling</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Scrolling<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<h3>Scroll Bars </h3>
+<p>Scrolling is a difficult problem. WinX deals with the low level details of managing scrollbars, but the code that actually handles scrolling is the responsibilty of the application programmer.</p>
+<p>WinX only supports scrollbars which are attached to a window. You cannot create scrollbar controls. In most instances you can replace these with trackers anyway. If you do need scrollbars inside the client area of a window, you will be able to do so in later versions of WinX via child windows.</p>
+<p>Every window can potentially have up to two scrollbars. One for scrolling vertically and one for scrolling horizontally. The vertical scrollbar is displayed to the right of the window and the horizontal scrollbar is displayed at the bottom of the window. To enable scrolling, you must first display the appropriate scrollbars. Use the <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_Show.htm">WinXScroll_Show</a> function to acheive this.</p>
+<h3>Scrolling Concepts</h3>
+<p>Scrolling can be a difficult concept to visualise. You need a clear mental picture to understand basic scrolling concepts. Think of a large page underneath a small picture frame. The frame represents your window. When you scroll, you are moving the page around underneath the frame. The scrolling position is the position, in scrolling units, of the frame relative to the upper left hand corner of the page. If the frame is in the upper left hand corner, the scrolling position is (0,0).</p>
+<p>The scrolling unit is the unit in which the page is measured. This can be whatever makes sense for the application. For example, a painting program would use pixels. A word processor might use points. It must be possible to map the scrolling units to pixels with a linear (mathematical) function. If you'll remember from school, a linear function is one that can be written in the form y(x) = mx + c where m and c are constants.</p>
+<p>The scrolling range is the size of the page in scrolling units. The scrolling position will never be &lt; 0 because that would mean the frame has moved off the page. Equally, the scrolling position can never exceed the maximum value of the scrolling range minus the the size of the frame. If it did, the frame would again move off the page.</p>
+<h3>Configuring Scrollbars</h3>
+<p>Once the appropriate scrollbars are displayed, the next step is to set the scrolling range and page mapping function. This is a little complicated. The page mapping function is a linear function (I'm talking about functions in the mathematical sense here) which maps the size of the window in pixels (width or height depending on the scrollbar) to a number of scrolling units. For example, if you created a word processor you might want to deal with scrolling in terms of points. Your page mapping function would convert the size of the window in pixels into a number of points.</p>
+<p>Use the <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_SetPage.htm">WinXScroll_SetPage</a> function to set this information. Once you have set the page mapping function, WinX will automatically adjust the scrollbars when the window is resized. Use the <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_SetRange.htm">WinXScroll_SetRange</a> to set the scrolling range.</p>
+<p>If the size of the page being scrolled changes, you may need to call the <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_SetRange.htm">WinXScroll_SetRange</a> function again. If the user is able to zoom in or out, you'll need the <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_SetPage.htm">WinXScroll_SetPage</a> function to adjust the size of the units relative to pixels.</p>
+<h3>Scrolling events</h3>
+<p>When the user moves a scrollbar with the mouse, the <a href="../WinX%20Function%20Reference/Callbacks.htm/onScroll.htm">onScroll</a> callback will be invoked (provided you have remembered to <a href="../WinX%20Function%20Reference/Callbacks.htm/WinXRegOnScroll.htm">register</a> it). This gives you an opertunity to redraw the window.</p>
+<p>If you want the user to be able to scroll by means other than clicking and dragging with the mouse, you'll need to process other callbacks as well. To use the mouse wheel for scrolling, use the <a href="../WinX%20Function%20Reference/Callbacks.htm/onMouseWheel.htm">onMouseWheel</a> callback. To allow the keyboard to be used for scolling use the <a href="../WinX%20Function%20Reference/Callbacks.htm/onKeyDown.htm">onKeyDown</a> callback. Keep in mind that if the <a href="../WinX%20Function%20Reference/General.htm/WinXEnableDialogInterface.htm">dialog interface</a> is enabled, the arrow keys will not work.</p>
+<h3>Redrawing the Window</h3>
+<p>If you are using auto draw, it is very important that when you finish drawing you call <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_Update.htm">WinXScroll_Update</a> instead of <a href="../WinX%20Function%20Reference/Auto%20Draw.htm/WinXUpdate.htm">WinXUpdate</a>. This avoids nasty flickering and tearing effects. You can use <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_Update.htm">WinXScroll_Update</a> even if you are drawing the window manually, in fact, this is a good idea as it avoids any flickering or tearing.</p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_Show.htm">WinXScroll_Show</a><br>
+  <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_SetRange.htm">WinXScroll_SetRange</a><br>
+  <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_SetPage.htm">WinXScroll_SetPage</a><br>
+  <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_Update.htm">WinXScroll_Update</a><br>
+  <a href="../WinX%20Function%20Reference/Scrolling.htm/WinXScroll_Scroll.htm">WinXScroll_Scroll
+</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

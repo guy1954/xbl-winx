@@ -1,0 +1,64 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Controls</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Controls<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>Controls are child windows, usually used to get input from or send output to the user. Windows comes with a wide selection of controls built in, and more are available from third parties. Future versions of WinX will even allow you to create your own custom controls. Keep in mind that there are other technologies for controls. ActiveX is also popular and new .net based technologies are being introduced with Vista. .net and XBlite are completely incompatable. ActiveX is based on COM, although you could make it work, it would be far from simple.</p>
+<p>Controls are created in WinX with the WinXAdd... functions. The controls that are supported by WinX can be manipulated with the relevant WinX functions and will trigger the relevant callbacks. You can use controls not directly supported by WinX using the <a href="../../WinX%20Function%20Reference/Other%20Controls.htm/WinXAddControl.htm">WinXAddControl</a> function and <a href="../../WinX%20Function%20Reference/Callbacks.htm/WinXRegMessageHandler.htm">registering a message handler</a> to receive message from that control. Communication with the control will requure the SendMessage function (documented in the Win32 API docs).</p>
+<p>You will notice that the WinXAdd... functions provide to way to set the position and dimensions of the control. This is done by the parent window's sizing routine. Usually, this will be the <a href="../autosizer.htm">Auto Sizer</a>. Unless you are providing your own <a href="../../WinX%20Function%20Reference/Callbacks.htm/controlSizer.htm">controlSizer</a> callback function, make sure to add every control you create to the Auto Sizer or it won't be even be visible. The reason for this system is to make it easier to position controls relative to each other, and to make sure the controls are moved and sized correctly when the window is resized.</p>
+<h3>Control Navigation</h3>
+<p>The dialog box interface allows the user to navigate between controls using the keyboard. It is disabled by default. To enable it, use the <a href="../../WinX%20Function%20Reference/General.htm/WinXEnableDialogInterface.htm">WinXEnableDialogInterface</a> function. The downside to using the dialog box interface is that it eats up certain key presses which your application may want to process. </p>
+<h3>What are those ids for?</h3>
+<p>When you create a new control, you give WinX an id constant, why? Well, it would be a pain to have to store up handles to all the controls you create. Win32 gives you a simpler way, the GetDlgItem function. This function takes a handle to a window (the docs call it a handle to a dialog box, but its the same thing) and the id of a control. It returns the handle to the control. Use this function well, it is much more reliable than storing up handles to controls. </p>
+<h3>Using visual styles </h3>
+<p>New versions of Windows (versions since XP) include a primitive form of skinning known as visual styles. In order to create controls which follow the user's visual style, you have to include a manifest in your resource file. The manifest is a simple XML file. See the sample files for examples of how manifests work.</p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="animate.htm">Animation Controls</a><br>
+<a href="Buttons.htm">Button Controls</a><br>
+<a href="checks.htm">Check Button Controls</a><br>
+<a href="ComboBoxes.htm">Combo Box Controls</a><br>
+<a href="Edit%20Boxes.htm">Edit Controls</a><br>
+<a href="groupboxen.htm">Group Controls</a><br>
+<a href="ListBoxes.htm">List Box Controls</a><br>
+<a href="listviews.htm">List View Controls</a><br>
+<a href="Progress.htm">Progress Controls</a><br>
+<a href="radios.htm">Radio Buttons Controls</a><br>
+<a href="Static.htm">Static Controls</a><br>
+<a href="tabs.htm">Tab Controls</a><br>
+<a href="trackers.htm">Tracker Controls</a><br>
+<a href="treeview.htm">Treeview Controls</a><br>
+<a href="WinXSplitters.htm">WinX Splitter Controls</a></p>
+<p><a href="../../WinX%20Function%20Reference/General.htm/WinXEnableDialogInterface.htm">WinXEnableDialogInterface</a><br>
+  <a href="../autosizer.htm">Auto Sizer</a><br>
+  <a href="../../WinX%20Function%20Reference/Callbacks.htm/controlSizer.htm">controlSizer (callback) </a><br>
+  <a href="../../WinX%20Function%20Reference/Other%20Controls.htm/WinXAddControl.htm">WinXAddControl</a><br>
+  <a href="../../WinX%20Function%20Reference/Callbacks.htm/WinXRegMessageHandler.htm">WinXRegMessageHandler</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

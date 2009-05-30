@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXRegistry_WriteString</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXRegistry_WriteString<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, int)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Writes an integer to the registry </p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hKey<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the key to read from. See remarks for more on this parameter <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->subKey<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The subkey to read from, remember to double up the backslashes <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->value$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The value to read from <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->SECURITY_ATTRIBUTES sa<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The security attributes for the key if it needs to be created. You can create this with the <a href="../General.htm/WinXNewACL.htm">WinXNewACL</a> function and $$ACL_REG_STANDARD as the parameter<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->buffer$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The string to write into the registry <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>$$TRUE on succcess or $$FALSE on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>The hKey parameter can the the handle of an open key, or, more likely, one of these open keys: $$HKEY_CLASSES_ROOT, $$HKEY_CURRENT_USER, $$HKEY_LOCAL_MACHINE, $$HKEY_USERS.</p>
+<p>If the subkey or value does not exist, it will be created using the specified security attributes. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --><span class="codeStyle">' Write the string &quot;Hello&quot; into the registry <br>
+    WinXRegistry_WriteString ($$HKEY_LOCAL_MACHINE, &quot;SOFTWARE\\myapp&quot;, &quot;aString&quot;,  WinXNewACL($$ACL_REG_STANDARD, $$TRUE), &quot;Hello&quot;)</span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../General.htm/WinXNewACL.htm">WinXNewACL</a><br>
+<a href="WinXRegistry_WriteInt.htm">WinXRegistry_WriteInt</a><br>
+<a href="WinXRegistry_WriteBin.htm">WinXRegistry_WriteBin</a><br>
+<a href="WinXRegistry_ReadString.htm">WinXRegsitry_ReadString</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

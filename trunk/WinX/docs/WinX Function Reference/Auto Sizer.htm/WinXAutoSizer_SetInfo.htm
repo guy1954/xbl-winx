@@ -1,0 +1,138 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXAutoSizer_SetInfo</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXAutoSizer_SetInfo<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>WinXAutoSizer_SetInfo (hWnd, series, space, size, x, y, w, h, flags) </p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Sets control dimension information for the auto sizer.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hWnd<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the control to set the auto sizer info for <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->series<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The series to display the control in. -1 to use the control's parent's window's main series <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->space<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The amount of space to insert before this control <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->size<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The amount of space in the series that this control uses <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->x<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The x coordinate of the window <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->y<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The y coordinate of the window <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->w<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The width of the window <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->h&nbsp;<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The height of the window <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->flags<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" --> A set of flags to modify the behaviour of the other parameters <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>$$TRUE on success or $$FALSE on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>See the article on the auto sizer for more information about this function </p>
+<p>Valid Flags:</p>
+<dl>
+  <dt>$$SIZER_SIZERELREST</dt>
+  <dd>Specifies that the size parameter is relative to the rest of the available space. If size is &lt;= 1, then the size parameter is a proportion of the remaining space. If size &gt; 1 then size is the number of pixels of remaining space not to use.</dd>
+  <dt> $$SIZER_XRELRIGHT</dt>
+  <dd>Specifies that the x coordinate parameter is relative to the right, not left. </dd>
+  <dt>$$SIZER_YRELBOTTOM</dt>
+  <dd>Specifies that the u coordinate parameter is relative to the bottom, not top.</dd>
+  <dt> $$SIZER_SERIES</dt>
+  <dd>Specifies that the hWnd paramater contains a series handle, not a window handle</dd>
+  <dt>$$SIZER_WCOMPLEMENT</dt>
+  <dd>Specifies that the width parameter contains the number of pixels across not to use.</dd>
+  <dt>$$SIZER_HCOMPLEMENT</dt>
+  <dd>Specifies that the height parameter contains the number of pixels vertically not to use</dd>
+  <dt>$$SIZER_REVERSE</dt>
+  <dd>Causes the auto sizer algorithm to work from right to left or bottom to top instead of the other way around. This is usefull when you need to right or bottom align controls. It also comes in handy when creating splitters for panes aligned to the bottom or right of a window.</dd>
+  <dt>$$SIZER_SPLITTER</dt>
+  <dd>Inserts a WinX Splitter control after this item. The splitter control uses up 4 pixels of this item's size. For example, if you have a 100 pixel item with a splitter, 4 pixels will be used for the splitter control. Splitter controls allow the user to move the boundary between two auto sizer blocks. </dd>
+</dl>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'Set some control to fill  the upper half of the window<br>
+      WinXAutoSizer_SetInfo (hWnd, -1,0, 0.25, 0, 0, 1, 1, 0)</p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Programmer%27s%20Guide/autosizer.htm">Auto Sizer</a><br>
+  <a href="WinXAutoSizer_SetSimpleInfo.htm">WinXAutoSizer_SetSimpleInfo</a><br>
+  <a href="WinXNewAutoSizerSeries.htm">WinXNewAutoSizerSeries</a><br>
+<a href="WinXAutoSizer_GetMainSeries.htm">WinXAutoSizer_GetMainSeries</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

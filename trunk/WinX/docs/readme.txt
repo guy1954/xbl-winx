@@ -1,0 +1,1 @@
+The hhc, hhk and hhp files for the HTML help compiler are generated with genHHP.exe.  Compile this program and run it every time you make changes to the docs.

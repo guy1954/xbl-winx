@@ -1,0 +1,41 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinX Splitters</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinX Splitters<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>WinX Splitter controls work with the <a href="../autosizer.htm">Auto Sizer</a>. They are used to allow the user to modify the size of a control (or embedded series). To create a splitter control, simply add the $$SIZER_SPLITTER flag when you register the Auto Sizer info for the control you want to attach the splitter to. The control the splitter attaches to must have an absolute size (&gt; 1), not a relative size (&lt;=1) . </p>
+<p>Splitter controls are often used to implement resizeable panels attached to the sides of a window. To implement this with WinX Splitter controls you want to first create two Auto Sizer series, one for the left panel and the other for the right panel. Add the left panel to the series with the $$SIZER_SPLITTER flag and an absolute size. Add the right panel with the $$SIZER_RELREST flag and a size of 1. When the user drags the splitter the left panel will change size and the right panel will adjust to fill the remaining space. When the window is resized the width of the left panel is unchanged, the right panel grows and shrinks to compensate. </p>
+<p>This technique places the panel on the left. To place the panel on the right instead the simplest option is to use the $$SIZER_REVERSE flag. This process the series from right to left instead of left to right. Of course, you can also place the panel on the top or bottom of the window by using vertical series instead of horizontal series </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../autosizer.htm">Auto Sizer</a> <br>
+  <a href="../../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXNewAutoSizerSeries.htm">WinXNewAutoSizerSeries</a><br>
+  <a href="../../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXAutoSizer_SetSimpleInfo.htm">WinXAutoSizer_SetSimpleInfo</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

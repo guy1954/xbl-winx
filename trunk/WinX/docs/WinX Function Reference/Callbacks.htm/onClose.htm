@@ -1,0 +1,96 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>onClose (Callback)</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->onClose (Callback) <!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>onClose (hWnd)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>This callback is invoked when the user attempts to close a window</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hWnd<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the window the user is attempting to close <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>0</p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>This is a callback function. You must supply this function yourself. To register this callback, use the <a href="WinXRegOnClose.htm">WinXRegOnClose</a> function.</p>
+<p>The onClose callback has a number of uses. You can use it to display an &quot;Are you sure?&quot; message when the user attempts to quit your application. You can also use it to quit the entire application when a particular window is closed (as opposed to when any window is closed when you don't register this callback).</p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'A sample onClose</p>
+      <p class="codeStyle"> FUNCTION onClose (hWnd)</p>
+      <blockquote>
+        <p class="codeStyle"> ' Is this the main window?<br>
+          IF hWnd = #hMain THEN</p>
+        <blockquote>
+          <p class="codeStyle">' It is so quit the application<br>
+            ' PostQuitMessage(0) causes WinXDoEvents to return<br>
+            PostQuitMessage(0)
+          </p>
+        </blockquote>
+        <p class="codeStyle">ELSE</p>
+        <blockquote>
+          <p class="codeStyle">' This is not the main window, so don't quit the app<br>
+            ' But we do still need to destroy the window<br>
+            DestroyWindow (hWnd)
+            </p>
+        </blockquote>
+        <p class="codeStyle">END IF  </p>
+      </blockquote>
+      <p class="codeStyle">END FUNCTION </p>
+    <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXRegOnClose.htm">WinXRegOnClose</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

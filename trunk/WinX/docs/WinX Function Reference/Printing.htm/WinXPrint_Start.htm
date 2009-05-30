@@ -1,0 +1,122 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXPrint_Start</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXPrint_Start<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hPrinter = WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPhys, fileName$, showDialog, hWndOwner)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Begins a printing cycle, optionally displaying a print settings dialog box first.</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->minPage<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The minimum page the user can select <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->maxPage<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The maximum page the user can select, if this is the same as minPage the user cannot specify a range of pages <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->@rangeMin<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The initial first page in the page range. If it is 0 then the selection radio button on the dialog box is enabled and set, otherwise the selection radio button is disabled. When the function returns this parameter is changed to reflect the user's settings <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->@rangeMax<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The initial last page in the page range. If it is 0 then the all pages radio button is selected. When the function returns this parameter is changed to reflect the user's settings<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->@cxPhys<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The physical width of the page in device units<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->@cyPhys<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The physical height of the page in device units<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->fileName$<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The name of the print job. Usually you will set this to the name of the file being printed <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->showDialog<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->$$TRUE to display a print settings dialog or $$FALSE to use defaults <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hWndOwner<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->If the showDialog parameter is $$TRUE, this is the handle to the owner window for the print settings dialog box. If the showDialog parameter is $$FALSE this parameter is ignored. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle to the printer DC or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>If the showDialog parameter is $$FALSE the minPage, maxPage, rangeMin and rangeMax parameters are ignored. </p>
+<p>When this function returns, the cxPhys and cyPhys parameters will contain the size of the page in printer units (which vary according to the page size and dpi). If cxPhys &lt; cyPhys then page is portrait otherwise it is landscape. You can use these parameters to determine how many printer units you need to use for the <a href="WinXPrint_Page.htm">WinXPrint_Page</a> function. </p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" -->
+      <p class="codeStyle">'print the contents of a window on a single page <br>
+        hPrinter = WinXPrint_Start (1, 1, 1, -1, @cxPhys, @cyPhys, &quot;Printing Test&quot;, $$TRUE, #hMain)<br>
+    WinXPrint_Page (hPrinter, #hMain, 0, 0, 400, 300, cxPhys, cyPhys, 1, 1)<br>
+    WinXPrint_Done (hPrinter)      </p>
+      <!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../../WinX%20Programmer%27s%20Guide/Auto%20Draw.htm/Printing.htm">Printing</a><br>
+  <a href="WinXPrint_Page.htm">WinXPrint_Page</a><br>
+  <a href="WinXPrint_Done.htm">WinXPrint_Done</a><br>
+<a href="WinXPrint_PageSetup.htm">WinXPrint_PageSetup</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

@@ -1,0 +1,108 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Function Info.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>WinXTreeView_AddItem</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
+<style type="text/css">
+<!--
+.style3 {font-size: medium}
+-->
+</style>
+
+<link href="../../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->WinXTreeView_AddItem<!-- InstanceEndEditable --></h1>
+<hr>
+
+<!-- InstanceBeginEditable name="Prototype" -->
+<p>hItem = WinXTreeView_AddItem (hTreeView, hParent, hInsertAfter, iImage, iImageSelect, STRING item)</p>
+<!-- InstanceEndEditable --><!-- InstanceBeginEditable name="Description" -->
+<p>Adds an item to a tree view control</p>
+<!-- InstanceEndEditable -->
+<table width="80%" border="1" cellpadding="0" cellspacing="0">
+  <tr bgcolor="#CCCCCC">
+    <th width="24%"><span class="style3">Parameter</span></th>
+    <th width="76%"><span class="style3">Description</span></th>
+  </tr>
+  <!-- InstanceBeginRepeat name="Parameter Table" --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hTreeView<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the tree view control to add the item to <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hParent<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The handle to the parent item, use 0 (or $$TVI_ROOT) if this item has no parent (it appears at the top level) <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->hInsertAfter<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The item to insert this item after, use $$TVI_FIRST to insert as the first child of the parent or $$TVI_LAST to insert as the last child of the parent. <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->iImage<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The 0 based index in the tree view's image list of the image to use for this item <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->iImageSelect<!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The 0 based index in the tree view's image list of the image to use when this item is selected<!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceBeginRepeatEntry -->
+  <tr bgcolor="#E8E8E8">
+    <td><!-- InstanceBeginEditable name="Parameter" -->STRING item <!-- InstanceEndEditable --></td>
+    <td><!-- InstanceBeginEditable name="Description" -->The label for the item <!-- InstanceEndEditable --></td>
+  </tr>
+  <!-- InstanceEndRepeatEntry --><!-- InstanceEndRepeat -->
+</table>
+<h3>Returns</h3>
+<!-- InstanceBeginEditable name="Return Info" -->
+<p>The handle to the item or 0 on fail </p>
+<!-- InstanceEndEditable -->
+<h3>Remarks</h3>
+<!-- InstanceBeginEditable name="Remarks" -->
+<p>none</p>
+<!-- InstanceEndEditable -->
+<h3>Examples</h3>
+<table width="80%"  border="0">
+  <tr>
+    <td bgcolor="#C6C6FF"><!-- InstanceBeginEditable name="Example Code" --><span class="codeStyle">'add an item to a tree view <br>
+    hItem = WinXTreeView_AddItem (hTV, 0, $$TVI_LAST, 0, 0, &quot;Item 1&quot;)</span><!-- InstanceEndEditable --></td>
+  </tr>
+</table>
+
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="WinXAddTreeView.htm">WinXAddTreeView</a><br>
+  <a href="WinXTreeView_DeleteItem.htm">  WinXTreeView_DeleteItem</a><br>
+  <a href="WinXTreeView_GetNextItem.htm">WinXTreeView_GetNextItem</a><br>
+  <a href="WinXTreeView_GetChildItem.htm">WinXTreeView_GetChildItem</a><br>
+  <a href="WinXTreeView_GetParentItem.htm">WinXTreeView_GetParentItem</a><br>
+  <a href="WinXTreeView_GetPreviousItem.htm">WinXTreeView_GetPreviousItem</a><br>
+
+  <a href="WinXTreeView_GetSelection.htm">WinXTreeView_GetSelection</a><br>
+  <a href="WinXTreeView_GetItemLabel$.htm">WinXTreeView_GetItemLabel$</a><br>
+  <a href="WinXTreeView_CopyItem.htm">WinXTreeView_CopyItem</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

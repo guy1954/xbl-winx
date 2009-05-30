@@ -1,0 +1,46 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Auto Sizer</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Auto Sizer<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>The Auto Sizer is a program built into WinX which automatically updates the size and position of your controls when the window is resized. To use the Auto Sizer, you have to register your controls with it. You can re-register the controls if you need to change their size or position. If you want to manage the size and position of the controls yourself, use the <a href="../WinX%20Function%20Reference/Callbacks.htm/controlSizer.htm">controlSizer</a> callback. This will disable the Auto Sizer.</p>
+<p><img src="../diagram1.png" width="337" height="327"></p>
+<p>The Auto Sizer places your controls into ordered lists called series. A series can be displayed horizontally or vertically. As well as controls, you can also put another series inside a series. This allows much more flexible control sizing. The diagram above diagram shows how it all works. It depicts a vertical series. The controls are placed one after the other, starting at the top. Optional spacing has been inserted between the controls. The last two controls are in a horizontal series that has been embedded within the main vertical series. When the vertical series is resized, the horizontal series is resized as if it were another control. The horizontal series responds by resizing it's controls. You can continue embedding series in this fashion untill you run out of memory. </p>
+<p>To register a control with the Auto Sizer, use the <a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXAutoSizer_SetSimpleInfo.htm">WinXAutoSizer_SetSimpleInfo</a> function. This function takes 5 parameters. The handle to the control to register (or the series to embed), the id of the series to add the control to (more about getting this in a moment), the amount of space to place between this and the next control, the size of the control and finnaly a set of flags which define how the other parameters are interpretted.</p>
+<p>Each window comes with a single vertical series called the main series. You can get the id of the main series by calling <a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXAutoSizer_GetMainSeries.htm">WinXAutoSizer_GetMainSeries</a>. You can create a new series with the <a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXNewAutoSizerSeries.htm">WinXNewAutoSizerSeries</a> function. If you are embedding a series in another Auto Sizer series you must include the $$SIZER_SERIES flag in the flags parameter. Other than that, the embedding of another series is no different to embedding a control. </p>
+<p>space is the amount of space between this control and the previous control. For the first control, it will be the space from the top (or left) of the series. There are two possible ways of specifiying this parameter. You can give the absolute number of pixels, as long as it is greater than 1. You can also specify a proportion of the height (or width) of the entire series. To do this, use a value &lt;= 1. For example, to make the space 25% of the height (or width) of the series, the value to use would be 0.25.</p>
+<p>The size parameter specifies the amount of space that the control itself takes up in the series. For a vertical series, this is the height of the control. For a horixontal series it is the width. The control doesn't actually have to use up all this space, this is just how much space is reserved for the control. Like the space parameter, it can be specified as an absolute number of pixels or a proportion of the entire series. If you include the $$SIZER_SIZERELREST flag in the flags parameter, the size paremter has a different meaning. If it is &lt;=1, it is the proportion of the remaining space in the series. If it is &gt;1 then it is the number of remaining pixels not to use, i.e., the size reserved for the control will be the remaining space - the size parameter.</p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXAutoSizer_SetSimpleInfo.htm">WinXAutoSizer_SetSimpleInfo</a><br>
+<a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXAutoSizer_SetInfo.htm">WinXAutoSizer_SetInfo</a><br>
+<a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXNewAutoSizerSeries.htm">WinXNewAutoSizerSeries</a><br>
+<a href="../WinX%20Function%20Reference/Auto%20Sizer.htm/WinXAutoSizer_GetMainSeries.htm">WinXAutoSizer_GetMainSeries</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>

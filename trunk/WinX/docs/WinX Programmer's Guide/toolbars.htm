@@ -1,0 +1,46 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html><!-- InstanceBegin template="/Templates/Main.dwt" codeOutsideHTMLIsLocked="false" -->
+<head>
+<!-- InstanceBeginEditable name="doctitle" -->
+<title>Toolbars</title>
+<!-- InstanceEndEditable -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!-- InstanceBeginEditable name="head" -->
+<!-- InstanceEndEditable -->
+<link href="../WinXStyles.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+<!--
+.style1 {
+	font-size: x-large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+.style2 {
+	font-size: large;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 class="style1"><img src="../WinX48.png" width="48" height="48" align="absmiddle"> <!-- InstanceBeginEditable name="title" -->Toolbars<!-- InstanceEndEditable --></h1>
+<hr>
+<!-- InstanceBeginEditable name="body" -->
+<p>Toolbars are rows of icons displayed at the top of a window. At this stage, WinX only supports one toolbar and it cannot be customized. I plan to add support for multiple toolbars, rebar containers and toolbar customisation is later releases.</p>
+<p>The most complex issue with toolbars is dealing with the images. You have two options. You can create a bitmap containing the images for each button lined up side by side, or you can create an image list. If you want to use standard icons in your toolbar, you'll have to create an image list. The bitmap approach is simpler because WinX can do much of the work for you. To create a toolbar from bitmaps, use the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXNewToolbar.htm">WinXNewToolbar</a> function. To create a toolbar from image lists, use the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXNewToolbarUsingIls.htm">WinXNewToolbarUsingIls</a> function. </p>
+<p>Each button in a toolbar needs 3 sets of images: the button images are displayed whenever the other images aren't, the grayed images are displayed whenever the buttons are disabled and the hot images are displayed when the mouse cursor is on top of the buttons. If you are using the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXNewToolbar.htm">WinXNewToolbar</a> function, you only need to specify the button images. WinX will generate the grayed and hot images automatically. If you are using image lists you can specify the same image list for different sets of images.</p>
+<p>To add buttons to a toolbar, use the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddButton.htm">WinXToolbar_AddButton</a> function. You can also add toggle buttons (which toggled from pressed to unpressed when the user clicks them) using the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddToggleButton.htm">WinXToolbar_AddToggleButton</a> function; and seperators (which serve no purpose other than to seperate groups of controls) with the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddSeperator.htm">WinXToolbar_AddSeperator</a>.</p>
+<p>You can add other controls to a toolbar using the <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddControl.htm">WinXToolbar_AddControl</a> function. </p>
+<!-- InstanceEndEditable -->
+<h2 class="style2">Related Links</h2>
+<!-- InstanceBeginEditable name="Related Links" -->
+<p><a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXNewToolbar.htm">WinXNewToolbar</a><br>
+  <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXNewToolbarUsingIls.htm">WinXNewToolbarUsingIls</a><br>
+  <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddButton.htm">WinXToolbar_AddButton</a><br>
+  <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddToggleButton.htm">WinXToolbar_AddToggleButton</a><br>
+  <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddSeperator.htm">WinXToolbar_AddSeperator</a><br>
+  <a href="../WinX%20Function%20Reference/Toolbars%20and%20Status%20bars.htm/WinXToolbar_AddControl.htm">WinXToolbar_AddControl</a></p>
+<!-- InstanceEndEditable -->
+</body>
+<!-- InstanceEnd --></html>
