@@ -1,7 +1,5 @@
-'
-' ####################
-' #####  PROLOG  #####
-' ####################
+PROGRAM "adt"
+VERSION "0.2"
 '
 ' ADT - Abstract data types for XBlite
 ' (C) Callum Lowcay 2008 - Liscensed under the GNU LGPL
@@ -10,22 +8,15 @@
 ' Also requires the accessors.m4 file.  I sugest that you copy this to your XBlite include folder and set the
 '  M4PATH environment variable to the XBlite include folder.
 '
-PROGRAM "adt"
-VERSION "0.1"
+' ***** Versions *****
+' Contributors:
+'     Callum Lowcay (original version)
+'     Guy "gl" Lonne (evolutions)
 '
-	IMPORT "xst"				' Standard library : required by most programs
-'	IMPORT "xsx"				' Extended standard library
-'	IMPORT "xio"				' Console input/ouput library
-
-'	IMPORT "xst_s.lib"
-' IMPORT "xsx_s.lib"
-' IMPORT "xio_s.lib"
-
-' IMPORT "gdi32"			' gdi32.dll
-'	IMPORT "user32"		  ' user32.dll
-'	IMPORT "kernel32"	  ' kernel32.dll
-'	IMPORT "shell32"		' shell32.dll
-'	IMPORT "msvcrt"		  ' msvcrt.dll
+' 0.2-gl-04mar09-created a version without m4-preprocessing for the static build.
+'
+'
+	IMPORT "xst"        ' xblite Standard Library
 
 '
 m4_include(`accessors.m4')
@@ -148,14 +139,15 @@ DeclareAccess(STACK)
 FUNCTION ADT ()
 	STATIC initialised
 	IF initialised THEN RETURN $$FALSE
-	
+
+	Xst ()		' Xblite Standard Library
 	STRING_Init()
 	LINKEDNODE_Init()
 	LINKEDWALK_Init()
 	BINNODE_Init()
 	BINWALK_Init()
 	STACK_Init()
-	
+
 	initialised = $$TRUE
   RETURN $$FALSE
 END FUNCTION
@@ -168,10 +160,10 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION LinkedList_Init (LINKEDLIST list)
 	LINKEDNODE head
-	
+
 	head.iData = 0
 	head.iNext = 0
-	
+
 	list.iHead = LINKEDNODE_New(head)
 	list.iTail = list.iHead
 	list.cItems = 0
@@ -188,16 +180,16 @@ END FUNCTION
 FUNCTION LinkedList_Append (LINKEDLIST list, iData)
 	LINKEDNODE tail
 	LINKEDNODE new
-	
+
 	IFF LINKEDNODE_Get(list.iTail, @tail) THEN RETURN $$FALSE
 	new.iData = iData
 	new.iNext = 0
 	tail.iNext = LINKEDNODE_New(new)
 	LINKEDNODE_Update(list.iTail, @tail)
-	
+
 	list.iTail = tail.iNext
 	INC list.cItems
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -212,21 +204,21 @@ END FUNCTION
 FUNCTION LinkedList_Insert (LINKEDLIST list, index, iData)
 	LINKEDNODE previous
 	LINKEDNODE new
-	
+
 	' get the previous node
 	IFF LINKEDLIST_GetNode (list, index-1, @iPrevious) THEN RETURN $$FALSE
 	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN $$FALSE
-	
+
 	new.iData = iData
 	new.iNext = previous.iNext
-	
+
 	previous.iNext = LINKEDNODE_New(new)
-	
+
 	IF iPrevious = list.iTail THEN list.iTail = previous.iNext
 	IFZ previous.iNext THEN RETURN $$FALSE
-	
+
 	IFF LINKEDNODE_Update(iPrevious, previous) THEN RETURN $$FALSE
-	
+
 	INC list.cItems
 	RETURN $$TRUE
 END FUNCTION
@@ -241,10 +233,10 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION LinkedList_GetItem (LINKEDLIST list, index, @iData)
 	LINKEDNODE node
-	
+
 	IFF LINKEDLIST_GetNode(list, index, @iNode) THEN RETURN $$FALSE
 	IFF LINKEDNODE_Get(iNode, @node) THEN RETURN $$FALSE
-	
+
 	iData = node.iData
 	RETURN $$TRUE
 END FUNCTION
@@ -258,14 +250,14 @@ END FUNCTION
 FUNCTION LinkedList_StartWalk (LINKEDLIST list)
 	LINKEDNODE currNode
 	LINKEDWALK walk
-	
+
 	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN 0
 	walk.first = list.iHead
 	walk.iPrev = list.iHead
 	walk.iCurrentNode = -1
 	walk.iNext = currNode.iNext
 	walk.last = iTail
-	
+
 	RETURN LINKEDWALK_New (walk)
 END FUNCTION
 '
@@ -279,18 +271,18 @@ END FUNCTION
 FUNCTION LinkedList_Walk (hWalk, @iData)
 	LINKEDNODE currNode
 	LINKEDWALK walk
-	
+
 	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE
 	'? "> ";walk.iPrev, walk.iCurrentNode, walk.iNext
-	
+
 	IFF LINKEDNODE_Get(walk.iNext, @currNode) THEN RETURN $$FALSE
-	
+
 	iData = currNode.iData
 	walk.iPrev = walk.iCurrentNode
 	walk.iCurrentNode = walk.iNext
 	walk.iNext = currNode.iNext
 	IFF LINKEDWALK_Update(hWalk, @walk) THEN RETURN $$FALSE
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -314,26 +306,26 @@ END FUNCTION
 FUNCTION LinkedList_DeleteItem (LINKEDLIST list, index)
 	LINKEDNODE previous
 	LINKEDNODE currNode
-	
+
 	' Prevent the user from deleting the head node
 	IF index < 0 THEN RETURN $$FALSE
-	
+
 	' get the previous node
 	IFF LINKEDLIST_GetNode (list, index-1, @iPrevious) THEN RETURN $$FALSE
 	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN $$FALSE
-	
+
 	' Update the tail pointer if necassary
 	IF previous.iNext = list.iTail THEN list.iTail = iPrevious
-	
+
 	' Now get the node we want to delete
 	iCurrNode = previous.iNext
 	IFF LINKEDNODE_Get (iCurrNode, @currNode) THEN RETURN $$FALSE
-	
+
 	' And delete
 	previous.iNext = currNode.iNext
 	IFF LINKEDNODE_Update(iPrevious, previous) THEN RETURN $$FALSE
 	IFF LINKEDNODE_Delete(iCurrNode) THEN RETURN $$FALSE
-	
+
 	DEC list.cItems
 	RETURN $$TRUE
 END FUNCTION
@@ -346,24 +338,24 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail.
 FUNCTION LinkedList_DeleteAll (LINKEDLIST list)
 	LINKEDNODE currNode
-	
+
 	' Get the head
 	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN $$FALSE
-	
+
 	DO WHILE currNode.iNext
 		' Get the next node
 		iCurrNode = currNode.iNext
 		IFF LINKEDNODE_Get(iCurrNode, @currNode) THEN RETURN $$FALSE
-		
+
 		' Process this node
 		IFF LINKEDNODE_Delete(iCurrNode) THEN RETURN $$FALSE
 	LOOP
-	
+
 	' Update the head node
 	LINKEDNODE_Get(list.iHead, @currNode)
 	currNode.iNext = 0
 	LINKEDNODE_Update (list.iHead, currNode)
-	
+
 	list.iTail = list.iHead
 	list.cItems = 0
 	RETURN $$TRUE
@@ -380,23 +372,23 @@ END FUNCTION
 FUNCTION LinkedList_Map (LINKEDLIST list, FUNCADDR callBack, @result)
 	LINKEDNODE currNode
 	FUNCADDR func (XLONG, XLONG, XLONG)
-	
+
 	func = callBack
-	
+
 	' Get the head
 	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN $$FALSE
-	
+
 	i = 0
 	DO WHILE currNode.iNext
 		' Get the next node
 		iCurrNode = currNode.iNext
 		IFF LINKEDNODE_Get(iCurrNode, @currNode) THEN RETURN $$FALSE
-		
+
 		' Process this node
 		IFF @func(i, currNode.iData, @result) THEN RETURN $$TRUE
 		INC i
 	LOOP
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -426,12 +418,12 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 	LINKEDNODE node
 	' Get the head node
 	iThis = list.iHead
-	
+
 	FOR i = -1 TO index-1
 		IFF LINKEDNODE_Get (iThis, @node) THEN RETURN $$FALSE
 		iThis = node.iNext
 	NEXT
-	
+
 	iNode = iThis
 	RETURN $$TRUE
 END FUNCTION
@@ -477,13 +469,13 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION Stack_Pop (STACK stack, @iData)
 	LINKEDNODE node
-	
+
 	' Is the stack empty?
 	IF stack.list.iHead = stack.list.iTail THEN RETURN $$FALSE
-	
+
 	IFF LINKEDNODE_Get(stack.list.iTail, @node) THEN RETURN $$FALSE
 	IFF LinkedList_DeleteItem (@stack.list, stack.list.cItems-1) THEN RETURN $$FALSE
-	
+
 	iData = node.iData
 	RETURN $$TRUE
 END FUNCTION
@@ -497,12 +489,12 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION Stack_Peek (STACK stack, @iData)
 	LINKEDNODE node
-	
+
 	' Is the stack empty?
 	IF stack.list.iHead = stack.list.iTail THEN RETURN $$FALSE
-	
+
 	IFF LINKEDNODE_Get(stack.list.iTail, @node) THEN RETURN $$FALSE
-	
+
 	iData = node.iData
 	RETURN $$TRUE
 END FUNCTION
@@ -531,7 +523,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION BinTree_Add (BINTREE tree, iKey, iData)
 	BINNODE newNode
-	
+
 	IF tree.iHead = 0 THEN
 		newNode.iKey = iKey
 		newNode.iLeft = 0
@@ -542,7 +534,7 @@ FUNCTION BinTree_Add (BINTREE tree, iKey, iData)
 	ELSE
 		RETURN BinTree_RealAdd (tree.comparator, tree.iHead, iKey, iData)
 	END IF
-	
+
 	' We should never get here
 	RETURN $$FALSE
 END FUNCTION
@@ -558,11 +550,11 @@ END FUNCTION
 FUNCTION BinTree_Remove (BINTREE tree, iKey, @iData)
 	STATIC lastMode
 	BINNODE fakeNode
-	
+
 	iParentNode = tree.iHead
 	iNode = BinTree_RealFind (tree.comparator, @iParentNode, iKey, @iData)
 	IFZ iNode THEN RETURN $$FALSE
-	
+
 	IF iNode = iParentNode THEN
 		' There is no parent node, so create a fake one
 		fakeNode.iLeft = iNode
@@ -573,7 +565,7 @@ FUNCTION BinTree_Remove (BINTREE tree, iKey, @iData)
 		BINNODE_Delete (iParentNode)
 		tree.iHead = fakeNode.iLeft
 	END IF
-	
+
 	RETURN BinTree_RealRemove (tree.keyDeleter, iNode, iParentNode)
 END FUNCTION
 '
@@ -619,14 +611,14 @@ END FUNCTION
 FUNCTION StringCompare (a, b)
 	STRING_Get (a, @a$)
 	STRING_Get (b, @b$)
-	
+
 	FOR i = 0 TO MIN(UBOUND(a$), UBOUND(b$))
 		IF a${i} < b${i} THEN RETURN -1
 		IF a${i} > b${i} THEN RETURN 1
 	NEXT
 	IF UBOUND(a$) < UBOUND(b$) THEN RETURN -1
 	IF UBOUND(a$) > UBOUND(b$) THEN RETURN 1
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -637,17 +629,17 @@ END FUNCTION
 FUNCTION IStringCompare (a, b)
 	STRING_Get (a, @a$)
 	STRING_Get (b, @b$)
-	
+
 	a$ = UCASE$(a$)
 	a$ = UCASE$(b$)
-	
+
 	FOR i = 0 TO MIN(UBOUND(a$), UBOUND(b$))
 		IF a${i} < b${i} THEN RETURN -1
 		IF a${i} > b${i} THEN RETURN 1
 	NEXT
 	IF UBOUND(a$) < UBOUND(b$) THEN RETURN -1
 	IF UBOUND(a$) > UBOUND(b$) THEN RETURN 1
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -664,7 +656,7 @@ FUNCTION BinTree_RealAdd (FUNCADDR comparator, iNode, iKey, iData)
 	BINNODE node
 	BINNODE newNode
 	FUNCADDR comp (XLONG, XLONG)
-	
+
 	comp = comparator
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
 	order = @comp (iKey, node.iKey)
@@ -683,7 +675,7 @@ FUNCTION BinTree_RealAdd (FUNCADDR comparator, iNode, iKey, iData)
 		ELSE
 			RETURN BinTree_RealAdd (comparator, node.iLeft, iKey, iData)
 		END IF
-	ELSE 
+	ELSE
 		IFZ node.iRight THEN
 			newNode.iKey = iKey
 			newNode.iLeft = 0
@@ -698,7 +690,7 @@ FUNCTION BinTree_RealAdd (FUNCADDR comparator, iNode, iKey, iData)
 			RETURN BinTree_RealAdd (comparator, node.iRight, iKey, iData)
 		END IF
 	END IF
-	
+
 	' We should never get to this point
 	RETURN $$FALSE
 END FUNCTION
@@ -712,14 +704,14 @@ END FUNCTION
 FUNCTION BinTree_RealUninit (iNode, FUNCADDR keyDeleter)
 	BINNODE node
 	FUNCADDR delete (XLONG)
-	
+
 	delete = keyDeleter
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
 	IF node.iLeft THEN BinTree_RealUninit (node.iLeft, keyDeleter)
 	IF node.iRight THEN BinTree_RealUninit (node.iRight, keyDeleter)
 	@delete (node.iKey)
 	BINNODE_Delete (iNode)
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -735,7 +727,7 @@ END FUNCTION
 FUNCTION BinTree_RealFind (FUNCADDR comparator, @iParentNode, iKey, @iData)
 	BINNODE node
 	FUNCADDR comp (XLONG, XLONG)
-	
+
 	comp = comparator
 	IFF BINNODE_Get (iParentNode, @node) THEN RETURN 0
 	order = @comp (iKey, node.iKey)
@@ -760,10 +752,10 @@ FUNCTION BinTree_RealFind (FUNCADDR comparator, @iParentNode, iKey, @iData)
 '		PRINT "Recursing"
 		RETURN BinTree_RealFind (comparator, @iParentNode, iKey, @iData)
 	END IF
-	
+
 	' We should never end up here
 	RETURN 0
-	
+
 	SUB CheckNode
 		BINNODE_Get (iNode, @node)
 '		STRING_Get (node.iKey, @key$)
@@ -787,20 +779,20 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 	BINNODE parentNode
 	BINNODE childNode
 	FUNCADDR delete (XLONG)
-	
+
 	delete = keyDeleter
-	
+
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
 	IFF BINNODE_Get (iParentNode, @parentNode) THEN RETURN $$FALSE
-	
+
 	SELECT CASE TRUE
 		CASE (node.iLeft = 0)&&(node.iRight=0)
 			' No children
-			
+
 			@delete (node.iKey)
 			iData = node.iData
 			BINNODE_Delete (iNode)
-			
+
 			SELECT CASE iNode
 				CASE parentNode.iLeft
 					parentNode.iLeft = 0
@@ -810,7 +802,7 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 			BINNODE_Update (iParentNode, parentNode)
 		CASE (node.iLeft = 0)||(node.iRight = 0)
 			' One child
-			
+
 			' Get that child
 			SELECT CASE TRUE
 				CASE node.iLeft
@@ -819,10 +811,10 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 					iChildNode = node.iRight
 			END SELECT
 			BINNODE_Get (iChildNode, @childNode)
-			
+
 			@delete (node.iKey)
 			iData = node.iData
-			
+
 			node.iKey = childNode.iKey
 			node.iLeft = childNode.iLeft
 			node.iRight = childNode.iRight
@@ -831,7 +823,7 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 			BINNODE_Delete (iChildNode)
 		CASE ELSE
 			' Two children
-			
+
 			' which mode will we use?
 			IF lastMode THEN
 				lastMode = $$FALSE
@@ -860,14 +852,14 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 					END IF
 				LOOP
 			END IF
-			
+
 			@delete (node.iKey)
 			node.iKey = childNode.iKey
 			node.iData = childNode.iData
 			BINNODE_Update (iNode, node)
 			childNode.iKey = 0
 			BINNODE_Update (iChildNode, childNode)
-			
+
 			BinTree_RealRemove (keyDeleter, iChildNode, iParentNode)
 	END SELECT
 END FUNCTION
@@ -944,7 +936,7 @@ END FUNCTION
 ' returns $$TRUE or $$FALSE
 FUNCTION LinkedList_IsLastNode (hWalk)
 	LINKEDWALK walk
-	
+
 	IFF LINKEDWALK_Get(hWalk, @walk) THEN RETURN $$FALSE
 	IFZ walk.iNext THEN RETURN $$TRUE ELSE RETURN $$FALSE
 END FUNCTION
@@ -958,7 +950,7 @@ END FUNCTION
 FUNCTION LinkedList_ResetWalk (hWalk)
 	LINKEDWALK walk
 	LINKEDNODE node
-	
+
 	IFF LINKEDWALK_Get(hWalk, @walk) THEN RETURN $$FALSE
 	IFF LINKEDNODE_Get(walk.first, @node) THEN RETURN $$FALSE
 	walk.iPrev = walk.first
@@ -976,11 +968,11 @@ END FUNCTION
 FUNCTION BinTree_StartTraversal (BINTREE tree, order)
 	STACK traverseStack
 	BINWALK traverse
-	
+
 	Stack_Init (@traverseStack)
 	IFF BINNODE_Get (tree.iHead, @traverse.node) THEN RETURN 0
 	traverse.order = order
-	
+
 	Stack_Push (@traverseStack, BINWALK_New (traverse))
 	RETURN STACK_New (traverseStack)
 END FUNCTION
@@ -997,12 +989,12 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 	STACK traverseStack
 	BINWALK TOS
 	BINNODE node
-	
+
 	IFF STACK_Get (traverse, @traverseStack) THEN RETURN $$FALSE
-	
+
 	IFF Stack_Peek (traverseStack, @iTOS) THEN RETURN $$FALSE
 	IFF BINWALK_Get (iTOS, @TOS) THEN RETURN $$FALSE
-	
+
 	' Which item should we return?
 	done = $$FALSE
 	DO UNTIL done
@@ -1024,7 +1016,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 						' Get the leftmost child of the right node
 						IF TOS.node.iRight THEN
 							GOSUB GetRightNode
-							
+
 							' Get leftmost child
 							GOSUB GetLeftmostNode
 							TOS.nextItem = 1
@@ -1044,7 +1036,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 						BINWALK_Update (iTOS, TOS)
 						done = $$TRUE
 					CASE 1			' Get left node
-						IF TOS.node.iLeft THEN 
+						IF TOS.node.iLeft THEN
 							GOSUB GetLeftNode
 							TOS.nextItem = 0
 						ELSE
@@ -1074,7 +1066,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 						BINWALK_Update (iTOS, TOS)
 						done = $$TRUE
 					CASE 3			' Get left node
-						IF TOS.node.iLeft THEN 
+						IF TOS.node.iLeft THEN
 							GOSUB GetLeftNode
 							GOSUB GetRightmostNode
 							TOS.nextItem = 1
@@ -1086,16 +1078,16 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 				END SELECT
 		END SELECT
 	LOOP
-	
+
 	STACK_Update (traverse, traverseStack)
 	RETURN $$TRUE
-	
+
 	SUB GetLeftmostNode
 		DO WHILE TOS.node.iLeft
 			' Update the TOS
 			TOS.nextItem = 1
 			BINWALK_Update (iTOS, TOS)
-			
+
 			' Get the next node
 			BINNODE_Get (TOS.node.iLeft, @TOS.node)
 			iTOS = BINWALK_New (TOS)
@@ -1107,7 +1099,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 			' Update the TOS
 			TOS.nextItem = 1
 			BINWALK_Update (iTOS, TOS)
-			
+
 			' Get the next node
 			BINNODE_Get (TOS.node.iRight, @TOS.node)
 			iTOS = BINWALK_New (TOS)
@@ -1118,7 +1110,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 		' Update the TOS
 		TOS.nextItem = 2
 		BINWALK_Update (iTOS, TOS)
-		
+
 		' Get the next node
 		BINNODE_Get (TOS.node.iLeft, @TOS.node)
 		iTOS = BINWALK_New (TOS)
@@ -1128,7 +1120,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 		' Update the TOS
 		TOS.nextItem = 3
 		BINWALK_Update (iTOS, TOS)
-		
+
 		' Get the next node
 		BINNODE_Get (TOS.node.iRight, @TOS.node)
 		iTOS = BINWALK_New (TOS)
@@ -1150,13 +1142,13 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION BinTree_EndTraversal (traverse)
 	STACK traverseStack
-	
+
 	IFF STACK_Get (traverse, @traverseStack) THEN RETURN $$FALSE
-	
+
 	DO WHILE Stack_Pop (@traverseStack, @iData)
 		BINWALK_Delete (iData)
 	LOOP
-	
+
 	RETURN STACK_Delete (traverse)
 END FUNCTION
 '
@@ -1170,10 +1162,10 @@ END FUNCTION
 FUNCTION LinkedList_Jump (hWalk, iItem)
 	LINKEDNODE currNode
 	LINKEDWALK walk
-	
+
 	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE
 	IFF LINKEDNODE_Get (walk.first, @currNode) THEN RETURN $$FALSE
-	
+
 	walk.iPrev = 0
 	iNode = walk.first
 	FOR i = 0 TO iItem-1
@@ -1181,11 +1173,11 @@ FUNCTION LinkedList_Jump (hWalk, iItem)
 		iNode = currNode.iNext
 		IFF LINKEDNODE_Get (currNode.iNext, @currNode) THEN RETURN $$FALSE
 	NEXT
-	
+
 	iData = currNode.iData
 	walk.iNext = currNode.iNext
 	IFF LINKEDWALK_Update(hWalk, @walk) THEN RETURN $$FALSE
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -1199,7 +1191,7 @@ END FUNCTION
 FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST list)
 	LINKEDNODE currNode
 	LINKEDWALK walk
-	
+
 	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE
 	IF walk.iPrev = -1 THEN
 		IFF LINKEDNODE_Get (walk.first, @currNode) THEN RETURN $$FALSE
@@ -1210,10 +1202,10 @@ FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST list)
 		currNode.iNext = walk.iNext
 		IFF LINKEDNODE_Update (walk.iPrev, currNode) THEN RETURN $$FALSE
 	END IF
-	
+
 	IFF LINKEDNODE_Delete (walk.iCurrentNode) THEN RETURN $$FALSE
 	DEC list.cItems
-	
+
 	RETURN $$TRUE
 END FUNCTION
 
