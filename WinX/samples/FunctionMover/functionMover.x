@@ -30,14 +30,14 @@ VERSION "1.00"
 '	IMPORT "shell32"		' shell32.dll
 '	IMPORT "msvcrt"		  ' msvcrt.dll
 	IMPORT "WinX"				' GUI library
-	
+
 '
 'define constants
-$$ID_UP		= 0
-$$ID_DOWN	= 1
-$$ID_SAVE	= 2
-$$ID_LOAD	= 3
-$$ID_LIST	= 4
+$$LOAD    = 9000	' Push Button 'Load'
+$$SAVE    = 9001	' Push Button 'Save'
+$$UP      = 9002	' Push Button 'Up'
+$$DOWN    = 9003	' Push Button 'Down'
+$$LIST    = 9004	' List Box
 
 'a filter string for XBlite source files
 'note that it contains pairs of strings seperated with \0.  The whole thing is terminated with another \0
@@ -65,47 +65,64 @@ DECLARE FUNCTION swapFuncs (index1, index2)
 '
 FUNCTION Entry ()
 	SHARED fileLoaded$
-	
+
 	'initialise the WinX library, WinX will crash if you don't do this
 	IF WinX() THEN QUIT(0)
 
 	'make the main window
-	#hMain = WinXNewWindow (0, "Function Mover", -1, -1, 400, 300, $$XWSS_APP, 0, _
-	LoadIconA (GetModuleHandleA (0), &"scrabble"), hMenu)
-  
+	#winMain = WinXNewWindow (0, "Function Mover", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+
+	#hLoad = WinXAddButton (#winMain, "Load", 0, $$LOAD)
+	#hSave = WinXAddButton (#winMain, "Save", 0, $$SAVE)
+	#hUp = WinXAddButton (#winMain, "Up", 0, $$UP)
+	#hDown = WinXAddButton (#winMain, "Down", 0, $$DOWN)
+	#hIdList = WinXAddListBox (#winMain, $$FALSE, $$FALSE, $$LIST)
+
+'	MoveWindow (#hLoad, 2, 2, 76, 24, 1)
+'	MoveWindow (#hSave, 84, 2, 76, 24, 1)
+'	MoveWindow (#hUp, 166, 2, 76, 24, 1)
+'	MoveWindow (#hDown, 248, 2, 76, 24, 1)
+'	MoveWindow (#hIdList, 20, 36, 167, 242, 1)
+
 	'create and size the controls
+
+	mainSeries = WinXAutoSizer_GetMainSeries(#winMain)
+
 	'first off, create a new series to place the buttons in
-	sButtons = WinXNewAutoSizerSeries ($$DIR_HORIZ)
+	horizSeries = WinXNewAutoSizerSeries ($$DIR_HORIZ)
 
 	'the column
-	WinXAutoSizer_SetInfo (WinXAddListBox (#hMain, $$FALSE, $$FALSE, $$ID_LIST), WinXAutoSizer_GetMainSeries(#hMain), 0, 27, 0, 0, 1, 1, $$SIZER_SIZERELREST)
+	WinXAutoSizer_SetInfo (#hIdList, mainSeries, 0, 27, 0, 0, 1, 1, $$SIZER_SIZERELREST)
 	' I'm inserting 2 pixels of space here to make it look better.  Remove it to see what I mean
-	WinXAutoSizer_SetInfo (sButtons, WinXAutoSizer_GetMainSeries(#hMain), 2, 25, 0, 0, 1, 1, $$SIZER_SERIES)
-	
+	WinXAutoSizer_SetInfo (horizSeries, mainSeries, 2, 25, 0, 0, 1, 1, $$SIZER_SERIES)
+
 	'the embedded row
-	WinXAutoSizer_SetInfo (WinXAddButton (#hMain, "Load", 0, $$ID_LOAD), sButtons, 0, 0.25, 0, 0, 1, 1, 0)
-	WinXAutoSizer_SetInfo (WinXAddButton (#hMain, "Save", 0, $$ID_SAVE), sButtons, 0, 0.25, 0, 0, 1, 1, 0)
-	WinXAutoSizer_SetInfo (WinXAddButton (#hMain, "Up", 0, $$ID_UP),			sButtons, 0, 0.25, 0, 0, 1, 1, 0)
-	WinXAutoSizer_SetInfo (WinXAddButton (#hMain, "Down", 0, $$ID_DOWN), sButtons, 0, 0.25, 0, 0, 1, 1, 0)
-	
+	WinXAutoSizer_SetInfo (#hLoad, horizSeries, 0, 0.25, 0, 0, 1, 1, 0)
+	WinXAutoSizer_SetInfo (#hSave, horizSeries, 0, 0.25, 0, 0, 1, 1, 0)
+	WinXAutoSizer_SetInfo (#hUp,   horizSeries, 0, 0.25, 0, 0, 1, 1, 0)
+	WinXAutoSizer_SetInfo (#hDown, horizSeries, 0, 0.25, 0, 0, 1, 1, 0)
+
 	'seeing as there aren't any files loaded yet
 	fileLoaded$ = ""
 	'and we should disable the buttons that can't be used
 	'note the use of win32 API functions.  These are so simple that WinX versions would serve
 	'only to confuse.
-	EnableWindow (GetDlgItem (#hMain, $$ID_SAVE), $$FALSE)
-	EnableWindow (GetDlgItem (#hMain, $$ID_UP), $$FALSE)
-	EnableWindow (GetDlgItem (#hMain, $$ID_DOWN), $$FALSE)
-	
-	
+	EnableWindow (GetDlgItem (#winMain, $$SAVE), $$FALSE)
+	EnableWindow (GetDlgItem (#winMain, $$UP), $$FALSE)
+	EnableWindow (GetDlgItem (#winMain, $$DOWN), $$FALSE)
+
+
 	'register the callbacks
-	WinXRegOnCommand (#hMain, &onCommand())
-	WinXEnableDialogInterface(#hMain, $$TRUE)
-	
+	WinXRegOnCommand (#winMain, &onCommand())
+	WinXEnableDialogInterface(#winMain, $$TRUE)
+
 	'display the window
-	WinXDisplay (#hMain)
-	
-	WinXDoEvents(0)
+	WinXDisplay (#winMain)
+
+	WinXDoEvents()
+
+	WinXCleanUp ()    ' optional cleanup
+	QUIT (0)          ' stop run
 
 END FUNCTION
 '
@@ -120,55 +137,55 @@ FUNCTION onCommand (id, code, hWnd)
 	SHARED progLines$[]
 	SHARED numLines
 	SHARED numFuncs
-	
+
 	SELECT CASE id
-		CASE $$ID_UP
-			WinXListBox_GetSelection (GetDlgItem (#hMain, $$ID_LIST), @index[])
+		CASE $$UP
+			WinXListBox_GetSelection (GetDlgItem (#winMain, $$LIST), @index[])
 			IF index[0] > 1 THEN
 				swapFuncs (index[0]-1, index[0])
-				
+
 				'a little function I wrote to swap items in a list box
 				'this function isn't a part of WinX, yet
-				swapLBItems (GetDlgItem (#hMain, $$ID_LIST), index[0]-1, index[0])
-				
+				swapLBItems (GetDlgItem (#winMain, $$LIST), index[0]-1, index[0])
+
 				index[0] = index[0]-1
-				WinXListBox_SetSelection (GetDlgItem (#hMain, $$ID_LIST), @index[])
+				WinXListBox_SetSelection (GetDlgItem (#winMain, $$LIST), @index[])
 			END IF
-			
-		CASE $$ID_DOWN
-			WinXListBox_GetSelection (GetDlgItem (#hMain, $$ID_LIST), @index[])
+
+		CASE $$DOWN
+			WinXListBox_GetSelection (GetDlgItem (#winMain, $$LIST), @index[])
 			IF index[0] < numFuncs THEN
 				swapFuncs (index[0], index[0]+1)
-				
-				swapLBItems (GetDlgItem (#hMain, $$ID_LIST), index[0], index[0]+1)
-				
+
+				swapLBItems (GetDlgItem (#winMain, $$LIST), index[0], index[0]+1)
+
 				index[0] = index[0]+1
-				WinXListBox_SetSelection (GetDlgItem (#hMain, $$ID_LIST), @index[])
+				WinXListBox_SetSelection (GetDlgItem (#winMain, $$LIST), @index[])
 			END IF
-			
-		CASE $$ID_SAVE
+
+		CASE $$SAVE
 			'WinXSaveFile$ uses the standard windows Save as dialog box to get a file name
 			'see docs for details
-			fileName$ = WinXDialog_SaveFile$ (#hMain, "Save as...", $$FILTERSTRING$, fileLoaded$, $$TRUE)
+			fileName$ = WinXDialog_SaveFile$ (#winMain, "Save as...", $$FILTERSTRING$, fileLoaded$, $$TRUE)
 			fileNum = OPEN (fileName$, $$WRNEW)
 			FOR i = 0 TO (numLines-1)
 				PRINT[fileNum], progLines$[i]
 			NEXT
 			CLOSE(fileNum)
-			
-		CASE $$ID_LOAD
+
+		CASE $$LOAD
 			'WinXOpenFile$ uses a standard windows Open dialog box to get a file name
 			'see docs for details
-			fileName$ = WinXDialog_OpenFile$ (#hMain, "Select an XBlite source file", $$FILTERSTRING$, "", $$FALSE)
+			fileName$ = WinXDialog_OpenFile$ (#winMain, "Select an XBlite source file", $$FILTERSTRING$, "", $$FALSE)
 			IF fileName$ != "" THEN
-				IFF populateList (fileName$) THEN MessageBoxA (#hMain, &"Cannot open file", &"Error", $$MB_OK|$$MB_ICONSTOP)
+				IFF populateList (fileName$) THEN MessageBoxA (#winMain, &"Cannot open file", &"Error", $$MB_OK|$$MB_ICONSTOP)
 			END IF
-			
+
 			'enable the buttons
 			fileLoaded$ = fileName$
-			EnableWindow (GetDlgItem (#hMain, $$ID_SAVE), $$TRUE)
-			EnableWindow (GetDlgItem (#hMain, $$ID_UP), $$TRUE)
-			EnableWindow (GetDlgItem (#hMain, $$ID_DOWN), $$TRUE)
+			EnableWindow (GetDlgItem (#winMain, $$SAVE), $$TRUE)
+			EnableWindow (GetDlgItem (#winMain, $$UP), $$TRUE)
+			EnableWindow (GetDlgItem (#winMain, $$DOWN), $$TRUE)
 	END SELECT
 END FUNCTION
 '
@@ -183,14 +200,14 @@ END FUNCTION
 FUNCTION swapLBItems (hLB, item1, item2)
 	item1$ = WinXListBox_GetItem$ (hLB, item1)
 	item2$ = WinXListBox_GetItem$ (hLB, item2)
-	
+
 	IF item1$ = "" || item2$ ="" THEN RETURN $$FALSE
-	
+
 	WinXListBox_RemoveItem (hLB, item1)
 	WinXListBox_AddItem (hLB, item1, item2$)
 	WinXListBox_RemoveItem (hLB, item2)
 	WinXListBox_AddItem (hLB, item2, item1$)
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -205,11 +222,11 @@ FUNCTION populateList (fileName$)
 	SHARED numLines
 	SHARED FUNC funcList[]
 	SHARED numFuncs
-	
+
 	fileNum = OPEN (fileName$, $$RD)
-	
+
 	IF fileNum = -2 THEN RETURN $$FALSE
-	
+
 	i = 0
 	DIM progLines$[2047]
 	DO WHILE !EOF (fileNum)
@@ -217,16 +234,16 @@ FUNCTION populateList (fileName$)
 		progLines$[i] = INFILE$ (fileNum)
 		INC i
 	LOOP
-	
+
 	CLOSE(fileNum)
-	
+
 	numLines = i
-	
+
 	DIM funcList[63]
 
 	lastEnd = -1
 	numFuncs = -1
-	
+
 	FOR i = 0 TO numLines-1
 		'get the first token
 		SELECT CASE XstParse$ (progLines$[i], " ", 1)
@@ -235,8 +252,8 @@ FUNCTION populateList (fileName$)
 					funcName$ = XstParse$ (progLines$[i], " ", 3)
 					next$ = XstParse$ (progLines$[i], " ", 4)
 					IF LEFT$(next$,1) != "(" THEN funcName$ = next$
-					
-					index = WinXListBox_AddItem (GetDlgItem (#hMain, $$ID_LIST), -1, funcName$)
+
+					index = WinXListBox_AddItem (GetDlgItem (#winMain, $$LIST), -1, funcName$)
 					IF index > UBOUND(funcList[]) THEN REDIM funcList[((UBOUND(funcList[])+1)<<1)-1]
 					funcList[index].decLine = i
 					INC numFuncs
@@ -246,9 +263,9 @@ FUNCTION populateList (fileName$)
 				funcName$ = XstParse$ (progLines$[i], " ", 2)
 				next$ = XstParse$ (progLines$[i], " ", 3)
 				IF LEFT$(next$,1) != "(" THEN funcName$ = next$
-				
+
 				'find the function
-				index = WinXListBox_GetIndex (GetDlgItem (#hMain, $$ID_LIST), funcName$)
+				index = WinXListBox_GetIndex (GetDlgItem (#winMain, $$LIST), funcName$)
 				IF lastEnd > -1 THEN funcList[index].startLine = lastEnd ELSE funcList[index].startLine = i
 			CASE "END"
 				IF XstParse$ (progLines$[i], " ", 2) = "FUNCTION" THEN
@@ -257,7 +274,7 @@ FUNCTION populateList (fileName$)
 				END IF
 		END SELECT
 	NEXT
-	
+
 	'now we need to make sure the functions are in the same order as their declarations
 	DIM newProgLines$[numLines]
 	destI = 0
@@ -265,29 +282,29 @@ FUNCTION populateList (fileName$)
 		newProgLines$[destI] = progLines$[i]
 		INC destI
 	NEXT
-	
+
 	FOR i = 0 TO numFuncs
 		'output the function
 		startLine = destI
-		
+
 		FOR j = funcList[i].startLine TO (funcList[i].endLine)
 			newProgLines$[destI] = progLines$[j]
 			INC destI
 		NEXT
-		
+
 		'update it's record
 		funcList[i].startLine = startLine
 		funcList[i].endLine = startLine+(funcList[i].endLine-funcList[i].startLine)
 	NEXT
-	
+
 	SWAP newProgLines$[], progLines$[]
-	
+
 '	FOR i = 0 TO maxFunc
-'		PRINT "FOR: ";WinXListBox_GetItem$ (GetDlgItem (#hMain, $$ID_LIST), i)
+'		PRINT "FOR: ";WinXListBox_GetItem$ (GetDlgItem (#winMain, $$LIST), i)
 '		PRINT "START LINE: ";funcList[i].startLine
 '		PRINT "END LINE: ";funcList[i].endLine;"\n"
 '	NEXT
-	
+
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -302,12 +319,12 @@ FUNCTION swapFuncs (index1, index2)
 	SHARED numLines
 	SHARED FUNC funcList[]
 	SHARED numFuncs
-	
+
 	DIM newProgLines$[numLines]
-	
+
 	'first, swap the declarations
 	SWAP progLines$[funcList[index1].decLine], progLines$[funcList[index2].decLine]
-	
+
 	'now swap the functions
 	destI = 0
 	FOR i = 0 TO (funcList[index1].startLine-1)
@@ -320,35 +337,35 @@ FUNCTION swapFuncs (index1, index2)
 		newProgLines$[destI] = progLines$[i]
 		INC destI
 	NEXT
-	
+
 	FOR i = funcList[index1].endLine+1 TO (funcList[index2].startLine-1)
 		newProgLines$[destI] = progLines$[i]
 		INC destI
 	NEXT
-	
+
 	func1StartLine = destI
 	FOR i = funcList[index1].startLine TO funcList[index1].endLine
 		newProgLines$[destI] = progLines$[i]
 		INC destI
 	NEXT
-	
+
 	FOR i = (funcList[index2].endLine+1) TO numLines
 		newProgLines$[destI] = progLines$[i]
 		INC destI
 	NEXT
-	
+
 	SWAP newProgLines$[], progLines$[]
-	
+
 	'now swap the references
 	func1EndLine = funcList[index1].endLine-funcList[index1].startLine
 	func2EndLine = funcList[index2].endLine-funcList[index2].startLine
-	
+
 	funcList[index1].startLine = func2StartLine
 	funcList[index1].endLine = func2StartLine+func2EndLine
-	
+
 	funcList[index2].startLine = func1StartLine
 	funcList[index3].endLine = func1StartLine+func1EndLine
-	
+
 	RETURN $$TRUE
 END FUNCTION
 

@@ -39,11 +39,11 @@ DECLARE FUNCTION onCommand (id, code, hWnd)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if this fails
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
+
+	WinXDoEvents ()
 END FUNCTION
 '
 ' ########################
@@ -56,11 +56,11 @@ FUNCTION initWindow ()
 
 	'create the main window
 	#hMain = WinXNewWindow (0, "Combobox demo", -1, -1, 300, 48, $$XWSS_APPNORESIZE, 0, 0, 0)
-	
+
 	'make the combo box
 	hCombo = WinXAddComboBox (#hMain, 120, $$TRUE, 0, $$ID_COMBO)
 	MoveWindow (hCombo, 0, 0, 300, 22, $$TRUE)
-	
+
 	'and add some items
 	WinXComboBox_AddItem (hCombo, -1, 0, "Item 1", 0, 0)
 	WinXComboBox_AddItem (hCombo, -1, 1, "Item 2", 0, 0)
@@ -69,15 +69,15 @@ FUNCTION initWindow ()
 	WinXComboBox_AddItem (hCombo, -1, 0, "Item 5", 0, 0)
 	WinXComboBox_AddItem (hCombo, -1, 0, "Item 6", 0, 0)
 	WinXComboBox_AddItem (hCombo, -1, 0, "Item 7", 0, 0)
-	
+
 	'make a button
 	MoveWindow (WinXAddButton (#hMain, "Get combo text", 0, $$ID_BUTTON), 0, 26, 300, 22, $$TRUE)
-	
+
 	'remember to register the callback
 	WinXRegOnCommand (#hMain, &onCommand())
-	
+
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -88,7 +88,7 @@ END FUNCTION
 '
 '
 FUNCTION onCommand (id, code, hWnd)
-	
+
 	SELECT CASE id
 		CASE $$ID_COMBO
 			SELECT CASE code
@@ -103,6 +103,6 @@ FUNCTION onCommand (id, code, hWnd)
 					WinXDialog_Error ("The edit box says: "+WinXComboBox_GetEditText$(GetDlgItem (#hMain, $$ID_COMBO)), "Message", 0)
 			END SELECT
 	END SELECT
-	
+
 END FUNCTION
 END PROGRAM

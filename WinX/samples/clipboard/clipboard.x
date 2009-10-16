@@ -22,7 +22,7 @@ VERSION	"1.00"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 '
 DECLARE FUNCTION Entry ()
 DECLARE FUNCTION initWindow ()
@@ -39,11 +39,11 @@ DECLARE FUNCTION onKeyDown (hWnd, key)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if this fails
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
+
+	WinXDoEvents ()
 END FUNCTION
 '
 ' ########################
@@ -61,18 +61,18 @@ FUNCTION initWindow ()
 	WinXScroll_Show (#hMain, $$TRUE, $$TRUE)
 	WinXScroll_SetPage (#hMain, $$DIR_VERT, 1, 0, 10)
 	WinXScroll_SetPage (#hMain, $$DIR_HORIZ, 1, 0, 10)
-	
+
 	'remember to register callbacks
 	WinXRegOnClipChange (#hMain, &onClipChange())
 	WinXRegOnScroll (#hMain, &onScroll())
 	WinXRegOnMouseWheel (#hMain, &onMouseWheel())
 	WinXRegOnKeyDown (#hMain, &onKeyDown())
-	
+
 	WinXDisplay (#hMain)
-	
+
 	' initialise the display
 	onClipChange ()
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -87,29 +87,29 @@ FUNCTION onClipChange ()
 	SHARED hImage
 	SHARED x, y, w, h
 	SHARED clipText$[]
-	
+
 	' x and y are the scrolling offsets
 	x = 0
 	y = 0
 	WinXClear (#hMain)
 	WinXDraw_DeleteImage (hImage)
-	
+
 	' clear data from the old clipboard data
 	hImage = 0
 	DIM ClipText$[]
-	
+
 	' What kind of data is on the clipboard?
 	SELECT CASE TRUE
 		CASE WinXClip_IsString ()
 			' It's a string, so we need a font
 			hFont = GetStockObject ($$SYSTEM_FIXED_FONT)
 			lineHeight = WinXDraw_GetFontHeight(hFont, 0, 0)
-			
+
 			' Split the text into lines and expand tabs
 			buffer$ = WinXClip_GetString$ ()
 			XstReplace (@buffer$, "\t", "  ", 0)
 			XstStringToStringArray (buffer$, @clipText$[])
-			
+
 			' Find out how tall and wide the text is
 			h = lineHeight*(UBOUND(clipText$[])+1)
 			w = 0
@@ -117,28 +117,28 @@ FUNCTION onClipChange ()
 				pw = WinXDraw_GetTextWidth (hFont, clipText$[i], -1)
 				IF pw > w THEN w = pw
 			NEXT
-			
+
 			' Update the scrollbars
 			WinXScroll_SetRange (#hMain, $$DIR_VERT, 0, h)
 			WinXScroll_SetRange (#hMain, $$DIR_HORIZ, 0, w)
-			
+
 			' Write the text to the window
 			FOR i = 0 TO UBOUND(clipText$[])
 				WinXDrawText (#hMain, hFont, clipText$[i], -x, -y+i*lineHeight, -1, 0x000000)
 			NEXT
 		CASE WinXClip_IsImage ()
 			hImage = WinXClip_GetImage ()
-			
+
 			' Get the width and height and update the scrollbars
 			WinXDraw_GetImageInfo (hImage, @w, @h, @pBits)
 			WinXScroll_SetRange (#hMain, $$DIR_VERT, 0, h)
 			WinXScroll_SetRange (#hMain, $$DIR_HORIZ, 0, w)
-			
+
 			' Write the image to the window
 			WinXDrawImage (#hMain, hImage, -x, -y, w, h, 0, 0, $$FALSE)
 	END SELECT
 	WinXUpdate (#hMain)
-	
+
 END FUNCTION
 '
 ' ######################
@@ -162,7 +162,7 @@ FUNCTION onScroll (pos, hWnd, direction)
 			deltaX = x-pos
 			x = pos
 	END SELECT
-	
+
 	' Write out the new window contents
 	IF hImage THEN
 		WinXDrawImage (#hMain, hImage, -x, -y, w, h, 0, 0, $$FALSE)
@@ -173,7 +173,7 @@ FUNCTION onScroll (pos, hWnd, direction)
 			WinXDrawText (#hMain, hFont, clipText$[i], -x, -y+i*lineHeight, 0xFFFFFF, 0x000000)
 		NEXT
 	END IF
-	
+
 	' And update
 	WinXScroll_Update (#hMain, deltaX, deltaY)
 END FUNCTION
@@ -184,10 +184,10 @@ END FUNCTION
 ' Handle mouse wheel events
 FUNCTION onMouseWheel (hWnd, delta, x, y)
 	STATIC deltaSoFar
-	
+
 	'delta accumalates over mouse wheel events
 	deltaSoFar = deltaSoFar + delta
-	
+
 	'scroll one line for every 120 deltas
 	IF deltaSoFar > 0 THEN
 		DO WHILE deltaSoFar >= 120

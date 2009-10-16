@@ -22,7 +22,7 @@ VERSION	"1.00"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 'define constants
 $$ID_ANIMATE = 100
 
@@ -38,11 +38,11 @@ DECLARE FUNCTION initWindow ()
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if either of these fail
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
+
+	WinXDoEvents ()
 
 END FUNCTION
 '
@@ -57,15 +57,15 @@ FUNCTION initWindow ()
 	'this is where you create and initialise your window
 
 	#hMain = WinXNewWindow (0, "Animation Example", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+
 	'for this small example, we don't need to use the autosizer
 	MoveWindow (WinXAddAnimation (#hMain, "x.avi", $$ID_ANIMATE), 10, 10, 100, 100, $$TRUE)
-	
+
 	'start playing the animation
 	WinXAni_Play(GetDlgItem (#hMain, $$ID_ANIMATE))
-	
+
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 
