@@ -20,7 +20,7 @@ VERSION	"0.0000"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 '
 
 $$ID_LV = 100
@@ -37,12 +37,12 @@ DECLARE FUNCTION onColumnClick (control, iColumn)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if either of these fail
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
-	
+
+	WinXDoEvents ()
+
 END FUNCTION
 '
 ' ########################
@@ -55,29 +55,29 @@ FUNCTION initWindow ()
 	'this is where you create and initialise your window
 
 	#hMain = WinXNewWindow (0, "Listview Demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
-	
+
+
 	'this is a good place to add controls such as status bars and buttons to your window
 	hLV = WinXAddListView (#hMain, 0, 0, $$TRUE, $$LVS_REPORT, $$ID_LV)
 	WinXAutoSizer_SetSimpleInfo (hLV, WinXAutoSizer_GetMainSeries (#hMain), 0, 1, 0)
-	
+
 	WinXListView_AddColumn (hLV, 0, 100, "Column 1", 0)
 	WinXListView_AddColumn (hLV, 1, 100, "Column 2", 1)
 	WinXListView_AddColumn (hLV, 2, 100, "Column 3", 2)
 	WinXListView_AddColumn (hLV, 3, 100, "Column 4", 3)
-	
+
 	WinXListView_AddItem (hLV, -1, "Item 1 \0E \0A \05", -1)
 	WinXListView_AddItem (hLV, -1, "Item 2 \0D \0B \04", -1)
 	WinXListView_AddItem (hLV, -1, "Item 3 \0C \0C \03", -1)
 	WinXListView_AddItem (hLV, -1, "Item 4 \0B \0D \02", -1)
 	WinXListView_AddItem (hLV, -1, "Item 5 \0A \0E \01", -1)
-	
+
 	'remember to register callbacks
 	WinXRegOnLabelEdit (#hMain, &onLabelEdit())
 	WinXRegOnColumnClick (#hMain, &onColumnClick())
-	
+
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 '

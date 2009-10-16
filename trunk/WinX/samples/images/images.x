@@ -22,7 +22,7 @@ VERSION	"1.00"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 '
 $$BT_SAVE = 100
 DECLARE FUNCTION Entry ()
@@ -38,12 +38,12 @@ DECLARE FUNCTION onCommand (id, code, hWnd)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if either of these fail
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
-	
+
+	WinXDoEvents ()
+
 	cleanUp ()
 
 END FUNCTION
@@ -57,24 +57,24 @@ END FUNCTION
 FUNCTION initWindow ()
 	'Create a window
 	#hMain = WinXNewWindow (0, "Image Demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+
 	'demonstrate some of what the image API can do
 	'first, load some images
 	#hPattern = WinXDraw_LoadImage ("pattern.bmp", $$FILETYPE_WINBMP)
 	#hBackGround = WinXDraw_LoadImage ("backGround.bmp", $$FILETYPE_WINBMP)
-	
+
 	'now generate different sizes of the pattern bitmap
 	#hPatternSmall = WinXDraw_ResizeImage (#hPattern, 100, 75)
 	#hPatternLarge = WinXDraw_ResizeImage (#hPattern, 400, 300)
-	
+
 	'next, add alpha channels
 	WinXDraw_SetConstantAlpha (#hPattern, 0.5)
 	WinXDraw_SetConstantAlpha (#hPatternLarge, 0.2)
-	
+
 	'premultiply the alpha channels for drawing
 	WinXDraw_PremultiplyImage (#hPattern)
 	WinXDraw_PremultiplyImage (#hPatternLarge)
-	
+
 	'Draw the images
 	WinXDrawImage (#hMain, #hBackGround, 0, 0, 660, 300, 0, 0, $$FALSE)
 	WinXDrawImage (#hMain, #hPatternSmall, 0, 0, 100, 75, 0, 0, $$FALSE)
@@ -83,12 +83,12 @@ FUNCTION initWindow ()
 
 	'create a couple of buttons
 	MoveWindow (WinXAddButton (#hMain, "Save", 0, $$BT_SAVE), 2, 2, 80, 25, $$TRUE)
-	
+
 	'remember to register callbacks
 	WinXRegOnCommand (#hMain, &onCommand())
-	
+
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -113,7 +113,7 @@ END FUNCTION
 '
 '
 FUNCTION onCommand (id, code, hWnd)
-	
+
 	SELECT CASE id
 		CASE $$BT_SAVE
 			'create an image
@@ -125,6 +125,6 @@ FUNCTION onCommand (id, code, hWnd)
 			'and finnaly, free the image
 			WinXDraw_DeleteImage (hSave)
 	END SELECT
-	
+
 END FUNCTION
 END PROGRAM

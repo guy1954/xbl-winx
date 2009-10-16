@@ -22,9 +22,9 @@ VERSION	"1.00"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 'Define constants
-$$ID_TABS = 100
+$$tabOptions = 100
 $$ID_BUTTON1 = 101
 $$ID_BUTTON2 = 102
 $$ID_BUTTON3 = 103
@@ -42,11 +42,11 @@ DECLARE FUNCTION onCommand (id, code, hWnd)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if this fails
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
+
+	WinXDoEvents ()
 
 END FUNCTION
 '
@@ -59,29 +59,29 @@ END FUNCTION
 FUNCTION initWindow ()
 
 	'Create the main window
-	#hMain = WinXNewWindow (0, "Tab control demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+	#winMain = WinXNewWindow (0, "Tab control demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+
 	'Make the tab control and add it to the auto sizer
-	hTabs = WinXAddTabs (#hMain, $$FALSE, $$ID_TABS)
-	WinXAutoSizer_SetSimpleInfo (hTabs, -1, 0, 1, 0)
-	'WinXSetAutosizerInfo (hTabs, -1, 0, 1, 0, 0, 1, 1, 0)
-	
+	#tabOptions = WinXAddTabs (#winMain, $$FALSE, $$tabOptions)
+	WinXAutoSizer_SetSimpleInfo (#tabOptions, -1, 0, 1, 0)
+	'WinXAutoSizer_SetInfo (#tabOptions, -1, 0, 1, 0, 0, 1, 1, 0)
+
 	'add some tabs
-	WinXTabs_AddTab (hTabs, "Tab 1", -1)
-	WinXTabs_AddTab (hTabs, "Tab 2", -1)
-	WinXTabs_AddTab (hTabs, "Tab 3", -1)
-	
+	WinXTabs_AddTab (#tabOptions, "Tab 1", -1)
+	WinXTabs_AddTab (#tabOptions, "Tab 2", -1)
+	WinXTabs_AddTab (#tabOptions, "Tab 3", -1)
+
 	'now add some controls to those tabs
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 1", 0, $$ID_BUTTON1), WinXTabs_GetAutosizerSeries (hTabs, 0), 0, 1, 0)
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 2", 0, $$ID_BUTTON2), WinXTabs_GetAutosizerSeries (hTabs, 1), 0, 0.5, 0)
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 3", 0, $$ID_BUTTON3), WinXTabs_GetAutosizerSeries (hTabs, 1), 0, 0.5, 0)
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 4", 0, $$ID_BUTTON4), WinXTabs_GetAutosizerSeries (hTabs, 2), 0, 1, 0)
-	
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 1", 0, $$ID_BUTTON1), WinXTabs_GetAutosizerSeries (#tabOptions, 0), 0, 1, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 2", 0, $$ID_BUTTON2), WinXTabs_GetAutosizerSeries (#tabOptions, 1), 0, 0.5, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 3", 0, $$ID_BUTTON3), WinXTabs_GetAutosizerSeries (#tabOptions, 1), 0, 0.5, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 4", 0, $$ID_BUTTON4), WinXTabs_GetAutosizerSeries (#tabOptions, 2), 0, 1, 0)
+
 	'register the callback
-	WinXRegOnCommand (#hMain, &onCommand())
-	
-	WinXDisplay (#hMain)
-	
+	WinXRegOnCommand (#winMain, &onCommand())
+
+	WinXDisplay (#winMain)
+
 	RETURN 0
 END FUNCTION
 '
@@ -92,7 +92,7 @@ END FUNCTION
 '
 '
 FUNCTION onCommand (id, code, hWnd)
-	
+
 	SELECT CASE id
 		CASE $$ID_BUTTON1
 			WinXDialog_Error ("You clicked button 1", "message", 0)
@@ -103,6 +103,6 @@ FUNCTION onCommand (id, code, hWnd)
 		CASE $$ID_BUTTON4
 			WinXDialog_Error ("You clicked button 4", "message", 0)
 	END SELECT
-	
+
 END FUNCTION
 END PROGRAM

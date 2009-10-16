@@ -38,12 +38,12 @@ DECLARE FUNCTION onKeyDown (hWnd, key)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if either of these fail
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
-	
+
+	WinXDoEvents ()
+
 END FUNCTION
 '
 ' ########################
@@ -55,35 +55,35 @@ END FUNCTION
 FUNCTION initWindow ()
 	SHARED xoffset
 	SHARED yoffset
-	
+
 	SHARED pen
 	SHARED brush
-	
+
 	'create the window
 	#hMain = WinXNewWindow (0, "Scrolling demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+
 	'add scrollbars
 	WinXScroll_Show (#hMain, $$TRUE, $$TRUE)
-	
+
 	'set the ranges and page size functions
 	WinXScroll_SetRange (#hMain, $$DIR_HORIZ, 0, 800)
 	WinXScroll_SetRange (#hMain, $$DIR_VERT, 0, 600)
 	WinXScroll_SetPage (#hMain, $$DIR_HORIZ, 1, 0, 10)
 	WinXScroll_SetPage (#hMain, $$DIR_VERT, 1, 0, 10)
-	
+
 	'register the callbacks
 	WinXRegOnScroll (#hMain, &onScroll())
 	WinXRegOnMouseWheel (#hMain, &onMouseWheel())
 	WinXRegOnKeyDown (#hMain, &onKeyDown())
-	
+
 	'lets draw something
 	pen = CreatePen ($$PS_SOLID, 3, 0x000000FF)
 	brush = CreateSolidBrush (0x00FF0000)
 	WinXDrawFilledEllipse (#hMain, pen, brush, 0, 0, 800, 600)
 	WinXUpdate (#hMain)
-	
+
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -94,10 +94,10 @@ END FUNCTION
 FUNCTION onScroll (pos, hWnd, direction)
 	SHARED xoffset
 	SHARED yoffset
-	
+
 	SHARED pen
 	SHARED brush
-	
+
 	SELECT CASE direction
 		CASE $$DIR_HORIZ
 			deltaX = xoffset-pos
@@ -108,11 +108,11 @@ FUNCTION onScroll (pos, hWnd, direction)
 			deltaY = yoffset-pos
 			yoffset = pos
 	END SELECT
-	
+
 	'redraw the ellipse at a different position
 	WinXClear (#hMain)
 	WinXDrawFilledEllipse (#hMain, pen, brush, 0-xoffset, 0-yoffset, 800-xoffset, 600-yoffset)
-	
+
 	'note that when scrolling, we use WinXScroll_Update rather than WinXUpdate
 	'Although WinXUpdate would work, WinXScroll_Update gives better looking results
 	WinXScroll_Update (#hMain, deltaX, deltaY)
@@ -124,10 +124,10 @@ END FUNCTION
 ' Handle mouse wheel events
 FUNCTION onMouseWheel (hWnd, delta, x, y)
 	STATIC deltaSoFar
-	
+
 	'delta accumalates over mouse wheel events
 	deltaSoFar = deltaSoFar + delta
-	
+
 	'scroll one line for every 120 deltas
 	IF deltaSoFar > 0 THEN
 		DO WHILE deltaSoFar >= 120

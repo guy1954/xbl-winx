@@ -22,7 +22,7 @@ VERSION	"1.00"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 '
 DECLARE FUNCTION Entry ()
 DECLARE FUNCTION initWindow ()
@@ -36,12 +36,12 @@ DECLARE FUNCTION cleanUp ()
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if either of these fail
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
-	
+
+	WinXDoEvents ()
+
 	cleanUp ()
 
 END FUNCTION
@@ -55,13 +55,13 @@ END FUNCTION
 FUNCTION initWindow ()
 	' Create a window to print from, this will never actually be displayed
 	#hMain = WinXNewWindow (0, "Printing", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+
 	'Create some graphics to print
 	#hPen = CreatePen ($$PS_SOLID, 4, 0)
 	WinXDrawLine (#hMain, #hPen, 4, 4, 396, 296)
 	WinXDrawLine (#hMain, #hPen, 396, 4, 4, 296)
 	WinXDrawRect (#hMain, #hPen, 4, 4, 396, 296)
-	
+
 	'display the print configuration dialogs
 	'if the user cancels the page setup dialog, we're done
 	IF WinXPrint_PageSetup (0)
@@ -73,9 +73,9 @@ FUNCTION initWindow ()
 		'must call this once printing is done
 		WinXPrint_Done (hPrinter)
 	END IF
-	
+
 	PostQuitMessage (0)
-	
+
 	RETURN 0
 END FUNCTION
 '

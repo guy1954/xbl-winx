@@ -23,7 +23,7 @@ VERSION	"1.00"
 '	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
 '	IMPORT  "shell32"   ' shell32.dll
 	IMPORT	"WinX"			' The Xwin GUI library
-	
+
 $$ID_PROG				= 100
 $$ID_OPERATION	= 101
 $$ID_MARQUEE		= 102
@@ -45,19 +45,19 @@ DECLARE FUNCTION onTrackerPos (id, pos)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if either of these fail
   IF initApp () THEN QUIT(0)
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
+
+	WinXDoEvents ()
 
 END FUNCTION
 '
 ' #####################
 ' #####  initApp  #####
 ' #####################
-' 
+'
 '
 '
 FUNCTION initApp ()
@@ -69,7 +69,7 @@ FUNCTION initApp ()
 	operation = $$FALSE
 	marquee = $$FALSE
 	pos = 0
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -83,28 +83,28 @@ FUNCTION initWindow ()
 
 	'create the main window
 	#hMain = WinXNewWindow (0, "Progress bar demonstration", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+
 	'add the controls
 	WinXAutoSizer_SetInfo (WinXAddProgressBar (#hMain, $$FALSE, $$ID_PROG), WinXAutoSizer_GetMainSeries (#hMain), 0, 25, 0, 0, 1, 1, 0)
 	WinXAutoSizer_SetInfo (WinXAddButton (#hMain, "Start lengthy operation", 0, $$ID_OPERATION), WinXAutoSizer_GetMainSeries (#hMain), 0, 25, 0, 0, 1, 1, 0)
 	WinXAutoSizer_SetInfo (WinXAddButton (#hMain, "Start Marquee", 0, $$ID_MARQUEE), WinXAutoSizer_GetMainSeries (#hMain), 0, 25, 0, 0, 1, 1, 0)
 	WinXAutoSizer_SetInfo (WinXAddTrackBar (#hMain, $$FALSE, $$TRUE, $$ID_TRACKER), WinXAutoSizer_GetMainSeries (#hMain), 8, 30, -1, 0, 60, 1, $$SIZER_WCOMPLEMENT)
-	
+
 	'configure the tracker
 	hTracker = GetDlgItem (#hMain, $$ID_TRACKER)
 	WinXTracker_SetRange (hTracker, 0, 100, 5)
 	WinXTracker_SetLabels (hTracker, "less", "more")
 	WinXRegOnTrackerPos (#hMain, &onTrackerPos())
 	WinXAddTooltip (hTracker, "A tracker")
-	
+
 	'add tooltips to the rest of the controls
 	WinXAddTooltip (GetDlgItem (#hMain, $$ID_PROG), "The progress bar")
 	WinXAddTooltip (GetDlgItem (#hMain, $$ID_OPERATION), "Start/stop the progress bar")
 	WinXAddTooltip (GetDlgItem (#hMain, $$ID_MARQUEE), "Run the progress bar in marquee mode (requires Windows XP and manifest)")
-	
+
 	WinXRegOnCommand (#hMain, &onCommand())
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -118,7 +118,7 @@ FUNCTION onCommand (id, code, hWnd)
 	SHARED operation
 	SHARED marquee
 	SHARED pos
-	
+
 	SELECT CASE id
 		'insert cases for your ids here.
 		CASE $$ID_OPERATION
@@ -144,7 +144,7 @@ FUNCTION onCommand (id, code, hWnd)
 			END IF
 		CASE $$ID_MARQUEE
 			IF operation THEN onCommand ($$ID_OPERATION, $$BN_CLICKED, #hMain)
-			IF marquee THEN 
+			IF marquee THEN
 				'switch out of marquee mode
 				hProg = GetDlgItem (#hMain, $$ID_PROG)
 				WinXProgress_SetMarquee (hProg, $$FALSE)
@@ -156,9 +156,9 @@ FUNCTION onCommand (id, code, hWnd)
 				WinXProgress_SetMarquee (GetDlgItem (#hMain, $$ID_PROG), $$TRUE)
 				WinXSetText (GetDlgItem (#hMain, $$ID_MARQUEE), "Stop Marquee")
 				marquee = $$TRUE
-			END IF 
+			END IF
 	END SELECT
-	
+
 END FUNCTION
 '
 ' #####################
@@ -169,7 +169,7 @@ END FUNCTION
 '
 FUNCTION onTimer (hWnd, uMsg, idEvent, dwTime)
 	SHARED pos
-	
+
 	INC pos
 	IF pos > 100 THEN
 		'simulate an event to make to stop the timer
@@ -189,7 +189,7 @@ END FUNCTION
 FUNCTION onTrackerPos (id, pos)
 	SHARED operation
 	SHARED marquee
-	
+
 	IFF (operation || marquee) THEN WinXProgress_SetPos (GetDlgItem (#hMain, $$ID_PROG), pos/100.0)
 END FUNCTION
 END PROGRAM

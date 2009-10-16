@@ -10,7 +10,7 @@
 VERSION	"1.00"
 '
 	IMPORT	"xst"   		' standard library	: required by most programs
-'	IMPORT  "xsx"				' extended std LIBRARY
+	IMPORT  "xsx"				' extended std LIBRARY
 '	IMPORT	"xma"
 '	IMPORT	"xio"				' console io library
 	IMPORT	"gdi32"     ' gdi32.dll
@@ -40,11 +40,11 @@ DECLARE FUNCTION onDrag (control, code, item, x, y)
 FUNCTION Entry ()
 	'make sure WinX is properly initialised
 	IF WinX() THEN QUIT(0)
-	
+
 	'quit if this fails
 	IF initWindow () THEN QUIT(0)
-	
-	WinXDoEvents (0)
+
+	WinXDoEvents ()
 END FUNCTION
 '
 ' ########################
@@ -57,13 +57,28 @@ FUNCTION initWindow ()
 
 	'create the main window
 	#hMain = WinXNewWindow (0, "Tree View demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-	
+
 	'Create the tree view
-	hIml = ImageList_Create (16, 16, $$ILC_COLOR32|$$ILC_MASK, 3, 0)
-	ImageList_AddMasked (hIml, LoadImageA (0, &"images.bmp", $$IMAGE_BITMAP, 0, 0, $$LR_LOADFROMFILE), 0x00FF00FF)
-	hTV = WinXAddTreeView (#hMain, hIml, $$TRUE, $$TRUE, $$ID_TREE)
+	hImages = ImageList_Create (16, 16, ($$ILC_COLOR32|$$ILC_MASK), 3, 0)
+	IFZ hImages THEN ' error
+		msg$ = "ImageList_Create: Can't create the image list"
+		XstAlert (msg$)
+	END IF
+
+	hbmImage = LoadImageA (0, &"images.bmp", $$IMAGE_BITMAP, 0, 0, $$LR_LOADFROMFILE) ' load the tree view images
+	IFZ hbmImage THEN ' error
+		msg$ = "LoadImageA: Can't load the tree view images"
+		XstAlert (msg$)
+	END IF
+
+	iFirstImg = ImageList_AddMasked (hImages, hbmImage, 0x00FF00FF) ' add images to the image list
+	IF iFirstImg < 0 THEN ' error
+		msg$ = "ImageList_AddMasked: Can't add images to the image list"
+		XstAlert (msg$)
+	END IF
+	hTV = WinXAddTreeView (#hMain, hImages, $$TRUE, $$TRUE, $$ID_TREE)
 	WinXAutoSizer_SetSimpleInfo (hTV, -1, 0, 1, 0)
-	
+
 	'add some items to the tree view
 	#root = WinXTreeView_AddItem (hTV, $$TVI_ROOT, $$TVI_LAST, 1, 1, "Root")
 	n = WinXTreeView_AddItem (hTV, #root, $$TVI_LAST, 0, 0, "Node 1")
@@ -79,13 +94,13 @@ FUNCTION initWindow ()
 	WinXTreeView_AddItem (hTV, n, $$TVI_LAST, 2, 2, "Leaf 8")
 	n = WinXTreeView_AddItem (hTV, #root, $$TVI_LAST, 2, 2, "Leaf 9")
 	n = WinXTreeView_AddItem (hTV, #root, $$TVI_LAST, 2, 2, "Leaf 10")
-	
+
 	'must register the callbacks
 	WinXRegOnLabelEdit (#hMain, &onLabelEdit())
 	WinXRegOnDrag (#hMain, &onDrag())
-	
+
 	WinXDisplay (#hMain)
-	
+
 	RETURN 0
 END FUNCTION
 '
@@ -111,7 +126,7 @@ END FUNCTION
 ' Called when the user drags a tree view item
 FUNCTION onDrag (control, code, item, x, y)
 	STATIC dragItem
-	
+
 	SELECT CASE code
 		CASE $$DRAG_START
 			IF item = #root THEN
