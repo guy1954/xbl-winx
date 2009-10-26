@@ -11,15 +11,15 @@ VERSION "0.6.0.10"
 '
 ' ***** Versions *****
 ' Contributors:
-'     Callum Lowcay (original version)
-'     Guy "gl" Lonne (evolutions)
+'     Callum Lowcay (original version 0.6.0.1)
+'     Guy Lonne (evolutions)
 '
-' 0.6.0.2-gl-10sep08-added hideReadOnly argument to WinXDialog_OpenFile$.
+' 0.6.0.2-Guy-10sep08-added hideReadOnly argument to WinXDialog_OpenFile$.
 '
-' 0.6.0.3-gl-10nov08-corrected function WinXListBox_GetSelection,
+' 0.6.0.3-Guy-10nov08-corrected function WinXListBox_GetSelection,
 ' - replaced wMsg by $$LB_GETSELITEMS since wMsg was not set and would be zero.
 '
-' 0.6.0.4-gl-10sep08-added the new functions
+' 0.6.0.4-Guy-10sep08-added the new functions
 ' - WinXVersion$: retrieve WinX's current version
 '
 ' Standard Windows directory picker dialog
@@ -29,43 +29,43 @@ VERSION "0.6.0.10"
 ' List view with check boxes
 ' - WinXListView_AddCheckBoxes : add the check boxes to a list view
 ' - WinXListView_SetCheckState : set the item's check state of a list view with check boxes
-' - WinXListView_GetCheckState : determine if an item in a list view control is checked
+' - WinXListView_GetCheckState : determine whether an item in a list view control is checked
 ' - WinXListView_RemoveCheckBox: remove the check box
 '
 ' Tree view with check boxes
 ' - WinXTreeView_AddCheckBoxes : add the check boxes to a tree view
 ' - WinXTreeView_SetCheckState : set the item's check state of a tree view with check boxes
-' - WinXTreeView_GetCheckState : determine if a node in a tree view control is checked
+' - WinXTreeView_GetCheckState : determine whether a node in a tree view control is checked
 ' - WinXTreeView_RemoveCheckBox: remove the check box
 ' - WinXTreeView_GetRootItem   : get the handle of the root
 ' - WinXTreeView_FindItemLabel : find an exact string in tree labels
 ' - WinXTreeView_DeleteAllItems: clear the tree view
-' - WinXTreeView_ExpandItem    : expand a node (gl-26jan09)
+' - WinXTreeView_ExpandItem    : expand a node (Guy-26jan09)
 ' - WinXTreeView_CollapseItem  : collapse a node
 '
-'gl-06dec08-corrected function WinXAddStatusBar to return the status bar's handle.
+'Guy-06dec08-corrected function WinXAddStatusBar to return the status bar's handle.
 '
-' 0.6.0.5-gl-9dec08-added the new functions
+' 0.6.0.5-Guy-9dec08-added the new functions
 ' - WinXDialog_SysInfo       : run Microsoft program "System Information"
 ' - WinXCleanUp              : optional cleanup
 '
-' 0.6.0.6-gl-21jan09-added handling of several accelerator tables.
+' 0.6.0.6-Guy-21jan09-added handling of several accelerator tables.
 ' - WinXAddAcceleratorTable  : create an accelerator table
 ' - WinXAttachAccelerators   : attach an accelerator table to a window
 '
-' 0.6.0.7-gl-21jan09-added accelerators processing.
+' 0.6.0.7-Guy-21jan09-added accelerators processing.
 ' - changed WinXDoEvents to handle several accelerator tables.
 ' - removed argument from WinXDoEvents ()
 ' - created a version without m4-preprocessing for the static build.
 '
-' 0.6.0.8-gl-08mar09-removed functions that did not belong to WinX.
+' 0.6.0.8-Guy-08mar09-removed functions that did not belong to WinX.
 '
-' 0.6.0.9-gl-27mar09-added error-checking to function WinXStatus_SetText.
-'         gl-15apr09-changed WinXListBox_GetSelection.
+' 0.6.0.9-Guy-27mar09-added error-checking to function WinXStatus_SetText.
+'         Guy-15apr09-changed WinXListBox_GetSelection.
 '
-' 0.6.0.10-gl-20apr09-must add style $$LBS_NOTIFY to get the notification code $$LBN_SELCHANGE:
+' 0.6.0.10-Guy-20apr09-must add style $$LBS_NOTIFY to get the notification code $$LBN_SELCHANGE:
 '                     $$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE.
-'          gl-14sep09-both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style.
+'          Guy-14sep09-both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style.
 '
 ' Win32API DLL headers
 '
@@ -152,7 +152,7 @@ TYPE BINDING
 	FUNCADDR	.onColumnClick (XLONG, XLONG)		' idCtr, iColumn
 	FUNCADDR	.onCalendarSelect (XLONG, SYSTEMTIME)	' idcal, time
 	FUNCADDR	.onDropFiles (XLONG, XLONG, XLONG, STRING[])	' hWnd, x, y, files
-	XLONG     .hAccelTable    'gl-21jan09-handle to the window's accelerator table
+	XLONG     .hAccelTable    'Guy-21jan09-handle to the window's accelerator table
 END TYPE
 'message handler data type
 TYPE MSGHANDLER
@@ -303,7 +303,7 @@ $$TPM_VERNEGANIMATION = 0x2000
 $$TPM_NOANIMATION     = 0x4000
 $$TPM_LAYOUTRTL       = 0x8000
 
-'gl-30jul08-Duplicate Type(8)
+'Guy-30jul08-Duplicate Type(8)
 'PACKED BITMAPFILEHEADER
 '  USHORT  .bfType
 '  ULONG   .bfSize
@@ -662,12 +662,12 @@ DECLARE FUNCTION WinXDraw_GetFontHeight (hFont, @ascent, @descenct)
 'new in 0.6.0.3
 DECLARE FUNCTION WinXListView_AddCheckBoxes (hLV) ' add the check boxes to a list view
 DECLARE FUNCTION WinXListView_SetCheckState (hLV, iItem, checked) ' set the item's check state of a list view with check boxes
-DECLARE FUNCTION WinXListView_GetCheckState (hLV, iItem) ' determine if an item in a list view control is checked
+DECLARE FUNCTION WinXListView_GetCheckState (hLV, iItem) ' determine whether an item in a list view control is checked
 DECLARE FUNCTION WinXListView_RemoveCheckBox (hLV, iItem) ' removes the check box of a list view item
 
 DECLARE FUNCTION WinXTreeView_AddCheckBoxes (hTV) ' add the check boxes to a tree view
 DECLARE FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked) ' set the item's check state of a tree view with check boxes
-DECLARE FUNCTION WinXTreeView_GetCheckState (hTV, hItem) ' determine if a node in a tree view control is checked
+DECLARE FUNCTION WinXTreeView_GetCheckState (hTV, hItem) ' determine whether a node in a tree view control is checked
 DECLARE FUNCTION WinXTreeView_RemoveCheckBox (hTV, hItem) ' remove the check box of a tree view item
 
 DECLARE FUNCTION WinXTreeView_GetRootItem (hTV) ' get the handle of the root
@@ -760,7 +760,7 @@ FUNCTION WinX ()
 	' initialize the specific common controls classes from the common
 	' control dynamic-link library
 	iccex.dwSize = SIZE(INITCOMMONCONTROLSEX)
-	'gl-04mar09----------------------------------------------------------------------------------
+	'Guy-04mar09----------------------------------------------------------------------------------
 	'iccex.dwICC = $$ICC_ANIMATE_CLASS|$$ICC_BAR_CLASSES|$$ICC_COOL_CLASSES|$$ICC_DATE_CLASSES| _
 	'$$ICC_HOTKEY_CLASS|$$ICC_LISTVIEW_CLASSES|$$ICC_TAB_CLASSES|$$ICC_TREEVIEW_CLASSES| _
 	'$$ICC_UPDOWN_CLASS|$$ICC_USEREX_CLASSES|$$ICC_WIN95_CLASSES
@@ -786,7 +786,7 @@ FUNCTION WinX ()
 	$$ICC_UPDOWN_CLASS | $$ICC_USEREX_CLASSES | $$ICC_WIN95_CLASSES
 	'--------------------------------------------------------------------------------------------
 
-	'gl-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE
+	'Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE
 	InitCommonControlsEx (&iccex)
 
 	DIM bindings[0]
@@ -907,7 +907,7 @@ END FUNCTION
 ' returns the handle to the control or 0 on fail
 FUNCTION WinXAddAnimation (parent, STRING file, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	'gl-14sep09-style = $$WS_CHILD | $$WS_VISIBLE | $$ACS_CENTER | $$WS_GROUP | $$WS_TABSTOP | $$ACS_CENTER
+	'Guy-14sep09-style = $$WS_CHILD | $$WS_VISIBLE | $$ACS_CENTER | $$WS_GROUP | $$WS_TABSTOP | $$ACS_CENTER ' $$ACS_CENTER is twice
 	style = $$WS_CHILD | $$WS_VISIBLE | $$ACS_CENTER | $$WS_GROUP | $$WS_TABSTOP
 	hAni = CreateWindowExA (0, &"SysAnimate32", 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
@@ -963,14 +963,14 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 
 	'give it a nice font
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	'------------------------------------------------------------------------------------------
 
 	'add the image
 	IF hImage THEN
 		SendMessageA (hCtr, $$BM_SETIMAGE, imageType, hImage)
 	ELSE
-		'gl-24feb09-give it a nice font
+		'Guy-24feb09-give it a nice font
 		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 		DeleteObject (hFont) ' release the font
@@ -995,7 +995,7 @@ FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
 	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP
 	hCtr = CreateWindowExA (0, &$$MONTHCAL_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1026,7 +1026,7 @@ FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
 	IF pushlike THEN style = style|$$BS_PUSHLIKE
 	hCtr = CreateWindowExA (0, &"BUTTON", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1088,7 +1088,7 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 
 	'give it a nice font
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1109,7 +1109,7 @@ FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
 	style = $$WS_CHILD|$$WS_VISIBLE|$$BS_GROUPBOX
 	hCtr = CreateWindowExA (0, &"button", &label, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1133,7 +1133,7 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
 
 	style = $$WS_VSCROLL|$$WS_HSCROLL|$$WS_TABSTOP|$$WS_GROUP|$$LBS_HASSTRINGS|$$LBS_NOINTEGRALHEIGHT
-	style = style|$$LBS_NOTIFY 'gl-20apr09-$$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE
+	style = style|$$LBS_NOTIFY 'Guy-20apr09-$$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE
 	IF sort THEN style = style|$$LBS_SORT
 	IF multiSelect THEN style = style|$$LBS_EXTENDEDSEL
 
@@ -1142,7 +1142,7 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	hCtr = CreateWindowExA (0, &$$LISTBOX, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
 	IFZ hCtr THEN RETURN 0 ' error
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	IF hFont THEN
 		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
@@ -1209,7 +1209,7 @@ FUNCTION WinXAddRadioButton (parent, STRING title, isFirst, pushlike, idCtr)
 	IF pushlike THEN style = style|$$BS_PUSHLIKE
 	hCtr = CreateWindowExA (0, &"BUTTON", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1230,7 +1230,7 @@ END FUNCTION
 FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 
 	IFZ idCtr THEN RETURN 0 ' error
-	'gl-12dec08-just in case, correct the style
+	'Guy-12dec08-just in case, correct the style
 	IF hImage THEN
 		SELECT CASE LCASE$(title)
 			CASE "icon"
@@ -1248,7 +1248,7 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 
 	'give it a nice font
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	'------------------------------------------------------------------------------------------
 
 	'add the image
@@ -1288,7 +1288,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	IF style AND $$WS_SIZEBOX THEN sbStyle = $$SBARS_SIZEGRIP ELSE sbStyle = 0
 
 	'make the status bar
-	'gl-06dec08-binding.hStatus = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, sbStyle|$$WS_CHILD|$$WS_VISIBLE, _
+	'Guy-06dec08-binding.hStatus = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, sbStyle|$$WS_CHILD|$$WS_VISIBLE, _
 	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, sbStyle|$$WS_CHILD|$$WS_VISIBLE, _
 	      0, 0, 0, 0, hWnd, idCtr, GetModuleHandleA (0), 0)
 	IFZ hCtr THEN RETURN 0 ' fail
@@ -1308,13 +1308,13 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	GetClientRect (hCtr, &rect)
 	'FOR i = 0 TO uppPart
 	'	parts[i] = ((i+1)*(rect.right-rect.left))/(uppPart+1)
-	'	s$[i] = s$[i] 'gl-06dec08-strange!
+	'	s$[i] = s$[i] 'Guy-06dec08-strange!
 	'NEXT
 	width = (rect.right - rect.left) / (uppPart+1)
 	FOR i = 0 TO uppPart
 		parts[i] = (i + 1) * width
 	NEXT i
-	'gl-06dec08-the right edge for the last part extends to the right edge of the window
+	'Guy-06dec08-the right edge for the last part extends to the right edge of the window
 	parts[uppPart] = -1 ' extend to the right edge of the window
 
 	'set the part info
@@ -1323,7 +1323,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 
 	'and finally, set the text
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1350,7 +1350,7 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 	IFZ parent THEN RETURN 0		' error
 	IFZ idCtr THEN RETURN 0		' error
 	'------------------------------------------------------------------------------------------
-	'gl-14sep09-style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK
+	'Guy-14sep09-style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK
 	' both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style
 	style = $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK | $$WS_CLIPSIBLINGS
 
@@ -1367,7 +1367,7 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 
 	hCtr = CreateWindowExA (0, &$$WC_TABCONTROL, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), 1) ' force a control redraw
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), 1) ' force a control redraw
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)		' don't force a control redraw
 	DeleteObject (hFont)		' release the font
@@ -1392,7 +1392,7 @@ FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, 
 	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|format
 	hCtr = CreateWindowExA (0, &$$DATETIMEPICK_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1451,7 +1451,7 @@ END FUNCTION
 ' #############################
 ' Adds a new trackbar control
 ' parent = the parent window for the trackbar
-' enableSelection = $$TRUE to enable selctions in the trackbar
+' enableSelection = $$TRUE to enable selections in the trackbar
 ' posToolTip = $$TRUE to enable a tooltip which displays the position of the slider
 ' idCtr = the unique idCtr constant of this trackbar
 ' returns the handle to the trackbar or 0 on fail
@@ -1463,7 +1463,7 @@ FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 
 	hCtr = CreateWindowExA (0, &$$TRACKBAR_CLASS, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -1487,7 +1487,7 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 	IF editable THEN style = style|$$TVS_EDITLABELS
 	hCtr = CreateWindowExA (0, &$$WC_TREEVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 	DeleteObject (hFont) ' release the font
@@ -2167,7 +2167,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 			XstGetCurrentDirectory (@initDir$)
 			EXIT SELECT
 			'
-		CASE RIGHT$ (initialName$) = "\\" 'gl-15dec08-initialName$ is a directory
+		CASE RIGHT$ (initialName$) = "\\" 'Guy-15dec08-initialName$ is a directory
 			initDir$ = initialName$
 			EXIT SELECT
 			'
@@ -2991,11 +2991,13 @@ FUNCTION WinXDraw_GetFontDialog (parent, LOGFONT logFont, @color)
 	' strikeout, and text color), and a script (or character set)
 	'---------------------------------------------------------------------
 	ret = ChooseFontA (&chf)
+	IFZ ret THEN RETURN $$FALSE 'Guy-19oct09-fail
 	'---------------------------------------------------------------------
 
 	logFont.height = ABS(logFont.height)
 	color = chf.rgbColors
-	RETURN ret
+	'Guy-19oct09-RETURN ret
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ####################################
@@ -3635,7 +3637,7 @@ END FUNCTION
 FUNCTION WinXListBox_GetSelection (hListBox, index[])
 	IFZ hListBox THEN RETURN 0 ' error
 
- 'gl-15apr09-prevent invalid handle
+ 'Guy-15apr09-prevent invalid handle
 	IFZ hListBox THEN
 		DIM index[]
 		RETURN 0
@@ -3644,18 +3646,18 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
 	IF style AND $$LBS_EXTENDEDSEL THEN
 		numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-		'gl-15apr09-IF numItems = 0 THEN RETURN 0
+		'Guy-15apr09-IF numItems = 0 THEN RETURN 0
 		IF numItems < 1 THEN
 			DIM index[]
 			RETURN 0
 		END IF
 		'
 		DIM index[numItems-1]
-		'gl-12nov08-wMsg would remain zero
+		'Guy-12nov08-wMsg would remain zero
 		'SendMessageA (hListBox, wMsg, numItems, &index[0])
 		SendMessageA (hListBox, $$LB_GETSELITEMS, numItems, &index[0])
 	ELSE
-		'gl-15apr09----------------------------------------------
+		'Guy-15apr09----------------------------------------------
 		'DIM index[0]
 		'index[0] = SendMessageA (hListBox, $$LB_GETCURSEL, 0, 0)
 		'IF index[0] = $$LB_ERR THEN RETURN 0 ELSE RETURN 1
@@ -4084,7 +4086,7 @@ FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
 	IF inherit THEN ret.inherit = 1
 
 	IF ssd$ THEN
-		'gl-30jul08-ConvertStringSecurityDescriptorToSecurityDescriptorA (&ssd$, $$SDDL_REVISION_1, &ret.securityDescriptor, 0)
+		'Guy-30jul08-ConvertStringSecurityDescriptorToSecurityDescriptorA (&ssd$, $$SDDL_REVISION_1, &ret.securityDescriptor, 0)
 		funcName$ = "ConvertStringSecurityDescriptorToSecurityDescriptorA"
 		DIM args[3]
 		args[0] = &ssd$
@@ -5738,7 +5740,7 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 	style = GetWindowLongA (hWnd, $$GWL_STYLE)
 	styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 
-	'gl-30mar09-remove first
+	'Guy-30mar09-remove first
 	style = style AND NOT(sub)
 	styleEx = styleEx AND NOT(subEx)
 
@@ -6283,7 +6285,7 @@ FUNCTION WinXTracker_SetLabels (hTracker, STRING leftLabel, STRING rightLabel)
 	'we need to get the width and height of the strings
 	hdcMem = CreateCompatibleDC (0)
 	'------------------------------------------------------------------------------------------
-	'gl-11dec08-SelectObject (hdcMem, GetStockObject ($$DEFAULT_GUI_FONT))
+	'Guy-11dec08-SelectObject (hdcMem, GetStockObject ($$DEFAULT_GUI_FONT))
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SelectObject (hdcMem, hFont)
 	'------------------------------------------------------------------------------------------
@@ -6328,7 +6330,8 @@ END FUNCTION
 ' ticks = the number of units per tick
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTracker_SetRange (hTracker, USHORT min, USHORT max, ticks)
-	SendMessageA (hTracker, $$TBM_SETRANGE, $$TRUE, MAKELONG(min, max))
+	'Guy-25oct09-SendMessageA (hTracker, $$TBM_SETRANGE, $$TRUE, MAKELONG(min, max))
+	SendMessageA (hTracker, $$TBM_SETRANGE, 1, MAKELONG(min, max))
 	SendMessageA (hTracker, $$TBM_SETTICFREQ, ticks, 0)
 	RETURN $$TRUE
 END FUNCTION
@@ -6342,7 +6345,8 @@ END FUNCTION
 ' end  = the end of the selection
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTracker_SetSelRange (hTracker, USHORT start, USHORT end)
-	SendMessageA (hTracker, $$TBM_SETSEL, $$TRUE, MAKELONG(start, end))
+	'Guy-25oct09-SendMessageA (hTracker, $$TBM_SETSEL, $$TRUE, MAKELONG(start, end))
+	SendMessageA (hTracker, $$TBM_SETSEL, 1, MAKELONG(start, end))
 END FUNCTION
 '
 ' ########################################
@@ -6616,7 +6620,7 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 	tvi.hItem = hItem       ' the selected item
 	tvi.mask = $$TVIF_STATE ' item state attribute
 	tvi.stateMask = $$TVIS_STATEIMAGEMASK
-	'gl-03mar09-SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
+	'Guy-03mar09-SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
 	IFZ ret THEN RETURN $$FALSE ' error
 	IF (tvi.state & 0x2000) THEN ' checked
@@ -6817,7 +6821,7 @@ END FUNCTION
 ' hItem = the handle to the item to set the selection to, 0 to remove selection
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTreeView_SetSelection (hTV, hItem)
-	'gl-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
+	'Guy-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
 
 	IFZ hTV THEN RETURN $$FALSE ' fail
 
@@ -7867,7 +7871,7 @@ END FUNCTION
 FUNCTION handler_call (group, ret, hWnd, msg, wParam, lParam)
 	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
 
-	IF group < 0 THEN RETURN $$FALSE 'gl-15apr09-no registered handler
+	IF group < 0 THEN RETURN $$FALSE 'Guy-15apr09-no registered handler
 
 	'first, find the handler
 	idCtr = handler_find (group, msg)
@@ -8027,7 +8031,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	POINT mouseXY
 	TRACKMOUSEEVENT tme
 
-	IFZ hwnd THEN RETURN 0 'gl-15apr09-should never occur!
+	IFZ hwnd THEN RETURN 0 'Guy-15apr09-should never occur!
 
 	'set to true if we handle the message
 	handled = $$FALSE
@@ -8048,7 +8052,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	'and handle the message
 	SELECT CASE msg
 		CASE $$WM_COMMAND
-			'gl-15apr09-RETURN @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
+			'Guy-15apr09-RETURN @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
 			idCtr      = LOWORD (wParam)
 			notifyCode = HIWORD (wParam)
 			hCtr       = lParam
@@ -8073,7 +8077,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 		CASE $$WM_DESTROYCLIPBOARD
 			IF hClipMem THEN
 				GlobalFree (hClipMem)
-				hClipMem = 0 'gl-18dec08-prevents from freeing twice
+				hClipMem = 0 'Guy-18dec08-prevents from freeing twice
 			END IF
 
 		CASE $$WM_DROPFILES
@@ -8551,9 +8555,9 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 			XLONGAT(&&nmlvdi) = pNmlvdi
 			'
 		'CASE $$TVN_SELCHANGED
-		'gl-26jan09-added $$LVN_ITEMCHANGED (listview selection changed)
+		'Guy-26jan09-added $$LVN_ITEMCHANGED (listview selection changed)
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
-			'gl-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
+			'Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
 	END SELECT
