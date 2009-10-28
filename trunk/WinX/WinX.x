@@ -15,6 +15,8 @@ VERSION "0.6.0.10"
 '     Guy Lonne (evolutions)
 '
 ' 0.6.0.2-Guy-10sep08-added hideReadOnly argument to WinXDialog_OpenFile$.
+'         Guy-28oct09-REVERTED to show again the check box "Read Only"
+'         to allow to open "Read Only" (no lock) the selected file(s).
 '
 ' 0.6.0.3-Guy-10nov08-corrected function WinXListBox_GetSelection,
 ' - replaced wMsg by $$LB_GETSELITEMS since wMsg was not set and would be zero.
@@ -66,6 +68,7 @@ VERSION "0.6.0.10"
 ' 0.6.0.10-Guy-20apr09-must add style $$LBS_NOTIFY to get the notification code $$LBN_SELCHANGE:
 '                     $$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE.
 '          Guy-14sep09-both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style.
+'          Guy-28oct09-reverted modif 0.6.0.2 to show again the check box "Read Only".
 '
 ' Win32API DLL headers
 '
@@ -2204,7 +2207,8 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 
 	IF title$ THEN ofn.lpstrTitle = &title$
 
-	ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
+	'Guy-28oct09-ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
+	ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER 'Guy-28oct09-allow to open "Read Only" (no lock) the selected file(s).
 	IF multiSelect THEN ofn.flags = ofn.flags | $$OFN_ALLOWMULTISELECT
 
 	ofn.lpstrDefExt = &initExt$
