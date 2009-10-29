@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.10"
+VERSION "0.6.0.11"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -68,7 +68,10 @@ VERSION "0.6.0.10"
 ' 0.6.0.10-Guy-20apr09-must add style $$LBS_NOTIFY to get the notification code $$LBN_SELCHANGE:
 '                     $$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE.
 '          Guy-14sep09-both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style.
-'          Guy-28oct09-reverted modif 0.6.0.2 to show again the check box "Read Only".
+'
+' 0.6.0.11-Guy-29oct09-added the new argument readOnly to function WinXDialog_OpenFile$:
+'                      readOnly = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
+'                      (shows the check box "Read Only" and checks it initially).
 '
 ' Win32API DLL headers
 '
@@ -500,7 +503,7 @@ DECLARE FUNCTION WinXListBox_GetSelection (hListBox, @index[])
 DECLARE FUNCTION WinXListBox_GetIndex (hListBox, Item$)
 DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
 
-DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect) ' display an OpenFile dialog box
+DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly) ' display an OpenFile dialog box
 DECLARE FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwritePrompt) ' display a SaveFile dialog box
 
 DECLARE FUNCTION WinXListBox_GetItem$ (hListBox, index)
@@ -2130,7 +2133,7 @@ FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows dir
 	dir$ = CSTRING$ (&buf$)
 
 	' append a \ to indicate a directory vs a file
-	IF RIGHT$ (dir$) <> "\\" THEN dir$ = dir$ + "\\" ' end directory path with \
+	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$ ' end directory path with \
 
 	RETURN dir$
 
@@ -2144,24 +2147,27 @@ END FUNCTION
 ' title$ = the title for the dialog
 ' extensions$ = a string containing the file extensions the dialog supports
 ' initialName$ = the filename to initialise the dialog with
-' multiSelect = $$TRUE to enable selection of multiple items, otherwise $$FALSE
+' multiSelect = $$TRUE to enable selection of multiple file names,
+'               $$FALSE for single file name selection
+' readOnly = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
+'                   (shows the check box "Read Only" and checks it initially)
 ' returns the opened files or "" on cancel or error
-FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect)
+FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly)
 
 	OPENFILENAME ofn
 
-	ofn.lStructSize = SIZE (OPENFILENAME)
-	ofn.hwndOwner = parent
+	ofn.lStructSize = SIZE (OPENFILENAME) ' length of the structure (in bytes)
+	ofn.hwndOwner = parent ' owner's handle
 	ofn.hInstance = GetModuleHandleA (0)
 
+	' set initial directory initDir$
 	initDir$ = ""
 	initFN$ = ""
-	initFileNoExt$= ""
 	initExt$ = ""
 
 	IF initialName$ THEN
-		' in case of a drive, i.e. initialName$ = "c:"
-		IF RIGHT$ (RTRIM$ (initialName$)) = ":" THEN initialName$ = RTRIM$ (initialName$) + "\\"
+		' in case of a drive, i.e. initialName$ = "c:" -> "c:\\"
+		IF RIGHT$ (RTRIM$ (initialName$)) = ":" THEN initialName$ = RTRIM$ (initialName$) + $$PathSlash$
 	END IF
 
 	initDir$ = ""
@@ -2170,32 +2176,54 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 			XstGetCurrentDirectory (@initDir$)
 			EXIT SELECT
 			'
-		CASE RIGHT$ (initialName$) = "\\" 'Guy-15dec08-initialName$ is a directory
+		CASE RIGHT$ (initialName$) = $$PathSlash$ 'Guy-15dec08-initialName$ is a directory
 			initDir$ = initialName$
 			EXIT SELECT
 			'
 		CASE ELSE
 			IFZ initDir$ THEN
-				XstDecomposePathname (initialName$, @initDir$, @parent$, @initFN$, @initFileNoExt$, @initExt$)
+				XstDecomposePathname (initialName$, @initDir$, "", @initFN$, "", @initExt$)
 			END IF
 			'
 	END SELECT
 
 	IF initDir$ THEN
-		IF RIGHT$ (initDir$) = "\\" THEN initDir$ = RCLIP$ (initDir$)  ' clip off the final \
+		IF RIGHT$ (initDir$) = $$PathSlash$ THEN initDir$ = RCLIP$ (initDir$)  ' clip off the final \
 		ofn.lpstrInitialDir = &initDir$
 	END IF
 
-	extensions$ = extensions$ + "||" ' final terminators
-	'XstReplace (@extensions$, "|", CHR$ (0), 0)
-	pos = INSTR (extensions$, "|")
-	DO WHILE pos
-		extensions${(pos - 1)} = '\0' ' null character
-		pos = INSTR (extensions$, "|", (pos + 1))
-	LOOP
-	ofn.lpstrFilter = &extensions$
+	' set file filter fileFilter$ with argument extensions$
+	'==============================================================================
+	' i.e.: extensions$ = "Text Files|*.TXT|Image Files (*.bmp,*.jpg)|*.bmp;*.jpg"
+	'
+	' fileFilter$ = buffer containing pairs of null-terminated filter strings:
+	' i.e. extensions$ = "Desc_1|Ext_1|...Desc_n|Ext_n"
+	'                  ==> fileFilter$ = "Desc_10Ext_10...Desc_n0Ext_n0"
+	'
+	' The 1st string in each pair describes a filter (for example, "Text Files"),
+	' the 2nd string specifies the filter pattern (for example, "*.TXT").
+	' ...
+	'
+	' Multiple filters can be specified for a single item by separating the
+	'     filter-pattern strings with a semicolon (for example, "*.TXT;*.DOC;*.BAK").
+	' The last string in the buffer must be terminated by two NULL characters.
+	' If this parameter is NULL, the dialog box will not display any filters.
+	' The filter strings are assumed to be in the proper order, the operating
+	'     system not changing the order.
+	'==============================================================================
+
+	fileFilter$ = TRIM$ (extensions$) + "|" ' add a final terminator (just in case)
+
+	' hand-coded version of "XstReplace (@fileFilter$, "|", CHR$ (0), 0)"
+	upp = LEN (fileFilter$) - 1
+	FOR i = 0 TO upp
+		IF fileFilter${i} = '|' THEN fileFilter${i} = '\0'
+	NEXT i
+
+	ofn.lpstrFilter = &fileFilter$
 	ofn.nFilterIndex = 1
 
+	' initialize the return file name buffer buf$
 	bufLen = 4096
 	IFZ initFN$ THEN
 		buf$ = NULL$ (bufLen)
@@ -2205,16 +2233,26 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	ofn.lpstrFile = &buf$
 	ofn.nMaxFile  = bufLen
 
-	IF title$ THEN ofn.lpstrTitle = &title$
+	IF title$ THEN ofn.lpstrTitle = &title$ ' dialog title
 
+	' set dialog flags
 	'Guy-28oct09-ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
-	ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER 'Guy-28oct09-allow to open "Read Only" (no lock) the selected file(s).
+	ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER
 	IF multiSelect THEN ofn.flags = ofn.flags | $$OFN_ALLOWMULTISELECT
+	'Guy-28oct09-allow to open "Read Only" (no lock) the selected file(s).
+	IF readOnly THEN
+		' show the check box "Read Only"
+		ofn.flags = ofn.flags | $$OFN_READONLY ' causes the check box "Read Only" to be checked initially
+	ELSE
+		ofn.flags = ofn.flags | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
+	END IF
 
 	ofn.lpstrDefExt = &initExt$
 
+	'==================================================
 	'IFZ GetOpenFileNameA (&ofn) THEN RETURN ""
-	ret = GetOpenFileNameA (&ofn)
+	ret = GetOpenFileNameA (&ofn) ' fire off dialog
+	'==================================================
 	IFZ ret THEN ' error
 		GuiTellDialogError (parent, title$)
 		RETURN ""
@@ -2222,6 +2260,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 
 	IFF multiSelect THEN RETURN CSTRING$ (ofn.lpstrFile)
 
+	' build a list of selected files, separated by ";"
 	ret$ = ""
 	p = ofn.lpstrFile
 	DO
@@ -2274,40 +2313,66 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 
 	OPENFILENAME ofn
 
-	extensions$ = extensions$ + "||" ' final terminators
-	defExt$ = ""
-	' use the 1st extension as a default----------------vvv
-	' i.e.: extensions$ = "Image Files (*.bmp, *.jpg)|*.bmp;*.jpg|"
-	'                   start------------------------^     ^
-	'                   pSep-------------------------------+
-	'
-	start = INSTR (extensions$, "|") ' start of extensions list
-	IF start THEN
-		INC start
-		end = INSTR (extensions$, "|", start) ' end of the extension
-		pSep = INSTR (extensions$, ";", start) ' end of the 1st extension
-		IF (pSep > 0) && (pSep < end) THEN
-			cCh = pSep - start
-		ELSE
-			cCh = end - start
-		END IF
-		IF cCh > 0 THEN
-			defExt$ = MID$ (extensions$, start, cCh) ' clip up to the separator
-			pos = INSTR (defExt$, ".")
-			IF pos THEN defExt$ = LCLIP$ (defExt$, pos)
-		END IF
-	END IF
-
 	ofn.lStructSize = SIZE (OPENFILENAME)
 	ofn.hwndOwner   = parent
 
-	'XstReplace (@extensions$, "|", CHR$ (0), 0)
-	pos = INSTR (extensions$, "|")
-	DO WHILE pos
-		extensions${(pos - 1)} = '\0' ' null character
-		pos = INSTR (extensions$, "|", (pos + 1))
-	LOOP
-	ofn.lpstrFilter = &extensions$
+	' set file filter fileFilter$ with argument extensions$
+	' i.e.: extensions$ = "Image Files (*.bmp, *.jpg)|*.bmp;*.jpg"
+	' .                 ==> fileFilter$ = "Image Files (*.bmp, *.jpg)0*.bmp;*.jpg00"
+	fileFilter$ = TRIM$ (extensions$) + "|" ' add a final terminator (just in case)
+
+	defExt$ = ""
+	' use the 1st extension as a default----------------vvv
+	' i.e.: fileFilter$ = "Image Files (*.bmp, *.jpg)|*.bmp;*.jpg|"
+	' .            posSepBeg-------------------------^     ^     ^
+	' .        posSemiColumn-------------------------------+     |
+	' .            posSepEnd-------------------------------------+
+	'
+	strNum = 1
+	upp = LEN (fileFilter$) - 1
+	FOR i = 0 TO upp
+		IF fileFilter${i} = '|' THEN
+			SELECT CASE strNum
+				CASE 1 ' the filter description
+					'
+					' the 1st string in each pair describes a filter, i.e. "Image Files (*.bmp, *.jpg)"
+					fileFilter${i} = '\0' ' replace '|' by NULL terminator
+					strNum = 2 ' swith to the filter pattern
+					'
+				CASE 2 ' the filter pattern
+					'
+					' .                  defExt$----------------------------vvv
+					' the 2nd string specifies the filter pattern, i.e. "|*.bmp;*.jpg|"
+					' .                posSepBeg-------------------------^     ^     ^
+					' .            posSemiColumn-------------------------------+     |
+					' .                posSepEnd-------------------------------------+
+					IFZ defExt$ THEN
+						posSepBeg = i + 1 ' position of the 1st separator '|'
+						posSepEnd = INSTR (fileFilter$, "|", posSepBeg) ' position of the 2nd separator '|'
+						posSemiColumn = INSTR (fileFilter$, ";", posSepBeg) ' position of an eventual extensions list separator ';'
+						'
+						IF (posSemiColumn > 0) && (posSemiColumn < posSepEnd) THEN
+							' extensions list separator ';'
+							cCh = posSemiColumn - posSepBeg ' case "|*.ext;...|"
+						ELSE
+							cCh = posSepEnd - posSepBeg ' case "|*.ext|"
+						END IF
+						IF cCh > 0 THEN
+							' extract the default extension from the filter pattern
+							defExt$ = MID$ (fileFilter$, posSepBeg, cCh) ' clip up to the separator (';' or '|')
+							' remove the leading dot from the extension
+							pos = INSTR (defExt$, ".")
+							IF pos THEN defExt$ = LCLIP$ (defExt$, pos)
+						END IF
+					END IF
+					'
+					fileFilter${i} = '\0' ' replace '|' by NULL terminator
+					strNum = 1 ' swith to the filter description
+					'
+			END SELECT
+		END IF
+	NEXT i
+	ofn.lpstrFilter = &fileFilter$
 
 	szFileBuffer$ = initialName$ + NULL$ (4096 - LEN (initialName$))
 	ofn.lpstrFile   = &szFileBuffer$
@@ -2361,7 +2426,7 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 		IFF bOK THEN RETURN $$FALSE		' error
 		'
 		exeDir$ = TRIM$ (exeDir$)
-		IF RIGHT$ (exeDir$) <> "\\" THEN exeDir$ = exeDir$ + "\\" ' end directory path with \
+		IF RIGHT$ (exeDir$) <> $$PathSlash$ THEN exeDir$ = exeDir$ + $$PathSlash$ ' end directory path with \
 		msInfo$ = exeDir$ + "msinfo32.exe"
 	END IF
 
@@ -3420,7 +3485,7 @@ FUNCTION WinXFolder_GetDir$ (nFolder) ' get the path for a Windows special folde
 	IFZ ret THEN RETURN "" ' error
 
 	dir$ = CSTRING$ (&buf$)
-	IF RIGHT$ (dir$) <> "\\" THEN dir$ = dir$ + "\\" ' end directory path with \
+	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$ ' end directory path with \
 
 	RETURN dir$
 
