@@ -1734,8 +1734,14 @@ FUNCTION WinXCleanUp () ' optional cleanup
 				DestroyAcceleratorTable (bindings[i].hAccelTable) ' destroy the accelerator table
 				bindings[i].hAccelTable = 0
 			END IF
-			IF bindings[i].hwnd THEN
-				DestroyWindow (bindings[i].hwnd) ' destroy the window
+			'
+			hWin = bindings[i].hwnd
+			IF hWin THEN
+				ret = ShowWindow (hWin, $$SW_HIDE)
+				IF ret THEN
+					' Guy-01feb10-can cause a crash if invalid handle
+					DestroyWindow (hWin) ' destroy the window
+				END IF
 				bindings[i].hwnd = 0
 			END IF
 		NEXT i
@@ -3913,10 +3919,10 @@ END FUNCTION
 ' returns $$TRUE if the button is checked, $$FALSE otherwise
 FUNCTION WinXListView_GetCheckState (hLV, iItem)
 	IFZ hLV THEN RETURN $$FALSE ' error
-
+	IF iItem < 0 THEN RETURN $$FALSE ' error
 
 	ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_STATEIMAGEMASK)
-	IF (ret & 0x2000) THEN ' checked
+	IF (ret & 0x2000) = 0x2000 THEN ' checked
 		RETURN $$TRUE
 	ELSE
 		RETURN $$FALSE
@@ -6692,7 +6698,7 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 	'Guy-03mar09-SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
 	IFZ ret THEN RETURN $$FALSE ' error
-	IF (tvi.state & 0x2000) THEN ' checked
+	IF (tvi.state & 0x2000) = 0x2000 THEN ' checked
 		RETURN $$TRUE
 	ELSE
 		RETURN $$FALSE ' *not* checked
