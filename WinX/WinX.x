@@ -1734,12 +1734,11 @@ FUNCTION WinXCleanUp () ' optional cleanup
 				DestroyAcceleratorTable (bindings[i].hAccelTable) ' destroy the accelerator table
 				bindings[i].hAccelTable = 0
 			END IF
-			'
 			hWin = bindings[i].hwnd
 			IF hWin THEN
+				' Guy-01feb10-prevent from crashing
 				ret = ShowWindow (hWin, $$SW_HIDE)
 				IF ret THEN
-					' Guy-01feb10-can cause a crash if invalid handle
 					DestroyWindow (hWin) ' destroy the window
 				END IF
 				bindings[i].hwnd = 0
@@ -6552,21 +6551,28 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV) ' clear the tree view
 	count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
 	IFZ count THEN RETURN $$TRUE ' success
 
-	' don't redraw the Treeview until all nodes are deleted, for speed improvement
-	SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)
+'--------------------------------------------------------------------------------------------------
+' Guy-24feb2010-risky idiom for Windows 7
+'	' don't redraw the Treeview until all nodes are deleted, for speed improvement
+'	SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)
+'
+'	' get the handle of the root
+'	hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
+'
+'	' remove all the nodes in reverse order
+'	DO UNTIL hItem = 0
+'		SendMessageA (hTV, $$TVM_DELETEITEM, 0, hItem)
+'		hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
+'	LOOP
+'	SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
+'
+'	' turn back on redrawing on the Treeview
+'	SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)
+'--------------------------------------------------------------------------------------------------
 
-	' get the handle of the root
-	hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
+	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
+	IFZ ret THEN RETURN $$FALSE ' fail
 
-	' remove all the nodes in reverse order
-	DO UNTIL hItem = 0
-		SendMessageA (hTV, $$TVM_DELETEITEM, 0, hItem)
-		hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
-	LOOP
-	SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
-
-	' turn back on redrawing on the Treeview
-	SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)
 	RETURN $$TRUE ' success
 
 END FUNCTION
