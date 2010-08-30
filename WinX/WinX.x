@@ -72,6 +72,7 @@ VERSION "0.6.0.11"
 ' 0.6.0.11-Guy-29oct09-added the new argument readOnly to function WinXDialog_OpenFile$:
 '                      readOnly = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
 '                      (shows the check box "Read Only" and checks it initially).
+'          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 '
 ' Win32API DLL headers
 '
@@ -121,7 +122,7 @@ TYPE BINDING
 	XLONG			.minH
 	XLONG			.maxW
 	XLONG			.maxH
-	XLONG			.autoDrawInfo		'imformation for the auto drawer
+	XLONG			.autoDrawInfo		'information for the auto drawer
 	XLONG			.autoSizerInfo	'information for the auto sizer
 	XLONG			.hBar						'either a toolbar or a rebar
 	XLONG			.hToolTips			'each window gets a tooltip control
@@ -2409,34 +2410,31 @@ END FUNCTION
 'bOK = WinXDialog_SysInfo (@msInfo$) ' run Microsoft program "System Information"
 'IFF bOK THEN ' error
 '	msg$ = "Can't run Microsoft program \"System Information\""
-'	msg$ = "\nExecution path: " + msInfo$
+'	msg$ = msg$ + "\nExecution path: " + msInfo$
 '	WinXDialog_Error (msg$, "System Information", 2) ' 2 = error
 'END IF
 '
 FUNCTION WinXDialog_SysInfo (@msInfo$)
 	SECURITY_ATTRIBUTES sa ' not used
 
-	subKey$ = "SOFTWARE\\Microsoft\\Shared Tools\\MSINFO"
-	info$ = "PATH"
-
-	' createOnOpenFail = $$FALSE => don't create if missing
-	bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
-	IF bOK THEN ' OK!
-		msInfo$ = TRIM$ (exeDir$)
+	msInfo$ = ""
+ 	subKey$ = "SOFTWARE" + $$PathSlash$ + "Microsoft" + $$PathSlash$ + "Shared Tools" + $$PathSlash$ + "MSINFO"
+	bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, "PATH", $$FALSE, sa, @msInfo$)
+	IF bOK THEN		' OK!
+		msInfo$ = TRIM$ (msInfo$)
 	ELSE
-		subKey$ = "SOFTWARE\\Microsoft\\Shared Tools Location"
-		info$ = "MSINFO"
+		subKey$ = "SOFTWARE" + $$PathSlash$ + "Microsoft" + $$PathSlash$ + "Shared Tools Location"
 		'
-		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
-		IFF bOK THEN RETURN $$FALSE		' error
+		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, "MSINFO", $$FALSE, sa, @msInfo$)
+		IFF bOK THEN RETURN $$FALSE ' error
 		'
-		exeDir$ = TRIM$ (exeDir$)
-		IF RIGHT$ (exeDir$) <> $$PathSlash$ THEN exeDir$ = exeDir$ + $$PathSlash$ ' end directory path with \
-		msInfo$ = exeDir$ + "msinfo32.exe"
+		msInfo$ = TRIM$ (msInfo$)
+		IF RIGHT$ (msInfo$) <> $$PathSlash$ THEN msInfo$ = msInfo$ + $$PathSlash$ ' end directory path with \
+		msInfo$ = msInfo$ + "msinfo32.exe"
 	END IF
-
+	errNum = ERROR ($$FALSE)		' clear the last-error code
 	bErr = XstFileExists (msInfo$)
-	IF bErr THEN RETURN $$FALSE		' error
+	IF bErr THEN RETURN $$FALSE ' error
 
 	' build the command line command$
 	IF INSTR (msInfo$, " ") THEN
@@ -2445,12 +2443,10 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 	ELSE
 		command$ = msInfo$
 	END IF
+	'XstAlert ("Issuing SHELL (" + command$ + ")")
+	SHELL (command$)
 
-	' launch command command$
-	SHELL (command$) ' launch command command$
-	'XstAlert ("SHELL (" + command$ + ")")
-
-	RETURN $$TRUE		' OK!
+	RETURN $$TRUE ' OK!
 
 END FUNCTION
 '
