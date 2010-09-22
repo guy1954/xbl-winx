@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.11"
+VERSION "0.6.0.12"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -73,6 +73,7 @@ VERSION "0.6.0.11"
 '                      readOnly = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
 '                      (shows the check box "Read Only" and checks it initially).
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
+' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 '
 ' Win32API DLL headers
 '
@@ -289,63 +290,63 @@ EXPORT
 
 'constants and structures missing from the XBlite headers, uncomment ids as necessary
 'missing from msimg32.dec
-$$AC_SRC_OVER = 0x00
-$$AC_SRC_ALPHA = 0x01
-'missing from commctl32.dec
-$$PBS_MARQUEE = 0x08
-$$PBM_SETMARQUEE = 1034
-$$TBSTYLE_EX_DOUBLEBUFFER = 0x00000080
-$$ACS_CENTER			= 0x0001
-$$ACS_TRANSPARENT	= 0x0002
-$$LVM_SORTITEMSEX = 0x1051
+'$$AC_SRC_OVER = 0x00
+'$$AC_SRC_ALPHA = 0x01
+''missing from commctl32.dec
+'$$PBS_MARQUEE = 0x08
+'$$PBM_SETMARQUEE = 1034
+'$$TBSTYLE_EX_DOUBLEBUFFER = 0x00000080
+'$$ACS_CENTER			= 0x0001
+'$$ACS_TRANSPARENT	= 0x0002
+'$$LVM_SORTITEMSEX = 0x1051
 
-' from user32
-'$$TPM_LEFTBUTTON  = 0x0000
-$$TPM_TOPALIGN        = 0x0000
-$$TPM_RECURSE         = 0x0001
-$$TPM_HORPOSANIMATION = 0x0400
-$$TPM_HORNEGANIMATION = 0x0800
-$$TPM_VERPOSANIMATION = 0x1000
-$$TPM_VERNEGANIMATION = 0x2000
-$$TPM_NOANIMATION     = 0x4000
-$$TPM_LAYOUTRTL       = 0x8000
+'' from user32
+''$$TPM_LEFTBUTTON  = 0x0000
+'$$TPM_TOPALIGN        = 0x0000
+'$$TPM_RECURSE         = 0x0001
+'$$TPM_HORPOSANIMATION = 0x0400
+'$$TPM_HORNEGANIMATION = 0x0800
+'$$TPM_VERPOSANIMATION = 0x1000
+'$$TPM_VERNEGANIMATION = 0x2000
+'$$TPM_NOANIMATION     = 0x4000
+'$$TPM_LAYOUTRTL       = 0x8000
 
-'Guy-30jul08-Duplicate Type(8)
-'PACKED BITMAPFILEHEADER
-'  USHORT  .bfType
-'  ULONG   .bfSize
-'  USHORT  .bfReserved1
-'  USHORT  .bfReserved2
-'  ULONG   .bfOffBits
+''Guy-30jul08-Duplicate Type(8)
+''PACKED BITMAPFILEHEADER
+''  USHORT  .bfType
+''  ULONG   .bfSize
+''  USHORT  .bfReserved1
+''  USHORT  .bfReserved2
+''  ULONG   .bfOffBits
+''END TYPE
+
+'$$TBMF_PAD                = 0x00000001
+'$$TBMF_BARPAD             = 0x00000002
+'$$TBMF_BUTTONSPACING      = 0x00000004
+'$$TB_GETMETRICS           = 1125
+'$$TB_SETMETRICS           = 1126
+
+'TYPE TBMETRICS
+'	ULONG .cbSize
+'	ULONG .dwMask
+'	XLONG .cxPad
+'	XLONG .cyPad
+'	XLONG .cxBarPad
+'	XLONG .cyBarPad
+'	XLONG .cxButtonSpacing
+'	XLONG .cyButtonSpacing
 'END TYPE
 
-$$TBMF_PAD                = 0x00000001
-$$TBMF_BARPAD             = 0x00000002
-$$TBMF_BUTTONSPACING      = 0x00000004
-$$TB_GETMETRICS           = 1125
-$$TB_SETMETRICS           = 1126
-
-TYPE TBMETRICS
-	ULONG .cbSize
-	ULONG .dwMask
-	XLONG .cxPad
-	XLONG .cyPad
-	XLONG .cxBarPad
-	XLONG .cyBarPad
-	XLONG .cxButtonSpacing
-	XLONG .cyButtonSpacing
-END TYPE
-
-$$CB_GETCOMBOBOXINFO         = 0x0164
-TYPE COMBOBOXINFO
-	ULONG	.cbSize
-	RECT	.rcItem
-	RECT	.rcButton
-	ULONG	.stateButton
-	XLONG	.hwndCombo
-	XLONG	.hwndItem
-	XLONG	.hwndList
-END TYPE
+'$$CB_GETCOMBOBOXINFO         = 0x0164
+'TYPE COMBOBOXINFO
+'	ULONG	.cbSize
+'	RECT	.rcItem
+'	RECT	.rcButton
+'	ULONG	.stateButton
+'	XLONG	.hwndCombo
+'	XLONG	.hwndItem
+'	XLONG	.hwndList
+'END TYPE
 
 'Now the WinX specific stuff
 TYPE RGBA
@@ -1166,7 +1167,9 @@ END FUNCTION
 ' editable enables/disables label editing.  view is a view constant
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
-	IFZ idCtr THEN RETURN 0 ' error
+	IFZ idCtr THEN RETURN 0 ' ERROR
+	' Guy-21sep10-don't keep a zero view, since it make the listview go berserk
+	IFZ view THEN view = $$LVS_REPORT
 	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|view
 	IF editable THEN style = style|$$LVS_EDITLABELS
 
@@ -5807,21 +5810,67 @@ END FUNCTION
 ' subEx = the extended styles to remove
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
+
+' ----------------------------------------------------
+' Guy-03sep10-not that simple!
+' 1. add before subtracting
+' 2. check if change is applicable before changing
+
+'	style = GetWindowLongA (hWnd, $$GWL_STYLE)
+'	styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+
+'	style = style|add
+'	styleEx = styleEx|addEx
+
+'	style = style AND NOT(sub)
+'	styleEx = styleEx AND NOT(subEx)
+
+'	SetWindowLongA (hWnd, $$GWL_STYLE, style)
+'	SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleEx)
+' ----------------------------------------------------
+
 	style = GetWindowLongA (hWnd, $$GWL_STYLE)
+	styleNew = style
+	IF add != sub THEN
+		IF add THEN
+			IFZ styleNew THEN
+				styleNew = add
+			ELSE
+				' add add when _not_ found in styleNew
+				IF (styleNew & add) != add THEN styleNew = styleNew | add
+			END IF
+		END IF
+
+		IF sub THEN
+			IF styleNew THEN
+				' remove sub only if found in styleNew
+				IF (styleNew & sub) = sub THEN styleNew = styleNew & (~sub)
+			END IF
+		END IF
+	END IF
+	IF styleNew != style THEN SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
+
 	styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+	styleExNew = styleEx
+	IF addEx != subEx THEN
+		IF addEx THEN
+			IFZ styleExNew THEN
+				styleExNew = addEx
+			ELSE
+				' addEx addEx when _not_ found in styleExNew
+				IF (styleExNew & addEx) != addEx THEN styleExNew = styleExNew | addEx
+			END IF
+		END IF
 
-	'Guy-30mar09-remove first
-	style = style AND NOT(sub)
-	styleEx = styleEx AND NOT(subEx)
+		IF subEx THEN
+			IF styleExNew THEN
+				' remove subEx only if found in styleExNew
+				IF (styleExNew & subEx) = subEx THEN styleExNew = styleExNew & (~subEx)
+			END IF
+		END IF
+	END IF
+	IF styleExNew != styleEx THEN SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
 
-	style = style|add
-	styleEx = styleEx|addEx
-
-	'style = style AND NOT(sub)
-	'styleEx = styleEx AND NOT(subEx)
-
-	SetWindowLongA (hWnd, $$GWL_STYLE, style)
-	SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleEx)
 
 	RETURN $$TRUE
 END FUNCTION
@@ -6956,7 +7005,8 @@ END FUNCTION
 ' ########################
 ' Updates the specified window
 ' hWnd = the handle to the window
-FUNCTION VOID WinXUpdate (hWnd)
+' Guy-09sep10-FUNCTION VOID WinXUpdate (hWnd)
+FUNCTION WinXUpdate (hWnd)
 	BINDING binding
 	RECT rect
 	'WinXGetUseableRect (hWnd, @rect)
