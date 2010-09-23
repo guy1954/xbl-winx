@@ -698,6 +698,9 @@ DECLARE FUNCTION WinXCleanUp () ' optional cleanup
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
+' Guy-22sep10-added for function WinXSetStyle
+DECLARE FUNCTION WinXMask_AddFlag (mask, flag) ' add flag to mask
+DECLARE FUNCTION WinXMask_SubtractFlag (mask, flag) ' subtract flag from mask
 END EXPORT
 '
 ' #######################
@@ -4122,6 +4125,43 @@ FUNCTION WinXListView_Sort (hLV, iCol, desc)
 	lvs_desc = desc
 	RETURN SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems())
 END FUNCTION
+
+FUNCTION WinXMask_AddFlag (mask, flag) ' add flag to mask
+	' Usage:
+	' IF addEx THEN styleExNew = WinXMask_AddFlag (styleExNew, addEx) ' add addEx to styleExNew
+
+	IFZ flag THEN RETURN 0 ' ZEROED
+
+	IFZ mask THEN
+		' set a zero mask to non-zero flag
+		mask = flag
+	ELSE
+		' combine non-zero flag to non-zero mask
+		' only if flag _not_ found in mask
+		' -----------------------------
+		IF (mask & flag) <> flag THEN mask = mask | flag
+	END IF
+
+	RETURN mask
+
+END FUNCTION
+
+FUNCTION WinXMask_SubtractFlag (mask, flag)		' subtract flag from mask
+	' Usage:
+	' IF sub THEN WinXMask_SubtractFlag (styleNew, sub) ' subtract sub from styleNew
+
+	IFZ flag THEN RETURN mask ' UNCHANGED
+
+	IF mask THEN
+		' extract non-zero flag from non-zero mask
+		' only if flag found in mask
+		' -----------------------------
+		IF (mask & flag) = flag THEN mask = mask & (~flag)
+	END IF
+
+	RETURN mask
+
+END FUNCTION
 '
 ' ###############################
 ' #####  WinXMenu_Attach  #####
@@ -5809,70 +5849,69 @@ END FUNCTION
 ' sub = the styles to remove
 ' subEx = the extended styles to remove
 ' returns $$TRUE on success or $$FALSE on fail
+'
 FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 
 ' ----------------------------------------------------
 ' Guy-03sep10-not that simple!
-' 1. add before subtracting
-' 2. check if change is applicable before changing
-
+'
 '	style = GetWindowLongA (hWnd, $$GWL_STYLE)
 '	styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-
+'
 '	style = style|add
 '	styleEx = styleEx|addEx
-
+'
 '	style = style AND NOT(sub)
 '	styleEx = styleEx AND NOT(subEx)
-
+'
 '	SetWindowLongA (hWnd, $$GWL_STYLE, style)
 '	SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleEx)
 ' ----------------------------------------------------
 
-	style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	styleNew = style
-	IF add != sub THEN
-		IF add THEN
-			IFZ styleNew THEN
-				styleNew = add
-			ELSE
-				' add add when _not_ found in styleNew
-				IF (styleNew & add) != add THEN styleNew = styleNew | add
-			END IF
+	IF add <> sub THEN
+		'
+		style = GetWindowLongA (hWnd, $$GWL_STYLE)
+		styleNew = style
+		'
+		' 1. add before subtracting
+		IF add THEN styleNew = WinXMask_AddFlag (styleNew, add) ' add add to styleNew
+		'
+		IF sub THEN WinXMask_SubtractFlag (styleNew, sub) ' subtract sub from styleNew
+		'
+		' 2. update the control only for a style change
+		IF styleNew <> style THEN
+			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
+			'
+			' if the control's style was not updated, report a failure
+			style = GetWindowLongA (hWnd, $$GWL_STYLE)
+			IF styleNew <> style THEN RETURN $$FALSE		' fail
 		END IF
-
-		IF sub THEN
-			IF styleNew THEN
-				' remove sub only if found in styleNew
-				IF (styleNew & sub) = sub THEN styleNew = styleNew & (~sub)
-			END IF
-		END IF
+		'
 	END IF
-	IF styleNew != style THEN SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
 
-	styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-	styleExNew = styleEx
-	IF addEx != subEx THEN
-		IF addEx THEN
-			IFZ styleExNew THEN
-				styleExNew = addEx
-			ELSE
-				' addEx addEx when _not_ found in styleExNew
-				IF (styleExNew & addEx) != addEx THEN styleExNew = styleExNew | addEx
-			END IF
+	IF addEx <> subEx THEN
+		'
+		styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+		styleExNew = styleEx
+		'
+		' 1. add before subtracting
+		IF addEx THEN styleExNew = WinXMask_AddFlag (styleExNew, addEx) ' add addEx to styleExNew
+		'
+		IF subEx THEN WinXMask_SubtractFlag (styleExNew, subEx) ' subtract subEx from styleExNew
+		'
+		' 2. update the control only for a style change
+		IF styleExNew <> styleEx THEN
+			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
+			'
+			' if the control's extended style was not updated, report a failure
+			styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+			IF styleExNew <> styleEx RETURN $$FALSE		' fail
 		END IF
-
-		IF subEx THEN
-			IF styleExNew THEN
-				' remove subEx only if found in styleExNew
-				IF (styleExNew & subEx) = subEx THEN styleExNew = styleExNew & (~subEx)
-			END IF
-		END IF
+		'
 	END IF
-	IF styleExNew != styleEx THEN SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
-
 
 	RETURN $$TRUE
+
 END FUNCTION
 '
 ' #########################
