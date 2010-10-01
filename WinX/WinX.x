@@ -699,8 +699,8 @@ DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerato
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
 ' Guy-22sep10-added for function WinXSetStyle
-DECLARE FUNCTION WinXMask_AddFlag (mask, flag) ' add flag to mask
-DECLARE FUNCTION WinXMask_SubtractFlag (mask, flag) ' subtract flag from mask
+DECLARE FUNCTION WinXMask_AddFlag (flag, mask) ' add flag to mask
+DECLARE FUNCTION WinXMask_SubtractFlag (flag, mask) ' subtract flag from mask
 END EXPORT
 '
 ' #######################
@@ -4126,9 +4126,9 @@ FUNCTION WinXListView_Sort (hLV, iCol, desc)
 	RETURN SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems())
 END FUNCTION
 
-FUNCTION WinXMask_AddFlag (mask, flag) ' add flag to mask
+FUNCTION WinXMask_AddFlag (flag, mask) ' add flag to mask
 	' Usage:
-	' IF addEx THEN styleExNew = WinXMask_AddFlag (styleExNew, addEx) ' add addEx to styleExNew
+	' IF addEx THEN styleExNew = WinXMask_AddFlag (addEx, styleExNew) ' add addEx to styleExNew
 
 	IFZ flag THEN RETURN 0 ' ZEROED
 
@@ -4146,9 +4146,9 @@ FUNCTION WinXMask_AddFlag (mask, flag) ' add flag to mask
 
 END FUNCTION
 
-FUNCTION WinXMask_SubtractFlag (mask, flag)		' subtract flag from mask
+FUNCTION WinXMask_SubtractFlag (flag, mask)		' subtract flag from mask
 	' Usage:
-	' IF sub THEN WinXMask_SubtractFlag (styleNew, sub) ' subtract sub from styleNew
+	' IF sub THEN WinXMask_SubtractFlag (sub, styleNew) ' subtract sub from styleNew
 
 	IFZ flag THEN RETURN mask ' UNCHANGED
 
@@ -5874,9 +5874,9 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		styleNew = style
 		'
 		' 1. add before subtracting
-		IF add THEN styleNew = WinXMask_AddFlag (styleNew, add) ' add add to styleNew
+		IF add THEN styleNew = WinXMask_AddFlag (add, styleNew) ' add add to styleNew
 		'
-		IF sub THEN WinXMask_SubtractFlag (styleNew, sub) ' subtract sub from styleNew
+		IF sub THEN WinXMask_SubtractFlag (sub, styleNew) ' subtract sub from styleNew
 		'
 		' 2. update the control only for a style change
 		IF styleNew <> style THEN
@@ -5895,9 +5895,9 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		styleExNew = styleEx
 		'
 		' 1. add before subtracting
-		IF addEx THEN styleExNew = WinXMask_AddFlag (styleExNew, addEx) ' add addEx to styleExNew
+		IF addEx THEN styleExNew = WinXMask_AddFlag (addEx, styleExNew) ' add addEx to styleExNew
 		'
-		IF subEx THEN WinXMask_SubtractFlag (styleExNew, subEx) ' subtract subEx from styleExNew
+		IF subEx THEN WinXMask_SubtractFlag (subEx, styleExNew) ' subtract subEx from styleExNew
 		'
 		' 2. update the control only for a style change
 		IF styleExNew <> styleEx THEN
