@@ -6546,6 +6546,8 @@ FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect,
 
 	tvis.hParent = hParent
 	tvis.hInsertAfter = hInsertAfter
+
+	' fill structure TV_ITEM tvis.item
 	tvis.item.mask = $$TVIF_IMAGE|$$TVIF_SELECTEDIMAGE|$$TVIF_TEXT|$$TVIF_PARAM
 	tvis.item.pszText = &item
 	tvis.item.cchTextMax = LEN(item)
