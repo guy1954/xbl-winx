@@ -6841,15 +6841,19 @@ FUNCTION WinXTreeView_GetItemLabel$ (hTV, hItem)
 	TVITEM tvi
 
 	IFZ hTV THEN RETURN "" ' fail
+	IFZ hItem THEN RETURN "" ' fail
 
-	buffer$ = NULL$(256)
 	tvi.mask = $$TVIF_HANDLE|$$TVIF_TEXT
 	tvi.hItem = hItem
+
+	buffer$ = NULL$(256)
 	tvi.pszText = &buffer$
 	tvi.cchTextMax = 255
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
 	IFZ ret THEN RETURN "" ' fail
-	RETURN CSTRING$(&buffer$)
+
+	text$ = CSTRING$ (&buffer$)
+	RETURN text$
 END FUNCTION
 '
 ' ######################################
