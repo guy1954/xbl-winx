@@ -698,9 +698,6 @@ DECLARE FUNCTION WinXCleanUp () ' optional cleanup
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
-' Guy-22sep10-added for function WinXSetStyle
-DECLARE FUNCTION WinXMask_AddFlag (flag, mask) ' add flag to mask
-DECLARE FUNCTION WinXMask_SubtractFlag (flag, mask) ' subtract flag from mask
 END EXPORT
 '
 ' #######################
@@ -740,7 +737,7 @@ DECLARE FUNCTION GuiTellDialogError (parent, title$) ' display WinXDialog_'s run
 ' Remarks     = Sometimes this gets called automatically.  If your program crashes as soon as you call WinXNewWindow then WinX has not been initialised properly.
 '	See Also    =
 '	Examples    = IFF WinX () THEN QUIT(0)
-'	*/
+'
 FUNCTION WinX ()
 	SHARED		BINDING	bindings[]			'a simple array of bindings
 	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
@@ -930,7 +927,7 @@ END FUNCTION
 ' ###########################
 ' #####  WinXAddButton  #####
 ' ###########################
-'	/*
+'
 '	[WinXAddButton]
 ' Description = Creates a new button and adds it to the specified window
 ' Function    = hButton = WinXAddButton (parent, STRING title, hImage, idCtr)
@@ -940,19 +937,19 @@ END FUNCTION
 ' Arg3				= hImage : If this is an image button this parameter is the handle to the image, otherwise it must be 0
 ' Arg4				= idCtr : The unique idCtr for this button
 '	Return      = $$TRUE on success or $$FALSE on error
-' Remarks     = To create a button that contains a text label, hImage must be 0. \n
-' To create a button with an image, load either a bitmap or an icon using the standard gdi functions. \n
-' Set the hImage parameter to the handle gdi gives you and the title parameter to either "bitmap" or "icon" \n
+' Remarks     = To create a button that contains a text label, hImage must be 0.
+' To create a button with an image, load either a bitmap or an icon using the standard gdi functions.
+' Set the hImage parameter to the handle gdi gives you and the title parameter to either "bitmap" or "icon"
 ' Depending on what kind of image you loaded.
 '	See Also    =
-'	Examples    = 'Define constants to identify the buttons<br/>\n
-' $$IDBUTTON1 = 100<br/>$$IDBUTTON2 = 101<br/>\n
-'  'Make a button with a text label<br/>\n
-'  hButton = WinXAddButton (#hMain, "Click me!", 0, $$IDBUTTON1)</br>\n
-'  'Make a button with a bitmap (which in this case is included in the resource file of your application)<br/>\n
-'  hBmp = LoadBitmapA (GetModuleHandleA(0), &"bitmapForButton2")<br/>\n
-'  hButton2 = WinXAddButton (#hMain, "bitmap", hBmp, $$IDBUTTON2)<br/>
-'	*/
+'	Examples    = 'Define constants to identify the buttons
+' $$IDBUTTON1 = 100$$IDBUTTON2 = 101
+'  'Make a button with a text label
+'  hButton = WinXAddButton (#hMain, "Click me!", 0, $$IDBUTTON1)
+'  'Make a button with a bitmap (which in this case is included in the resource file of your application)
+'  hBmp = LoadBitmapA (GetModuleHandleA(0), &"bitmapForButton2")
+'  hButton2 = WinXAddButton (#hMain, "bitmap", hBmp, $$IDBUTTON2)
+'
 FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
 	'get the style
@@ -2459,7 +2456,7 @@ END FUNCTION
 ' #########################
 ' #####  WinXDisplay  #####
 ' #########################
-'	/*
+'
 '	[WinXDisplay]
 ' Description = Displays a window for the first time
 ' Function    = WinXDisplay (hWnd)
@@ -2469,7 +2466,7 @@ END FUNCTION
 ' Remarks     = This function should be called after all the child controls have been added to the window.  It calls the sizing function, which is either the registered callback or the auto sizer.
 '	See Also    =
 '	Examples    = WinXDisplay (#hMain)
-'	*/
+'
 FUNCTION WinXDisplay (hWnd)
 	RECT rect
 
@@ -2483,7 +2480,7 @@ END FUNCTION
 ' ##########################
 ' #####  WinXDoEvents  #####
 ' ##########################
-'	/*
+'
 '	[WinXDoEvents]
 ' Description = Processes events
 ' Function    = WinXDoEvents ()
@@ -2492,7 +2489,7 @@ END FUNCTION
 ' Remarks     = This function doesn't return until a quit message is received.
 '	See Also    =
 '	Examples    = WinXDoEvents ()
-'	*/
+'
 FUNCTION WinXDoEvents ()
 	BINDING binding
 	MSG msg		' will be sent to window callback function when an event occurs
@@ -4125,43 +4122,6 @@ FUNCTION WinXListView_Sort (hLV, iCol, desc)
 	lvs_desc = desc
 	RETURN SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems())
 END FUNCTION
-
-FUNCTION WinXMask_AddFlag (flag, mask) ' add flag to mask
-	' Usage:
-	' IF addEx THEN styleExNew = WinXMask_AddFlag (addEx, styleExNew) ' add addEx to styleExNew
-
-	IFZ flag THEN RETURN 0 ' ZEROED
-
-	IFZ mask THEN
-		' set a zero mask to non-zero flag
-		mask = flag
-	ELSE
-		' combine non-zero flag to non-zero mask
-		' only if flag _not_ found in mask
-		' -----------------------------
-		IF (mask & flag) <> flag THEN mask = mask | flag
-	END IF
-
-	RETURN mask
-
-END FUNCTION
-
-FUNCTION WinXMask_SubtractFlag (flag, mask)		' subtract flag from mask
-	' Usage:
-	' IF sub THEN WinXMask_SubtractFlag (sub, styleNew) ' subtract sub from styleNew
-
-	IFZ flag THEN RETURN mask ' UNCHANGED
-
-	IF mask THEN
-		' extract non-zero flag from non-zero mask
-		' only if flag found in mask
-		' -----------------------------
-		IF (mask & flag) = flag THEN mask = mask & (~flag)
-	END IF
-
-	RETURN mask
-
-END FUNCTION
 '
 ' ###############################
 ' #####  WinXMenu_Attach  #####
@@ -4442,7 +4402,7 @@ END FUNCTION
 ' ###########################
 ' #####  WinXNewWindow  #####
 ' ###########################
-'	/*
+'
 '	[WinXNewWindow]
 ' Description = Initialise the WinX library
 ' Function    = hWnd = WinXNewWindow (STRING title, x, y, w, h, simpleStyle, exStyle, icon, menu)
@@ -4457,16 +4417,16 @@ END FUNCTION
 ' Arg8				= icon : the handle to the icon for the window, 0 for default
 ' Arg9				= menu : the handle to the menu for the window, 0 for no menu
 '	Return      = The handle to the new window or 0 on fail
-' Remarks     = Simple style constants:<dl>\n
-'<dt>$$XWSS_APP</dt><dd>A standard window</dd>\n
-'<dt>$$XWSS_APPNORESIZE</dt><dd>Same as the standard window, but cannot be resized or maximised</dd>\n
-'<dt>$$XWSS_POPUP</dt><dd>A popup window, cannot be minimised</dd>\n
-'<dt>$$XWSS_POPUPNOTITLE</dt><dd>A popup window with no title bar</dd>\n
-'<dt>$$XWSS_NOBORDER</dt><dd>A window with no border, useful for full screen apps</dd></dl>
+' Remarks     = Simple style constants:
+' - $$XWSS_APP</dt><dd>A standard window
+' - $$XWSS_APPNORESIZE</dt><dd>Same as the standard window, but cannot be resized or maximised
+' - $$XWSS_POPUP</dt><dd>A popup window, cannot be minimised
+' - $$XWSS_POPUPNOTITLE</dt><dd>A popup window with no title bar
+' - $$XWSS_NOBORDER</dt><dd>A window with no border, useful for full screen apps
 '	See Also    =
-'	Examples    = 'Make a simple window<br/>\n
+'	Examples    = 'Make a simple window
 'WinXNewWindow ("My window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
-'	*/
+'
 FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, icon, menu)
 	BINDING binding
 	RECT	rect
@@ -4786,7 +4746,7 @@ END FUNCTION
 ' #################################
 ' #####  WinXRegControlSizer  #####
 ' #################################
-'	/*
+'
 '	[WinXRegControlSizer]
 ' Description = Registers a callback function to handle the sizing of controls
 ' Function    = WinXRegControlSizer (hWnd, FUNCADDR func)
@@ -4794,12 +4754,12 @@ END FUNCTION
 '	Arg1        = hWnd : The window to register the callback for
 ' Arg2				= func : The address of the callback function
 '	Return      = $$TRUE on success or $$FALSE on error
-' Remarks     = This function allows you to use your own control sizing code instead of the default \n
-'WinX auto sizer.  You will have to resize all controls, including status bars and toolbars, if you use \n
+' Remarks     = This function allows you to use your own control sizing code instead of the default
+'WinX auto sizer.  You will have to resize all controls, including status bars and toolbars, if you use
 'this callback.  The callback function has two XLONG parameters, w and h.
 '	See Also    =
 '	Examples    = WinXRegControlSizer (#hMain, &customSizer())
-'	*/
+'
 FUNCTION WinXRegControlSizer (hWnd, FUNCADDR func)
 	BINDING			binding
 
@@ -4818,7 +4778,7 @@ END FUNCTION
 ' ###################################
 ' #####  WinXRegMessageHandler  #####
 ' ###################################
-'	/*
+'
 '	[WinXRegMessageHandler]
 ' Description = Registers a message handler callback function
 ' Function    = WinXRegMessageHandler (hWnd, msg, FUNCADDR func)
@@ -4827,14 +4787,14 @@ END FUNCTION
 ' Arg2				= msg : The message the callback processes
 ' Arg3				= func : The address of the callback function
 '	Return      = $$TRUE on success or $$FALSE on error
-' Remarks     = This function is designed for developers who need custom processing of a windows message, \n
-'for example, to use a custom control that sends custom messages. \n
-'If you register a handler for a message WinX normally handles itself then the message handler is called \n
-'first, then WinX performs the default behaviour. The callback function takes 4 XLONG parameters, hWnd, msg, \n
+' Remarks     = This function is designed for developers who need custom processing of a windows message,
+'for example, to use a custom control that sends custom messages.
+'If you register a handler for a message WinX normally handles itself then the message handler is called
+'first, then WinX performs the default behaviour. The callback function takes 4 XLONG parameters, hWnd, msg,
 'wParam and lParam
 '	See Also    =
 '	Examples    = WinXRegMessageHandler (#hMain, $$WM_NOTIFY, &handleNotify())
-'	*/
+'
 FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR func)
 	BINDING			binding
 	MSGHANDLER	handler
@@ -5250,7 +5210,7 @@ END FUNCTION
 ' ############################
 ' #####  WinXRegOnPaint  #####
 ' ############################
-'	/*
+'
 '	[WinXRegOnPaint]
 ' Description = Registers a callback function to process painting events
 ' Function    = WinXRegOnPaint (hWnd, FUNCADDR onPaint)
@@ -5258,12 +5218,12 @@ END FUNCTION
 '	Arg1        = hWnd : The handle to the window to register the callback for
 ' Arg2				= onPaint : The address of the function to use for the callback
 '	Return      = $$TRUE on success or $$FALSE on fail
-' Remarks     = The callback function must take a single XLONG parameter called \n
-'hdc, this parameter is the handle to the device context to draw on. \n
+' Remarks     = The callback function must take a single XLONG parameter called
+'hdc, this parameter is the handle to the device context to draw on.
 'If you register this callback, autodraw is disabled
 '	See Also    =
 '	Examples    = WinXRegOnPaint (#hMain, &onPaint())
-'	*/
+'
 FUNCTION WinXRegOnPaint (hWnd, FUNCADDR onPaint)
 	BINDING binding
 
@@ -5873,12 +5833,19 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		style = GetWindowLongA (hWnd, $$GWL_STYLE)
 		styleNew = style
 		'
-		' 1. add before subtracting
-		IF add THEN styleNew = WinXMask_AddFlag (add, styleNew) ' add add to styleNew
+		' add before subtracting
+		' ======================
+		IF add THEN
+			' add add to styleNew
+			IF (styleNew & add) <> add THEN styleNew = styleNew | add
+		ENDIF
 		'
-		IF sub THEN WinXMask_SubtractFlag (sub, styleNew) ' subtract sub from styleNew
+		IF sub THEN
+			' subtract sub from styleNew
+			IF (styleNew & sub) = sub THEN styleNew = styleNew & (~sub)
+		ENDIF
 		'
-		' 2. update the control only for a style change
+		' update the control only for a style change
 		IF styleNew <> style THEN
 			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
 			'
@@ -5894,12 +5861,19 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 		styleExNew = styleEx
 		'
-		' 1. add before subtracting
-		IF addEx THEN styleExNew = WinXMask_AddFlag (addEx, styleExNew) ' add addEx to styleExNew
+		' add before subtracting
+		' ======================
+		IF addEx THEN
+			' addEx addEx to styleExNew
+			IF (styleExNew & addEx) <> addEx THEN styleExNew = styleExNew | addEx
+		ENDIF
 		'
-		IF subEx THEN WinXMask_SubtractFlag (subEx, styleExNew) ' subtract subEx from styleExNew
+		IF subEx THEN
+			' subtract subEx from styleExNew
+			IF (styleExNew & subEx) = subEx THEN styleExNew = styleExNew & (~subEx)
+		ENDIF
 		'
-		' 2. update the control only for a style change
+		' update the control only for a style change
 		IF styleExNew <> styleEx THEN
 			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
 			'
