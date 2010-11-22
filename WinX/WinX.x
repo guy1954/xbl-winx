@@ -687,7 +687,7 @@ DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem) ' collapse the treeview'
 
 'new in 0.6.0.4
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
-DECLARE FUNCTION WinXFolder_GetDir$ (nFolder) ' get the path for a Windows special folder
+DECLARE FUNCTION WinXFolder_GetDir$ (parent, nFolder) ' get the path for a Windows special folder
 DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
 
 'new in 0.6.0.5
@@ -1167,20 +1167,27 @@ END FUNCTION
 ' editable enables/disables label editing.  view is a view constant
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
-	IFZ idCtr THEN RETURN 0 ' ERROR
+
+	IFZ idCtr THEN RETURN 0 ' error
+
 	' Guy-21sep10-don't keep a zero view, since it make the listview go berserk
 	IFZ view THEN view = $$LVS_REPORT
+
 	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|view
 	IF editable THEN style = style|$$LVS_EDITLABELS
 
 	hWnd = CreateWindowExA (0, &$$WC_LISTVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
-	SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
-	SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
+	' Guy-21nov10-added non-null handle check
+	'SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
+	'SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
+	IF hilLargeIcons THEN SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
+	IF hilSmallIcons THEN SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
 
 	SendMessageA (hWnd, $$LVM_SETEXTENDEDLISTVIEWSTYLE, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP)
 
 	RETURN hWnd
+
 END FUNCTION
 '
 ' ################################
@@ -2107,14 +2114,16 @@ END FUNCTION
 ' returns the directory path or "" on cancel or error
 '
 ' Usage:
-'	dir$ = WinXDialog_OpenDir$ ($$CSIDL_PERSONAL) ' My Documents' folder
+'	dir$ = WinXDialog_OpenDir$ (#winMain, "", $$CSIDL_PERSONAL) ' My Documents' folder
 '
 FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
 
 	BROWSEINFO bi
 
-	' get the path for a Windows special folder
-	title$ = WinXFolder_GetDir$ (initDirIDL)
+	IF initDirIDL < $$CSIDL_DESKTOP || initDirIDL > $$CSIDL_ADMINTOOLS THEN initDirIDL = $$CSIDL_DESKTOP
+
+	' if no title, get the path for a Windows special folder
+	IFZ TRIM$ (title$) THEN title$ = WinXFolder_GetDir$ (parent, initDirIDL)
 
 	bi.hWndOwner = parent
 	bi.pIDLRoot = initDirIDL
@@ -2128,23 +2137,19 @@ FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows dir
 
 	IFZ pidl THEN RETURN "" ' error: memory block not allocated
 
-	' allocate a null-terminated buffer
-	'buf$ = NULL$ ($$MAX_PATH)
-	bufLen = 4096
-	buf$ = NULL$ (bufLen)
-
 	' get the chosen directory path
+	buf$ = NULL$ ($$MAX_PATH)
 	ret = SHGetPathFromIDListA (pidl, &buf$)
 	CoTaskMemFree (&pidl) ' free the memory block
 
 	IFZ ret THEN RETURN "" ' error
 
-	dir$ = CSTRING$ (&buf$)
+	directory$ = CSTRING$ (&buf$)
 
 	' append a \ to indicate a directory vs a file
-	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$ ' end directory path with \
+	IF RIGHT$ (directory$) <> $$PathSlash$ THEN directory$ = directory$ + $$PathSlash$ ' end directory path with \
 
-	RETURN dir$
+	RETURN directory$
 
 END FUNCTION
 '
@@ -2233,11 +2238,10 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	ofn.nFilterIndex = 1
 
 	' initialize the return file name buffer buf$
-	bufLen = 4096
 	IFZ initFN$ THEN
-		buf$ = NULL$ (bufLen)
+		buf$ = NULL$ ($$MAX_PATH)
 	ELSE
-		buf$ = initFN$ + NULL$ (bufLen - LEN (initFN$))
+		buf$ = initFN$ + NULL$ ($$MAX_PATH - LEN (initFN$))
 	END IF
 	ofn.lpstrFile = &buf$
 	ofn.nMaxFile  = bufLen
@@ -2383,9 +2387,14 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	NEXT i
 	ofn.lpstrFilter = &fileFilter$
 
-	szFileBuffer$ = initialName$ + NULL$ (4096 - LEN (initialName$))
-	ofn.lpstrFile   = &szFileBuffer$
-	ofn.nMaxFile    = SIZE (szFileBuffer$)
+	'buf$ = initialName$ + NULL$ (4096 - LEN (initialName$))
+	IFZ initialName$ THEN
+		buf$ = NULL$ ($$MAX_PATH)
+	ELSE
+		buf$ = initialName$ + NULL$ ($$MAX_PATH - LEN (initialName$))
+	END IF
+	ofn.lpstrFile   = &buf$
+	ofn.nMaxFile    = $$MAX_PATH
 
 	ofn.lpstrTitle  = &title$
 	IF defExt$ <> "*" THEN ofn.lpstrDefExt = &defExt$
@@ -3453,9 +3462,9 @@ FUNCTION WinXEnableDialogInterface (hWnd, enable)
 	RETURN $$TRUE
 END FUNCTION
 '
-' #################################
+' ################################
 ' #####  WinXFolder_GetDir$  #####
-' #################################
+' ################################
 ' Gets the path for a Windows special folder
 ' nFolder = the Windows' special folder
 ' returns the directory path or "" on error
@@ -3463,35 +3472,31 @@ END FUNCTION
 ' Usage:
 '	dir$ = WinXFolder_GetDir$ ($$CSIDL_PERSONAL) ' My Documents' folder
 '
-FUNCTION WinXFolder_GetDir$ (nFolder) ' get the path for a Windows special folder
+FUNCTION WinXFolder_GetDir$ (parent, nFolder) ' get the path for a Windows special folder
 
 	ITEMIDLIST idl
 
-	IF nFolder < 0 THEN
-		XstGetCurrentDirectory (@dir$)
-		RETURN dir$
+	IF nFolder < $$CSIDL_DESKTOP || nFolder > $$CSIDL_ADMINTOOLS THEN nFolder = $$CSIDL_DESKTOP
+
+	' Fill the item idCtr list with the pointer of each folder item, returns 0 on success
+	rc = SHGetSpecialFolderLocation (parent, nFolder, &idl)
+	IF rc THEN		' error (0 is for OK!)
+		XstGetCurrentDirectory (@directory$)
+	ELSE
+		' Get the path from the item idCtr list pointer
+		buf$ = NULL$ ($$MAX_PATH)
+		ret = SHGetPathFromIDListA (idl.mkid.cb, &buf$)
+		IF ret THEN
+			directory$ = CSTRING$ (&buf$)
+		ELSE
+			XstGetCurrentDirectory (@directory$)
+		END IF
 	END IF
 
-	dir$ = ""
+	directory$ = TRIM$ (directory$)
+	IF RIGHT$ (directory$) <> $$PathSlash$ THEN directory$ = directory$ + $$PathSlash$		' end directory path with \
 
-	' Fill the item idCtr list with the pointer of each folder item, rtns 0 on success
-	rc = SHGetSpecialFolderLocation (#frmMain, nFolder, &idl)
-	IF rc THEN ' error (0 is for OK!)
-		' Call SHGetSpecialFolderLocation failed!
-		RETURN ""
-	END IF
-
-	' Get the path from the item idCtr list pointer
-	'buf$ = NULL$ ($$MAX_PATH)
-	bufLen = 4096
-	buf$ = NULL$ (bufLen)
-	ret = SHGetPathFromIDListA (idl.mkid.cb, &buf$)
-	IFZ ret THEN RETURN "" ' error
-
-	dir$ = CSTRING$ (&buf$)
-	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$ ' end directory path with \
-
-	RETURN dir$
+	RETURN directory$
 
 END FUNCTION
 '
