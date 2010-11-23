@@ -1260,7 +1260,9 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 	END IF
 
 	'make the window
-	hCtr = CreateWindowExA (0, &"static", &title, style|$$WS_TABSTOP|$$WS_CHILD|$$WS_VISIBLE, _
+	' Guy-23nov10-removed $$WS_TABSTOP style flag to static's style mask
+	'hCtr = CreateWindowExA (0, &"static", &title, style|$$WS_TABSTOP|$$WS_CHILD|$$WS_VISIBLE, _
+	hCtr = CreateWindowExA (0, &"static", &title, style|$$WS_CHILD|$$WS_VISIBLE, _
 	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'give it a nice font
@@ -2170,10 +2172,6 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 
 	OPENFILENAME ofn
 
-	ofn.lStructSize = SIZE (OPENFILENAME) ' length of the structure (in bytes)
-	ofn.hwndOwner = parent ' owner's handle
-	ofn.hInstance = GetModuleHandleA (0)
-
 	' set initial directory initDir$
 	initDir$ = ""
 	initFN$ = ""
@@ -2244,7 +2242,8 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 		buf$ = initFN$ + NULL$ ($$MAX_PATH - LEN (initFN$))
 	END IF
 	ofn.lpstrFile = &buf$
-	ofn.nMaxFile  = bufLen
+	ofn.nMaxFile  = $$MAX_PATH
+	ofn.lStructSize = SIZE (OPENFILENAME) ' length of the structure (in bytes)
 
 	IF title$ THEN ofn.lpstrTitle = &title$ ' dialog title
 
@@ -2261,6 +2260,8 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	END IF
 
 	ofn.lpstrDefExt = &initExt$
+	ofn.hwndOwner = parent ' owner's handle
+	ofn.hInstance = GetModuleHandleA (0)
 
 	'==================================================
 	'IFZ GetOpenFileNameA (&ofn) THEN RETURN ""
