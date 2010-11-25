@@ -78,89 +78,73 @@ VERSION "0.6.0.12"
 ' Win32API DLL headers
 '
 	IMPORT "kernel32"   ' operating system
-'
-' ---Note: import gdi32 BEFORE shell32 and user32
 	IMPORT "gdi32"      ' Graphic Device Interface
 	IMPORT "shell32"    ' interface to the operating system
 	IMPORT "user32"     ' Windows management
 	IMPORT "ole32"      ' for CoTaskMemFree
 	IMPORT "advapi32"   ' advanced API: security, services, registry ...
-'
-' ---Note: import comctl32 BEFORE comdlg32
 	IMPORT "comctl32"   ' common controls; ==> initialize w/ InitCommonControlsEx ()
 	IMPORT "comdlg32"   ' standard dialog boxes (opening and saving files ...)
 '
 	IMPORT "msimg32"
-'	IMPORT "msvcrt"		  ' msvcrt.dll
 '
 ' Xblite DLL headers
-' ---Note: dll (IMPORT "dll") and static libraries (IMPORT "dll_s")
-'          can't be mixed here as it can cause a program crash.
 '
-	' dynamically linked libraries---------------------------------
 	IMPORT "xst"        ' xblite Standard Library
 	IMPORT "xsx"        ' xblite Extended Standard Library
 '	IMPORT "xio"        ' console
 	IMPORT "xma"        ' math library (Sin/Asin/Sinh/Asinh/Log/Exp/Sqrt...)
 	IMPORT "adt"        ' Callum's Abstract Data Types library
 '
-'	' statically linked libraries---------------------------------
-'	IMPORT "xst_s"      ' xblite Standard Library (static link)
-'	IMPORT "xsx_s"      ' xblite Extended Standard Library (static link)
-''	IMPORT "xio_s"      ' console (static link)
-'	IMPORT "xma_s"      ' Xblite math Library (static link)
-'	IMPORT "adt_s"      ' Callum's Abstract Data Types library
-	'-------------------------------------------------------------
-'
 'the data type to manage bindings
 TYPE BINDING
-	XLONG			.hwnd						'handle to the window this binds to, when 0, this record is not in use
-	XLONG			.backCol				'window background color
-	XLONG			.hStatus				'handle to the status bar, if there is one
-	XLONG			.statusParts		'the number of partitions in the status bar
-	XLONG			.msgHandlers		'index into an array of arrays of message handlers
-	XLONG			.minW
-	XLONG			.minH
-	XLONG			.maxW
-	XLONG			.maxH
-	XLONG			.autoDrawInfo		'information for the auto drawer
-	XLONG			.autoSizerInfo	'information for the auto sizer
-	XLONG			.hBar						'either a toolbar or a rebar
-	XLONG			.hToolTips			'each window gets a tooltip control
-	DOUBLE		.hScrollPageM		'the high level scrolling data
-	XLONG			.hScrollPageC
-	XLONG			.hScrollUnit
-	DOUBLE		.vScrollPageM
-	XLONG			.vScrollPageC
-	XLONG			.vScrollUnit
-	XLONG			.useDialogInterface		'true to enable dialog style keyboard navigation amoung controls
-	XLONG			.hwndNextClipViewer		'if the onClipChange callback is used, we become a clipboard viewer
-	XLONG			.hCursor							'custom cursor for this window
-	XLONG			.isMouseInWindow
-	XLONG			.hUpdateRegion
-	FUNCADDR	.paint (XLONG, XLONG)	'hWnd, hdc : paint the window
-	FUNCADDR	.dimControls (XLONG, XLONG, XLONG)	'hWnd, w, h : dimension the controls
-	FUNCADDR	.onCommand(XLONG, XLONG, XLONG)		'idCtr, notifyCode, hCtr
-	FUNCADDR	.onMouseMove(XLONG, XLONG, XLONG)	'hWnd, x, y
-	FUNCADDR	.onMouseDown(XLONG, XLONG, XLONG, XLONG)					'hWnd, MBT const, x, y
-	FUNCADDR	.onMouseUp(XLONG, XLONG, XLONG, XLONG)						'hWnd, MBT const, x, y
-	FUNCADDR	.onMouseWheel(XLONG, XLONG, XLONG, XLONG)	'hWnd, delta, x, y
-	FUNCADDR	.onKeyDown(XLONG, XLONG)			'hWnd, VK
-	FUNCADDR	.onKeyUp(XLONG, XLONG)				'hWnd, VK
-	FUNCADDR	.onChar(XLONG, XLONG)				'hWnd, char
-	FUNCADDR	.onScroll(XLONG, XLONG, XLONG)	'pos, hWnd, direction
-	FUNCADDR	.onTrackerPos(XLONG, XLONG)		'idCtr, pos
-	FUNCADDR	.onDrag(XLONG, XLONG, XLONG, XLONG, XLONG)	'idCtr, drag const, item, x, y
-	FUNCADDR	.onLabelEdit(XLONG, XLONG, XLONG, STRING)	'idCtr, edit const, item, newLabel
-	FUNCADDR	.onClose(XLONG)	' hWnd
-	FUNCADDR	.onFocusChange(XLONG, XLONG)	' hWnd, hasFocus
-	FUNCADDR	.onClipChange()	' Sent when clipboard changes
-	FUNCADDR	.onEnterLeave(XLONG, XLONG)	' hWnd, mouseInWindow
-	FUNCADDR	.onItem (XLONG, XLONG, XLONG)		' idCtr, event, parameter
-	FUNCADDR	.onColumnClick (XLONG, XLONG)		' idCtr, iColumn
-	FUNCADDR	.onCalendarSelect (XLONG, SYSTEMTIME)	' idcal, time
-	FUNCADDR	.onDropFiles (XLONG, XLONG, XLONG, STRING[])	' hWnd, x, y, files
-	XLONG     .hAccelTable    'Guy-21jan09-handle to the window's accelerator table
+  XLONG      .hwnd                 'handle to the window this binds to, when 0, this record is not in use
+  XLONG      .backCol              'window background color
+  XLONG      .hStatus              'handle to the status bar, if there is one
+  XLONG      .statusParts          'the number of partitions in the status bar
+  XLONG      .msgHandlers          'index into an array of arrays of message handlers
+  XLONG      .minW
+  XLONG      .minH
+  XLONG      .maxW
+  XLONG      .maxH
+  XLONG      .autoDrawInfo         'information for the auto drawer
+  XLONG      .autoSizerInfo        'information for the auto sizer
+  XLONG      .hBar                 'either a toolbar or a rebar
+  XLONG      .hToolTips            'each window gets a tooltip control
+  DOUBLE     .hScrollPageM         'the high level scrolling data
+  XLONG      .hScrollPageC
+  XLONG      .hScrollUnit
+  DOUBLE     .vScrollPageM
+  XLONG      .vScrollPageC
+  XLONG      .vScrollUnit
+  XLONG      .useDialogInterface   'true to enable dialog style keyboard navigation amoung controls
+  XLONG      .hwndNextClipViewer   'if the onClipChange callback is used, we become a clipboard viewer
+  XLONG      .hCursor              'custom cursor for this window
+  XLONG      .isMouseInWindow
+  XLONG      .hUpdateRegion
+  FUNCADDR   .paint (XLONG, XLONG)               'hWnd, hdc : paint the window
+  FUNCADDR   .dimControls (XLONG, XLONG, XLONG)  'hWnd, w, h : dimension the controls
+  FUNCADDR   .onCommand(XLONG, XLONG, XLONG)     'idCtr, notifyCode, hCtr
+  FUNCADDR   .onMouseMove(XLONG, XLONG, XLONG)   'hWnd, x, y
+  FUNCADDR   .onMouseDown(XLONG, XLONG, XLONG, XLONG)   'hWnd, MBT const, x, y
+  FUNCADDR   .onMouseUp(XLONG, XLONG, XLONG, XLONG)     'hWnd, MBT const, x, y
+  FUNCADDR   .onMouseWheel(XLONG, XLONG, XLONG, XLONG)  'hWnd, delta, x, y
+  FUNCADDR   .onKeyDown(XLONG, XLONG)        'hWnd, VK
+  FUNCADDR   .onKeyUp(XLONG, XLONG)          'hWnd, VK
+  FUNCADDR   .onChar(XLONG, XLONG)           'hWnd, char
+  FUNCADDR   .onScroll(XLONG, XLONG, XLONG)  'pos, hWnd, direction
+  FUNCADDR   .onTrackerPos(XLONG, XLONG)     'idCtr, pos
+  FUNCADDR   .onDrag(XLONG, XLONG, XLONG, XLONG, XLONG)  'idCtr, drag const, item, x, y
+  FUNCADDR   .onLabelEdit(XLONG, XLONG, XLONG, STRING)  'idCtr, edit const, item, newLabel
+  FUNCADDR   .onClose(XLONG)  ' hWnd
+  FUNCADDR   .onFocusChange(XLONG, XLONG)  ' hWnd, hasFocus
+  FUNCADDR   .onClipChange()               ' Sent when clipboard changes
+  FUNCADDR   .onEnterLeave(XLONG, XLONG)   ' hWnd, mouseInWindow
+  FUNCADDR   .onItem (XLONG, XLONG, XLONG) ' idCtr, event, parameter
+  FUNCADDR   .onColumnClick (XLONG, XLONG) ' idCtr, iColumn
+  FUNCADDR   .onCalendarSelect (XLONG, SYSTEMTIME)  ' idcal, time
+  FUNCADDR   .onDropFiles (XLONG, XLONG, XLONG, STRING[])  ' hWnd, x, y, files
+  XLONG      .hAccelTable    'Guy-21jan09-handle to the window's accelerator table
 END TYPE
 'message handler data type
 TYPE MSGHANDLER
@@ -768,10 +752,6 @@ FUNCTION WinX ()
 	' initialize the specific common controls classes from the common
 	' control dynamic-link library
 	iccex.dwSize = SIZE(INITCOMMONCONTROLSEX)
-	'Guy-04mar09----------------------------------------------------------------------------------
-	'iccex.dwICC = $$ICC_ANIMATE_CLASS|$$ICC_BAR_CLASSES|$$ICC_COOL_CLASSES|$$ICC_DATE_CLASSES| _
-	'$$ICC_HOTKEY_CLASS|$$ICC_LISTVIEW_CLASSES|$$ICC_TAB_CLASSES|$$ICC_TREEVIEW_CLASSES| _
-	'$$ICC_UPDOWN_CLASS|$$ICC_USEREX_CLASSES|$$ICC_WIN95_CLASSES
 
 	' $$ICC_ANIMATE_CLASS      : animate
 	' $$ICC_BAR_CLASSES        : toolbar, statusbar, trackbar, tooltips
@@ -792,7 +772,6 @@ FUNCTION WinX ()
 	$$ICC_HOTKEY_CLASS | $$ICC_INTERNET_CLASSES | $$ICC_LISTVIEW_CLASSES | $$ICC_NATIVEFNTCTL_CLASS | _
 	$$ICC_PAGESCROLLER_CLASS | $$ICC_PROGRESS_CLASS | $$ICC_TAB_CLASSES | $$ICC_TREEVIEW_CLASSES | _
 	$$ICC_UPDOWN_CLASS | $$ICC_USEREX_CLASSES | $$ICC_WIN95_CLASSES
-	'--------------------------------------------------------------------------------------------
 
 	'Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE
 	InitCommonControlsEx (&iccex)
@@ -2430,24 +2409,46 @@ END FUNCTION
 FUNCTION WinXDialog_SysInfo (@msInfo$)
 	SECURITY_ATTRIBUTES sa ' not used
 
-	msInfo$ = ""
- 	subKey$ = "SOFTWARE" + $$PathSlash$ + "Microsoft" + $$PathSlash$ + "Shared Tools" + $$PathSlash$ + "MSINFO"
-	bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, "PATH", $$FALSE, sa, @msInfo$)
-	IF bOK THEN		' OK!
-		msInfo$ = TRIM$ (msInfo$)
+	buf$ = NULL$ ($$MAX_PATH)
+	ret = GetWindowsDirectoryA (&buf$, $$MAX_PATH)
+	IFZ ret THEN
+		msInfo$ = ""
 	ELSE
-		subKey$ = "SOFTWARE" + $$PathSlash$ + "Microsoft" + $$PathSlash$ + "Shared Tools Location"
-		'
-		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, "MSINFO", $$FALSE, sa, @msInfo$)
-		IFF bOK THEN RETURN $$FALSE ' error
-		'
+		msInfo$ = CSTRING$ (&buf$)
 		msInfo$ = TRIM$ (msInfo$)
-		IF RIGHT$ (msInfo$) <> $$PathSlash$ THEN msInfo$ = msInfo$ + $$PathSlash$ ' end directory path with \
-		msInfo$ = msInfo$ + "msinfo32.exe"
-	END IF
-	errNum = ERROR ($$FALSE)		' clear the last-error code
+		IF msInfo$ THEN
+			IF RIGHT$ (msInfo$) <> $$PathSlash$ THEN msInfo$ = msInfo$ + $$PathSlash$
+			msInfo$ = msInfo$ + "system32" + $$PathSlash$ + "msinfo32.exe"
+			'
+			bErr = XstFileExists (msInfo$)
+			IF bErr THEN msInfo$ = ""
+		ENDIF
+	ENDIF
+
+	IFZ msInfo$ THEN
+
+		subKey$ = "SOFTWARE\\Microsoft\\Shared Tools\\MSINFO"
+		info$ = "PATH"
+	
+		' createOnOpenFail = $$FALSE => don't create if missing
+		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
+		IF bOK THEN ' OK!
+			msInfo$ = TRIM$ (exeDir$)
+		ELSE
+			subKey$ = "SOFTWARE\\Microsoft\\Shared Tools Location"
+			info$ = "MSINFO"
+			'
+			bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
+			IFF bOK THEN RETURN $$FALSE		' error
+			'
+			exeDir$ = TRIM$ (exeDir$)
+			IF RIGHT$ (exeDir$) <> $$PathSlash$ THEN exeDir$ = exeDir$ + $$PathSlash$ ' end directory path with \
+			msInfo$ = exeDir$ + "msinfo32.exe"
+		ENDIF
+	ENDIF
+
 	bErr = XstFileExists (msInfo$)
-	IF bErr THEN RETURN $$FALSE ' error
+	IF bErr THEN RETURN $$FALSE		' error
 
 	' build the command line command$
 	IF INSTR (msInfo$, " ") THEN
@@ -2455,9 +2456,11 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 		command$ = "\"" + msInfo$ + "\""
 	ELSE
 		command$ = msInfo$
-	END IF
-	'XstAlert ("Issuing SHELL (" + command$ + ")")
-	SHELL (command$)
+	ENDIF
+
+	' launch command command$
+	SHELL (command$) ' launch command command$
+	'XstAlert ("SHELL (" + command$ + ")")
 
 	RETURN $$TRUE ' OK!
 
@@ -3471,7 +3474,7 @@ END FUNCTION
 ' returns the directory path or "" on error
 '
 ' Usage:
-'	dir$ = WinXFolder_GetDir$ ($$CSIDL_PERSONAL) ' My Documents' folder
+'	dir$ = WinXFolder_GetDir$ (parent, $$CSIDL_PERSONAL) ' My Documents' folder
 '
 FUNCTION WinXFolder_GetDir$ (parent, nFolder) ' get the path for a Windows special folder
 
@@ -5852,13 +5855,7 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		ENDIF
 		'
 		' update the control only for a style change
-		IF styleNew <> style THEN
-			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
-			'
-			' if the control's style was not updated, report a failure
-			style = GetWindowLongA (hWnd, $$GWL_STYLE)
-			IF styleNew <> style THEN RETURN $$FALSE		' fail
-		END IF
+		IF styleNew <> style THEN SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
 		'
 	END IF
 
@@ -5880,17 +5877,11 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		ENDIF
 		'
 		' update the control only for a style change
-		IF styleExNew <> styleEx THEN
-			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
-			'
-			' if the control's extended style was not updated, report a failure
-			styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-			IF styleExNew <> styleEx RETURN $$FALSE		' fail
-		END IF
+		IF styleExNew <> styleEx THEN SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
 		'
 	END IF
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success!
 
 END FUNCTION
 '
