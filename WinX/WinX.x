@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.12"
+VERSION "0.6.0.13"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -87,6 +87,7 @@ VERSION "0.6.0.12"
 	IMPORT "comdlg32"   ' standard dialog boxes (opening and saving files ...)
 '
 	IMPORT "msimg32"
+	IMPORT "xbgrid"     ' for the grid control
 '
 ' Xblite DLL headers
 '
@@ -682,6 +683,11 @@ DECLARE FUNCTION WinXCleanUp () ' optional cleanup
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
+'new in 0.6.0.13
+DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
+DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, text$)
+DECLARE FUNCTION WinXGrid_AddRow (hGrid, iRow, text$)
+
 END EXPORT
 '
 ' #######################
@@ -947,6 +953,7 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 	'make the button
 	hCtr = CreateWindowExA (0, &"button", &title, style|$$WS_TABSTOP|$$WS_GROUP|$$WS_CHILD|$$WS_VISIBLE, _
 	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	IFZ hCtr THEN RETURN 0 ' error
 
 	'give it a nice font
 	'------------------------------------------------------------------------------------------
@@ -2203,11 +2210,10 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	'     system not changing the order.
 	'==============================================================================
 
-	fileFilter$ = TRIM$ (extensions$) + "|" ' add a final terminator (just in case)
+	fileFilter$ = TRIM$ (extensions$)
+	IF RIGHT$ (fileFilter$) <> "|" THEN fileFilter$ = fileFilter$ + "|" ' add a final terminator
 
-	' hand-coded version of "XstReplace (@fileFilter$, "|", CHR$ (0), 0)"
-	upp = LEN (fileFilter$) - 1
-	FOR i = 0 TO upp
+	FOR i = LEN (fileFilter$) - 1 TO 0 STEP -1
 		IF fileFilter${i} = '|' THEN fileFilter${i} = '\0'
 	NEXT i
 
@@ -2312,7 +2318,8 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	' set file filter fileFilter$ with argument extensions$
 	' i.e.: extensions$ = "Image Files (*.bmp, *.jpg)|*.bmp;*.jpg"
 	' .                 ==> fileFilter$ = "Image Files (*.bmp, *.jpg)0*.bmp;*.jpg00"
-	fileFilter$ = TRIM$ (extensions$) + "|" ' add a final terminator (just in case)
+	fileFilter$ = TRIM$ (extensions$)
+	IF RIGHT$ (fileFilter$) <> "|" THEN fileFilter$ = fileFilter$ + "|" ' add a final terminator
 
 	defExt$ = ""
 	' use the 1st extension as a default----------------vvv
@@ -2320,51 +2327,57 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	' .            posSepBeg-------------------------^     ^     ^
 	' .        posSemiColumn-------------------------------+     |
 	' .            posSepEnd-------------------------------------+
-	'
-	strNum = 1
-	upp = LEN (fileFilter$) - 1
-	FOR i = 0 TO upp
-		IF fileFilter${i} = '|' THEN
-			SELECT CASE strNum
-				CASE 1 ' the filter description
+
+	' extensions$ = "Image Files (*.bmp, *.jpg)|*.bmp;*.jpg||"
+	' .             |-------description--------|--pattern--|
+	' - state 1 = in filter description
+	' - state 2 = in filter pattern
+	filterState = 1 ' start with a filter description (first pair element)
+
+	pos = INSTR (fileFilter$, "|")
+	DO WHILE pos
+		'
+		SELECT CASE filterState
+			CASE 1 : filterState = 2 ' skip the filter description
+				'
+			CASE 2 ' 2nd pair element = filter pattern
+				'
+				' the 2nd pair element in each pair describes a pattern
+				' .       defExt$--------vvv
+				' i.e.               "|*.bmp;*.jpg|"
+				' .     posFirst------^     ^     ^
+				' . posSemiColumn-----------+     |
+				' .     posLast-------------------+
+				'
+				IFZ defExt$ THEN
+					posFirst = pos ' position of the 1st separator '|'
+					posLast = INSTR (fileFilter$, "|", posFirst) ' position of the 2nd separator '|'
+					posSemiColumn = INSTR (fileFilter$, ";", posFirst) ' position of an eventual extensions list separator ';'
 					'
-					' the 1st string in each pair describes a filter, i.e. "Image Files (*.bmp, *.jpg)"
-					fileFilter${i} = '\0' ' replace '|' by NULL terminator
-					strNum = 2 ' swith to the filter pattern
-					'
-				CASE 2 ' the filter pattern
-					'
-					' .                  defExt$----------------------------vvv
-					' the 2nd string specifies the filter pattern, i.e. "|*.bmp;*.jpg|"
-					' .                posSepBeg-------------------------^     ^     ^
-					' .            posSemiColumn-------------------------------+     |
-					' .                posSepEnd-------------------------------------+
-					IFZ defExt$ THEN
-						posSepBeg = i + 1 ' position of the 1st separator '|'
-						posSepEnd = INSTR (fileFilter$, "|", posSepBeg) ' position of the 2nd separator '|'
-						posSemiColumn = INSTR (fileFilter$, ";", posSepBeg) ' position of an eventual extensions list separator ';'
-						'
-						IF (posSemiColumn > 0) && (posSemiColumn < posSepEnd) THEN
-							' extensions list separator ';'
-							cCh = posSemiColumn - posSepBeg ' case "|*.ext;...|"
-						ELSE
-							cCh = posSepEnd - posSepBeg ' case "|*.ext|"
-						END IF
-						IF cCh > 0 THEN
-							' extract the default extension from the filter pattern
-							defExt$ = MID$ (fileFilter$, posSepBeg, cCh) ' clip up to the separator (';' or '|')
-							' remove the leading dot from the extension
-							pos = INSTR (defExt$, ".")
-							IF pos THEN defExt$ = LCLIP$ (defExt$, pos)
-						END IF
+					IF (posSemiColumn > 0) && (posSemiColumn < posLast) THEN
+						' extension list, separator is ';'
+						cCh = posSemiColumn - posFirst ' i.e. "|*.ext1;*.ext2;...|"
+					ELSE
+						' single extension
+						cCh = posLast - posFirst ' i.e. "|*.ext1|"
 					END IF
-					'
-					fileFilter${i} = '\0' ' replace '|' by NULL terminator
-					strNum = 1 ' swith to the filter description
-					'
-			END SELECT
-		END IF
-	NEXT i
+					IF cCh > 0 THEN
+						' extract the default extension from the pattern (it's the 1st of the list)
+						defExt$ = MID$ (fileFilter$, posFirst, cCh) ' clip up to the separator (';' or '|')
+						' remove the leading dot from the extension
+						pos = INSTR (defExt$, ".")
+						IF pos THEN defExt$ = LCLIP$ (defExt$, pos)
+					END IF
+				END IF
+				'
+				filterState = 1 ' switch to the description
+				'
+		END SELECT
+		'
+		fileFilter${pos - 1} = '\0' ' replace '|' by NULL terminator
+		pos = INSTR (fileFilter$, "|", pos + 1) ' position of the next separator '|'
+	LOOP
+
 	ofn.lpstrFilter = &fileFilter$
 
 	'buf$ = initialName$ + NULL$ (4096 - LEN (initialName$))
@@ -2429,7 +2442,7 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 
 		subKey$ = "SOFTWARE\\Microsoft\\Shared Tools\\MSINFO"
 		info$ = "PATH"
-	
+
 		' createOnOpenFail = $$FALSE => don't create if missing
 		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
 		IF bOK THEN ' OK!
@@ -3872,7 +3885,7 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 
 	'parse the string
 	XstParseStringToStringArray (item, "\0", @s$[])
-	IF UBOUND(s$[]) = -1 THEN RETURN -1
+	IFZ s$[] THEN RETURN -1
 
 	'set the item
 	lvi.mask = $$LVIF_TEXT
@@ -5855,7 +5868,13 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		ENDIF
 		'
 		' update the control only for a style change
-		IF styleNew <> style THEN SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
+		IF styleNew <> style THEN
+			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
+			'
+			' if the control's style was not updated, report a failure
+			style = GetWindowLongA (hWnd, $$GWL_STYLE)
+			IF styleNew <> style THEN RETURN $$FALSE		' fail
+		END IF
 		'
 	END IF
 
@@ -5877,11 +5896,17 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		ENDIF
 		'
 		' update the control only for a style change
-		IF styleExNew <> styleEx THEN SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
+		IF styleExNew <> styleEx THEN
+			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
+			'
+			' if the control's extended style was not updated, report a failure
+			styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+			IF styleExNew <> styleEx RETURN $$FALSE		' fail
+		END IF
 		'
 	END IF
 
-	RETURN $$TRUE ' success!
+	RETURN $$TRUE
 
 END FUNCTION
 '
@@ -9183,6 +9208,84 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+'
+' #########################
+' #####  WinXAddGrid  #####
+' #########################
+' Adds a new grid control
+' parent = the window to add the grid to
+' title = the initial text to appear in the grid - not all controls use this parameter
+' idCtr = the unique idCtr to identify the grid
+' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
+' exStyle = the extended style of the grid.  For most controls this will be 0
+' returns the handle of the grid, or 0 on fail
+FUNCTION WinXAddGrid (parent, STRING title, idCtr)
+	IFZ idCtr THEN RETURN 0 ' error
+	hGrid = CreateWindowExA (0, &$$XBGRIDCLASSNAME, &title, $$WS_CHILD | $$WS_VISIBLE, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	RETURN hGrid
+END FUNCTION
+'
+' ##################################
+' #####  WinXGrid_SetHeadings  #####
+' ##################################
+' Sets the grid's column headings
+' STRING text = the text for the headings in the form "head1|head2..."
+' returns $$TRUE on error
+FUNCTION WinXGrid_SetHeadings (hGrid, STRING text)
+
+	IFZ hGrid THEN RETURN $$TRUE ' error
+	IFZ text THEN RETURN $$TRUE ' error
+
+	'parse the string
+	XstParseStringToStringArray (text, "|", @s$[])
+	IFZ s$[] THEN RETURN $$TRUE
+
+	upp = UBOUND(s$[])
+
+	'set the headings
+	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
+	SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
+	SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove 2nd heading "A B C..."
+	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
+	FOR i = 0 TO upp
+		st$ = TRIM$ (s$[i])
+		IF st$ THEN PutCell(hGrid, 0, i + 1, st$)
+	NEXT i
+
+	RETURN $$FALSE
+END FUNCTION
+'
+' #############################
+' #####  WinXGrid_AddRow  #####
+' #############################
+' Adds a new row to a grid
+' row = the number at which to insert the row, 0 to add to the end of the grid
+' STRING text = the text for the row in the form "col1|col2..."
+' returns the number to the row or 0 on error
+FUNCTION WinXGrid_AddRow (hGrid, row, STRING text)
+
+	IFZ hGrid THEN RETURN 0 ' error
+	IFZ text THEN RETURN 0 ' error
+
+	'parse the string
+	XstParseStringToStringArray (text, "|", @s$[])
+	IFZ s$[] THEN RETURN -1 ' error
+
+	rows = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF row < 1 || row > rows THEN row = rows + 1
+
+	'set the subitems
+	upp = UBOUND(s$[])
+	cols = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	IF upp >= cols THEN upp = cols - 1
+
+	FOR i = 0 TO upp
+		st$ = TRIM$ (s$[i])
+		IF st$ THEN PutCell(hGrid, row, i + 1, st$)
+	NEXT i
+
+	RETURN row
 END FUNCTION
 '
 ' #######################
