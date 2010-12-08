@@ -188,7 +188,7 @@ TYPE SPLITTERINFO
 	XLONG			.max
 	XLONG			.dock
 	XLONG			.docked	' 0 if not docked, old position when docked
-END IF
+END TYPE
 $$DOCK_DISABLED	= 0
 $$DOCK_FOWARD		= 1
 $$DOCK_BACKWARD	= 2
@@ -808,7 +808,7 @@ FUNCTION WinX ()
 	ELSE
 		hIcon = LoadIconA (hLib, &"WinXIcon")
 		FreeLibrary (hLib)
-	END IF
+	ENDIF
 
 	'register window class
 	wc.style					= $$CS_PARENTDC
@@ -851,7 +851,7 @@ FUNCTION WinXAddAccelerator (ACCEL accel[], cmd, key, control, alt, shift)
 		DIM accel[0]
 	ELSE
 		REDIM accel[i+1]
-	END IF
+	ENDIF
 	i = UBOUND(accel[])
 
 	accel[i].fVirt = $$FVIRTKEY
@@ -948,7 +948,7 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 				style = style|$$BS_BITMAP
 				imageType = $$IMAGE_BITMAP
 		END SELECT
-	END IF
+	ENDIF
 
 	'make the button
 	hCtr = CreateWindowExA (0, &"button", &title, style|$$WS_TABSTOP|$$WS_GROUP|$$WS_CHILD|$$WS_VISIBLE, _
@@ -968,7 +968,7 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 		DeleteObject (hFont) ' release the font
-	END IF
+	ENDIF
 
 	'and we're done
 	RETURN hCtr
@@ -1090,6 +1090,22 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 	RETURN hCtr
 END FUNCTION
 '
+' #########################
+' #####  WinXAddGrid  #####
+' #########################
+' Adds a new grid control
+' parent = the window to add the grid to
+' title = the initial text to appear in the grid - not all controls use this parameter
+' idCtr = the unique idCtr to identify the grid
+' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
+' exStyle = the extended style of the grid.  For most controls this will be 0
+' returns the handle of the grid, or 0 on fail
+FUNCTION WinXAddGrid (parent, STRING title, idCtr)
+	IFZ idCtr THEN RETURN 0 ' error
+	hGrid = CreateWindowExA (0, &$$XBGRIDCLASSNAME, &title, $$WS_CHILD | $$WS_VISIBLE, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	RETURN hGrid
+END FUNCTION
+'
 ' #############################
 ' #####  WinXAddGroupBox  #####
 ' #############################
@@ -1141,7 +1157,7 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	IF hFont THEN
 		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 		DeleteObject (hFont) ' release the font
-	END IF
+	ENDIF
 	'------------------------------------------------------------------------------------------
 	RETURN hCtr
 END FUNCTION
@@ -1243,7 +1259,7 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 				style = style|$$SS_BITMAP
 				imageType = $$IMAGE_BITMAP
 		END SELECT
-	END IF
+	ENDIF
 
 	'make the window
 	' Guy-23nov10-removed $$WS_TABSTOP style flag to static's style mask
@@ -1264,7 +1280,7 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
 		DeleteObject (hFont) ' release the font
-	END IF
+	ENDIF
 
 	'and we're done
 	RETURN hCtr
@@ -1365,7 +1381,7 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 		' add $$WS_CLIPSIBLINGS style to the parent control
 		parent_style = parent_style | $$WS_CLIPSIBLINGS
 		SetWindowLongA (parent, $$GWL_STYLE, parent_style)
-	END IF
+	ENDIF
 	'------------------------------------------------------------------------------------------
 	IF multiline THEN style = style | $$TCS_MULTILINE
 	style = style | $$WS_CHILD | $$WS_VISIBLE
@@ -1406,7 +1422,7 @@ FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, 
 		SendMessageA (hCtr, $$DTM_SETSYSTEMTIME, $$GDT_VALID, &initialTime)
 	ELSE
 		SendMessageA (hCtr, $$DTM_SETSYSTEMTIME, $$GDT_NONE, 0)
-	END IF
+	ENDIF
 
 	RETURN hCtr
 END FUNCTION
@@ -1439,7 +1455,7 @@ FUNCTION WinXAddTooltip (hControl, STRING tooltipText)
 	ELSE
 		'make a new entry
 		msg = $$TTM_ADDTOOL
-	END IF
+	ENDIF
 
 	ti.cbSize = SIZE(TOOLINFO)
 	ti.uFlags = $$TTF_SUBCLASS|$$TTF_IDISHWND
@@ -1583,7 +1599,7 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 		parent = GetParent (hWnd)
 		IFF binding_get (GetWindowLongA (parent, $$GWL_USERDATA), @binding) THEN RETURN $$FALSE
 		series = binding.autoSizerInfo
-	END IF
+	ENDIF
 
 	'associate the info
 	autoSizerBlock.hwnd = hWnd
@@ -1603,12 +1619,12 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 		idBlock = autoSizerInfo_add (series, autoSizerBlock)+1
 		IFF idBlock THEN
 			RETURN $$FALSE
-		END IF
+		ENDIF
 		IFZ SetPropA (hWnd, &"autoSizerInfoBlock", idBlock) THEN
 			RETURN $$FALSE
 		ELSE
 			ret = $$TRUE
-		END IF
+		ENDIF
 
 		'make a splitter if we need one
 		IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
@@ -1620,12 +1636,12 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 			autoSizerBlock.hSplitter = CreateWindowExA (0, &"WinXSplitterClass", 0, $$WS_CHILD|$$WS_VISIBLE|$$WS_CLIPSIBLINGS, _
 			0, 0, 0, 0, GetParent(hWnd), 0, GetModuleHandleA (0), SPLITTERINFO_New (@splitterInfo))
 			autoSizerInfo_update (series, idBlock-1, autoSizerBlock)
-		END IF
+		ENDIF
 
 	ELSE
 		'update the old one
 		ret = autoSizerInfo_update (series, idBlock-1, autoSizerBlock)
-	END IF
+	ENDIF
 
 	GetClientRect (hWnd, &rect)
 	sizeWindow (hWnd, rect.right-rect.left, rect.bottom-rect.top)
@@ -1669,7 +1685,7 @@ FUNCTION WinXButton_SetCheck (hButton, checked)
 		SendMessageA (hButton, $$BM_SETCHECK, $$BST_CHECKED, 0)
 	ELSE
 		SendMessageA (hButton, $$BM_SETCHECK, $$BST_UNCHECKED, 0)
-	END IF
+	ENDIF
 
 	RETURN $$TRUE
 END FUNCTION
@@ -1725,25 +1741,25 @@ FUNCTION WinXCleanUp () ' optional cleanup
 	IF hClipMem THEN
 		GlobalFree (hClipMem)
 		hClipMem = 0 ' prevents from freeing twice
-	END IF
+	ENDIF
 
 	IF bindings[] THEN
 		FOR i = UBOUND (bindings[]) TO 0 STEP -1
 			IF bindings[i].hAccelTable THEN
 				DestroyAcceleratorTable (bindings[i].hAccelTable) ' destroy the accelerator table
 				bindings[i].hAccelTable = 0
-			END IF
+			ENDIF
 			hWin = bindings[i].hwnd
 			IF hWin THEN
 				' Guy-01feb10-prevent from crashing
 				ret = ShowWindow (hWin, $$SW_HIDE)
 				IF ret THEN
 					DestroyWindow (hWin) ' destroy the window
-				END IF
+				ENDIF
 				bindings[i].hwnd = 0
-			END IF
+			ENDIF
 		NEXT i
-	END IF
+	ENDIF
 
 	' unregister the WinX window class
 	className$ = "WinXMainClass"
@@ -2144,6 +2160,7 @@ END FUNCTION
 ' ##################################
 ' #####  WinXDialog_OpenFile$  #####
 ' ##################################
+'
 ' Displays an OpenFile dialog box
 ' parent = the handle to the window to own this dialog
 ' title$ = the title for the dialog
@@ -2166,7 +2183,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	IF initialName$ THEN
 		' in case of a drive, i.e. initialName$ = "c:" -> "c:\\"
 		IF RIGHT$ (RTRIM$ (initialName$)) = ":" THEN initialName$ = RTRIM$ (initialName$) + $$PathSlash$
-	END IF
+	ENDIF
 
 	initDir$ = ""
 	SELECT CASE TRUE
@@ -2181,14 +2198,14 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 		CASE ELSE
 			IFZ initDir$ THEN
 				XstDecomposePathname (initialName$, @initDir$, "", @initFN$, "", @initExt$)
-			END IF
+			ENDIF
 			'
 	END SELECT
 
 	IF initDir$ THEN
 		IF RIGHT$ (initDir$) = $$PathSlash$ THEN initDir$ = RCLIP$ (initDir$)  ' clip off the final \
 		ofn.lpstrInitialDir = &initDir$
-	END IF
+	ENDIF
 
 	' set file filter fileFilter$ with argument extensions$
 	'==============================================================================
@@ -2213,19 +2230,30 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	fileFilter$ = TRIM$ (extensions$)
 	IF RIGHT$ (fileFilter$) <> "|" THEN fileFilter$ = fileFilter$ + "|" ' add a final terminator
 
-	FOR i = LEN (fileFilter$) - 1 TO 0 STEP -1
-		IF fileFilter${i} = '|' THEN fileFilter${i} = '\0'
-	NEXT i
+	' replace all separators "|" by the NULL character
+	pos = INSTR (fileFilter$, "|") ' first separator '|'
+	DO WHILE pos
+		fileFilter${pos - 1} = '\0' ' replace '|' by NULL character
+		pos = INSTR (fileFilter$, "|", pos + 1) ' next separator '|'
+	LOOP
 
 	ofn.lpstrFilter = &fileFilter$
 	ofn.nFilterIndex = 1
 
 	' initialize the return file name buffer buf$
-	IFZ initFN$ THEN
-		buf$ = NULL$ ($$MAX_PATH)
-	ELSE
-		buf$ = initFN$ + NULL$ ($$MAX_PATH - LEN (initFN$))
-	END IF
+	initFN$ = TRIM$ (initFN$)
+	length = LEN (initFN$)
+	SELECT CASE length
+		CASE 0          : buf$ = NULL$ ($$MAX_PATH)
+		CASE $$MAX_PATH : buf$ = initFN$
+		CASE ELSE
+			IF length > $$MAX_PATH THEN
+				buf$ = LEFT$ (initFN$, $$MAX_PATH)
+			ELSE
+				buf$ = initFN$ + NULL$ ($$MAX_PATH - LEN (initFN$))
+			END IF
+	END SELECT
+
 	ofn.lpstrFile = &buf$
 	ofn.nMaxFile  = $$MAX_PATH
 	ofn.lStructSize = SIZE (OPENFILENAME) ' length of the structure (in bytes)
@@ -2242,7 +2270,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 		ofn.flags = ofn.flags | $$OFN_READONLY ' causes the check box "Read Only" to be checked initially
 	ELSE
 		ofn.flags = ofn.flags | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
-	END IF
+	ENDIF
 
 	ofn.lpstrDefExt = &initExt$
 	ofn.hwndOwner = parent ' owner's handle
@@ -2255,7 +2283,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	IFZ ret THEN ' error
 		GuiTellDialogError (parent, title$)
 		RETURN ""
-	END IF
+	ENDIF
 
 	IFF multiSelect THEN RETURN CSTRING$ (ofn.lpstrFile)
 
@@ -2301,6 +2329,7 @@ END FUNCTION
 ' ##################################
 ' #####  WinXDialog_SaveFile$  #####
 ' ##################################
+'
 ' Displays a SaveFile dialog box
 ' parent          = the handle to the parent window
 ' title$          = the title of the dialog box
@@ -2334,6 +2363,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	' - state 2 = in filter pattern
 	filterState = 1 ' start with a filter description (first pair element)
 
+	' replace all separators "|" by the NULL character
 	pos = INSTR (fileFilter$, "|")
 	DO WHILE pos
 		'
@@ -2360,21 +2390,21 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 					ELSE
 						' single extension
 						cCh = posLast - posFirst ' i.e. "|*.ext1|"
-					END IF
+					ENDIF
 					IF cCh > 0 THEN
 						' extract the default extension from the pattern (it's the 1st of the list)
 						defExt$ = MID$ (fileFilter$, posFirst, cCh) ' clip up to the separator (';' or '|')
 						' remove the leading dot from the extension
 						pos = INSTR (defExt$, ".")
 						IF pos THEN defExt$ = LCLIP$ (defExt$, pos)
-					END IF
-				END IF
+					ENDIF
+				ENDIF
 				'
 				filterState = 1 ' switch to the description
 				'
 		END SELECT
 		'
-		fileFilter${pos - 1} = '\0' ' replace '|' by NULL terminator
+		fileFilter${pos - 1} = '\0' ' replace '|' by NULL character
 		pos = INSTR (fileFilter$, "|", pos + 1) ' position of the next separator '|'
 	LOOP
 
@@ -2385,7 +2415,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 		buf$ = NULL$ ($$MAX_PATH)
 	ELSE
 		buf$ = initialName$ + NULL$ ($$MAX_PATH - LEN (initialName$))
-	END IF
+	ENDIF
 	ofn.lpstrFile   = &buf$
 	ofn.nMaxFile    = $$MAX_PATH
 
@@ -2398,7 +2428,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	IFZ ret THEN ' error
 		GuiTellDialogError (parent, title$)
 		RETURN ""
-	END IF
+	ENDIF
 
 	RETURN CSTRING$ (ofn.lpstrFile)
 
@@ -2407,6 +2437,7 @@ END FUNCTION
 ' ################################
 ' #####  WinXDialog_SysInfo  #####
 ' ################################
+'
 ' Runs Microsoft program "System Information"
 ' OUT			: msInfo$	- execution path
 ' returns $$TRUE on success or $$FALSE on fail
@@ -2417,7 +2448,7 @@ END FUNCTION
 '	msg$ = "Can't run Microsoft program \"System Information\""
 '	msg$ = msg$ + "\nExecution path: " + msInfo$
 '	WinXDialog_Error (msg$, "System Information", 2) ' 2 = error
-'END IF
+'ENDIF
 '
 FUNCTION WinXDialog_SysInfo (@msInfo$)
 	SECURITY_ATTRIBUTES sa ' not used
@@ -2541,7 +2572,7 @@ FUNCTION WinXDoEvents ()
 					hAccel = binding.hAccelTable ' get its associated accelerator table
 				ELSE
 					hAccel = 0
-				END IF
+				ENDIF
 				'
 				' Process accelerator keys for menu commands
 				IFZ TranslateAcceleratorA (hwnd, hAccel, &msg) THEN
@@ -2553,8 +2584,8 @@ FUNCTION WinXDoEvents ()
 						'
 						' send message to window callback function
 						DispatchMessageA (&msg)
-					END IF
-				END IF		' accelerator key
+					ENDIF
+				ENDIF		' accelerator key
 		END SELECT
 	LOOP		' forever
 
@@ -2594,7 +2625,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 			IF ABS(o1#) > halfH THEN
 				IF theta1 > $$PI THEN o1# = -halfH ELSE o1# = halfH
 				a1# = o1#/Tan(theta1)
-			END IF
+			ENDIF
 	END SELECT
 
 	SELECT CASE theta2
@@ -2616,7 +2647,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 			IF ABS(o2#) > halfH THEN
 				IF theta2 > $$PI THEN o2# = -halfH ELSE o2# = halfH
 				a2# = o2#/Tan(theta2)
-			END IF
+			ENDIF
 	END SELECT
 
 	'get the binding
@@ -2640,7 +2671,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2677,7 +2708,7 @@ FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2711,7 +2742,7 @@ FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2745,7 +2776,7 @@ FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2783,7 +2814,7 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2820,7 +2851,7 @@ FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2862,7 +2893,7 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2899,7 +2930,7 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2932,7 +2963,7 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -2979,7 +3010,7 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
-	END IF
+	ENDIF
 	binding_update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
@@ -3052,7 +3083,7 @@ FUNCTION WinXDraw_GetColour (parent, initialColour)
 		FOR i = 0 TO 15
 			customColours[i] = 0x00FFFFFF
 		NEXT
-	END IF
+	ENDIF
 
 	cc.lStructSize = SIZE(CHOOSECOLOR)
 	cc.hwndOwner = parent
@@ -3507,8 +3538,8 @@ FUNCTION WinXFolder_GetDir$ (parent, nFolder) ' get the path for a Windows speci
 			directory$ = CSTRING$ (&buf$)
 		ELSE
 			XstGetCurrentDirectory (@directory$)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	directory$ = TRIM$ (directory$)
 	IF RIGHT$ (directory$) <> $$PathSlash$ THEN directory$ = directory$ + $$PathSlash$		' end directory path with \
@@ -3586,14 +3617,76 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 	IF binding.hBar THEN
 		GetClientRect (binding.hBar, &rect2)
 		rect.top = rect.top + (rect2.bottom-rect2.top)+2
-	END IF
+	ENDIF
 
 	IF binding.hStatus THEN
 		GetClientRect (binding.hStatus, &rect2)
 		rect.bottom = rect.bottom - (rect2.bottom-rect2.top)
-	END IF
+	ENDIF
 
 	RETURN $$TRUE
+END FUNCTION
+'
+' #############################
+' #####  WinXGrid_AddRow  #####
+' #############################
+' Adds a new row to a grid
+' row = the number at which to insert the row, 0 to add to the end of the grid
+' STRING text = the text for the row in the form "col1|col2..."
+' returns the number to the row or 0 on error
+FUNCTION WinXGrid_AddRow (hGrid, row, STRING text)
+
+	IFZ hGrid THEN RETURN 0 ' error
+	IFZ text THEN RETURN 0 ' error
+
+	'parse the string text
+	XstParseStringToStringArray (text, "|", @s$[])
+	IFZ s$[] THEN RETURN -1 ' error
+
+	rows = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF row < 1 || row > rows THEN row = rows + 1
+
+	'set the subitems
+	upp = UBOUND(s$[])
+	cols = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	IF upp >= cols THEN upp = cols - 1
+
+	FOR i = 0 TO upp
+		st$ = TRIM$ (s$[i])
+		IF st$ THEN PutCell(hGrid, row, i + 1, st$)
+	NEXT i
+
+	RETURN row
+END FUNCTION
+'
+' ##################################
+' #####  WinXGrid_SetHeadings  #####
+' ##################################
+' Sets the grid's column headings
+' STRING text = the text for the headings in the form "head1|head2..."
+' returns $$TRUE on error
+FUNCTION WinXGrid_SetHeadings (hGrid, STRING text)
+
+	IFZ hGrid THEN RETURN $$TRUE ' error
+	IFZ text THEN RETURN $$TRUE ' error
+
+	'parse the string text
+	XstParseStringToStringArray (text, "|", @s$[])
+	IFZ s$[] THEN RETURN $$TRUE
+
+	upp = UBOUND(s$[])
+
+	'set the headings
+	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
+	SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
+	SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove 2nd heading "A B C..."
+	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
+	FOR i = 0 TO upp
+		st$ = TRIM$ (s$[i])
+		IF st$ THEN PutCell(hGrid, 0, i + 1, st$)
+	NEXT i
+
+	RETURN $$FALSE
 END FUNCTION
 '
 ' #############################################
@@ -3666,7 +3759,7 @@ FUNCTION WinXListBox_AddItem (hListBox, index, Item$)
 		RETURN SendMessageA (hListBox, $$LB_ADDSTRING, 0, &Item$)
 	ELSE
 		RETURN SendMessageA (hListBox, $$LB_INSERTSTRING, index, &Item$)
-	END IF
+	ENDIF
 END FUNCTION
 '
 ' ########################################
@@ -3736,7 +3829,7 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 	IFZ hListBox THEN
 		DIM index[]
 		RETURN 0
-	END IF
+	ENDIF
 
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
 	IF style AND $$LBS_EXTENDEDSEL THEN
@@ -3745,7 +3838,7 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 		IF numItems < 1 THEN
 			DIM index[]
 			RETURN 0
-		END IF
+		ENDIF
 		'
 		DIM index[numItems-1]
 		'Guy-12nov08-wMsg would remain zero
@@ -3761,13 +3854,13 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 		IF selItem < 0 THEN
 			DIM index[]
 			RETURN 0
-		END IF
+		ENDIF
 		'
 		numItems = 1
 		DIM index[0]
 		index[0] = selItem
 		'--------------------------------------------------------
-	END IF
+	ENDIF
 	RETURN numItems
 END FUNCTION
 '
@@ -3823,8 +3916,8 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 			IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) = -1) && (index[0] != -1) THEN RETURN $$FALSE
 		ELSE
 			RETURN $$FALSE
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN $$TRUE
 END FUNCTION
@@ -3843,7 +3936,7 @@ FUNCTION WinXListView_AddCheckBoxes (hLV)
 	IFZ (exStyle & $$LVS_EX_CHECKBOXES) THEN
 		exStyle = exStyle | $$LVS_EX_CHECKBOXES
 		SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
-	END IF
+	ENDIF
 
 END FUNCTION
 '
@@ -3873,9 +3966,11 @@ END FUNCTION
 ' ##################################
 ' #####  WinXListView_AddItem  #####
 ' ##################################
+'
 ' Adds a new item to a list view control
 ' iItem = the index at which to insert the item, -1 to add to the end of the list
 ' STRING item = the label for the item plus subitems in the form "label\0subItem1\0subItem2..."
+'               or (more User-frendly) "label|subItem1|subItem2..."
 ' iIcon = the index to the icon or -1 if this item has no icon
 ' returns the index to the item or -1 on error
 FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
@@ -3883,8 +3978,13 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 
 	IFZ hLV THEN RETURN -1 ' error
 
-	'parse the string
-	XstParseStringToStringArray (item, "\0", @s$[])
+	' replace all embedded NULL characters by separator "|"
+	FOR i = LEN (item) - 1 TO 0 STEP -1
+		IF item{i} = '\0' THEN item{i} = '|'
+	NEXT i
+
+	'parse the string item
+	XstParseStringToStringArray (item, "|", @s$[])
 	IFZ s$[] THEN RETURN -1
 
 	'set the item
@@ -3946,7 +4046,7 @@ FUNCTION WinXListView_GetCheckState (hLV, iItem)
 		RETURN $$TRUE
 	ELSE
 		RETURN $$FALSE
-	END IF
+	ENDIF
 
 END FUNCTION
 '
@@ -4017,7 +4117,7 @@ FUNCTION WinXListView_GetSelection (hLV, iItems[])
 		IF SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED) THEN
 			iItems[slot] = i
 			INC slot
-		END IF
+		ENDIF
 	NEXT
 
 	RETURN cSelItems
@@ -4063,7 +4163,7 @@ FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
 		lvi.state = 0x2000 ' checked
 	ELSE
 		lvi.state = 0x1000 ' unchecked
-	END IF
+	ENDIF
 	lvi.mask = $$LVIF_STATE
 	lvi.stateMask = $$LVIS_STATEIMAGEMASK
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
@@ -4189,7 +4289,7 @@ FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
 		args[2] = &ret.securityDescriptor
 		args[3] = 0
 		XstCall (funcName$, "advapi32", @args[])
-	END IF
+	ENDIF
 
 	RETURN ret
 END FUNCTION
@@ -4255,7 +4355,7 @@ FUNCTION WinXNewMenu (STRING menu, firstID, isPopup)
 			INC cSep
 		ELSE
 			flags = 0
-		END IF
+		ENDIF
 		AppendMenuA (hMenu, $$MF_STRING|$$MF_ENABLED|flags, firstID+i-cSep, &items$[i])
 	NEXT
 
@@ -4323,7 +4423,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 		hblankM = SelectObject (hMem, hBmpMask)
 		BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
 		GOSUB makeMask
-	END IF
+	ENDIF
 
 	SelectObject (hSource, hblankS)
 	SelectObject (hMem, hblankM)
@@ -4360,7 +4460,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 		hblankM = SelectObject (hMem, hBmpMask)
 		BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
 		GOSUB makeMask
-	END IF
+	ENDIF
 
 	SelectObject (hSource, hblankS)
 	SelectObject (hMem, hblankM)
@@ -4385,7 +4485,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 					SetPixel (hSource, x, y, 0x00FFFFFF)
 				ELSE
 					SetPixel (hMem, x, y, 0x00000000)
-				END IF
+				ENDIF
 			NEXT
 		NEXT
 	END SUB
@@ -4409,7 +4509,7 @@ FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisabl
 '		SetPropA (hToolbar, &"customisationData", tbbd_addGroup ())
 '	ELSE
 '		SetPropA (hToolbar, &"customisationData", -1)
-'	END IF
+'	ENDIF
 	hToolbar = CreateWindowExA (0, &$$TOOLBARCLASSNAME, 0, style, 0, 0, 0, 0, 0, 0, GetModuleHandleA (0), 0)
 
 	SendMessageA (hToolbar, $$TB_SETEXTENDEDSTYLE, 0, $$TBSTYLE_EX_MIXEDBUTTONS|$$TBSTYLE_EX_DOUBLEBUFFER|$$TBSTYLE_EX_DRAWDDARROWS)
@@ -4464,12 +4564,12 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	IF x = -1 THEN
 		screenWidth  = GetSystemMetrics ($$SM_CXSCREEN)
 		x = (screenWidth - (rect.right-rect.left))/2
-	END IF
+	ENDIF
 
 	IF y = -1 THEN
 		screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
 		y = (screenHeight - (rect.bottom-rect.top))/2
-	END IF
+	ENDIF
 
 	hWnd = CreateWindowExA (exStyle, &"WinXMainClass", &title, style, x, y, _
 	rect.right-rect.left, rect.bottom-rect.top, hOwner, menu, hInst, 0)
@@ -4478,7 +4578,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	IF icon THEN
 		SendMessageA (hWnd, $$WM_SETICON, $$ICON_BIG, icon)
 		SendMessageA (hWnd, $$WM_SETICON, $$ICON_SMALL, icon)
-	END IF
+	ENDIF
 
 	'make a binding
 	binding.hwnd = hWnd
@@ -4607,7 +4707,7 @@ FUNCTION WinXPrint_PageSetup (parent)
 		pageSetupDlg.rtMargin.right = XLONG(DOUBLE(pageSetupDlg.rtMargin.right)*2.54)
 		pageSetupDlg.rtMargin.top = XLONG(DOUBLE(pageSetupDlg.rtMargin.top)*2.54)
 		pageSetupDlg.rtMargin.bottom = XLONG(DOUBLE(pageSetupDlg.rtMargin.bottom)*2.54)
-	END IF
+	ENDIF
 
 	IF PageSetupDlgA (&pageSetupDlg) THEN
 		printInfo.marginLeft = pageSetupDlg.rtMargin.left
@@ -4621,11 +4721,11 @@ FUNCTION WinXPrint_PageSetup (parent)
 			printInfo.marginRight = XLONG(DOUBLE(printInfo.marginRight) / 2.54)
 			printInfo.marginTop = XLONG(DOUBLE(printInfo.marginTop) / 2.54)
 			printInfo.marginBottom = XLONG(DOUBLE(printInfo.marginBottom) / 2.54)
-		END IF
+		ENDIF
 		RETURN $$TRUE
 	ELSE
 		RETURN $$FALSE
-	END IF
+	ENDIF
 END FUNCTION
 '
 ' #############################
@@ -4666,8 +4766,8 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			ELSE
 				printDlg.nFromPage = minPage
 				printDlg.nToPage = maxPage
-			END IF
-		END IF
+			ENDIF
+		ENDIF
 		printDlg.nMinPage = minPage
 		printDlg.nMaxPage = maxPage
 
@@ -4683,12 +4783,12 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 					rangeMin = 0	'selection
 				ELSE
 					rangeMax = -1	'all pages
-				END IF
-			END IF
+				ENDIF
+			ENDIF
 			hDC = printDlg.hdc
 		ELSE
 			RETURN 0
-		END IF
+		ENDIF
 	ELSE
 		IFZ printInfo.hDevMode THEN
 			' Get a DEVMODE structure for the default printer in the default configuration
@@ -4699,7 +4799,7 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			PrintDlgA (&printDlg)
 			printInfo.hDevMode = printDlg.hDevMode
 			printInfo.hDevNames = printDlg.hDevNames
-		END IF
+		ENDIF
 		' We need a pointer the the DEVMODE structure
 		pDevMode = GlobalLock (printInfo.hDevMode)
 		IF pDevMode THEN
@@ -4709,11 +4809,11 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 				ULONGAT(&devName$, i) = ULONGAT(pDevMode, i)
 			NEXT
 			hDC = CreateDCA (0, &devName$, 0, pDevMode)
-		END IF
+		ENDIF
 		GlobalUnlock (printInfo.hDevMode)
 
 		IF hDC = 0 THEN RETURN 0
-	END IF
+	ENDIF
 
 	' OK, we have a DC.  Now let's get the physical sizes
 	cxPhys = GetDeviceCaps(hDC, $$PHYSICALWIDTH) - (GetDeviceCaps (hDC, $$LOGPIXELSX)*(printInfo.marginLeft+printInfo.marginRight))\1000
@@ -4749,7 +4849,7 @@ FUNCTION WinXProgress_SetMarquee (hProg, enable)
 	ELSE
 		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) AND NOT $$PBS_MARQUEE)
 		SendMessageA (hProg, $$PBM_SETMARQUEE, $$FALSE, 50)
-	END IF
+	ENDIF
 	RETURN $$TRUE
 END FUNCTION
 '
@@ -5331,13 +5431,13 @@ FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						IF RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &result$, LEN(result$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
-					END IF
+					ENDIF
 				CASE $$REG_OPENED_EXISTING_KEY
 					GOSUB QueryVariable
 			END SELECT
 			RegCloseKey (hSubKey)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN ret
 
@@ -5346,12 +5446,12 @@ FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY
 			IF (type = $$REG_BINARY) THEN
 				result$ = NULL$(cbSize)
 				IF RegQueryValueExA (hSubKey, &value$, 0, &type, &result$, &cbSize) = $$ERROR_SUCCESS THEN ret = $$TRUE
-			END IF
+			ENDIF
 		ELSE
 			IF createOnOpenFail THEN
 				IF RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &result$, LEN(result$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
-			END IF
-		END IF
+			ENDIF
+		ENDIF
 	END SUB
 END FUNCTION
 '
@@ -5377,8 +5477,8 @@ FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY
 		ELSE
 			IF createOnOpenFail THEN
 				IF RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &result, 4) = $$ERROR_SUCCESS THEN ret = $$TRUE
-			END IF
-		END IF
+			ENDIF
+		ENDIF
 		RegCloseKey (hSubKey)
 	ELSE
 		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ|$$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
@@ -5386,13 +5486,13 @@ FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						IF RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &result, 4) = $$ERROR_SUCCESS THEN ret = $$TRUE
-					END IF
+					ENDIF
 				CASE $$REG_OPENED_EXISTING_KEY
 					IF RegQueryValueExA (hSubKey, &value$, 0, &type, &result, &four) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			END SELECT
 			RegCloseKey (hSubKey)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN ret
 END FUNCTION
@@ -5421,7 +5521,7 @@ FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECUR
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						IF RegSetValueExA (hSubKey, &value$, 0, $$REG_EXPAND_SZ, &result$, LEN(result$)+1) = $$ERROR_SUCCESS THEN ret = $$TRUE
-					END IF
+					ENDIF
 					EXIT SELECT
 					'
 				CASE $$REG_OPENED_EXISTING_KEY
@@ -5430,8 +5530,8 @@ FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECUR
 					'
 			END SELECT
 			RegCloseKey (hSubKey)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN ret
 
@@ -5441,13 +5541,13 @@ FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECUR
 				result$ = NULL$(cbSize)
 				IF RegQueryValueExA (hSubKey, &value$, 0, &type, &result$, &cbSize) = $$ERROR_SUCCESS THEN
 					ret = $$TRUE
-				END IF
-			END IF
+				ENDIF
+			ENDIF
 		ELSE
 			IF createOnOpenFail THEN
 				IF RegSetValueExA (hSubKey, &value$, 0, $$REG_EXPAND_SZ, &result$, LEN(result$)+1) = $$ERROR_SUCCESS THEN ret = $$TRUE
-			END IF
-		END IF
+			ENDIF
+		ENDIF
 	END SUB
 END FUNCTION
 '
@@ -5473,8 +5573,8 @@ FUNCTION WinXRegistry_WriteBin (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, b
 		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ|$$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
 			IF RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &buffer$, LEN(buffer$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			RegCloseKey (hSubKey)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN ret
 END FUNCTION
@@ -5501,8 +5601,8 @@ FUNCTION WinXRegistry_WriteInt (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, i
 		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ|$$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
 			IF RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &int, 4) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			RegCloseKey (hSubKey)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN ret
 END FUNCTION
@@ -5529,8 +5629,8 @@ FUNCTION WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa
 		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ|$$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
 			IF RegSetValueExA (hSubKey, &value$, 0, $$REG_SZ, &buffer$, LEN(buffer$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			RegCloseKey (hSubKey)
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN ret
 END FUNCTION
@@ -5593,7 +5693,7 @@ FUNCTION WinXScroll_Scroll (hWnd, direction, unitType, scrollingDirection)
 			CASE ELSE
 				RETURN $$FALSE
 		END SELECT
-	END IF
+	ENDIF
 
 	RETURN $$TRUE
 END FUNCTION
@@ -5874,9 +5974,9 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 			' if the control's style was not updated, report a failure
 			style = GetWindowLongA (hWnd, $$GWL_STYLE)
 			IF styleNew <> style THEN RETURN $$FALSE		' fail
-		END IF
+		ENDIF
 		'
-	END IF
+	ENDIF
 
 	IF addEx <> subEx THEN
 		'
@@ -5902,9 +6002,9 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 			' if the control's extended style was not updated, report a failure
 			styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 			IF styleExNew <> styleEx RETURN $$FALSE		' fail
-		END IF
+		ENDIF
 		'
-	END IF
+	ENDIF
 
 	RETURN $$TRUE
 
@@ -6005,7 +6105,7 @@ FUNCTION WinXSplitter_GetPos (series, hCtrl, @position, @docked)
 		IF autoSizerInfo[series, i].hwnd = hCtrl THEN
 			found = $$TRUE
 			EXIT DO
-		END IF
+		ENDIF
 		i = autoSizerInfo[series, i].nextItem
 	LOOP
 
@@ -6020,7 +6120,7 @@ FUNCTION WinXSplitter_GetPos (series, hCtrl, @position, @docked)
 	ELSE
 		position = autoSizerInfo[series, i].size
 		docked = $$FALSE
-	END IF
+	ENDIF
 
 	RETURN $$TRUE
 END FUNCTION
@@ -6049,7 +6149,7 @@ FUNCTION WinXSplitter_SetPos (series, hCtrl, position, docked)
 		IF autoSizerInfo[series, i].hwnd = hCtrl THEN
 			found = $$TRUE
 			EXIT DO
-		END IF
+		ENDIF
 		i = autoSizerInfo[series, i].nextItem
 	LOOP
 
@@ -6064,7 +6164,7 @@ FUNCTION WinXSplitter_SetPos (series, hCtrl, position, docked)
 	ELSE
 		autoSizerInfo[series, i].size = position
 		splitterInfo.docked = 0
-	END IF
+	ENDIF
 
 	SPLITTERINFO_Update (iSplitter, splitterInfo)
 
@@ -6099,7 +6199,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtrl, min, max, dock)
 		IF autoSizerInfo[series, i].hwnd = hCtrl THEN
 			found = $$TRUE
 			EXIT DO
-		END IF
+		ENDIF
 		i = autoSizerInfo[series, i].nextItem
 	LOOP
 
@@ -6115,10 +6215,10 @@ FUNCTION WinXSplitter_SetProperties (series, hCtrl, min, max, dock)
 			splitterInfo.dock = $$DOCK_BACKWARD
 		ELSE
 			splitterInfo.dock = $$DOCK_FOWARD
-		END IF
+		ENDIF
 	ELSE
 		splitterInfo.dock = $$DOCK_DISABLED
-	END IF
+	ENDIF
 
 	SPLITTERINFO_Update (iSplitter, splitterInfo)
 
@@ -6176,13 +6276,13 @@ FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 			IF part > binding.statusParts THEN
 				err$ = "partition " + STRING$ (part) + " should be <= " + STRING$ (binding.statusParts)
 				bOK = $$FALSE ' fail
-			END IF
+			ENDIF
 			'
 	END SELECT
 	IFF bOK THEN
 		text = "Error: " + err$
 		part = 0 ' show the error message in the 1st partition
-	END IF
+	ENDIF
 
 	ret = SendMessageA (binding.hStatus, $$SB_SETTEXT, part, &text)
 	IFZ ret THEN bOK = $$FALSE ' fail
@@ -6288,7 +6388,7 @@ FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 		SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_VALID, &time)
 	ELSE
 		SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_NONE, 0)
-	END IF
+	ENDIF
 END FUNCTION
 '
 ' ###################################
@@ -6518,7 +6618,7 @@ FUNCTION WinXTreeView_AddCheckBoxes (hTV)
 	IFZ (style & $$TVS_CHECKBOXES) THEN
 		style = style | $$TVS_CHECKBOXES
 		SetWindowLongA (hTV, $$GWL_STYLE, style)
-	END IF
+	ENDIF
 	RETURN $$TRUE ' success
 
 END FUNCTION
@@ -6571,7 +6671,7 @@ FUNCTION WinXTreeView_CollapseItem (hTV, hItem)
 		RETURN $$FALSE ' fail
 	ELSE
 		RETURN $$TRUE ' success
-	END IF
+	ENDIF
 
 END FUNCTION
 '
@@ -6615,7 +6715,7 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 			prevChild = child
 			child = WinXTreeView_GetNextItem (hTV, prevChild)
 		LOOP
-	END IF
+	ENDIF
 
 	RETURN tvis.item.hItem
 END FUNCTION
@@ -6693,7 +6793,7 @@ FUNCTION WinXTreeView_ExpandItem (hTV, hItem)
 		RETURN $$FALSE ' fail
 	ELSE
 		RETURN $$TRUE ' success
-	END IF
+	ENDIF
 
 END FUNCTION
 '
@@ -6716,7 +6816,7 @@ FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)
 	hItemFound = 0
 	IFZ hItem THEN
 		hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
-	END IF
+	ENDIF
 
 	DO UNTIL hItem = 0
 		'
@@ -6740,7 +6840,7 @@ FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)
 			hItemFound = WinXTreeView_FindItem (hTV, hItem, find$)
 			' Did we find it?
 			IF hItemFound THEN EXIT DO' found it
-		END IF
+		ENDIF
 		' Go to next sibling item.
 		hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_NEXT, hItem)
 	LOOP
@@ -6790,7 +6890,7 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 		RETURN $$TRUE
 	ELSE
 		RETURN $$FALSE ' *not* checked
-	END IF
+	ENDIF
 
 END FUNCTION
 '
@@ -6951,7 +7051,7 @@ FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked)
 		tvi.state = 0x2000 ' checked
 	ELSE
 		tvi.state = 0x1000 ' unchecked
-	END IF
+	ENDIF
 	tvi.hItem = hItem
 	tvi.mask = $$TVIF_STATE
 	tvi.stateMask = $$TVIS_STATEIMAGEMASK
@@ -6997,12 +7097,12 @@ FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 		ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, nodeRoot)
 	ELSE
 		ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
-	END IF
+	ENDIF
 	IFZ ret THEN
 		RETURN $$FALSE ' fail
 	ELSE
 		RETURN $$TRUE ' success
-	END IF
+	ENDIF
 
 END FUNCTION
 '
@@ -7030,7 +7130,7 @@ FUNCTION WinXUndo (hWnd, idCtr)
 	ELSE
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 		DeleteObject(record.hUpdateRegion)
-	END IF
+	ENDIF
 	IF record.draw = &drawText() THEN STRING_Delete (record.text.iString)
 	AUTODRAWRECORD_Update (idCtr, record)
 '	LinkedList_DeleteItem (@autoDraw, idCtr)
@@ -7137,17 +7237,17 @@ FUNCTION CompareLVItems (item1, item2, hLV)
 		IF a${i} < b${i} THEN
 			ret = -1
 			EXIT FOR
-		END IF
+		ENDIF
 		IF a${i} > b${i} THEN
 			ret = 1
 			EXIT FOR
-		END IF
+		ENDIF
 	NEXT
 
 	IF ret = 0 THEN
 		IF UBOUND(a$) < UBOUND(b$) THEN ret = -1
 		IF UBOUND(a$) > UBOUND(b$) THEN ret = 1
-	END IF
+	ENDIF
 
 	IF lvs_desc THEN RETURN ret*-1 ELSE RETURN ret
 END FUNCTION
@@ -7288,22 +7388,22 @@ FUNCTION autoDraw_draw (hdc, group, x0, y0)
 		IF record.hPen != 0 && record.hPen != hPen THEN
 			hPen = record.hPen
 			SelectObject (hdc, record.hPen)
-		END IF
+		ENDIF
 		IF record.hBrush != 0 && record.hBrush != hBrush THEN
 			hBrush = record.hBrush
 			SelectObject (hdc, record.hBrush)
-		END IF
+		ENDIF
 		IF record.hFont != 0 && record.hFont != hFont THEN
 			hFont = record.hFont
 			SelectObject (hdc, record.hFont)
-		END IF
+		ENDIF
 
 		IF record.toDelete THEN
 			AUTODRAWRECORD_Delete (iData)
 			LinkedList_DeleteThis (hWalk, @autoDraw)
 		ELSE
 			@record.draw (hdc, record, x0, y0)
-		END IF
+		ENDIF
 	LOOP
 	LinkedList_EndWalk (hWalk)
 
@@ -7333,7 +7433,7 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 				autoSizerBlock.size = autoSizerBlock.size-autoSizerBlock.space
 			ELSE
 				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size*nh
-			END IF
+			ENDIF
 
 			IF autoSizerBlock.x <= 1 THEN autoSizerBlock.x = autoSizerBlock.x*nw
 			IF autoSizerBlock.y <= 1 THEN autoSizerBlock.y = autoSizerBlock.y*autoSizerBlock.size
@@ -7357,7 +7457,7 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 				SPLITTERINFO_Get (iSplitter, @splitterInfo)
 				IF direction AND $$DIR_REVERSE THEN splitterInfo.maxSize = currPos-autoSizerBlock.space ELSE splitterInfo.maxSize = nh-currPos-autoSizerBlock.space
 				SPLITTERINFO_Update (iSplitter, splitterInfo)
-			END IF
+			ENDIF
 
 			IF direction AND $$DIR_REVERSE THEN boxY = boxY-boxH
 		CASE $$DIR_HORIZ
@@ -7369,7 +7469,7 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 				autoSizerBlock.size = autoSizerBlock.size-autoSizerBlock.space
 			ELSE
 				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size*nw
-			END IF
+			ENDIF
 
 			IF autoSizerBlock.x <= 1 THEN autoSizerBlock.x = autoSizerBlock.x*autoSizerBlock.size
 			IF autoSizerBlock.y <= 1 THEN autoSizerBlock.y = autoSizerBlock.y*nh
@@ -7392,7 +7492,7 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 				SPLITTERINFO_Get (iSplitter, @splitterInfo)
 				IF direction AND $$DIR_REVERSE THEN splitterInfo.maxSize = currPos-autoSizerBlock.space ELSE splitterInfo.maxSize = nw-currPos-autoSizerBlock.space
 				SPLITTERINFO_Update (iSplitter, splitterInfo)
-			END IF
+			ENDIF
 
 			IF direction AND $$DIR_REVERSE THEN boxX = boxX-boxW
 	END SELECT
@@ -7406,12 +7506,12 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 		autoSizerBlock.x = (boxW-autoSizerBlock.w)\2
 	ELSE
 		IF autoSizerBlock.flags AND $$SIZER_XRELRIGHT THEN autoSizerBlock.x = boxW-autoSizerBlock.x
-	END IF
+	ENDIF
 	IF autoSizerBlock.y < 0 THEN
 		autoSizerBlock.y = (boxH-autoSizerBlock.h)\2
 	ELSE
 		IF autoSizerBlock.flags AND $$SIZER_YRELBOTTOM THEN autoSizerBlock.y = boxH-autoSizerBlock.y
-	END IF
+	ENDIF
 
 	IF autoSizerBlock.flags AND $$SIZER_SERIES THEN
 		autoSizerInfo_sizeGroup (autoSizerBlock.hwnd, autoSizerBlock.x+boxX, autoSizerBlock.y+boxY, autoSizerBlock.w, autoSizerBlock.h)
@@ -7422,26 +7522,26 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 		ELSE
 			ShowWindow (autoSizerBlock.hwnd, $$SW_SHOW)
 			MoveWindow (autoSizerBlock.hwnd, autoSizerBlock.x+boxX, autoSizerBlock.y+boxY, autoSizerBlock.w, autoSizerBlock.h, $$TRUE)
-		END IF
+		ENDIF
 
 		leftInfo = GetPropA (autoSizerBlock.hwnd, &"WinXLeftSubSizer")
 		rightInfo = GetPropA (autoSizerBlock.hwnd, &"WinXRightSubSizer")
 		IF leftInfo THEN
 			series = @leftInfo(autoSizerBlock.hwnd, &rect)
 			autoSizerInfo_sizeGroup (series, autoSizerBlock.x+boxX+rect.left, autoSizerBlock.y+boxY+rect.top, (rect.right-rect.left), (rect.bottom-rect.top))
-		END IF
+		ENDIF
 		IF rightInfo THEN
 			series = @rightInfo(autoSizerBlock.hwnd, &rect)
 			autoSizerInfo_sizeGroup (series, autoSizerBlock.x+boxX+rect.left, _
 			autoSizerBlock.y+boxY+rect.top, (rect.right-rect.left), (rect.bottom-rect.top))
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	IF direction AND $$DIR_REVERSE THEN
 		RETURN currPos-autoSizerBlock.space-autoSizerBlock.size
 	ELSE
 		RETURN currPos+autoSizerBlock.space+autoSizerBlock.size
-	END IF
+	ENDIF
 END FUNCTION
 '
 ' ###############################
@@ -7464,7 +7564,7 @@ FUNCTION autoSizerInfo_add (group, AUTOSIZERINFO autoSizerBlock)
 		IFZ autoSizerInfo[group,i].hwnd THEN
 			slot = i
 			EXIT FOR
-		END IF
+		ENDIF
 	NEXT
 
 	IF slot = -1 THEN
@@ -7472,7 +7572,7 @@ FUNCTION autoSizerInfo_add (group, AUTOSIZERINFO autoSizerBlock)
 		SWAP autoSizerInfoLocal[], autoSizerInfo[group,]
 		REDIM autoSizerInfoLocal[((UBOUND(autoSizerInfoLocal[])+1)<<1)-1]
 		SWAP autoSizerInfoLocal[], autoSizerInfo[group,]
-	END IF
+	ENDIF
 
 	autoSizerInfo[group, slot] = autoSizerBlock
 
@@ -7488,7 +7588,7 @@ FUNCTION autoSizerInfo_add (group, AUTOSIZERINFO autoSizerBlock)
 		autoSizerInfo[group,slot].prevItem = autoSizerInfoUM[group].lastItem
 		autoSizerInfo[group, autoSizerInfoUM[group].lastItem].nextItem = slot
 		autoSizerInfoUM[group].lastItem = slot
-	END IF
+	ENDIF
 
 	RETURN slot
 END FUNCTION
@@ -7509,14 +7609,14 @@ FUNCTION autoSizerInfo_addGroup (direction)
 		IFF autoSizerInfoUM[i].inUse THEN
 			slot = i
 			EXIT FOR
-		END IF
+		ENDIF
 	NEXT
 
 	IF slot = -1 THEN
 		slot = UBOUND(autoSizerInfoUM[])+1
 		REDIM autoSizerInfoUM[((UBOUND(autoSizerInfoUM[])+1)<<1)-1]
 		REDIM autoSizerInfo[UBOUND(autoSizerInfoUM[]),]
-	END IF
+	ENDIF
 
 	autoSizerInfoUM[slot].inUse = $$TRUE
 	autoSizerInfoUM[slot].direction = direction
@@ -7558,8 +7658,8 @@ FUNCTION autoSizerInfo_delete (group, idCtr)
 		ELSE
 			autoSizerInfo[group, autoSizerInfo[group,idCtr].nextItem].prevItem = autoSizerInfo[group,idCtr].prevItem
 			autoSizerInfo[group, autoSizerInfo[group,idCtr].prevItem].nextItem = autoSizerInfo[group,idCtr].nextItem
-		END IF
-	END IF
+		ENDIF
+	ENDIF
 
 	RETURN $$TRUE
 END FUNCTION
@@ -7624,7 +7724,7 @@ FUNCTION autoSizerInfo_showGroup (group, visible)
 	DO WHILE i > -1
 		IF autoSizerInfo[group, i].hwnd THEN
 			ShowWindow (autoSizerInfo[group, i].hwnd, command)
-		END IF
+		ENDIF
 
 		i = autoSizerInfo[group, i].nextItem
 	LOOP
@@ -7656,14 +7756,14 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 		END SELECT
 	ELSE
 		currPos = 0
-	END IF
+	ENDIF
 
 	#hWinPosInfo = BeginDeferWindowPos (10)
 	i = autoSizerInfoUM[group].firstItem
 	DO WHILE i > -1
 		IF autoSizerInfo[group, i].hwnd THEN
 			currPos = autoSizer (autoSizerInfo[group,i], autoSizerInfoUM[group].direction, x0, y0, w, h, currPos)
-		END IF
+		ENDIF
 
 		i = autoSizerInfo[group, i].nextItem
 	LOOP
@@ -7707,14 +7807,14 @@ FUNCTION binding_add (BINDING binding)
 		IFZ bindings[i].hwnd THEN
 			slot = i
 			EXIT FOR
-		END IF
+		ENDIF
 	NEXT
 
 	'allocate more memory if needed
 	IF slot = -1 THEN
 		slot = UBOUND(bindings[])+1
 		REDIM bindings[((UBOUND(bindings[])+1)<<1)-1]
-	END IF
+	ENDIF
 
 	'set the binding
 	bindings[slot] = binding
@@ -7884,7 +7984,7 @@ FUNCTION VOID drawImage (hdc, AUTODRAWRECORD record, x0, y0)
 	ELSE
 		BitBlt (hdc, record.image.x-x0, record.image.y-y0, record.image.w, record.image.h, hdcSrc, _
 		record.image.xSrc, record.image.ySrc, $$SRCCOPY)
-	END IF
+	ENDIF
 	SelectObject (hdcSrc, hOld)
 END FUNCTION
 '
@@ -7938,7 +8038,7 @@ FUNCTION VOID drawText (hdc, AUTODRAWRECORD record, x0, y0)
 	ELSE
 		SetBkMode (hdc, $$OPAQUE)
 		SetBkColor (hdc, record.text.backColour)
-	END IF
+	ENDIF
 	STRING_Get (record.text.iString, @stri$)
 	ExtTextOutA (hdc, record.text.x-x0, record.text.y-y0, options, 0, &stri$, LEN(stri$), 0)
 END FUNCTION
@@ -7985,7 +8085,7 @@ FUNCTION handler_add (group, MSGHANDLER handler)
 		IF handlers[group,i].msg = 0 THEN
 			slot = i
 			EXIT FOR
-		END IF
+		ENDIF
 	NEXT
 
 	IF slot = -1 THEN	'allocate more memmory
@@ -7993,7 +8093,7 @@ FUNCTION handler_add (group, MSGHANDLER handler)
 		SWAP group[], handlers[group,]
 		REDIM group[((UBOUND(group[])+1)<<1)-1]
 		SWAP group[], handlers[group,]
-	END IF
+	ENDIF
 
 	'now finish it off
 	handlers[group,slot] = handler
@@ -8014,14 +8114,14 @@ FUNCTION handler_addGroup ()
 		IFZ handlersUM[i] THEN
 			slot = i
 			EXIT FOR
-		END IF
+		ENDIF
 	NEXT
 
 	IF slot = -1 THEN
 		slot = UBOUND(handlersUM[])+1
 		REDIM handlersUM[((UBOUND(handlersUM[])+1)<<1)-1]
 		REDIM handlers[UBOUND(handlersUM[]),]
-	END IF
+	ENDIF
 
 	handlersUM[slot] = $$TRUE
 
@@ -8215,7 +8315,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	'call any associated message handler
 	IF handler_call (binding.msgHandlers, @retCode, hwnd, msg, wParam, lParam) THEN
 		handled = $$TRUE
-	END IF
+	ENDIF
 
 	'and handle the message
 	SELECT CASE msg
@@ -8239,14 +8339,14 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				binding.hwndNextClipViewer = lParam
 			ELSE
 				IF binding.hwndNextClipViewer THEN SendMessageA (binding.hwndNextClipViewer, $$WM_CHANGECBCHAIN, wParam, lParam)
-			END IF
+			ENDIF
 			RETURN 0
 
 		CASE $$WM_DESTROYCLIPBOARD
 			IF hClipMem THEN
 				GlobalFree (hClipMem)
 				hClipMem = 0 'Guy-18dec08-prevents from freeing twice
-			END IF
+			ENDIF
 
 		CASE $$WM_DROPFILES
 			DragQueryPoint (wParam, &pt)
@@ -8260,7 +8360,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				DragFinish (wParam)
 
 				RETURN @binding.onDropFiles (hwnd, pt.x, pt.y, @files$[])
-			END IF
+			ENDIF
 
 			DragFinish (wParam)
 			RETURN 0
@@ -8271,7 +8371,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				RETURN 0
 			ELSE
 				RETURN DefWindowProcA (hwnd, msg, wParam, lParam)
-			END IF
+			ENDIF
 		CASE $$WM_PAINT
 			hDC = BeginPaint (hwnd, &ps)
 
@@ -8284,7 +8384,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 '					xOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
 '					GetScrollInfo (hwnd, $$SB_VERT, &si)
 '					yOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
-'				END IF
+'				ENDIF
 			autoDraw_draw(hDC, binding.autoDrawInfo, xOff, yOff)
 
 			retCode = @binding.paint(hwnd, hDC)
@@ -8313,7 +8413,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				sb = $$SB_VERT
 				dir = $$DIR_VERT
 				scrollUnit = binding.vScrollUnit
-			END IF
+			ENDIF
 
 			si.cbSize = SIZE(SCROLLINFO)
 			si.fMask = $$SIF_ALL|$$SIF_DISABLENOSCROLL
@@ -8336,7 +8436,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 					CASE $$SB_THUMBTRACK
 						si.nPos = si.nTrackPos
 				END SELECT
-			END IF
+			ENDIF
 
 			SetScrollInfo (hwnd, sb, &si, $$TRUE)
 			RETURN @binding.onScroll(si.nPos, hwnd, dir)
@@ -8347,7 +8447,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			'IF hwnd != wParam THEN
 			'	SetFocus (hwnd)
 			'	RETURN $$MA_NOACTIVATE
-			'END IF
+			'ENDIF
 			'RETURN $$MA_ACTIVATE
 			'WinXGetMousePos (wParam, @x, @y)
 			'hChild = wParam
@@ -8364,7 +8464,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			IF binding.hCursor && LOWORD(lParam) = $$HTCLIENT THEN
 				SetCursor (binding.hCursor)
 				RETURN $$TRUE
-			END IF
+			ENDIF
 		CASE $$WM_MOUSEMOVE
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
@@ -8378,7 +8478,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				binding_update (idBinding, binding)
 
 				@binding.onEnterLeave (hwnd, $$TRUE)
-			END IF
+			ENDIF
 
 			IF (tvDragButton = $$MBT_LEFT) || (tvDragButton = $$MBT_RIGHT) THEN
 				GOSUB dragTreeViewItem
@@ -8386,7 +8486,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				RETURN 0
 			ELSE
 				RETURN @binding.onMouseMove(hwnd, LOWORD(lParam), HIWORD(lParam))
-			END IF
+			ENDIF
 		CASE $$WM_MOUSELEAVE
 				binding.isMouseInWindow = $$FALSE
 				binding_update (idBinding, binding)
@@ -8415,7 +8515,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				RETURN 0
 			ELSE
 				RETURN @binding.onMouseUp(hwnd, $$MBT_LEFT,LOWORD(lParam), HIWORD(lParam))
-			END IF
+			ENDIF
 		CASE $$WM_MBUTTONUP
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
@@ -8430,7 +8530,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				RETURN 0
 			ELSE
 				RETURN @binding.onMouseUp(hwnd, $$MBT_RIGHT, LOWORD(lParam), HIWORD(lParam))
-			END IF
+			ENDIF
 		CASE $$WM_MOUSEWHEEL
 			' This message is broken.  It gets passed to active window rather than the window under the mouse
 
@@ -8452,8 +8552,8 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 '					RETURN @innerBinding.onMouseWheel(hChild, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
 '				ELSE
 '					RETURN @binding.onMouseWheel(hwnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
-'				END IF
-'			END IF
+'				ENDIF
+'			ENDIF
 		CASE $$WM_KEYDOWN
 			RETURN @binding.onKeyDown(hwnd, wParam)
 		CASE $$WM_KEYUP
@@ -8501,22 +8601,22 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 										LineTo (hDC, rect.right-3, rect.top+2)
 									ReleaseDC (dli.hWnd, hDC)
 									dragItem = item
-								END IF
+								ENDIF
 								RETURN $$DL_MOVECURSOR
 							ELSE
 								IF item != dragItem THEN
 									InvalidateRect (dli.hWnd, 0, $$TRUE)
 									dragItem = item
-								END IF
+								ENDIF
 								RETURN $$DL_STOPCURSOR
-							END IF
+							ENDIF
 						ELSE
 							IF item != dragItem THEN
 								InvalidateRect (dli.hWnd, 0, $$TRUE)
 								dragItem = -1
-							END IF
+							ENDIF
 							RETURN $$DL_STOPCURSOR
-						END IF
+						ENDIF
 					CASE $$DL_DROPPED
 						InvalidateRect (dli.hWnd, 0, $$TRUE)
 						item = ApiLBItemFromPt (dli.hWnd, dli.ptCursor.x, dli.ptCursor.y, $$TRUE)
@@ -8524,7 +8624,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 						@binding.onDrag(wParam, $$DRAG_DONE, item, dli.ptCursor.x, dli.ptCursor.y)
 						WinXListBox_RemoveItem (dli.hWnd, -1)
 				END SELECT
-			END IF
+			ENDIF
 			handled = $$TRUE
 
 		CASE $$WM_GETMINMAXINFO
@@ -8550,7 +8650,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 						ImageList_DragShowNolock ($$FALSE)
 						SendMessageA (tvDragging, $$TVM_EXPAND, $$TVE_EXPAND, dragItem)
 						ImageList_DragShowNolock ($$TRUE)
-					END IF
+					ENDIF
 					KillTimer (hwnd, -1)
 			END SELECT
 			RETURN 0
@@ -8561,7 +8661,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				PostQuitMessage(0)
 			ELSE
 				RETURN @binding.onClose (hwnd)
-			END IF
+			ENDIF
 
 		CASE $$WM_DESTROY
 			ChangeClipboardChain (hwnd, binding.hwndNextClipViewer)
@@ -8592,12 +8692,12 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			SendMessageA (tvDragging, $$TVM_SELECTITEM, $$TVGN_DROPHILITE, tvHit.hItem)
 			ImageList_DragShowNolock ($$TRUE)
 			dragItem = tvHit.hItem
-		END IF
+		ENDIF
 
 		IF WinXTreeView_GetChildItem (tvDragging, tvHit.hItem) != 0 THEN
 			SetTimer (hwnd, -1, 400, 0)
 			lastDragItem = dragItem
-		END IF
+		ENDIF
 
 		retCode = @binding.onDrag(GetDlgCtrlID (tvDragging), $$DRAG_DRAGGING, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
 		ImageList_DragMove (pt.x, pt.y)
@@ -8691,7 +8791,7 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 				ImageList_DragEnter (GetDesktopWindow (), rect.left, rect.top)
 
 				SetCapture (hwnd)
-			END IF
+			ENDIF
 			XLONGAT(&&nmtv) = pNmtv
 		CASE $$TCN_SELCHANGE
 			currTab = WinXTabs_GetCurrentTab (nmhdr.hwndFrom)
@@ -8703,7 +8803,7 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$TRUE)
 					GetClientRect (GetParent(nmhdr.hwndFrom), &rect)
 					sizeWindow (GetParent(nmhdr.hwndFrom), rect.right-rect.left, rect.bottom-rect.top)
-				END IF
+				ENDIF
 			NEXT
 		CASE $$LVN_COLUMNCLICK
 			pNmlv = &nmlv
@@ -8746,7 +8846,7 @@ FUNCTION printAbortProc (hdc, nCode)
 		IF !IsDialogMessageA (printInfo.hCancelDlg, &msg) THEN
 			TranslateMessage (&msg)
 			DispatchMessageA (&msg)
-		END IF
+		ENDIF
 	LOOP
 
 	RETURN printInfo.continuePrinting
@@ -8773,7 +8873,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	IF w > maxX THEN
 		SendMessageA (binding.hBar, $$WM_SIZE, wParam, lParam)
 		maxX = w
-	END IF
+	ENDIF
 
 	'handle the status bar
 	'first, resize the partitions
@@ -8972,7 +9072,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				mousePos.x = LOWORD(lParam)
 				mousePos.y = HIWORD(lParam)
 				ClientToScreen (hWnd, &mousePos)
-			END IF
+			ENDIF
 
 			RETURN 0
 
@@ -8985,7 +9085,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				SetCursor (LoadCursorA (0, $$IDC_HAND))
 			ELSE
 				GOSUB SetSizeCursor
-			END IF
+			ENDIF
 
 			RETURN $$TRUE
 		CASE $$WM_MOUSEMOVE
@@ -8997,15 +9097,15 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				IFF inDock THEN
 					'SetCursor (LoadCursorA (0, $$IDC_HAND))
 					InvalidateRect (hWnd, 0, $$TRUE)
-				END IF
+				ENDIF
 				inDock = $$TRUE
 			ELSE
 				IF inDock THEN
 					'GOSUB SetSizeCursor
 					InvalidateRect (hWnd, 0, $$TRUE)
-				END IF
+				ENDIF
 				inDock = $$FALSE
-			END IF
+			ENDIF
 
 			IFF mouseIn THEN
 				GetCursorPos (&pt)
@@ -9017,14 +9117,14 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				ELSE
 					GOSUB SetSizeCursor
 					inDock = $$FALSE
-				END IF
+				ENDIF
 
 				tme.cbSize = SIZE(tme)
 				tme.dwFlags = $$TME_LEAVE
 				tme.hwndTrack = hWnd
 				TrackMouseEvent (&tme)
 				mouseIn = $$TRUE
-			END IF
+			ENDIF
 
 			IF dragging THEN
 				newMousePos.x = LOWORD(lParam)
@@ -9049,21 +9149,21 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 						autoSizerBlock.size = splitterInfo.min
 					ELSE
 						IF splitterInfo.max && autoSizerBlock.size > splitterInfo.max THEN autoSizerBlock.size = splitterInfo.max
-					END IF
+					ENDIF
 				ELSE
 					autoSizerBlock.size = autoSizerBlock.size+delta
 					IF splitterInfo.max && autoSizerBlock.size > splitterInfo.max THEN
 						autoSizerBlock.size = splitterInfo.max
 					ELSE
 						IF splitterInfo.min && autoSizerBlock.size < splitterInfo.min THEN autoSizerBlock.size = splitterInfo.min
-					END IF
-				END IF
+					ENDIF
+				ENDIF
 
 				IF autoSizerBlock.size < 8 THEN
 					autoSizerBlock.size = 8
 				ELSE
 					IF autoSizerBlock.size > splitterInfo.maxSize THEN autoSizerBlock.size = splitterInfo.maxSize
-				END IF
+				ENDIF
 
 				autoSizerInfo_update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
 				hParent = GetParent (hWnd)
@@ -9071,7 +9171,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				sizeWindow (hParent, rect.right-rect.left, rect.bottom-rect.top)
 
 				mousePos = newMousePos
-			END IF
+			ENDIF
 
 			RETURN 0
 		CASE $$WM_LBUTTONUP
@@ -9101,11 +9201,11 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 					hParent = GetParent (hWnd)
 					GetClientRect (hParent, &rect)
 					sizeWindow (hParent, rect.right-rect.left, rect.bottom-rect.top)
-				END IF
+				ENDIF
 			ELSE
 				dragging = $$FALSE
 				ReleaseCapture ()
-			END IF
+			ENDIF
 
 			RETURN 0
 		CASE $$WM_MOUSELEAVE
@@ -9189,7 +9289,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 					dock.left = 0
 					dock.right = 8
 			END SELECT
-		END IF
+		ENDIF
 	END SUB
 
 	SUB SetSizeCursor
@@ -9197,7 +9297,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 			SetCursor (LoadCursorA (0, $$IDC_SIZEWE))		' vertical bar
 		ELSE
 			SetCursor (LoadCursorA (0, $$IDC_SIZENS))		' horizontal bar
-		END IF
+		ENDIF
 	END SUB
 END FUNCTION
 '
@@ -9208,84 +9308,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
-END FUNCTION
-'
-' #########################
-' #####  WinXAddGrid  #####
-' #########################
-' Adds a new grid control
-' parent = the window to add the grid to
-' title = the initial text to appear in the grid - not all controls use this parameter
-' idCtr = the unique idCtr to identify the grid
-' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
-' exStyle = the extended style of the grid.  For most controls this will be 0
-' returns the handle of the grid, or 0 on fail
-FUNCTION WinXAddGrid (parent, STRING title, idCtr)
-	IFZ idCtr THEN RETURN 0 ' error
-	hGrid = CreateWindowExA (0, &$$XBGRIDCLASSNAME, &title, $$WS_CHILD | $$WS_VISIBLE, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	RETURN hGrid
-END FUNCTION
-'
-' ##################################
-' #####  WinXGrid_SetHeadings  #####
-' ##################################
-' Sets the grid's column headings
-' STRING text = the text for the headings in the form "head1|head2..."
-' returns $$TRUE on error
-FUNCTION WinXGrid_SetHeadings (hGrid, STRING text)
-
-	IFZ hGrid THEN RETURN $$TRUE ' error
-	IFZ text THEN RETURN $$TRUE ' error
-
-	'parse the string
-	XstParseStringToStringArray (text, "|", @s$[])
-	IFZ s$[] THEN RETURN $$TRUE
-
-	upp = UBOUND(s$[])
-
-	'set the headings
-	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
-	SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
-	SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove 2nd heading "A B C..."
-	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
-	FOR i = 0 TO upp
-		st$ = TRIM$ (s$[i])
-		IF st$ THEN PutCell(hGrid, 0, i + 1, st$)
-	NEXT i
-
-	RETURN $$FALSE
-END FUNCTION
-'
-' #############################
-' #####  WinXGrid_AddRow  #####
-' #############################
-' Adds a new row to a grid
-' row = the number at which to insert the row, 0 to add to the end of the grid
-' STRING text = the text for the row in the form "col1|col2..."
-' returns the number to the row or 0 on error
-FUNCTION WinXGrid_AddRow (hGrid, row, STRING text)
-
-	IFZ hGrid THEN RETURN 0 ' error
-	IFZ text THEN RETURN 0 ' error
-
-	'parse the string
-	XstParseStringToStringArray (text, "|", @s$[])
-	IFZ s$[] THEN RETURN -1 ' error
-
-	rows = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF row < 1 || row > rows THEN row = rows + 1
-
-	'set the subitems
-	upp = UBOUND(s$[])
-	cols = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	IF upp >= cols THEN upp = cols - 1
-
-	FOR i = 0 TO upp
-		st$ = TRIM$ (s$[i])
-		IF st$ THEN PutCell(hGrid, row, i + 1, st$)
-	NEXT i
-
-	RETURN row
 END FUNCTION
 '
 ' #######################
