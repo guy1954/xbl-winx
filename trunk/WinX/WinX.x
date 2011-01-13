@@ -74,6 +74,7 @@ VERSION "0.6.0.13"
 '                      (shows the check box "Read Only" and checks it initially).
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
+' 0.6.0.13-Guy-01jan11-added grid support.
 '
 ' Win32API DLL headers
 '
@@ -684,6 +685,7 @@ DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerato
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
 'new in 0.6.0.13
+DECLARE FUNCTION WinXSetDefaultFont (hCtr)
 DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
 DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, text$)
 DECLARE FUNCTION WinXGrid_AddRow (hGrid, iRow, text$)
@@ -900,8 +902,10 @@ END FUNCTION
 ' returns the handle to the control or 0 on fail
 FUNCTION WinXAddAnimation (parent, STRING file, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	'Guy-14sep09-style = $$WS_CHILD | $$WS_VISIBLE | $$ACS_CENTER | $$WS_GROUP | $$WS_TABSTOP | $$ACS_CENTER ' $$ACS_CENTER is twice
-	style = $$WS_CHILD | $$WS_VISIBLE | $$ACS_CENTER | $$WS_GROUP | $$WS_TABSTOP
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$ACS_CENTER|$$WS_GROUP|$$WS_TABSTOP
+
 	hAni = CreateWindowExA (0, &"SysAnimate32", 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	SendMessageA (hAni, $$ACM_OPENA, 0, &file)
@@ -937,8 +941,10 @@ END FUNCTION
 '
 FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	'get the style
-	style = $$BS_PUSHBUTTON
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$BS_PUSHBUTTON|$$WS_TABSTOP
+
 	IF hImage THEN
 		SELECT CASE LCASE$(title)
 			CASE "icon"
@@ -951,23 +957,16 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 	ENDIF
 
 	'make the button
-	hCtr = CreateWindowExA (0, &"button", &title, style|$$WS_TABSTOP|$$WS_GROUP|$$WS_CHILD|$$WS_VISIBLE, _
-	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &"button", &title, style,	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	IFZ hCtr THEN RETURN 0 ' error
 
-	'give it a nice font
-	'------------------------------------------------------------------------------------------
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
 
 	'add the image
 	IF hImage THEN
-		SendMessageA (hCtr, $$BM_SETIMAGE, imageType, hImage)
-	ELSE
-		'Guy-24feb09-give it a nice font
-		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-		DeleteObject (hFont) ' release the font
+		ret = SendMessageA (hCtr, $$BM_SETIMAGE, imageType, hImage)
+		IFZ ret THEN WinXSetText (hCtr, "err "+title)		' error
 	ENDIF
 
 	'and we're done
@@ -986,14 +985,13 @@ FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
 	RECT rect
 	IFZ idCtr THEN RETURN 0 ' error
 
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
+
 	hCtr = CreateWindowExA (0, &$$MONTHCAL_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
 
 	SendMessageA (hCtr, $$MCM_GETMINREQRECT, 0, &rect)
 
@@ -1015,16 +1013,18 @@ END FUNCTION
 ' returns the handle to the check button or 0 on fail
 FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$BS_AUTOCHECKBOX
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$BS_AUTOCHECKBOX
+
 	IF isFirst THEN style = style|$$WS_GROUP
 	IF pushlike THEN style = style|$$BS_PUSHLIKE
+
 	hCtr = CreateWindowExA (0, &"BUTTON", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	RETURN hCtr
 END FUNCTION
 '
@@ -1039,7 +1039,10 @@ END FUNCTION
 ' returns the handle to the combobox, or 0 on fail
 FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
+
 	IF canEdit THEN style = style|$$CBS_DROPDOWN ELSE style = style|$$CBS_DROPDOWNLIST
 	'style = style|$$CBS_SIMPLE
 
@@ -1062,7 +1065,11 @@ END FUNCTION
 ' returns the handle of the control, or 0 on fail
 FUNCTION WinXAddControl (parent, STRING class, STRING title, style, exStyle, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	RETURN CreateWindowExA (exStyle, &class, &title, style|$$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
+
+	RETURN CreateWindowExA (exStyle, &class, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 END FUNCTION
 '
 ' #########################
@@ -1076,17 +1083,16 @@ END FUNCTION
 ' returns a handle to the new edit control or 0 on fail
 FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	'make the window
-	hCtr = CreateWindowExA ($$WS_EX_CLIENTEDGE, &"edit", &title, style|$$WS_TABSTOP|$$WS_GROUP|$$WS_BORDER|$$WS_CHILD|$$WS_VISIBLE, _
-	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP|$$WS_BORDER
+
+	hCtr = CreateWindowExA ($$WS_EX_CLIENTEDGE, &"edit", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'give it a nice font
-	'------------------------------------------------------------------------------------------
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	RETURN hCtr
 END FUNCTION
 '
@@ -1102,7 +1108,10 @@ END FUNCTION
 ' returns the handle of the grid, or 0 on fail
 FUNCTION WinXAddGrid (parent, STRING title, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	hGrid = CreateWindowExA (0, &$$XBGRIDCLASSNAME, &title, $$WS_CHILD | $$WS_VISIBLE, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	hGrid = CreateWindowExA (0, &$$XBGRIDCLASSNAME, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+
 	RETURN hGrid
 END FUNCTION
 '
@@ -1116,14 +1125,15 @@ END FUNCTION
 ' returns the handle to the window or 0 on fail
 FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$BS_GROUPBOX
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$BS_GROUPBOX
+
 	hCtr = CreateWindowExA (0, &"button", &label, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	SetPropA (hCtr, &"WinXLeftSubSizer", &groupBox_SizeContents())
 	SetPropA (hCtr, &"WinXAutoSizerSeries", autoSizerInfo_addGroup ($$DIR_VERT))
 	RETURN hCtr
@@ -1142,23 +1152,20 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	IFZ parent THEN RETURN 0 ' error
 	IFZ idCtr THEN RETURN 0 ' error
 
-	style = $$WS_VSCROLL|$$WS_HSCROLL|$$WS_TABSTOP|$$WS_GROUP|$$LBS_HASSTRINGS|$$LBS_NOINTEGRALHEIGHT
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
+	style = style|$$WS_VSCROLL|$$WS_HSCROLL|$$LBS_HASSTRINGS|$$LBS_NOINTEGRALHEIGHT
 	style = style|$$LBS_NOTIFY 'Guy-20apr09-$$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE
 	IF sort THEN style = style|$$LBS_SORT
 	IF multiSelect THEN style = style|$$LBS_EXTENDEDSEL
 
-	style = $$WS_CHILD|$$WS_VISIBLE|style
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (0, &$$LISTBOX, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
 	IFZ hCtr THEN RETURN 0 ' error
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	IF hFont THEN
-		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-		DeleteObject (hFont) ' release the font
-	ENDIF
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	RETURN hCtr
 END FUNCTION
 '
@@ -1172,11 +1179,13 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 
 	IFZ idCtr THEN RETURN 0 ' error
 
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
+	IF editable THEN style = style|$$LVS_EDITLABELS
+
 	' Guy-21sep10-don't keep a zero view, since it make the listview go berserk
 	IFZ view THEN view = $$LVS_REPORT
-
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|view
-	IF editable THEN style = style|$$LVS_EDITLABELS
+	style = style|view
 
 	hWnd = CreateWindowExA (0, &$$WC_LISTVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
@@ -1202,8 +1211,11 @@ END FUNCTION
 ' returns the handle to the progress bar or $$FALSE on fail
 FUNCTION WinXAddProgressBar (parent, smooth, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
 	IF smooth THEN style = style|$$PBS_SMOOTH
+
 	hWnd = CreateWindowExA (0, &$$PROGRESS_CLASS, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	SendMessageA (hWnd, $$PBM_SETRANGE, 0, MAKELONG(0, 1000))
@@ -1223,16 +1235,18 @@ END FUNCTION
 ' returns the handle to the radio button or 0 on fail
 FUNCTION WinXAddRadioButton (parent, STRING title, isFirst, pushlike, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$BS_AUTORADIOBUTTON
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$BS_AUTORADIOBUTTON
+
 	IF isFirst THEN style = style|$$WS_GROUP
 	IF pushlike THEN style = style|$$BS_PUSHLIKE
+
 	hCtr = CreateWindowExA (0, &"BUTTON", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	RETURN hCtr
 END FUNCTION
 '
@@ -1249,7 +1263,10 @@ END FUNCTION
 FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 
 	IFZ idCtr THEN RETURN 0 ' error
-	'Guy-12dec08-just in case, correct the style
+
+	style = $$WS_CHILD|$$WS_VISIBLE|style
+
+	'get the style
 	IF hImage THEN
 		SELECT CASE LCASE$(title)
 			CASE "icon"
@@ -1263,23 +1280,16 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 
 	'make the window
 	' Guy-23nov10-removed $$WS_TABSTOP style flag to static's style mask
-	'hCtr = CreateWindowExA (0, &"static", &title, style|$$WS_TABSTOP|$$WS_CHILD|$$WS_VISIBLE, _
-	hCtr = CreateWindowExA (0, &"static", &title, style|$$WS_CHILD|$$WS_VISIBLE, _
-	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
-	'give it a nice font
-	'------------------------------------------------------------------------------------------
+	hCtr = CreateWindowExA (0, &"static", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
 
 	'add the image
 	IF hImage THEN
-		SendMessageA (hCtr, $$STM_SETIMAGE, imageType, hImage)
-	ELSE
-		'give it a nice font
-		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-		DeleteObject (hFont) ' release the font
+		ret = SendMessageA (hCtr, $$STM_SETIMAGE, imageType, hImage)
+		IFZ ret THEN WinXSetText (hCtr, "err "+title)		' error
 	ENDIF
 
 	'and we're done
@@ -1304,15 +1314,16 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN 0
 
+	style = $$WS_CHILD|$$WS_VISIBLE
+
 	'get the parent window's style
-	style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	IF style AND $$WS_SIZEBOX THEN sbStyle = $$SBARS_SIZEGRIP ELSE sbStyle = 0
+	window_style = GetWindowLongA (hWnd, $$GWL_STYLE)
+	IF (window_style & $$WS_SIZEBOX) = $$WS_SIZEBOX THEN style = style|$$SBARS_SIZEGRIP
 
 	'make the status bar
-	'Guy-06dec08-binding.hStatus = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, sbStyle|$$WS_CHILD|$$WS_VISIBLE, _
-	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, sbStyle|$$WS_CHILD|$$WS_VISIBLE, _
-	      0, 0, 0, 0, hWnd, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, style, 0, 0, 0, 0, hWnd, idCtr, GetModuleHandleA (0), 0)
 	IFZ hCtr THEN RETURN 0 ' fail
+
 	binding.hStatus = hCtr
 
 	'now prepare the parts
@@ -1327,28 +1338,26 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	' calculate the right edge coordinate for each part, and
 	' copy the coordinates to the array
 	GetClientRect (hCtr, &rect)
-	'FOR i = 0 TO uppPart
-	'	parts[i] = ((i+1)*(rect.right-rect.left))/(uppPart+1)
-	'	s$[i] = s$[i] 'Guy-06dec08-strange!
-	'NEXT
-	width = (rect.right - rect.left) / (uppPart+1)
-	FOR i = 0 TO uppPart
-		parts[i] = (i + 1) * width
-	NEXT i
+
+	cPart = uppPart + 1 ' number of right edge cooordinates
+	parts[uppPart] = rect.right - rect.left
+
+	IF uppPart > 0 THEN
+		width = parts[uppPart] / cPart
+		FOR i = uppPart - 1 TO 0 STEP -1
+			parts[i] = parts[i + 1] - width
+		NEXT i
+	ENDIF
+
 	'Guy-06dec08-the right edge for the last part extends to the right edge of the window
 	parts[uppPart] = -1 ' extend to the right edge of the window
 
 	'set the part info
-	cPart = UBOUND(parts[]) + 1 ' number of right edge cooordinates
 	SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
 
 	'and finally, set the text
-	'------------------------------------------------------------------------------------------
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
 	FOR i = 0 TO uppPart
 		SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
 	NEXT i
@@ -1370,10 +1379,14 @@ END FUNCTION
 FUNCTION WinXAddTabs (parent, multiline, idCtr)
 	IFZ parent THEN RETURN 0		' error
 	IFZ idCtr THEN RETURN 0		' error
-	'------------------------------------------------------------------------------------------
-	'Guy-14sep09-style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP|$$TCS_HOTTRACK
+
+	IF multiline THEN style = style | $$TCS_MULTILINE
+
 	' both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style
-	style = $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK | $$WS_CLIPSIBLINGS
+	style = style|$$WS_CLIPSIBLINGS
 
 	' add $$WS_CLIPSIBLINGS style to the parent control if missing
 	parent_style = GetWindowLongA (parent, $$GWL_STYLE)
@@ -1382,17 +1395,11 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 		parent_style = parent_style | $$WS_CLIPSIBLINGS
 		SetWindowLongA (parent, $$GWL_STYLE, parent_style)
 	ENDIF
-	'------------------------------------------------------------------------------------------
-	IF multiline THEN style = style | $$TCS_MULTILINE
-	style = style | $$WS_CHILD | $$WS_VISIBLE
 
 	hCtr = CreateWindowExA (0, &$$WC_TABCONTROL, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), 1) ' force a control redraw
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)		' don't force a control redraw
-	DeleteObject (hFont)		' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
 
 	SetPropA (hCtr, &"WinXLeftSubSizer", &tabs_SizeContents ())
 
@@ -1404,20 +1411,22 @@ END FUNCTION
 ' ###############################
 ' Creates a new Date/Time Picker control
 ' format = the format for the control, should be $$DTS_LONGDATEFORMAT, $$DTS_SHORTDATEFORMAT or $$DTS_TIMEFORMAT
-' initialTime = the time to initialise the control TO
+' initialTime = the time to initialise the control to
 ' timeValid = $$TRUE if the initialTime parameter is valid
 ' idCtr = the unique idCtr for this control
 ' returns the handle to the control or 0 on fail
 FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|format
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP
+	IF format THEN style = style|format
+
 	hCtr = CreateWindowExA (0, &$$DATETIMEPICK_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	IF timeValid THEN
 		SendMessageA (hCtr, $$DTM_SETSYSTEMTIME, $$GDT_VALID, &initialTime)
 	ELSE
@@ -1478,17 +1487,18 @@ END FUNCTION
 ' returns the handle to the trackbar or 0 on fail
 FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|$$TBS_AUTOTICKS
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP|$$TBS_AUTOTICKS
+
 	IF enableSelection THEN style = style|$$TBS_ENABLESELRANGE
 	IF posToolTip THEN style = style|$$TBS_TOOLTIPS
 
 	hCtr = CreateWindowExA (0, &$$TRACKBAR_CLASS, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	RETURN hCtr
 END FUNCTION
 '
@@ -1503,16 +1513,19 @@ END FUNCTION
 ' returns the handle to the tree view or 0 on fail
 FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
-	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP|$$TVS_HASBUTTONS|$$TVS_HASLINES|$$TVS_LINESATROOT
+
+	style = $$WS_CHILD|$$WS_VISIBLE
+	style = style|$$WS_TABSTOP|$$WS_GROUP|$$TVS_HASBUTTONS|$$TVS_HASLINES|$$TVS_LINESATROOT
+
 	IFF draggable THEN style = style|$$TVS_DISABLEDRAGDROP
 	IF editable THEN style = style|$$TVS_EDITLABELS
+
 	hCtr = CreateWindowExA (0, &$$WC_TREEVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont) ' release the font
-	'------------------------------------------------------------------------------------------
+	WinXSetDefaultFont (hCtr)
+
 	SendMessageA (hCtr, $$TVM_SETIMAGELIST, $$TVSIL_NORMAL, hImages)
 	RETURN hCtr
 END FUNCTION
@@ -1633,8 +1646,13 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 			splitterInfo.direction = autoSizerInfoUM[series].direction
 
 			autoSizerInfo_get (series, idBlock-1, @autoSizerBlock)
-			autoSizerBlock.hSplitter = CreateWindowExA (0, &"WinXSplitterClass", 0, $$WS_CHILD|$$WS_VISIBLE|$$WS_CLIPSIBLINGS, _
-			0, 0, 0, 0, GetParent(hWnd), 0, GetModuleHandleA (0), SPLITTERINFO_New (@splitterInfo))
+
+			style = $$WS_CHILD|$$WS_VISIBLE
+			style = style|$$WS_CLIPSIBLINGS
+			lpParam = SPLITTERINFO_New (@splitterInfo)
+			autoSizerBlock.hSplitter = CreateWindowExA (0, &"WinXSplitterClass", 0, style, 0, 0, 0, 0,  _
+			 GetParent(hWnd), 0, GetModuleHandleA (0), lpParam)
+
 			autoSizerInfo_update (series, idBlock-1, autoSizerBlock)
 		ENDIF
 
@@ -4312,13 +4330,14 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	BINDING binding
 	LINKEDLIST autoDraw
 
+	style = $$WS_CHILD|$$WS_VISIBLE|style
 	hInst = GetModuleHandleA (0)
-	hWnd = CreateWindowExA (exStyle, &"WinXMainClass", &title, style|$$WS_VISIBLE|$$WS_CHILD, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
+	hWnd = CreateWindowExA (exStyle, &"WinXMainClass", &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
 
 	'make a binding
 	binding.hwnd = hWnd
-	binding.hToolTips = CreateWindowExA(0, &$$TOOLTIPS_CLASS, 0, $$WS_POPUP|$$TTS_NOPREFIX|$$TTS_ALWAYSTIP, _
-											$$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
+	style = $$WS_POPUP|$$TTS_NOPREFIX|$$TTS_ALWAYSTIP
+	binding.hToolTips = CreateWindowExA(0, &$$TOOLTIPS_CLASS, 0, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
 	binding.msgHandlers = handler_addGroup ()
 	LinkedList_Init (@autoDraw)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDraw)
@@ -5857,6 +5876,16 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 	binding_update (idBinding, binding)
 	RETURN $$TRUE
 END FUNCTION
+
+FUNCTION WinXSetDefaultFont (hCtr)
+	IF hCtr THEN
+		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
+		IF hFont THEN
+			SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
+			DeleteObject (hFont) ' release the font
+		ENDIF
+	ENDIF
+END FUNCTION
 '
 ' #########################
 ' #####  WinXSetFont  #####
@@ -6060,8 +6089,11 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 
 	'set the toolbar parent
 	SetParent (hToolbar, hWnd)
+
 	'set the toolbar style
-	SetWindowLongA (hToolbar, $$GWL_STYLE, GetWindowLongA (hToolbar, $$GWL_STYLE)|$$WS_CHILD|$$WS_VISIBLE|$$CCS_TOP)
+	' Guy-13jan11-SetWindowLongA (hToolbar, $$GWL_STYLE, GetWindowLongA (hToolbar, $$GWL_STYLE)|$$WS_CHILD|$$WS_VISIBLE|$$CCS_TOP)
+	add = $$WS_CHILD|$$WS_VISIBLE|$$CCS_TOP
+	WinXSetStyle (hToolbar, add, 0, 0, 0)
 
 	SendMessageA (hToolbar, $$TB_SETPARENT, hWnd, 0)
 
@@ -6319,7 +6351,13 @@ END FUNCTION
 ' iTab = the index of the tab to delete
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTabs_DeleteTab (hTabs, iTab)
-	RETURN SendMessageA (hTabs, $$TCM_DELETEITEM, iTab, 0)
+	' Guy-13jan11-RETURN SendMessageA (hTabs, $$TCM_DELETEITEM, iTab, 0)
+	ret = SendMessageA (hTabs, $$TCM_DELETEITEM, iTab, 0)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' ########################################
@@ -6355,7 +6393,13 @@ END FUNCTION
 ' iTab = the index of the new current tab
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
-	RETURN SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
+	' Guy-13jan11-RETURN SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
+	ret = SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' #####################################
@@ -6385,9 +6429,15 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 	IF timeValid THEN
-		SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_VALID, &time)
+		ret = SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_VALID, &time)
 	ELSE
-		SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_NONE, 0)
+		ret = SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_NONE, 0)
+	ENDIF
+	' Guy-13jan11-added checking
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
 	ENDIF
 END FUNCTION
 '
@@ -6413,7 +6463,13 @@ FUNCTION WinXToolbar_AddButton (hToolbar, commandId, iImage, STRING tooltipText,
 	bt.fsStyle = $$BTNS_AUTOSIZE|$$BTNS_BUTTON
 	bt.iString = &tooltipText
 
-	RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	ret = SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' ####################################
@@ -6456,7 +6512,13 @@ FUNCTION WinXToolbar_AddSeparator (hToolbar)
 	bt.fsState = $$TBSTATE_ENABLED
 	bt.fsStyle = $$BTNS_SEP
 
-	RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	ret = SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' #########################################
@@ -6475,11 +6537,20 @@ FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, STRING toolti
 	bt.iBitmap = iImage
 	bt.idCommand = commandId
 	bt.fsState = $$TBSTATE_ENABLED
-	bt.fsStyle = $$BTNS_AUTOSIZE
-	IF mutex THEN bt.fsStyle = bt.fsStyle|$$BTNS_CHECKGROUP ELSE bt.fsStyle = bt.fsStyle|$$BTNS_CHECK
-	bt.iString = &tooltipText
 
-	RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	style = $$BTNS_AUTOSIZE
+	IF mutex THEN style = style|$$BTNS_CHECKGROUP ELSE style = style|$$BTNS_CHECK
+	bt.fsStyle = style
+
+	IF tooltipText THEN bt.iString = &tooltipText
+
+	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	ret = SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' ######################################
@@ -6491,7 +6562,13 @@ END FUNCTION
 ' enable = $$TRUE to enable the button, $$FALSE to disable
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_EnableButton (hToolbar, idButton, enable)
-	RETURN SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, enable)
+	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, enable)
+	ret = SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, enable)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' ######################################
@@ -6505,7 +6582,13 @@ END FUNCTION
 FUNCTION WinXToolbar_ToggleButton (hToolbar, idButton, on)
 	state = SendMessageA (hToolbar, $$TB_GETSTATE, idButton, 0)
 	IF on THEN state = state|$$TBSTATE_CHECKED ELSE state = state AND NOT ($$TBSTATE_CHECKED)
-	SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
+	' Guy-13jan11-SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
+	ret = SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
+	IFZ ret THEN
+		RETURN $$FALSE ' fail
+	ELSE
+		RETURN $$TRUE ' success
+	ENDIF
 END FUNCTION
 '
 ' ################################
@@ -6538,11 +6621,11 @@ FUNCTION WinXTracker_SetLabels (hTracker, STRING leftLabel, STRING rightLabel)
 
 	'we need to get the width and height of the strings
 	hdcMem = CreateCompatibleDC (0)
-	'------------------------------------------------------------------------------------------
+
 	'Guy-11dec08-SelectObject (hdcMem, GetStockObject ($$DEFAULT_GUI_FONT))
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SelectObject (hdcMem, hFont)
-	'------------------------------------------------------------------------------------------
+
 	GetTextExtentPoint32A (hdcMem, &leftLabel, LEN(leftLabel), &left)
 	GetTextExtentPoint32A (hdcMem, &rightLabel, LEN(rightLabel), &right)
 	DeleteDC (hdcMem)
@@ -7747,6 +7830,15 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 	IF group < 0 || group > UBOUND(autoSizerInfoUM[]) THEN RETURN $$FALSE
 	IFF autoSizerInfoUM[group].inUse THEN RETURN $$FALSE
 
+	' Guy-13jan11-#hWinPosInfo = BeginDeferWindowPos (cItem)
+	cItem = 0
+	i = autoSizerInfoUM[group].firstItem
+	DO WHILE i > -1
+		IF autoSizerInfo[group, i].hwnd THEN INC cItem
+		i = autoSizerInfo[group, i].nextItem
+	LOOP
+	IF cItem < 1 THEN RETURN $$FALSE
+
 	IF autoSizerInfoUM[group].direction AND $$DIR_REVERSE THEN
 		SELECT CASE autoSizerInfoUM[group].direction AND 0x00000003
 			CASE $$DIR_HORIZ
@@ -7758,7 +7850,9 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 		currPos = 0
 	ENDIF
 
-	#hWinPosInfo = BeginDeferWindowPos (10)
+	' Guy-13jan11-cItem is known
+	'#hWinPosInfo = BeginDeferWindowPos (10)
+	#hWinPosInfo = BeginDeferWindowPos (cItem)
 	i = autoSizerInfoUM[group].firstItem
 	DO WHILE i > -1
 		IF autoSizerInfo[group, i].hwnd THEN
