@@ -1066,7 +1066,7 @@ END FUNCTION
 FUNCTION WinXAddControl (parent, STRING class, STRING title, style, exStyle, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
 
-	style = $$WS_CHILD|$$WS_VISIBLE
+	style = $$WS_CHILD|$$WS_VISIBLE|style ' passed style
 	style = style|$$WS_TABSTOP|$$WS_GROUP
 
 	RETURN CreateWindowExA (exStyle, &class, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
@@ -1084,7 +1084,7 @@ END FUNCTION
 FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
 
-	style = $$WS_CHILD|$$WS_VISIBLE
+	style = $$WS_CHILD|$$WS_VISIBLE|style ' passed style
 	style = style|$$WS_TABSTOP|$$WS_GROUP|$$WS_BORDER
 
 	hCtr = CreateWindowExA ($$WS_EX_CLIENTEDGE, &"edit", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
@@ -1264,7 +1264,7 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 
 	IFZ idCtr THEN RETURN 0 ' error
 
-	style = $$WS_CHILD|$$WS_VISIBLE|style
+	style = $$WS_CHILD|$$WS_VISIBLE|style ' passed style
 
 	'get the style
 	IF hImage THEN
@@ -4330,7 +4330,7 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	BINDING binding
 	LINKEDLIST autoDraw
 
-	style = $$WS_CHILD|$$WS_VISIBLE|style
+	style = $$WS_CHILD|$$WS_VISIBLE|style ' passed style
 	hInst = GetModuleHandleA (0)
 	hWnd = CreateWindowExA (exStyle, &"WinXMainClass", &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
 
