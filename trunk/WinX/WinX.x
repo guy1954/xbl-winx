@@ -1112,6 +1112,9 @@ FUNCTION WinXAddGrid (parent, STRING title, idCtr)
 	style = $$WS_CHILD|$$WS_VISIBLE
 	hGrid = CreateWindowExA (0, &$$XBGRIDCLASSNAME, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
+	'give it a nice font to the cells
+	WinXSetDefaultFont (hGrid)
+
 	RETURN hGrid
 END FUNCTION
 '
