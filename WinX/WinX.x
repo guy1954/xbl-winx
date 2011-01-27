@@ -2075,7 +2075,14 @@ END FUNCTION
 ' index = the index of the item to select.  -1 to deselect everything
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXComboBox_SetSelection (hCombo, index)
-	IF (SendMessageA (hCombo, $$CB_SETCURSEL, index, 0) = $$CB_ERR) && (index != -1) THEN RETURN $$FALSE ELSE RETURN $$TRUE
+'	IF (SendMessageA (hCombo, $$CB_SETCURSEL, index, 0) = $$CB_ERR) && (index != -1) THEN RETURN $$FALSE ELSE RETURN $$TRUE
+
+	IFZ hCombo THEN RETURN $$FALSE ' fail
+
+	ret = SendMessageA (hCombo, $$CB_SETCURSEL, index, 0)
+	IF (ret = $$CB_ERR) && (index <> -1) THEN RETURN $$FALSE ' fail
+	RETURN $$TRUE ' success
+
 END FUNCTION
 '
 ' ##############################
