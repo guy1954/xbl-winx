@@ -39,11 +39,11 @@ VERSION "0.6.0.13"
 ' - WinXTreeView_SetCheckState : set the item's check state of a tree view with check boxes
 ' - WinXTreeView_GetCheckState : determine whether a node in a tree view control is checked
 ' - WinXTreeView_RemoveCheckBox: remove the check box
-' - WinXTreeView_GetRootItem   : get the handle of the root
+' - WinXTreeView_GetRootItem   : get the handle of the tree view root
 ' - WinXTreeView_FindItemLabel : find an exact string in tree labels
 ' - WinXTreeView_DeleteAllItems: clear the tree view
-' - WinXTreeView_ExpandItem    : expand a node (Guy-26jan09)
-' - WinXTreeView_CollapseItem  : collapse a node
+' - WinXTreeView_ExpandItem    : expand a tree view item (Guy-26jan09)
+' - WinXTreeView_CollapseItem  : collapse a tree view item
 '
 'Guy-06dec08-corrected function WinXAddStatusBar to return the status bar's handle.
 '
@@ -485,10 +485,10 @@ DECLARE FUNCTION WinXIsMousePressed (button)
 DECLARE FUNCTION WinXAddControl (parent, class$, title$, style, exStyle, idCtr)
 DECLARE FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 DECLARE FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
-DECLARE FUNCTION WinXListBox_AddItem (hListBox, index, Item$)
+DECLARE FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 DECLARE FUNCTION WinXListBox_RemoveItem (hListBox, index)
 DECLARE FUNCTION WinXListBox_GetSelection (hListBox, @index[])
-DECLARE FUNCTION WinXListBox_GetIndex (hListBox, Item$)
+DECLARE FUNCTION WinXListBox_GetIndex (hListBox, item$)
 DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
 
 DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly) ' display an OpenFile dialog box
@@ -664,12 +664,12 @@ DECLARE FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked) ' set the item
 DECLARE FUNCTION WinXTreeView_GetCheckState (hTV, hItem) ' determine whether a node in a tree view control is checked
 DECLARE FUNCTION WinXTreeView_RemoveCheckBox (hTV, hItem) ' remove the check box of a tree view item
 
-DECLARE FUNCTION WinXTreeView_GetRootItem (hTV) ' get the handle of the root
+DECLARE FUNCTION WinXTreeView_GetRootItem (hTV) ' get the handle of the tree view root
 DECLARE FUNCTION WinXTreeView_FindItemLabel (hTV, find$) ' find an exact string in tree labels
-DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, find$) ' Search for a label in treeview nodes
+DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, find$) ' Search for a label in tree view nodes
 DECLARE FUNCTION WinXTreeView_DeleteAllItems (hTV) ' clear the tree view
-DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem) ' expand the treeview's item
-DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem) ' collapse the treeview's item
+DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem) ' expand the tree view item
+DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem) ' collapse the tree view item
 
 'new in 0.6.0.4
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
@@ -685,7 +685,7 @@ DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerato
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
 'new in 0.6.0.13
-DECLARE FUNCTION WinXSetDefaultFont (hCtr)
+DECLARE FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
 DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
 DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, text$)
 DECLARE FUNCTION WinXGrid_AddRow (hGrid, iRow, text$)
@@ -767,11 +767,11 @@ FUNCTION WinX ()
 	' $$ICC_DATE_CLASSES       : month picker, date picker, time picker, updown
 	' $$ICC_HOTKEY_CLASS       : hotkey
 	' $$ICC_INTERNET_CLASSES   : WIN32_IE >= 0x0400
-	' $$ICC_LISTVIEW_CLASSES   : listview, header
+	' $$ICC_LISTVIEW_CLASSES   : list view, header
 	' $$ICC_PAGESCROLLER_CLASS : page scroller (WIN32_IE >= 0x0400)
 	' $$ICC_PROGRESS_CLASS     : progress
 	' $$ICC_TAB_CLASSES        : tab, tooltips
-	' $$ICC_TREEVIEW_CLASSES   : treeview, tooltips
+	' $$ICC_TREEVIEW_CLASSES   : tree view, tooltips
 	' $$ICC_UPDOWN_CLASS       : updown
 	' $$ICC_USEREX_CLASSES     : comboex
 	' $$ICC_WIN95_CLASSES      : everything else
@@ -957,7 +957,7 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 	ENDIF
 
 	'make the button
-	hCtr = CreateWindowExA (0, &"button", &title, style,	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$BUTTON, &title, style,	0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 	IFZ hCtr THEN RETURN 0 ' error
 
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
@@ -1008,7 +1008,7 @@ END FUNCTION
 ' parent = the handle to the parent window
 ' title = the title of the check control
 ' isFirst = $$TRUE if this is the first check button in the group, otherwise $$FALSE
-' pushlike = $TRUE if the button is to be displayed as a pushbutton
+' pushlike = $TRUE if the button is to be displayed as a push button
 ' idCtr = the unique idCtr for this control
 ' returns the handle to the check button or 0 on fail
 FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
@@ -1020,7 +1020,7 @@ FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
 	IF isFirst THEN style = style|$$WS_GROUP
 	IF pushlike THEN style = style|$$BS_PUSHLIKE
 
-	hCtr = CreateWindowExA (0, &"BUTTON", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$BUTTON, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	WinXSetDefaultFont (hCtr)
@@ -1031,12 +1031,12 @@ END FUNCTION
 ' #############################
 ' #####  WinXAddComboBox  #####
 ' #############################
-' creates a new combobox
-' parent = the parent window for the combobox
+' creates a new extended combo box
+' parent = the parent window for the combo box
 ' canEdit = $$TRUE if the user can enter their own item in the edit box
-' images = if this combobox displays images with items, this is the handle to an image list, else 0
+' images = if this combo box displays images with items, this is the handle to an image list, else 0
 ' idCtr = the idCtr for the control
-' returns the handle to the combobox, or 0 on fail
+' returns the handle to the extended combo box, or 0 on fail
 FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
 	IFZ idCtr THEN RETURN 0 ' error
 
@@ -1087,7 +1087,7 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 	style = $$WS_CHILD|$$WS_VISIBLE|style ' passed style
 	style = style|$$WS_TABSTOP|$$WS_GROUP|$$WS_BORDER
 
-	hCtr = CreateWindowExA ($$WS_EX_CLIENTEDGE, &"edit", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$EDIT, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'give it a nice font
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
@@ -1132,7 +1132,7 @@ FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
 	style = $$WS_CHILD|$$WS_VISIBLE
 	style = style|$$BS_GROUPBOX
 
-	hCtr = CreateWindowExA (0, &"button", &label, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$BUTTON, &label, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	WinXSetDefaultFont (hCtr)
@@ -1145,12 +1145,12 @@ END FUNCTION
 ' ############################
 ' #####  WinXAddListBox  #####
 ' ############################
-' Makes a new listbox
+' Makes a new list box
 ' parent = the parent window
-' style = $$TRUE if listbox is sorted
-' multiSelect = $$TRUE if the listbox can have multiple selections
-' idCtr = the idCtr for the listbox
-' returns the handle of the listbox
+' style = $$TRUE if list box is sorted
+' multiSelect = $$TRUE if the list box can have multiple selections
+' idCtr = the idCtr for the list box
+' returns the handle of the list box
 FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	IFZ parent THEN RETURN 0 ' error
 	IFZ idCtr THEN RETURN 0 ' error
@@ -1186,21 +1186,23 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 	style = style|$$WS_TABSTOP|$$WS_GROUP
 	IF editable THEN style = style|$$LVS_EDITLABELS
 
-	' Guy-21sep10-don't keep a zero view, since it make the listview go berserk
+	' Guy-21sep10-don't keep a zero view, since it make the list view go berserk
 	IFZ view THEN view = $$LVS_REPORT
 	style = style|view
 
-	hWnd = CreateWindowExA (0, &$$WC_LISTVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$WC_LISTVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	' Guy-21nov10-added non-null handle check
-	'SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
-	'SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
-	IF hilLargeIcons THEN SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
-	IF hilSmallIcons THEN SendMessageA (hWnd, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
+	'SendMessageA (hCtr, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
+	'SendMessageA (hCtr, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
+	IF hilLargeIcons THEN SendMessageA (hCtr, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
+	IF hilSmallIcons THEN SendMessageA (hCtr, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
 
-	SendMessageA (hWnd, $$LVM_SETEXTENDEDLISTVIEWSTYLE, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP)
+	'SendMessageA (hCtr, $$LVM_SETEXTENDEDLISTVIEWSTYLE, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP)
+	exStyle = $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP
+	SendMessageA (hCtr, $$LVM_SETEXTENDEDLISTVIEWSTYLE, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP, exStyle)
 
-	RETURN hWnd
+	RETURN hCtr
 
 END FUNCTION
 '
@@ -1233,7 +1235,7 @@ END FUNCTION
 ' parent = the handle to the parent window
 ' title = the title of the radio button
 ' isFirst = $$TRUE if this is the first radio button in the group, otherwise $$FALSE
-' pushlike = $TRUE if the button is to be displayed as a pushbutton
+' pushlike = $TRUE if the button is to be displayed as a push button
 ' idCtr = the unique idCtr constant for the radio button
 ' returns the handle to the radio button or 0 on fail
 FUNCTION WinXAddRadioButton (parent, STRING title, isFirst, pushlike, idCtr)
@@ -1245,7 +1247,7 @@ FUNCTION WinXAddRadioButton (parent, STRING title, isFirst, pushlike, idCtr)
 	IF isFirst THEN style = style|$$WS_GROUP
 	IF pushlike THEN style = style|$$BS_PUSHLIKE
 
-	hCtr = CreateWindowExA (0, &"BUTTON", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$BUTTON, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	WinXSetDefaultFont (hCtr)
@@ -1284,7 +1286,7 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 	'make the window
 	' Guy-23nov10-removed $$WS_TABSTOP style flag to static's style mask
 
-	hCtr = CreateWindowExA (0, &"static", &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hCtr = CreateWindowExA (0, &$$STATIC_CLASS, &title, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
 
 	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	WinXSetDefaultFont (hCtr)
@@ -1515,7 +1517,8 @@ END FUNCTION
 ' idCtr = the unique idCtr constant for this control
 ' returns the handle to the tree view or 0 on fail
 FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
-	IFZ idCtr THEN RETURN 0 ' error
+
+	IFZ idCtr THEN RETURN 0 ' fail
 
 	style = $$WS_CHILD|$$WS_VISIBLE
 	style = style|$$WS_TABSTOP|$$WS_GROUP|$$TVS_HASBUTTONS|$$TVS_HASLINES|$$TVS_LINESATROOT
@@ -1523,14 +1526,17 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 	IFF draggable THEN style = style|$$TVS_DISABLEDRAGDROP
 	IF editable THEN style = style|$$TVS_EDITLABELS
 
-	hCtr = CreateWindowExA (0, &$$WC_TREEVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, GetModuleHandleA (0), 0)
+	hInst = GetModuleHandleA (0)
+	hTV = CreateWindowExA (0, &$$WC_TREEVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
+	IFZ hTV THEN RETURN 0 ' fail
 
-	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
+	'Guy-11dec08-SendMessageA (hTV, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	WinXSetDefaultFont (hCtr)
+	WinXSetDefaultFont (hTV)
 
-	SendMessageA (hCtr, $$TVM_SETIMAGELIST, $$TVSIL_NORMAL, hImages)
-	RETURN hCtr
+	IF hImages THEN SendMessageA (hTV, $$TVM_SETIMAGELIST, $$TVSIL_NORMAL, hImages)
+	RETURN hTV
+
 END FUNCTION
 '
 ' ##########################
@@ -1978,12 +1984,12 @@ END FUNCTION
 ' ##################################
 ' #####  WinXComboBox_AddItem  #####
 ' ##################################
-' adds an item to a combobox
-' hCombo = the handle to the combobox
+' adds an item to a extended combo box
+' hCombo = the handle to the extended combo box
 ' index = the index to insert the item at, use -1 to add to the end
 ' indent = the number of indents to place the item at
 ' item$ = the item text
-' iImage = the index to the image, ignored if this combobox doesn't have images
+' iImage = the index to the image, ignored if this combo box doesn't have images
 ' iSelImage = the index of the image displayed when this item is selected
 ' returns the index of the new item, or -1 on fail
 FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
@@ -2004,7 +2010,7 @@ END FUNCTION
 ' #####  WinXComboBox_GetEditText  #####
 ' ######################################
 ' Gets the text in the edit cotrol of a combo box
-' hCombo = the handle to the combo box
+' hCombo = the handle to the extended combo box
 ' returns the text or "" on fail
 FUNCTION WinXComboBox_GetEditText$ (hCombo)
 	hEdit = SendMessageA (hCombo, $$CBEM_GETEDITCONTROL, 0, 0)
@@ -2015,8 +2021,8 @@ END FUNCTION
 ' #####  WinXComboBox_GetItem  #####
 ' ##################################
 ' Gets the text of an item
-' hCombo = the handle to the combobox
-' index = the 0 based index of the item to get
+' hCombo = the handle to the extended combo box
+' index = the zero-based index of the item to get
 ' returns the text of the item, or "" on fail
 FUNCTION WinXComboBox_GetItem$ (hCombo, index)
 	COMBOBOXEXITEM cbexi
@@ -2036,7 +2042,7 @@ END FUNCTION
 ' #####  WinXComboBox_GetSelection  #####
 ' #######################################
 ' gets the current selection
-' hCombo = the handle to the combobox
+' hCombo = the handle to the extended combo box
 ' returns the currently selected item or $$CB_ERR on fail
 FUNCTION WinXComboBox_GetSelection (hCombo)
 	RETURN SendMessageA (hCombo, $$CB_GETCURSEL, 0, 0)
@@ -2045,9 +2051,9 @@ END FUNCTION
 ' #####################################
 ' #####  WinXComboBox_RemoveItem  #####
 ' #####################################
-' removes an item from a combobox
-' hCombo = the handle to the combobox
-' index = the o based index of the item to delete
+' removes an item from a extended combo box
+' hCombo = the handle to the extended combo box
+' index = the zero-based index of the item to delete
 ' returns the number of items remaining in the list, or $$CB_ERR on fail
 FUNCTION WinXComboBox_RemoveItem (hCombo, index)
 	RETURN SendMessageA (hCombo, $$CBEM_DELETEITEM, index, 0)
@@ -2057,7 +2063,7 @@ END FUNCTION
 ' #####  WinXComboBox_SetEditText  #####
 ' ######################################
 ' Sets the text in the edit control for a combo box
-' hCombo = the handle to the combo box
+' hCombo = the handle to the extended combo box
 ' STRING text = the text to put in the control
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXComboBox_SetEditText (hCombo, STRING text)
@@ -2070,8 +2076,8 @@ END FUNCTION
 ' #######################################
 ' #####  WinXComboBox_SetSelection  #####
 ' #######################################
-' Selects an item in a combobox
-' hCombo = the handle to the combobox
+' Selects an item in a extended combo box
+' hCombo = the handle to the extended combo box
 ' index = the index of the item to select.  -1 to deselect everything
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXComboBox_SetSelection (hCombo, index)
@@ -2339,7 +2345,7 @@ END FUNCTION
 ' text$         = the question
 ' title$        = the dialog box title
 ' cancel        = $$TRUE to enable the cancel button
-' defaultButton = the 0 based index of the default button
+' defaultButton = the zero-based index of the default button
 ' returns the idCtr of the button the user selected
 FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 	IF cancel THEN style = $$MB_YESNOCANCEL ELSE style = $$MB_YESNO
@@ -3777,16 +3783,17 @@ END FUNCTION
 ' #################################
 ' Adds an item to a list box.
 ' hListBox = the list box to add to
-' index = the 0 based index to insert the item at, -1 for the end of the list
-' Item$ = the string to add to the list
+' index = the zero-based index to insert the item at, -1 for the end of the list
+' item$ = the string to add to the list
 ' returns the index of the string in the list or $$LB_ERR on fail
-FUNCTION WinXListBox_AddItem (hListBox, index, Item$)
+FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 	IFZ hListBox THEN RETURN $$LB_ERR ' error
 
 	IF GetWindowLongA (hListBox, $$GWL_STYLE) AND $$LBS_SORT THEN
-		RETURN SendMessageA (hListBox, $$LB_ADDSTRING, 0, &Item$)
+		RETURN SendMessageA (hListBox, $$LB_ADDSTRING, 0, &item$)
 	ELSE
-		RETURN SendMessageA (hListBox, $$LB_INSERTSTRING, index, &Item$)
+		IF index < 0 THEN index = -1
+		RETURN SendMessageA (hListBox, $$LB_INSERTSTRING, index, &item$)
 	ENDIF
 END FUNCTION
 '
@@ -3811,17 +3818,17 @@ END FUNCTION
 ' ##################################
 ' Gets the index of a particular string
 ' hListBox = the handle to the list box containing the string
-' Item$ = the string to search for
+' item$ = the string to search for
 ' returns the index of the item or -1 on fail
-FUNCTION WinXListBox_GetIndex (hListBox, Item$)
+FUNCTION WinXListBox_GetIndex (hListBox, item$)
 	IFZ hListBox THEN RETURN -1 ' error
-	IFZ Item$ THEN RETURN -1 ' error
+	IFZ item$ THEN RETURN -1 ' error
 
 	pos = -1
 	DO
-		pos = SendMessageA (hListBox, $$LB_FINDSTRING, pos, &Item$)
+		pos = SendMessageA (hListBox, $$LB_FINDSTRING, pos, &item$)
 		IF pos = $$LB_ERR THEN RETURN -1
-	LOOP WHILE SendMessageA (hListBox, $$LB_GETTEXTLEN, pos, 0) > LEN(Item$)
+	LOOP WHILE SendMessageA (hListBox, $$LB_GETTEXTLEN, pos, 0) > LEN(item$)
 
 	RETURN pos
 END FUNCTION
@@ -3830,7 +3837,7 @@ END FUNCTION
 ' #####  WinXListBox_GetItem$  #####
 ' ##################################
 ' Gets a list box item
-' hListBox = the handle to the listbox to get the item from
+' hListBox = the handle to the list box to get the item from
 ' index = the index of the item to get
 ' returns the string of the item, or "" on fail
 FUNCTION WinXListBox_GetItem$ (hListBox, index)
@@ -3851,9 +3858,9 @@ END FUNCTION
 ' index[] = the array to place the items into
 ' returns the number of selected items
 FUNCTION WinXListBox_GetSelection (hListBox, index[])
-	IFZ hListBox THEN RETURN 0 ' error
 
  'Guy-15apr09-prevent invalid handle
+	'IFZ hListBox THEN RETURN 0 ' error
 	IFZ hListBox THEN
 		DIM index[]
 		RETURN 0
@@ -3971,11 +3978,11 @@ END FUNCTION
 ' ####################################
 ' #####  WinXListView_AddColumn  #####
 ' ####################################
-' Adds a column to a listview control for use in report view
-' iColumn = the 0 based index for the new column
+' Adds a column to a list view control for use in report view
+' iColumn = the zero-based index for the new column
 ' wColumn = the width of the column
 ' label = the label for the column
-' iSubItem = the 1 based index of the sub item the column displays
+' iSubItem = the 1-based index of the sub item the column displays
 ' returns the index to the column or -1 on fail
 FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, STRING label, iSubItem)
 	LVCOLUMN lvCol
@@ -4041,8 +4048,8 @@ END FUNCTION
 ' #######################################
 ' #####  WinXListView_DeleteColumn  #####
 ' #######################################
-' Deletes a column in a listview control
-' iColumn = the 0 based index of the column to delete
+' Deletes a column in a list view control
+' iColumn = the zero-based index of the column to delete
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_DeleteColumn (hLV, iColumn)
 	IFZ hLV THEN RETURN $$FALSE ' error
@@ -4053,7 +4060,7 @@ END FUNCTION
 ' #####################################
 ' #####  WinXListView_DeleteItem  #####
 ' #####################################
-' Deletes an item from a listview control
+' Deletes an item from a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_DeleteItem (hLV, iItem)
 	IFZ hLV THEN RETURN $$FALSE ' error
@@ -4100,7 +4107,7 @@ END FUNCTION
 ' ######################################
 ' Gets the text for a list view item
 ' hLV = the handle to the list view
-' iItem = the 0 based index of the item
+' iItem = the zero-based index of the item
 ' cSubItems = the number of sub items to get
 ' text$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
@@ -4204,7 +4211,8 @@ END FUNCTION
 ' #####  WinXListView_SetItemText  #####
 ' ######################################
 ' Sets new text for an item
-' iItem = the 0 based index of the item, iSubItem = 0 the 1 based index of the subitem or 0 if setting the main item
+' iItem = the zero-based index of the item
+' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
 	LVITEM lvi
@@ -4221,7 +4229,7 @@ END FUNCTION
 ' #######################################
 ' #####  WinXListView_SetSelection  #####
 ' #######################################
-' Sets the selection in a listview control
+' Sets the selection in a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	LVITEM lvi
@@ -4242,7 +4250,7 @@ END FUNCTION
 ' ##################################
 ' #####  WinXListView_SetView  #####
 ' ##################################
-' Sets the view of a listview control
+' Sets the view of a list view control
 ' hLV = the handle to the control
 ' view = the view to set
 ' returns $$TRUE on success or $$FALSE on fail
@@ -4259,7 +4267,7 @@ END FUNCTION
 ' ###############################
 ' Sorts the items in a list view control
 ' hLV = the list view control to sort
-' iCol = the 0 based index of the column to sort by
+' iCol = the zero-based index of the column to sort by
 ' desc = $$TRUE to sort descending instead of ascending
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_Sort (hLV, iCol, desc)
@@ -4531,15 +4539,22 @@ END FUNCTION
 ' customisable = $$TRUE to enable customisation
 ' returns the handle of the toolbar
 FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisable)
+
 	style = $$TBSTYLE_FLAT|$$TBSTYLE_LIST
 	IF toolTips THEN style = style|$$TBSTYLE_TOOLTIPS
+
 '	IF customisable THEN
 '		style = style|$$CCS_ADJUSTABLE
 '		SetPropA (hToolbar, &"customisationData", tbbd_addGroup ())
 '	ELSE
 '		SetPropA (hToolbar, &"customisationData", -1)
 '	ENDIF
-	hToolbar = CreateWindowExA (0, &$$TOOLBARCLASSNAME, 0, style, 0, 0, 0, 0, 0, 0, GetModuleHandleA (0), 0)
+
+	hInst = GetModuleHandleA (0)
+	hToolbar = CreateWindowExA (0, &$$TOOLBARCLASSNAME, 0, style, 0, 0, 0, 0, 0, 0, hInst, 0)
+	IFZ hToolbar THEN RETURN 0 ' fail
+
+	WinXSetDefaultFont (hToolbar) 'give it a nice font
 
 	SendMessageA (hToolbar, $$TB_SETEXTENDEDSTYLE, 0, $$TBSTYLE_EX_MIXEDBUTTONS|$$TBSTYLE_EX_DOUBLEBUFFER|$$TBSTYLE_EX_DRAWDDARROWS)
 	SendMessageA (hToolbar, $$TB_SETIMAGELIST, 0, hilMain)
@@ -5057,7 +5072,7 @@ END FUNCTION
 ' ##################################
 ' #####  WinXRegOnColumnClick  #####
 ' ##################################
-' Registers the onColumnClick callback for a listview control
+' Registers the onColumnClick callback for a list view control
 ' hWnd = the window to register the callback for
 ' onColumnClick = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
@@ -5188,7 +5203,7 @@ END FUNCTION
 ' ###########################
 ' #####  WinXRegOnItem  #####
 ' ###########################
-' Registers the onItem callback for a listview control
+' Registers the onItem callback for a list view control
 ' hWnd = the window to register the message for
 ' onItem = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
@@ -5887,7 +5902,7 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 	RETURN $$TRUE
 END FUNCTION
 
-FUNCTION WinXSetDefaultFont (hCtr)
+FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
 	IF hCtr THEN
 		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 		IF hFont THEN
@@ -6294,7 +6309,7 @@ END FUNCTION
 ' ################################
 ' Sets the text in a status bar
 ' hWnd = the window containing the status bar
-' part = the partition to set the text for, 0 based
+' part = the partition to set the text for, zero-based
 ' text = the text to set the status to
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
@@ -6306,12 +6321,12 @@ FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN $$FALSE
 
-	' validate argument part (0 based partition)
+	' validate argument part (zero-based partition)
 	bOK = $$TRUE ' assume success
 	SELECT CASE TRUE
 		CASE part = 0
 		CASE part < 0
-			err$ = "partition " + STRING$ (part) + " should be >= 0 (0 based)"
+			err$ = "partition " + STRING$ (part) + " should be >= 0 (zero-based)"
 			bOK = $$FALSE ' fail
 			'
 		CASE ELSE
@@ -6339,7 +6354,7 @@ END FUNCTION
 ' hTabs = the handle to the tab control
 ' label = the label for the new tab
 ' insertAfter = the index to insert at, -1 for to append
-' returns the index of the tab
+' returns the index of the tab, -1 on fail
 FUNCTION WinXTabs_AddTab (hTabs, STRING label, index)
 	TC_ITEM tci
 
@@ -6350,7 +6365,9 @@ FUNCTION WinXTabs_AddTab (hTabs, STRING label, index)
 
 	IF index = -1 THEN index = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
 
-	RETURN SendMessageA (hTabs, $$TCM_INSERTITEM, index, &tci)
+	ret = SendMessageA (hTabs, $$TCM_INSERTITEM, index, &tci)
+	IF ret < 0 THEN RETURN -1 ' fail
+	RETURN ret ' success
 END FUNCTION
 '
 ' ################################
@@ -6390,8 +6407,9 @@ END FUNCTION
 ' ####################################
 ' Gets the index of the currently selected tab
 ' hTabs = the handle to the tab control
-' returns the index of the currently selected tab
+' returns the index of the currently selected tab, -1 fail
 FUNCTION WinXTabs_GetCurrentTab (hTabs)
+	IFZ hTabs THEN RETURN -1 ' fail
 	RETURN SendMessageA (hTabs, $$TCM_GETCURSEL, 0, 0)
 END FUNCTION
 '
@@ -6403,13 +6421,10 @@ END FUNCTION
 ' iTab = the index of the new current tab
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
-	' Guy-13jan11-RETURN SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
+	IFZ hTabs THEN RETURN $$FALSE ' fail
 	ret = SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
-	IFZ ret THEN
-		RETURN $$FALSE ' fail
-	ELSE
-		RETURN $$TRUE ' success
-	ENDIF
+	IFZ ret THEN RETURN $$FALSE ' fail
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #####################################
@@ -6537,7 +6552,7 @@ END FUNCTION
 ' Adds a toggle button to a toolbar
 ' hToolbar = the handle to the toolbar
 ' commandId = the command constant the button will generate
-' iImage = the 0 based index of the image for this button
+' iImage = the zero-based index of the image for this button
 ' tooltipText = the text for this button's tooltip
 ' mutex = $$TRUE if this toggle is mutually exclusive, ie. only one from a group can be toggled at a time
 ' returns $$TRUE on success or $$FALSE on fail
@@ -6755,17 +6770,11 @@ END FUNCTION
 ' hItem = the handle to the item to collapse, 0 for the root node
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTreeView_CollapseItem (hTV, hItem)
-
 	IFZ hTV THEN RETURN $$FALSE ' fail
-
 	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
 	ret = SendMessageA (hTV, $$TVM_EXPAND, $$TVE_COLLAPSE, hItem)
-	IFZ ret THEN
-		RETURN $$FALSE ' fail
-	ELSE
-		RETURN $$TRUE ' success
-	ENDIF
-
+	IFZ ret THEN RETURN $$FALSE ' fail
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###################################
@@ -6831,7 +6840,7 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV) ' clear the tree view
 '	' don't redraw the Treeview until all nodes are deleted, for speed improvement
 '	SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)
 '
-'	' get the handle of the root
+'	' get the handle of the tree view root
 '	hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
 '
 '	' remove all the nodes in reverse order
@@ -6877,23 +6886,18 @@ END FUNCTION
 ' hItem = the handle to the item to expand, 0 for the root node
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTreeView_ExpandItem (hTV, hItem)
-
 	IFZ hTV THEN RETURN $$FALSE ' fail
 
 	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
 	ret = SendMessageA (hTV, $$TVM_EXPAND, $$TVE_EXPAND, hItem)
-	IFZ ret THEN
-		RETURN $$FALSE ' fail
-	ELSE
-		RETURN $$TRUE ' success
-	ENDIF
-
+	IFZ ret THEN RETURN $$FALSE ' fail
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###################################
 ' #####  WinXTreeView_FindItem  #####
 ' ###################################
-' Recursively search for a label in treeview nodes
+' Recursively search for a label in tree view nodes
 ' hTV = the handle to the tree view
 ' hItem = the handle to the item to search from
 ' returns the node handle, 0 if error
@@ -7023,7 +7027,7 @@ END FUNCTION
 ' #####  WinXTreeView_GetItemLabel$  #####
 ' ########################################
 ' Gets the label from an item
-' hTV = the handle to the treeview
+' hTV = the handle to the tree view
 ' hItem = the item to get the label from
 ' returns the item label or "" on fail
 FUNCTION WinXTreeView_GetItemLabel$ (hTV, hItem)
@@ -7097,7 +7101,7 @@ END FUNCTION
 ' #######################################
 ' Gets the current selection from a tree view control
 ' hTV = the tree view control
-' returns the handle of the selected item
+' returns the handle of the selected item, 0 on fail
 FUNCTION WinXTreeView_GetSelection (hTV)
 	IFZ hTV THEN RETURN 0 ' fail
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CARET, 0)
@@ -7185,17 +7189,13 @@ FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 
 	IFZ hTV THEN RETURN $$FALSE ' fail
 
-	IFZ hItem THEN
-		nodeRoot = WinXTreeView_GetRootItem (hTV)
-		ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, nodeRoot)
-	ELSE
-		ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
-	ENDIF
-	IFZ ret THEN
-		RETURN $$FALSE ' fail
-	ELSE
-		RETURN $$TRUE ' success
-	ENDIF
+	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
+	IFZ hItem THEN RETURN $$FALSE ' fail
+
+	ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
+	IFZ ret THEN RETURN $$FALSE ' fail
+
+	RETURN $$TRUE ' success
 
 END FUNCTION
 '
@@ -7303,7 +7303,7 @@ END FUNCTION
 ' ############################
 ' #####  CompareLVItems  #####
 ' ############################
-' Compares two listview items
+' Compares two list view items
 FUNCTION CompareLVItems (item1, item2, hLV)
 	SHARED lvs_iCol
 	SHARED lvs_desc
@@ -8927,7 +8927,7 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 			XLONGAT(&&nmlvdi) = pNmlvdi
 			'
 		'CASE $$TVN_SELCHANGED
-		'Guy-26jan09-added $$LVN_ITEMCHANGED (listview selection changed)
+		'Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
 			'Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
