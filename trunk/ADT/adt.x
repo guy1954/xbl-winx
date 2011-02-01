@@ -11,9 +11,6 @@ VERSION "0.2"
 ' ***** Versions *****
 ' Contributors:
 '     Callum Lowcay (original version)
-'     Guy "gl" Lonne (evolutions)
-'
-' 0.2-gl-04mar09-created a version without m4-preprocessing for the static build.
 '
 '
 	IMPORT "xst"        ' xblite Standard Library
@@ -44,6 +41,7 @@ TYPE BINWALK
 	BINNODE	.node
 END TYPE
 EXPORT
+
 $$ADT_PREORDER	= 0
 $$ADT_INORDER		= 1
 $$ADT_POSTORDER	= 2
@@ -138,9 +136,8 @@ DeclareAccess(STACK)
 ' returns $$TRUE on error otherwise $$FALSE
 FUNCTION ADT ()
 	STATIC initialised
-	IF initialised THEN RETURN $$FALSE
+	IF initialised THEN RETURN $$FALSE ' success: already initialized!
 
-	Xst ()		' Xblite Standard Library
 	STRING_Init()
 	LINKEDNODE_Init()
 	LINKEDWALK_Init()
@@ -148,7 +145,7 @@ FUNCTION ADT ()
 	BINWALK_Init()
 	STACK_Init()
 
-	initialised = $$TRUE
+	initialised = $$TRUE ' protect for reentry
   RETURN $$FALSE
 END FUNCTION
 '
@@ -226,7 +223,7 @@ END FUNCTION
 ' ################################
 ' #####  LinkedList_GetItem  #####
 ' ################################
-' Retreives a particular item from a linked list
+' Retrieves a particular item from a linked list
 ' list = the list to get the item from
 ' index = the 0 based index of the item to get
 ' iData = the variable to store the data
