@@ -686,16 +686,22 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
-DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
-DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, text$)
-DECLARE FUNCTION WinXGrid_AddRow (hGrid, iRow, text$)
+DECLARE FUNCTION WinXAddXbGrid (parent, title$, idCtr)
+DECLARE FUNCTION WinXbGrid_SetHeadings (hGrid, colHeadings$)
+DECLARE FUNCTION WinXbGrid_AddRow (hGrid, rowAdd, @val$[])
 
 'new in 0.6.0.14
-DECLARE FUNCTION WinXGrid_ProtectCell (hGrid, row, col) ' protect cell
-DECLARE FUNCTION WinXGrid_UnprotectCell (hGrid, row, col) ' unprotect cell
-DECLARE FUNCTION WinXGrid_DeleteCell (hGrid, row, col) ' delete cell
-DECLARE FUNCTION WinXGrid_GetType$ (hGrid, row, col) ' get cell's type
-DECLARE FUNCTION WinXGrid_SetSelection (hGrid, row) ' set the row selection
+DECLARE FUNCTION WinXbGrid_Reset (hGrid, colHeadings$, @colWidth[]) ' delete all cells and place new column headings
+DECLARE FUNCTION WinXbGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
+DECLARE FUNCTION WinXbGrid_Protect (hGrid) ' protect all cells
+DECLARE FUNCTION WinXbGrid_Unprotect (hGrid) ' unprotect all cells
+DECLARE FUNCTION WinXbGrid_DeleteCell (hGrid, rowDel, colDel) ' delete cell
+DECLARE FUNCTION WinXbGrid_GetCellType$ (hGrid, row, col) ' get cell's type
+DECLARE FUNCTION WinXbGrid_SelectRow (hGrid, row) ' select row
+DECLARE FUNCTION WinXbGrid_GetSelectedRow (hGrid) ' get the selected row
+DECLARE FUNCTION WinXbGrid_GetRow (hGrid, row, @val$[]) ' get row's values
+DECLARE FUNCTION WinXbGrid_UpdeteRow (hGrid, rowUpd, @val$[]) ' update row
+DECLARE FUNCTION WinXbGrid_DeleteRow (hGrid, rowDel) ' delete row
 
 END EXPORT
 '
@@ -751,13 +757,13 @@ FUNCTION WinX ()
 	SHARED TBBUTTONDATA g_tbbd[]	' info for toolbar customisation
 	SHARED g_tbbdUM[]
 
-	WNDCLASS	wc
 	INITCOMMONCONTROLSEX	iccex
+	WNDCLASS	wc
 
 	STATIC init
 	IF init THEN RETURN ' success: already initialized!
 
-	ADT () ' initialize the Abstract Data Types Library
+	ADT ()        ' initialize the Abstract Data Types Library
 
 	' initialize the specific common controls classes from the common
 	' control dynamic-link library
@@ -840,6 +846,10 @@ FUNCTION WinX ()
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE ' fail
+
+	' initialize XbGrid control AFTER registering WinX's window class
+	bErr = Xbgrid ()
+	IF bErr THEN RETURN $$TRUE ' fail
 
 	init = $$TRUE ' protect for reentry
 
@@ -1085,7 +1095,7 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 END FUNCTION
 '
 ' #########################
-' #####  WinXAddGrid  #####
+' #####  WinXAddXbGrid  #####
 ' #########################
 ' Adds a new grid control
 ' parent = the window to add the grid to
@@ -1094,16 +1104,22 @@ END FUNCTION
 ' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
 ' exStyle = the extended style of the grid.  For most controls this will be 0
 ' returns the handle of the grid, or 0 on fail
-FUNCTION WinXAddGrid (parent, STRING title, idCtr)
+FUNCTION WinXAddXbGrid (parent, STRING title, idCtr)
 	IFZ idCtr THEN RETURN ' fail
 
 	IFZ title THEN title = "Custom Grid Control" ' an empty title causes a crash
 	style = $$WS_CHILD|$$WS_VISIBLE
 	hInst = GetModuleHandleA (0)
+
 	hGrid = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$XBGRIDCLASSNAME, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
 	IFZ hGrid THEN RETURN ' fail
 
 	WinXSetDefaultFont (hGrid)
+
+	' shaded cells are write-protected
+	' $$BGM_SETPROTECTCOLOR is optional, but it gives a visual indication of which cells are protected
+	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, RGB (238, 234, 234), 0) ' $$COLOR_BTNFACE + 1 for Windows XP
+
 	RETURN hGrid
 END FUNCTION
 '
@@ -1688,7 +1704,7 @@ END FUNCTION
 ' #####  WinXCalendar_GetSelection  #####
 ' #######################################
 ' Get the selection in a calendar control
-' hCal = the handle to the calendard control
+' hCal = the handle to the calendar control
 ' start = the variable to store the start of the selection range
 ' end = the variable to store the end of the selection range
 ' returns $$TRUE on success or $$FALSE on fail
@@ -1702,7 +1718,7 @@ END FUNCTION
 ' #####  WinXCalendar_SetSelection  #####
 ' #######################################
 ' Sets the selection in a calendar control
-' hCal = the handle to the calendard control
+' hCal = the handle to the calendar control
 ' start = the start of the selection range
 ' end = the end of the selection range
 ' returns $$TRUE on success or $$FALSE on fail
@@ -2551,7 +2567,6 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 
 	' launch command command$
 	SHELL (command$) ' launch command command$
-	'XstAlert ("SHELL (" + command$ + ")")
 
 	RETURN $$TRUE ' success
 
@@ -3677,62 +3692,75 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 END FUNCTION
 '
 ' #############################
-' #####  WinXGrid_AddRow  #####
+' #####  WinXbGrid_AddRow  #####
 ' #############################
 ' Adds a new row to a grid
 ' row = the number at which to insert the row, 0 to add to the end of the grid
-' STRING text = the text for the row in the form "col1|col2..."
+' val$[] = an array of the row's values
 ' returns the number to the row or 0 on error
-FUNCTION WinXGrid_AddRow (hGrid, row, STRING text)
+FUNCTION WinXbGrid_AddRow (hGrid, row, @val$[])
+	BGCELL cell
 
 	IFZ hGrid THEN RETURN ' fail
-	IFZ text THEN RETURN ' fail
+	IFZ val$[] THEN RETURN ' fail
 
-	'parse the string text
-	XstParseStringToStringArray (text, "|", @s$[])
-	IFZ s$[] THEN RETURN ' fail
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF row < 1 || row > rowLast THEN row = rowLast + 1
 
-	rows = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF row < 1 || row > rows THEN row = rows + 1
-
-	'set the subitems
-	upp = UBOUND(s$[])
-	cols = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	IF upp >= cols THEN upp = cols - 1
+	'set the cell
+	upp = UBOUND(val$[])
+	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	IF upp >= colLast THEN upp = colLast - 1
 
 	FOR i = 0 TO upp
-		st$ = TRIM$ (s$[i])
-		IF st$ THEN PutCell(hGrid, row, i + 1, st$)
+		buffer$ = val$[i]
+		SELECT CASE TRIM$ (val$[i])
+			CASE "T", "$$TRUE"  : buffer$ = "TRUE"
+			CASE "F", "$$FALSE" : buffer$ = "FALSE"
+		END SELECT
+		'
+		'PutCell(hGrid, row, i + 1, text$)
+		cell.row = row
+		cell.col = i + 1
+		SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &buffer$)
 	NEXT i
 
 	RETURN row
 END FUNCTION
 '
 ' ##################################
-' #####  WinXGrid_SetHeadings  #####
+' #####  WinXbGrid_SetHeadings  #####
 ' ##################################
-' Sets the grid's column headings
-' STRING text = the text for the headings in the form "head1|head2|..."
+' Sets the grid's column titles
+' colHeadings$ = a list of column titles in the form "column 1 title|column 2 title|..."
 ' returns $$TRUE on error
-FUNCTION WinXGrid_SetHeadings (hGrid, STRING text)
+FUNCTION WinXbGrid_SetHeadings (hGrid, colHeadings$)
+	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
-	IFZ text THEN RETURN $$TRUE ' fail
+	IFZ colHeadings$ THEN RETURN $$TRUE ' fail
+	IFZ INSTR (colHeadings$, "|") THEN RETURN $$TRUE ' fail
 
-	'parse the string text
-	XstParseStringToStringArray (text, "|", @s$[])
-	IFZ s$[] THEN RETURN $$TRUE ' fail
+	'parse the string colHeadings$
+	XstParseStringToStringArray (colHeadings$, "|", @colTitle$[])
+	IFZ colTitle$[] THEN RETURN $$TRUE ' fail
 
-	upp = UBOUND(s$[])
+	upp = UBOUND(colTitle$[])
 
 	'set the headings
 	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
 	SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
-	SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove 2nd heading "A B C..."
+	SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove standard 2nd row headings "A B C..."
 	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
+
+	' replace the standard 2nd row headings with the provided headings
 	FOR i = 0 TO upp
-		st$ = TRIM$ (s$[i])
-		IF st$ THEN PutCell(hGrid, 0, i + 1, st$)
+		IF colTitle$[i] THEN
+			'PutCell(hGrid, 0, i + 1, colTitle$[i])
+			cell.row = 0
+			cell.col = i + 1
+			SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &colTitle$[i])
+		ENDIF
 	NEXT i
 
 END FUNCTION
@@ -3834,18 +3862,17 @@ END FUNCTION
 ' Gets the index of a particular string
 ' hListBox = the handle to the list box containing the string
 ' item$ = the string to search for
-' returns the index of the item or -1 on fail
+' returns the index of the item or $$LB_ERR on fail
 FUNCTION WinXListBox_GetIndex (hListBox, item$)
-	IFZ hListBox THEN RETURN -1 ' fail
-	IFZ item$ THEN RETURN -1 ' fail
+	IFZ hListBox THEN RETURN $$LB_ERR		' fail
+	IFZ item$ THEN RETURN $$LB_ERR		' fail
 
-	pos = -1
-	DO
-		pos = SendMessageA (hListBox, $$LB_FINDSTRING, pos, &item$)
-		IF pos < 0 THEN RETURN -1
-	LOOP WHILE SendMessageA (hListBox, $$LB_GETTEXTLEN, pos, 0) > LEN(item$)
+	' get count of items in listbox
+	lbcount = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
+	IFZ lbcount THEN RETURN $$LB_ERR		' fail
 
-	RETURN pos
+	RETURN SendMessageA (hListBox, $$LB_FINDSTRINGEXACT, -1, &item$)
+
 END FUNCTION
 '
 ' ##################################
@@ -3859,9 +3886,7 @@ FUNCTION WinXListBox_GetItem$ (hListBox, index)
 	IFZ hListBox THEN RETURN "" ' fail
 
 	buffer$ = NULL$(SendMessageA (hListBox, $$LB_GETTEXTLEN, index, 0)+2)
-
 	SendMessageA (hListBox, $$LB_GETTEXT, index, &buffer$)
-
 	RETURN CSTRING$(&buffer$)
 END FUNCTION
 '
@@ -3945,24 +3970,29 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListBox_SetSelection (hListBox, index[])
 	IFZ hListBox THEN RETURN ' fail
+	IFZ index[] THEN RETURN ' fail
 
+	failed = $$FALSE
 	IF GetWindowLongA (hListBox, $$GWL_STYLE) AND $$LBS_EXTENDEDSEL THEN
 		'first, deselect everything
-		SendMessageA (hListBox, $$LB_SETSEL, $$FALSE, -1)
-
-		failed = $$FALSE
-		FOR i = 0 TO UBOUND(index[])
-			IF SendMessageA (hListBox, $$LB_SETSEL, $$TRUE, index[i]) < 0 THEN failed = $$TRUE
+		SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
+		'
+		upp = UBOUND(index[])
+		FOR i = 0 TO upp
+			IF SendMessageA (hListBox, $$LB_SETSEL, 1, index[i]) < 0 THEN failed = $$TRUE
 		NEXT i
-		IF failed THEN RETURN ' fail
 	ELSE
-		IFZ index[] THEN
-			IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN ' fail
-		ELSE
-			RETURN ' fail
-		ENDIF
+		' Guy-17feb11-does not seem right :-(
+		'IFZ index[] THEN
+		'	IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN ' fail
+		'ELSE
+		'	RETURN ' fail
+		'ENDIF
+		'index[0] = -1, deselect previous selection
+		IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN failed = $$TRUE
 	ENDIF
 
+	IF failed THEN RETURN ' fail
 	RETURN $$TRUE ' success
 END FUNCTION
 '
@@ -9414,43 +9444,74 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
 END FUNCTION
 
-FUNCTION WinXGrid_ProtectCell (hGrid, row, col) ' protect cell
+' Deletes all cells and places new column headings
+' colHeadings$ = a list of column titles in the form "column 1 title|column 2 title|..."
+' returns $$TRUE on error
+FUNCTION WinXbGrid_Reset (hGrid, colHeadings$, @colWidth[])
+	BGCELL cell
+
+	IFZ hGrid THEN RETURN $$TRUE		' fail
+
+	SendMessageA (hGrid, $$BGM_CLEARGRID, 0, 0)
+
+	WinXbGrid_SetHeadings (hGrid, colHeadings$)
+	WinXbGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
+
+END FUNCTION
+
+FUNCTION WinXbGrid_SetColWidth (hGrid, @colWidth[])		' set columns' width
+
+	IFZ hGrid THEN RETURN $$TRUE		' fail
+	IFZ colWidth[] THEN RETURN $$TRUE		' fail
+
+	upp = UBOUND (colWidth[])
+	FOR i = 0 TO upp
+		IF colWidth[i] < 0 THEN colWidth[i] = 0		' invisible column
+		' set column (i+1)'s width
+		SendMessageA (hGrid, $$BGM_SETCOLWIDTH, (i + 1), colWidth[i])
+	NEXT i
+
+END FUNCTION
+
+FUNCTION WinXbGrid_Protect (hGrid) ' protect all cells
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
-	IF row < 1 THEN RETURN $$TRUE ' row 0 is the header
-	IF col < 0 THEN RETURN $$TRUE ' fail
 
-	cell.row = row
-	cell.col = col
-	SendMessageA (hGrid, $$BGM_PROTECTCELL, &cell, 1)
+	' turn on automatic cell protection
+	SendMessageA (hGrid, $$BGM_SETPROTECT, 1, 0)
+
 END FUNCTION
 
-FUNCTION WinXGrid_UnprotectCell (hGrid, row, col) ' unprotect cell
+FUNCTION WinXbGrid_Unprotect (hGrid) ' unprotect all cells
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
-	IF row < 1 THEN RETURN $$TRUE ' row 0 is the header
-	IF col < 0 THEN RETURN $$TRUE ' fail
 
-	cell.row = row
-	cell.col = col
-	SendMessageA (hGrid, $$BGM_PROTECTCELL, &cell, 0)
+	' turn off automatic cell protection
+	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0)
+
 END FUNCTION
 
-FUNCTION WinXGrid_DeleteCell (hGrid, row, col) ' delete cell
-	BGCELL cell
+' Deletes a cell in a grid control
+' hGrid = the handle to the grid control
+' rowDel = the cell's row
+' colDel = the cell's column
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXbGrid_DeleteCell (hGrid, rowDel, colDel)
+	BGCELL cellDel
 
-	IFZ hGrid THEN RETURN $$TRUE ' fail
-	IF row < 1 THEN RETURN $$TRUE ' row 0 is the header
-	IF col < 0 THEN RETURN $$TRUE ' fail
+	IFZ hGrid THEN RETURN ' fail
+	IF rowDel < 1 THEN RETURN ' row 0 is the header
+	IF colDel < 0 THEN RETURN ' fail
 
-	cell.row = row
-	cell.col = col
-	SendMessageA (hGrid, $$BGM_DELETECELL, &cell, 0)
+	cellDel.row = rowDel
+	cellDel.col = colDel
+	SendMessageA (hGrid, $$BGM_DELETECELL, &cellDel, 0)
+	RETURN $$TRUE ' success
 END FUNCTION
 
-FUNCTION WinXGrid_GetType$ (hGrid, row, col) ' get cell's type
+FUNCTION WinXbGrid_GetCellType$ (hGrid, row, col) ' get cell's type
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN "?" ' fail
@@ -9473,18 +9534,131 @@ FUNCTION WinXGrid_GetType$ (hGrid, row, col) ' get cell's type
 
 END FUNCTION
 
+
 ' Sets the row selection in a grid control
-' hGrid = the handle to the calendard control
-' row = the start of the selection range
+' hGrid = the handle to the grid control
+' row = the row to be selected
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_SetSelection (hGrid, row)
+FUNCTION WinXbGrid_SelectRow (hGrid, row)
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
 
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)		' get the last row's number
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)		' get the last row
 	IF row < 0 THEN row = 0
 	IF row > rowLast THEN row = rowLast
-	SendMessageA (hGrid, $$BGM_SETCURSORPOS, row, 1)
+	SendMessageA (hGrid, $$BGM_SETCURSORPOS, row, 0)
+	SetFocus (hGrid)
+END FUNCTION
+
+' Gets the selected row in a grid control
+' hGrid = the handle to the grid control
+' returns the selected row on success or 0 on fail
+FUNCTION WinXbGrid_GetSelectedRow (hGrid)
+	IFZ hGrid THEN RETURN ' fail
+	RETURN SendMessageA (hGrid, $$BGM_GETROW, 0, 0)
+END FUNCTION
+
+' Gets the values of a given row in a grid control
+' hGrid = the handle to the grid control
+' row = the row to get the cells from
+' val$[] = an array of the row's values
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXbGrid_GetRow (hGrid, row, @val$[])
+	BGCELL cell
+
+	' validate passed arguments
+	DIM val$[]
+	IFZ hGrid THEN RETURN ' fail
+
+	IF row < 1 THEN row = 1 ' say it's the first row
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)		' get the last row
+	IF row > rowLast THEN row = rowLast ' say it's the last row
+
+	' retrieve the cells from the grid control
+	' and build a CVS list of the row's cells
+	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	IF colLast < 0 THEN RETURN ' fail
+	DIM val$[colLast - 1]
+	IF colLast >= 1 THEN
+		FOR colNum = 1 TO colLast
+			cell.row = row
+			cell.col = colNum
+			buffer$ = NULL$ (1024)
+			SendMessageA (hGrid, $$BGM_GETCELLDATA, &cell, &buffer$)
+			val$[colNum - 1] = TRIM$ (CSTRING$ (&buffer$))
+		NEXT colNum
+	ENDIF
+
+	RETURN $$TRUE ' success
+
+END FUNCTION
+
+' Updates the row in a grid control
+' hGrid = the handle to the grid control
+' rowUpd = the row to be updated
+' val$[] = an array of the row's values
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXbGrid_UpdeteRow (hGrid, rowUpd, @val$[])
+	BGCELL cellUpd
+
+	IFZ hGrid THEN RETURN ' fail
+	IFZ val$[] THEN RETURN ' fail
+
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF rowLast < 1 THEN RETURN ' empty grid
+
+	IF rowDel = -1 THEN rowDel = rowLast
+	IF rowDel > rowLast THEN rowDel = rowLast
+	IF rowDel < 1 THEN RETURN ' fail
+
+	'set the cell
+	upp = UBOUND(val$[])
+	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	IF upp >= colLast THEN upp = colLast - 1
+
+	FOR i = 0 TO upp
+		'
+		SELECT CASE UCASE$ (TRIM$ (val$[i]))
+			CASE "T", "$$TRUE"  : buffer$ = "TRUE"
+			CASE "F", "$$FALSE" : buffer$ = "FALSE"
+			CASE ELSE           : buffer$ = val$[i]
+		END SELECT
+		'
+		'PutCell(hGrid, rowUpd, i + 1, buffer$)
+		cellUpd.row = rowUpd
+		cellUpd.col = i + 1
+		SendMessageA (hGrid, $$BGM_SETCELLDATA, &cellUpd, &buffer$)
+	NEXT i
+
+	RETURN $$TRUE ' success
+
+END FUNCTION
+
+' Deletes the row in a grid control
+' hGrid = the handle to the grid control
+' rowDel = the row to be deleted, -1 for the last
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXbGrid_DeleteRow (hGrid, rowDel)
+	BGCELL cellDel
+
+	IFZ hGrid THEN RETURN ' fail
+
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF rowLast < 1 THEN RETURN ' empty grid
+
+	IF rowDel = -1 THEN rowDel = rowLast
+	IF rowDel > rowLast THEN rowDel = rowLast
+	IF rowDel < 1 THEN RETURN ' fail
+
+	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	FOR colNum = 1 TO colLast
+		cellDel.row = rowDel
+		cellDel.col = colNum
+		SendMessageA (hGrid, $$BGM_DELETECELL, &cellDel, 0)
+	NEXT colNum
+
+	RETURN $$TRUE ' success
+
 END FUNCTION
 '
 ' #######################
@@ -9492,6 +9666,7 @@ END FUNCTION
 ' #######################
 ' Notes:
 ' - use the compiler switch -m4
+' - note the absence of spaces
 '
 DefineAccess(SPLITTERINFO)
 DefineAccess(LINKEDLIST)
