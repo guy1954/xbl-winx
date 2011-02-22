@@ -686,22 +686,22 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
-DECLARE FUNCTION WinXAddXbGrid (parent, title$, idCtr)
-DECLARE FUNCTION WinXbGrid_SetHeadings (hGrid, colHeadings$)
-DECLARE FUNCTION WinXbGrid_AddRow (hGrid, rowAdd, @val$[])
+DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
+DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, colHeadings$)
+DECLARE FUNCTION WinXGrid_AddRow (hGrid, rowAdd, @val$[])
 
 'new in 0.6.0.14
-DECLARE FUNCTION WinXbGrid_Reset (hGrid, colHeadings$, @colWidth[]) ' delete all cells and place new column headings
-DECLARE FUNCTION WinXbGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
-DECLARE FUNCTION WinXbGrid_Protect (hGrid) ' protect all cells
-DECLARE FUNCTION WinXbGrid_Unprotect (hGrid) ' unprotect all cells
-DECLARE FUNCTION WinXbGrid_DeleteCell (hGrid, rowDel, colDel) ' delete cell
-DECLARE FUNCTION WinXbGrid_GetCellType$ (hGrid, row, col) ' get cell's type
-DECLARE FUNCTION WinXbGrid_SelectRow (hGrid, row) ' select row
-DECLARE FUNCTION WinXbGrid_GetSelectedRow (hGrid) ' get the selected row
-DECLARE FUNCTION WinXbGrid_GetRow (hGrid, row, @val$[]) ' get row's values
-DECLARE FUNCTION WinXbGrid_UpdeteRow (hGrid, rowUpd, @val$[]) ' update row
-DECLARE FUNCTION WinXbGrid_DeleteRow (hGrid, rowDel) ' delete row
+DECLARE FUNCTION WinXGrid_Reset (hGrid, colHeadings$, @colWidth[]) ' delete all cells and place new column headings
+DECLARE FUNCTION WinXGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
+DECLARE FUNCTION WinXGrid_Protect (hGrid) ' protect all cells
+DECLARE FUNCTION WinXGrid_Unprotect (hGrid) ' unprotect all cells
+DECLARE FUNCTION WinXGrid_DeleteCell (hGrid, rowDel, colDel) ' delete cell
+DECLARE FUNCTION WinXGrid_GetCellType$ (hGrid, row, col) ' get cell's type
+DECLARE FUNCTION WinXGrid_SelectRow (hGrid, row) ' select row
+DECLARE FUNCTION WinXGrid_GetSelectedRow (hGrid) ' get the selected row
+DECLARE FUNCTION WinXGrid_GetRow (hGrid, row, @val$[]) ' get row's values
+DECLARE FUNCTION WinXGrid_UpdeteRow (hGrid, rowUpd, @val$[]) ' update row
+DECLARE FUNCTION WinXGrid_DeleteRow (hGrid, rowDel) ' delete row
 
 END EXPORT
 '
@@ -1095,7 +1095,7 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 END FUNCTION
 '
 ' #########################
-' #####  WinXAddXbGrid  #####
+' #####  WinXAddGrid  #####
 ' #########################
 ' Adds a new grid control
 ' parent = the window to add the grid to
@@ -1104,7 +1104,7 @@ END FUNCTION
 ' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
 ' exStyle = the extended style of the grid.  For most controls this will be 0
 ' returns the handle of the grid, or 0 on fail
-FUNCTION WinXAddXbGrid (parent, STRING title, idCtr)
+FUNCTION WinXAddGrid (parent, STRING title, idCtr)
 	IFZ idCtr THEN RETURN ' fail
 
 	IFZ title THEN title = "Custom Grid Control" ' an empty title causes a crash
@@ -1195,8 +1195,9 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 	IF hilLargeIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
 	IF hilSmallIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
 
+	' set the list view's extended style mask
 	exStyle = $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP
-	SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, $$LVS_EX_FULLROWSELECT|$$LVS_EX_LABELTIP, exStyle)
+	SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
 
 	RETURN hLV
 
@@ -2250,11 +2251,9 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	SELECT CASE TRUE
 		CASE LEN (initialName$) = 0
 			XstGetCurrentDirectory (@initDir$)
-			EXIT SELECT
 			'
 		CASE RIGHT$ (initialName$) = $$PathSlash$ 'Guy-15dec08-initialName$ is a directory
 			initDir$ = initialName$
-			EXIT SELECT
 			'
 		CASE ELSE
 			IFZ initDir$ THEN
@@ -3692,13 +3691,13 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 END FUNCTION
 '
 ' #############################
-' #####  WinXbGrid_AddRow  #####
+' #####  WinXGrid_AddRow  #####
 ' #############################
 ' Adds a new row to a grid
 ' row = the number at which to insert the row, 0 to add to the end of the grid
 ' val$[] = an array of the row's values
 ' returns the number to the row or 0 on error
-FUNCTION WinXbGrid_AddRow (hGrid, row, @val$[])
+FUNCTION WinXGrid_AddRow (hGrid, row, @val$[])
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN ' fail
@@ -3729,12 +3728,12 @@ FUNCTION WinXbGrid_AddRow (hGrid, row, @val$[])
 END FUNCTION
 '
 ' ##################################
-' #####  WinXbGrid_SetHeadings  #####
+' #####  WinXGrid_SetHeadings  #####
 ' ##################################
 ' Sets the grid's column titles
 ' colHeadings$ = a list of column titles in the form "column 1 title|column 2 title|..."
 ' returns $$TRUE on error
-FUNCTION WinXbGrid_SetHeadings (hGrid, colHeadings$)
+FUNCTION WinXGrid_SetHeadings (hGrid, colHeadings$)
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
@@ -4268,14 +4267,22 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN ' fail
+	IFZ iItems[] THEN RETURN ' fail
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IF count < 1 THEN RETURN ' fail
 
-	FOR i = 0 TO UBOUND(iItems[])
-		lvi.mask = $$LVIF_STATE
-		lvi.iItem = iItems[i]
+	' unselect all
+	lvi.state = NOT $$LVIS_SELECTED
+	lvi.stateMask = $$LVIS_SELECTED
+	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+
+	upp = UBOUND(iItems[])
+	FOR i = 0 TO upp
 		lvi.state = $$LVIS_SELECTED
 		lvi.stateMask = $$LVIS_SELECTED
-		IFZ SendMessageA (hLV, $$LVM_SETITEM, 0, &lvi) THEN RETURN ' fail
+		SendMessageA (hLV, $$LVM_SETITEMSTATE, iItems[i], &lvi)
 	NEXT i
+
 	RETURN $$TRUE ' success
 END FUNCTION
 '
@@ -4645,11 +4652,11 @@ END FUNCTION
 ' Arg9				= menu : the handle to the menu for the window, 0 for no menu
 '	Return      = The handle to the new window or 0 on fail
 ' Remarks     = Simple style constants:
-' - $$XWSS_APP</dt><dd>A standard window
-' - $$XWSS_APPNORESIZE</dt><dd>Same as the standard window, but cannot be resized or maximised
-' - $$XWSS_POPUP</dt><dd>A popup window, cannot be minimised
-' - $$XWSS_POPUPNOTITLE</dt><dd>A popup window with no title bar
-' - $$XWSS_NOBORDER</dt><dd>A window with no border, useful for full screen apps
+' - $$XWSS_APP: A standard window
+' - $$XWSS_APPNORESIZE: Same as the standard window, but cannot be resized or maximised
+' - $$XWSS_POPUP: A popup window, cannot be minimised
+' - $$XWSS_POPUPNOTITLE: A popup window with no title bar
+' - $$XWSS_NOBORDER: A window with no border, useful for full screen apps
 '	See Also    =
 '	Examples    = 'Make a simple window
 'WinXNewWindow ("My window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
@@ -5628,15 +5635,11 @@ FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECUR
 	ELSE
 		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ|$$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
 			SELECT CASE disposition
+				CASE $$REG_OPENED_EXISTING_KEY : GOSUB QueryVariable
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						IF RegSetValueExA (hSubKey, &value$, 0, $$REG_EXPAND_SZ, &result$, LEN(result$)+1) = $$ERROR_SUCCESS THEN ret = $$TRUE
 					ENDIF
-					EXIT SELECT
-					'
-				CASE $$REG_OPENED_EXISTING_KEY
-					GOSUB QueryVariable
-					EXIT SELECT
 					'
 			END SELECT
 			RegCloseKey (hSubKey)
@@ -7389,44 +7392,19 @@ FUNCTION GuiTellDialogError (parent, title$) ' display WinXDialog_'s run-time er
 			'err$ = "Cancel pressed, no error"
 			RETURN ' success
 			'
-		CASE $$CDERR_DIALOGFAILURE
-			err$ = "Dialog box could not be created"
-			EXIT SELECT
-		CASE $$CDERR_FINDRESFAILURE
-			err$ = "Failed to find a resource"
-			EXIT SELECT
-		CASE $$CDERR_NOHINSTANCE
-			err$ = "Instance handle missing"
-			EXIT SELECT
-		CASE $$CDERR_INITIALIZATION
-			err$ = "Failure during initialization. Possibly out of memory"
-			EXIT SELECT
-		CASE $$CDERR_NOHOOK
-			err$ = "Hook procedure missing"
-			EXIT SELECT
-		CASE $$CDERR_LOCKRESFAILURE
-			err$ = "Failed to lock a resource"
-			EXIT SELECT
-		CASE $$CDERR_NOTEMPLATE
-			err$ = "Template missing"
-			EXIT SELECT
-		CASE $$CDERR_LOADRESFAILURE
-			err$ = "Failed to load a resource"
-			EXIT SELECT
-		CASE $$CDERR_STRUCTSIZE
-			err$ = "Internal error - invalid struct size"
-			EXIT SELECT
-		CASE $$CDERR_LOADSTRFAILURE
-			err$ = "Failed to load a string"
-			EXIT SELECT
-		CASE $$CDERR_MEMALLOCFAILURE
-			err$ = "Unable to allocate memory for internal dialog structures"
-			EXIT SELECT
-		CASE $$CDERR_MEMLOCKFAILURE
-			err$ = "Unable to lock memory"
-			EXIT SELECT
-		CASE ELSE
-			err$ = "Unknown error" + STR$ (extErr)
+		CASE $$CDERR_DIALOGFAILURE   : err$ = "Dialog box could not be created"
+		CASE $$CDERR_FINDRESFAILURE  : err$ = "Failed to find a resource"
+		CASE $$CDERR_NOHINSTANCE     : err$ = "Instance handle missing"
+		CASE $$CDERR_INITIALIZATION  : err$ = "Failure during initialization. Possibly out of memory"
+		CASE $$CDERR_NOHOOK          : err$ = "Hook procedure missing"
+		CASE $$CDERR_LOCKRESFAILURE  : err$ = "Failed to lock a resource"
+		CASE $$CDERR_NOTEMPLATE      : err$ = "Template missing"
+		CASE $$CDERR_LOADRESFAILURE  : err$ = "Failed to load a resource"
+		CASE $$CDERR_STRUCTSIZE      : err$ = "Internal error - invalid struct size"
+		CASE $$CDERR_LOADSTRFAILURE  : err$ = "Failed to load a string"
+		CASE $$CDERR_MEMALLOCFAILURE : err$ = "Unable to allocate memory for internal dialog structures"
+		CASE $$CDERR_MEMLOCKFAILURE  : err$ = "Unable to lock memory"
+		CASE ELSE                    : err$ = "Unknown error" + STR$ (extErr)
 	END SELECT
 	MessageBoxA (parent, &err$, &title$, $$MB_ICONSTOP)
 
@@ -7439,17 +7417,17 @@ END FUNCTION
 ' ######################
 ' Convert a simplified window style to a window style
 ' xwss = the simplified style
-' returns a ws.
+' returns a window style.
 FUNCTION XWSStoWS (xwss)
-	ret = 0
+	style = 0
 	SELECT CASE xwss
-		CASE $$XWSS_APP          : ret = $$WS_OVERLAPPEDWINDOW
-		CASE $$XWSS_APPNORESIZE  : ret =$$WS_OVERLAPPED|$$WS_CAPTION|$$WS_SYSMENU|$$WS_MINIMIZEBOX
-		CASE $$XWSS_POPUP        : ret = $$WS_POPUPWINDOW|$$WS_CAPTION
-		CASE $$XWSS_POPUPNOTITLE : ret = $$WS_POPUPWINDOW
-		CASE $$XWSS_NOBORDER     : ret = $$WS_POPUP
+		CASE $$XWSS_APP          : style = $$WS_OVERLAPPEDWINDOW
+		CASE $$XWSS_APPNORESIZE  : style = $$WS_OVERLAPPED|$$WS_CAPTION|$$WS_SYSMENU|$$WS_MINIMIZEBOX
+		CASE $$XWSS_POPUP        : style = $$WS_POPUPWINDOW|$$WS_CAPTION
+		CASE $$XWSS_POPUPNOTITLE : style = $$WS_POPUPWINDOW
+		CASE $$XWSS_NOBORDER     : style = $$WS_POPUP
 	END SELECT
-	RETURN ret
+	RETURN style
 END FUNCTION
 
 FUNCTION autoDraw_add (iList, iRecord)
@@ -8590,6 +8568,12 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			'	hChild = ChildWindowFromPoint (wParam, x, y)
 			'LOOP
 			'IF wParam = GetFocus() THEN RETURN $$MA_NOACTIVATE
+		CASE $$WM_KEYDOWN
+			IF binding.onKeyDown THEN RETURN @binding.onKeyDown(hwnd, wParam)
+		CASE $$WM_KEYUP
+			IF binding.onKeyUp THEN RETURN @binding.onKeyUp(hwnd, wParam)
+		CASE $$WM_CHAR
+			IF binding.onChar THEN RETURN @binding.onChar(hwnd, wParam)
 		CASE $$WM_SETFOCUS
 			IF binding.onFocusChange THEN RETURN @binding.onFocusChange(hwnd, $$TRUE)
 		CASE $$WM_KILLFOCUS
@@ -8688,12 +8672,6 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 '					RETURN @binding.onMouseWheel(hwnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
 '				ENDIF
 '			ENDIF
-		CASE $$WM_KEYDOWN
-			RETURN @binding.onKeyDown(hwnd, wParam)
-		CASE $$WM_KEYUP
-			RETURN @binding.onKeyUp(hwnd, wParam)
-		CASE $$WM_CHAR
-			RETURN @binding.onChar(hwnd, wParam)
 
 		CASE DLM_MESSAGE
 			IF DLM_MESSAGE != 0 THEN
@@ -9447,19 +9425,19 @@ END FUNCTION
 ' Deletes all cells and places new column headings
 ' colHeadings$ = a list of column titles in the form "column 1 title|column 2 title|..."
 ' returns $$TRUE on error
-FUNCTION WinXbGrid_Reset (hGrid, colHeadings$, @colWidth[])
+FUNCTION WinXGrid_Reset (hGrid, colHeadings$, @colWidth[])
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE		' fail
 
 	SendMessageA (hGrid, $$BGM_CLEARGRID, 0, 0)
 
-	WinXbGrid_SetHeadings (hGrid, colHeadings$)
-	WinXbGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
+	WinXGrid_SetHeadings (hGrid, colHeadings$)
+	WinXGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
 
 END FUNCTION
 
-FUNCTION WinXbGrid_SetColWidth (hGrid, @colWidth[])		' set columns' width
+FUNCTION WinXGrid_SetColWidth (hGrid, @colWidth[])		' set columns' width
 
 	IFZ hGrid THEN RETURN $$TRUE		' fail
 	IFZ colWidth[] THEN RETURN $$TRUE		' fail
@@ -9473,7 +9451,7 @@ FUNCTION WinXbGrid_SetColWidth (hGrid, @colWidth[])		' set columns' width
 
 END FUNCTION
 
-FUNCTION WinXbGrid_Protect (hGrid) ' protect all cells
+FUNCTION WinXGrid_Protect (hGrid) ' protect all cells
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
@@ -9483,7 +9461,7 @@ FUNCTION WinXbGrid_Protect (hGrid) ' protect all cells
 
 END FUNCTION
 
-FUNCTION WinXbGrid_Unprotect (hGrid) ' unprotect all cells
+FUNCTION WinXGrid_Unprotect (hGrid) ' unprotect all cells
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
@@ -9498,7 +9476,7 @@ END FUNCTION
 ' rowDel = the cell's row
 ' colDel = the cell's column
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXbGrid_DeleteCell (hGrid, rowDel, colDel)
+FUNCTION WinXGrid_DeleteCell (hGrid, rowDel, colDel)
 	BGCELL cellDel
 
 	IFZ hGrid THEN RETURN ' fail
@@ -9511,7 +9489,7 @@ FUNCTION WinXbGrid_DeleteCell (hGrid, rowDel, colDel)
 	RETURN $$TRUE ' success
 END FUNCTION
 
-FUNCTION WinXbGrid_GetCellType$ (hGrid, row, col) ' get cell's type
+FUNCTION WinXGrid_GetCellType$ (hGrid, row, col) ' get cell's type
 	BGCELL cell
 
 	IFZ hGrid THEN RETURN "?" ' fail
@@ -9539,7 +9517,7 @@ END FUNCTION
 ' hGrid = the handle to the grid control
 ' row = the row to be selected
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXbGrid_SelectRow (hGrid, row)
+FUNCTION WinXGrid_SelectRow (hGrid, row)
 
 	IFZ hGrid THEN RETURN $$TRUE ' fail
 
@@ -9553,7 +9531,7 @@ END FUNCTION
 ' Gets the selected row in a grid control
 ' hGrid = the handle to the grid control
 ' returns the selected row on success or 0 on fail
-FUNCTION WinXbGrid_GetSelectedRow (hGrid)
+FUNCTION WinXGrid_GetSelectedRow (hGrid)
 	IFZ hGrid THEN RETURN ' fail
 	RETURN SendMessageA (hGrid, $$BGM_GETROW, 0, 0)
 END FUNCTION
@@ -9563,7 +9541,7 @@ END FUNCTION
 ' row = the row to get the cells from
 ' val$[] = an array of the row's values
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXbGrid_GetRow (hGrid, row, @val$[])
+FUNCTION WinXGrid_GetRow (hGrid, row, @val$[])
 	BGCELL cell
 
 	' validate passed arguments
@@ -9598,7 +9576,7 @@ END FUNCTION
 ' rowUpd = the row to be updated
 ' val$[] = an array of the row's values
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXbGrid_UpdeteRow (hGrid, rowUpd, @val$[])
+FUNCTION WinXGrid_UpdeteRow (hGrid, rowUpd, @val$[])
 	BGCELL cellUpd
 
 	IFZ hGrid THEN RETURN ' fail
@@ -9638,7 +9616,7 @@ END FUNCTION
 ' hGrid = the handle to the grid control
 ' rowDel = the row to be deleted, -1 for the last
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXbGrid_DeleteRow (hGrid, rowDel)
+FUNCTION WinXGrid_DeleteRow (hGrid, rowDel)
 	BGCELL cellDel
 
 	IFZ hGrid THEN RETURN ' fail
