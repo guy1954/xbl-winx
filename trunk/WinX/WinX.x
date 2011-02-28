@@ -45,7 +45,7 @@ VERSION "0.6.0.14"
 ' - WinXTreeView_ExpandItem    : expand a tree view item (Guy-26jan09)
 ' - WinXTreeView_CollapseItem  : collapse a tree view item
 '
-'Guy-06dec08-corrected function WinXAddStatusBar to return the status bar's handle.
+' Guy-06dec08-corrected function WinXAddStatusBar to return the status bar's handle.
 '
 ' 0.6.0.5-Guy-9dec08-added the new functions
 ' - WinXDialog_SysInfo       : run Microsoft program "System Information"
@@ -146,7 +146,7 @@ TYPE BINDING
   FUNCADDR   .onColumnClick (XLONG, XLONG) ' idCtr, iColumn
   FUNCADDR   .onCalendarSelect (XLONG, SYSTEMTIME)  ' idcal, time
   FUNCADDR   .onDropFiles (XLONG, XLONG, XLONG, STRING[])  ' hWnd, x, y, files
-  XLONG      .hAccelTable    'Guy-21jan09-handle to the window's accelerator table
+  XLONG      .hAccelTable    ' Guy-21jan09-handle to the window's accelerator table
 END TYPE
 'message handler data type
 TYPE MSGHANDLER
@@ -297,7 +297,7 @@ EXPORT
 '$$TPM_NOANIMATION     = 0x4000
 '$$TPM_LAYOUTRTL       = 0x8000
 
-''Guy-30jul08-Duplicate Type(8)
+'' Guy-30jul08-Duplicate Type(8)
 ''PACKED BITMAPFILEHEADER
 ''  USHORT  .bfType
 ''  ULONG   .bfSize
@@ -689,19 +689,26 @@ DECLARE FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
 DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
 DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, colHeadings$)
 DECLARE FUNCTION WinXGrid_AddRow (hGrid, rowAdd, @val$[])
+DECLARE FUNCTION WinXGrid_AddItem (hGrid, iItem, item$, dummy)
 
 'new in 0.6.0.14
 DECLARE FUNCTION WinXGrid_Reset (hGrid, colHeadings$, @colWidth[]) ' delete all cells and place new column headings
-DECLARE FUNCTION WinXGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
-DECLARE FUNCTION WinXGrid_Protect (hGrid) ' protect all cells
-DECLARE FUNCTION WinXGrid_Unprotect (hGrid) ' unprotect all cells
+DECLARE FUNCTION WinXGrid_SetColWidth (hGrid, iCol, nWidth) ' set column width
 DECLARE FUNCTION WinXGrid_DeleteCell (hGrid, rowDel, colDel) ' delete cell
 DECLARE FUNCTION WinXGrid_GetCellType$ (hGrid, row, col) ' get cell's type
-DECLARE FUNCTION WinXGrid_SelectRow (hGrid, row) ' select row
+DECLARE FUNCTION WinXGrid_GetSelection (hGrid, @cellRowCol[])
+DECLARE FUNCTION WinXGrid_SetSelection (hGrid, @cellRowCol[])
 DECLARE FUNCTION WinXGrid_GetSelectedRow (hGrid) ' get the selected row
 DECLARE FUNCTION WinXGrid_GetRow (hGrid, row, @val$[]) ' get row's values
 DECLARE FUNCTION WinXGrid_UpdeteRow (hGrid, rowUpd, @val$[]) ' update row
 DECLARE FUNCTION WinXGrid_DeleteRow (hGrid, rowDel) ' delete row
+DECLARE FUNCTION WinXGrid_NotifyRowChanged (hGrid)
+DECLARE FUNCTION WinXGrid_SetHeadingFont (hGrid, hFont)
+DECLARE FUNCTION WinXGrid_SetColAutoWidth (hGrid)
+DECLARE FUNCTION WinXGrid_SetGridDim (hGrid, nRows, nCols)
+DECLARE FUNCTION WinXGrid_SetHeaderRowHeight (hGrid, nHeight)
+DECLARE FUNCTION WinXGrid_SetProtect (hGrid, protected)
+DECLARE FUNCTION WinXGrid_SetProtectColor (hGrid, color)
 
 END EXPORT
 '
@@ -789,7 +796,7 @@ FUNCTION WinX ()
 	$$ICC_PAGESCROLLER_CLASS | $$ICC_PROGRESS_CLASS | $$ICC_TAB_CLASSES | $$ICC_TREEVIEW_CLASSES | _
 	$$ICC_UPDOWN_CLASS | $$ICC_USEREX_CLASSES | $$ICC_WIN95_CLASSES
 
-	'Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE ' fail
+	' Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE ' fail
 	InitCommonControlsEx (&iccex)
 
 	DIM g_bindings[0]
@@ -1161,7 +1168,7 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	style = $$WS_CHILD|$$WS_VISIBLE
 	style = style|$$WS_TABSTOP|$$WS_GROUP
 	style = style|$$WS_VSCROLL|$$WS_HSCROLL|$$LBS_HASSTRINGS|$$LBS_NOINTEGRALHEIGHT
-	style = style|$$LBS_NOTIFY 'Guy-20apr09-$$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE
+	style = style|$$LBS_NOTIFY ' Guy-20apr09-$$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE
 	IF sort THEN style = style|$$LBS_SORT
 	IF multiSelect THEN style = style|$$LBS_EXTENDEDSEL
 
@@ -1338,14 +1345,14 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 		NEXT i
 	ENDIF
 
-	'Guy-06dec08-the right edge for the last part extends to the right edge of the window
+	' Guy-06dec08-the right edge for the last part extends to the right edge of the window
 	parts[uppPart] = -1 ' extend to the right edge of the window
 
 	'set the part info
 	SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
 
 	'and finally, set the text
-	'Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
+	' Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
 	WinXSetDefaultFont (hCtr)
 	FOR i = 0 TO uppPart
 		SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
@@ -1753,7 +1760,7 @@ FUNCTION WinXCleanUp () ' optional cleanup
 
 	IF g_hClipMem THEN
 		GlobalFree (g_hClipMem)
-		g_hClipMem = 0 ' prevents from being freed twice
+		g_hClipMem = 0 ' prevents from being freed twice g_hClipMem
 	ENDIF
 
 	IF g_bindings[] THEN
@@ -2252,7 +2259,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 		CASE LEN (initialName$) = 0
 			XstGetCurrentDirectory (@initDir$)
 			'
-		CASE RIGHT$ (initialName$) = $$PathSlash$ 'Guy-15dec08-initialName$ is a directory
+		CASE RIGHT$ (initialName$) = $$PathSlash$ ' Guy-15dec08-initialName$ is a directory
 			initDir$ = initialName$
 			'
 		CASE ELSE
@@ -2321,10 +2328,10 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	IF title$ THEN ofn.lpstrTitle = &title$ ' dialog title
 
 	' set dialog flags
-	'Guy-28oct09-ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
+	' Guy-28oct09-ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
 	ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER
 	IF multiSelect THEN ofn.flags = ofn.flags | $$OFN_ALLOWMULTISELECT
-	'Guy-28oct09-allow to open "Read Only" (no lock) the selected file(s).
+	' Guy-28oct09-allow to open "Read Only" (no lock) the selected file(s).
 	IF readOnly THEN
 		' show the check box "Read Only"
 		ofn.flags = ofn.flags | $$OFN_READONLY ' causes the check box "Read Only" to be checked initially
@@ -3727,6 +3734,46 @@ FUNCTION WinXGrid_AddRow (hGrid, row, @val$[])
 	RETURN row
 END FUNCTION
 '
+' ##############################
+' #####  WinXGrid_AddItem  #####
+' ##############################
+'
+' Adds a new row to a grid control
+' iItem = the index at which to insert the row, -1 to add to the end of the grid
+' item$ = the cells in the form "cell1\0cell2\0cell3..."
+'               or (more User-frendly) "cell1|cell2|cell3..."
+' returns the index to the row or -1 on error
+FUNCTION WinXGrid_AddItem (hGrid, iItem, item$, dummy)
+	BGCELL	cell
+
+	IFZ hGrid THEN RETURN -1 ' fail
+
+	' replace all embedded NULL characters by separator "|"
+	FOR i = SIZE (item$) - 1 TO 0 STEP -1
+		IF item${i} = '\0' THEN item${i} = '|'
+	NEXT i
+
+	'parse the string item$
+	XstParseStringToStringArray (item$, "|", @val$[])
+	IFZ val$[] THEN RETURN -1 ' fail
+
+	'set the row
+	FOR i = 0 TO upp
+		buffer$ = val$[i]
+		SELECT CASE TRIM$ (val$[i])
+			CASE "T", "$$TRUE"  : buffer$ = "TRUE"
+			CASE "F", "$$FALSE" : buffer$ = "FALSE"
+		END SELECT
+		'
+		'PutCell(hGrid, iItem, i + 1, text$)
+		cell.row = iItem
+		cell.col = i + 1
+		SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &buffer$)
+	NEXT i
+
+	RETURN index
+END FUNCTION
+'
 ' ##################################
 ' #####  WinXGrid_SetHeadings  #####
 ' ##################################
@@ -3747,20 +3794,28 @@ FUNCTION WinXGrid_SetHeadings (hGrid, colHeadings$)
 	upp = UBOUND(colTitle$[])
 
 	'set the headings
-	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
-	SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
-	SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove standard 2nd row headings "A B C..."
-	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
+	IF colTitle$[] THEN
+		SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
+		'
+		' replace the standard 2nd row headings with the provided headings
+		bFirst = $$TRUE
+		FOR i = 0 TO upp
+			IF colTitle$[i] THEN
+				IF bFirst THEN
+					SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove standard 2nd row headings "A B C..."
+					bFirst = $$FALSE
+				ENDIF
+				'
+				'PutCell(hGrid, 0, i + 1, colTitle$[i])
+				cell.row = 0
+				cell.col = i + 1
+				SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &colTitle$[i])
+			ENDIF
+		NEXT i
+	ENDIF
 
-	' replace the standard 2nd row headings with the provided headings
-	FOR i = 0 TO upp
-		IF colTitle$[i] THEN
-			'PutCell(hGrid, 0, i + 1, colTitle$[i])
-			cell.row = 0
-			cell.col = i + 1
-			SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &colTitle$[i])
-		ENDIF
-	NEXT i
+	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
+'	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
 
 END FUNCTION
 '
@@ -3898,7 +3953,7 @@ END FUNCTION
 ' returns the number of selected items
 FUNCTION WinXListBox_GetSelection (hListBox, index[])
 
- 'Guy-15apr09-prevent invalid handle
+ ' Guy-15apr09-prevent invalid handle
 	'IFZ hListBox THEN RETURN ' fail
 	IFZ hListBox THEN
 		DIM index[]
@@ -3908,14 +3963,14 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
 	IF style AND $$LBS_EXTENDEDSEL THEN
 		numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-		'Guy-15apr09-IF numItems = 0 THEN RETURN ' fail
+		' Guy-15apr09-IF numItems = 0 THEN RETURN ' fail
 		IF numItems < 1 THEN
 			DIM index[]
 			RETURN 0
 		ENDIF
 		'
 		DIM index[numItems-1]
-		'Guy-12nov08-wMsg would remain zero
+		' Guy-12nov08-wMsg would remain zero
 		'SendMessageA (hListBox, wMsg, numItems, &index[0])
 		SendMessageA (hListBox, $$LB_GETSELITEMS, numItems, &index[0])
 	ELSE
@@ -4055,7 +4110,7 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 	IFZ hLV THEN RETURN -1 ' fail
 
 	' replace all embedded NULL characters by separator "|"
-	FOR i = LEN (item) - 1 TO 0 STEP -1
+	FOR i = SIZE (item) - 1 TO 0 STEP -1
 		IF item{i} = '\0' THEN item{i} = '|'
 	NEXT i
 
@@ -4075,13 +4130,14 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 	IF index < 0 THEN RETURN -1 ' fail
 
 	'set the subitems
-	FOR i = 1 TO UBOUND(s$[])
+	upp = UBOUND(s$[])
+	FOR i = 1 TO upp
 		lvi.mask = $$LVIF_TEXT
 		lvi.iItem = index
 		lvi.iSubItem = i
 		lvi.pszText = &s$[i]
 		SendMessageA (hLV, $$LVM_SETITEM, 0, &lvi)
-	NEXT
+	NEXT i
 
 	RETURN index
 END FUNCTION
@@ -4360,7 +4416,7 @@ FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
 	IF inherit THEN oSecAttr.inherit = 1
 
 	IF ssd$ THEN
-		'Guy-30jul08-ConvertStringSecurityDescriptorToSecurityDescriptorA (&ssd$, $$SDDL_REVISION_1, &oSecAttr.securityDescriptor, 0)
+		' Guy-30jul08-ConvertStringSecurityDescriptorToSecurityDescriptorA (&ssd$, $$SDDL_REVISION_1, &oSecAttr.securityDescriptor, 0)
 		funcName$ = "ConvertStringSecurityDescriptorToSecurityDescriptorA"
 		DIM args[3]
 		args[0] = &ssd$
@@ -4428,7 +4484,8 @@ FUNCTION WinXNewMenu (STRING menu, firstID, isPopup)
 
 	'now write the menu items
 	cSep = 0	'the number of separators
-	FOR i = 0 TO UBOUND(items$[])
+	upp = UBOUND(items$[])
+	FOR i = 0 TO upp
 		'write the data
 		items$[i] = TRIM$(items$[i])
 		IF items$[i] = "" THEN
@@ -4438,7 +4495,7 @@ FUNCTION WinXNewMenu (STRING menu, firstID, isPopup)
 			flags = 0
 		ENDIF
 		AppendMenuA (hMenu, $$MF_STRING|$$MF_ENABLED|flags, firstID+i-cSep, &items$[i])
-	NEXT
+	NEXT i
 
 	RETURN hMenu
 END FUNCTION
@@ -6700,7 +6757,7 @@ FUNCTION WinXTracker_SetLabels (hTracker, STRING leftLabel, STRING rightLabel)
 	'we need to get the width and height of the strings
 	hdcMem = CreateCompatibleDC (0)
 
-	'Guy-11dec08-SelectObject (hdcMem, GetStockObject ($$DEFAULT_GUI_FONT))
+	' Guy-11dec08-SelectObject (hdcMem, GetStockObject ($$DEFAULT_GUI_FONT))
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	SelectObject (hdcMem, hFont)
 
@@ -6745,7 +6802,7 @@ END FUNCTION
 ' ticks = the number of units per tick
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTracker_SetRange (hTracker, USHORT min, USHORT max, ticks)
-	'Guy-25oct09-SendMessageA (hTracker, $$TBM_SETRANGE, $$TRUE, MAKELONG(min, max))
+	' Guy-25oct09-SendMessageA (hTracker, $$TBM_SETRANGE, $$TRUE, MAKELONG(min, max))
 	SendMessageA (hTracker, $$TBM_SETRANGE, 1, MAKELONG(min, max))
 	SendMessageA (hTracker, $$TBM_SETTICFREQ, ticks, 0)
 	RETURN $$TRUE ' success
@@ -6760,7 +6817,7 @@ END FUNCTION
 ' end  = the end of the selection
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTracker_SetSelRange (hTracker, USHORT start, USHORT end)
-	'Guy-25oct09-SendMessageA (hTracker, $$TBM_SETSEL, $$TRUE, MAKELONG(start, end))
+	' Guy-25oct09-SendMessageA (hTracker, $$TBM_SETSEL, $$TRUE, MAKELONG(start, end))
 	SendMessageA (hTracker, $$TBM_SETSEL, 1, MAKELONG(start, end))
 END FUNCTION
 '
@@ -7031,7 +7088,7 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 	tvi.hItem = hItem       ' the selected item
 	tvi.mask = $$TVIF_STATE ' item state attribute
 	tvi.stateMask = $$TVIS_STATEIMAGEMASK
-	'Guy-03mar09-SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
+	' Guy-03mar09-SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
 	IFZ ret THEN RETURN ' fail
 	IF (tvi.state & 0x2000) = 0x2000 THEN RETURN $$TRUE  ELSE RETURN $$FALSE ' *not* checked
@@ -7225,7 +7282,7 @@ END FUNCTION
 ' hItem = the handle to the item to set the selection to, 0 to remove selection
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTreeView_SetSelection (hTV, hItem)
-	'Guy-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
+	' Guy-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
 
 	IFZ hTV THEN RETURN ' fail
 
@@ -7661,12 +7718,13 @@ FUNCTION autoSizerInfo_add (group, AUTOSIZERINFO autoSizerBlock)
 	IFF g_autoSizerInfoUM[group].inUse THEN RETURN -1 ' fail
 
 	slot = -1
-	FOR i = 0 TO UBOUND(g_autoSizerInfo[group,])
+	upp = UBOUND(g_autoSizerInfo[group,])
+	FOR i = 0 TO upp
 		IFZ g_autoSizerInfo[group,i].hwnd THEN
 			slot = i
 			EXIT FOR
 		ENDIF
-	NEXT
+	NEXT i
 
 	IF slot = -1 THEN
 		slot = UBOUND(g_autoSizerInfo[group,])+1
@@ -7706,12 +7764,13 @@ FUNCTION autoSizerInfo_addGroup (direction)
 	AUTOSIZERINFO autoSizerInfoLocal[]
 
 	slot = -1
-	FOR i = 0 TO UBOUND(g_autoSizerInfoUM[])
+	upp = UBOUND(g_autoSizerInfoUM[])
+	FOR i = 0 TO upp
 		IFF g_autoSizerInfoUM[i].inUse THEN
 			slot = i
 			EXIT FOR
 		ENDIF
-	NEXT
+	NEXT i
 
 	IF slot = -1 THEN
 		slot = UBOUND(g_autoSizerInfoUM[])+1
@@ -7915,12 +7974,13 @@ FUNCTION binding_add (BINDING binding)
 
 	'look for a blank slot
 	slot = -1
-	FOR i = 0 TO UBOUND(g_bindings[])
+	upp = UBOUND(g_bindings[])
+	FOR i = 0 TO upp
 		IFZ g_bindings[i].hwnd THEN
 			slot = i
 			EXIT FOR
 		ENDIF
-	NEXT
+	NEXT i
 
 	'allocate more memory if needed
 	IF slot = -1 THEN
@@ -8193,12 +8253,13 @@ FUNCTION handler_add (group, MSGHANDLER handler)
 
 	'find a free slot
 	slot = -1
-	FOR i = 0 TO UBOUND(g_handlers[group,])
+	upp = UBOUND(g_handlers[group,])
+	FOR i = 0 TO upp
 		IF g_handlers[group,i].msg = 0 THEN
 			slot = i
 			EXIT FOR
 		ENDIF
-	NEXT
+	NEXT i
 
 	IF slot = -1 THEN	'allocate more memmory
 		slot = UBOUND(g_handlers[group,])+1
@@ -8222,12 +8283,13 @@ FUNCTION handler_addGroup ()
 	SHARED		g_handlersUM[]	'a usage map so we can see which groups are in use
 
 	slot = -1
-	FOR i = 0 TO UBOUND(g_handlersUM[])
+	upp = UBOUND(g_handlersUM[])
+	FOR i = 0 TO upp
 		IFZ g_handlersUM[i] THEN
 			slot = i
 			EXIT FOR
 		ENDIF
-	NEXT
+	NEXT i
 
 	IF slot = -1 THEN
 		slot = UBOUND(g_handlersUM[])+1
@@ -8251,7 +8313,7 @@ END FUNCTION
 FUNCTION handler_call (group, ret, hWnd, msg, wParam, lParam)
 	SHARED		MSGHANDLER	g_handlers[]	'a 2D array of handlers
 
-	IF group < 0 THEN RETURN 'Guy-15apr09-no registered handler
+	IF group < 0 THEN RETURN ' Guy-15apr09-no registered handler
 
 	'first, find the handler
 	idCtr = handler_find (group, msg)
@@ -8432,7 +8494,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	'and handle the message
 	SELECT CASE msg
 		CASE $$WM_COMMAND
-			'Guy-15apr09-RETURN @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
+			' Guy-15apr09-RETURN @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
 			idCtr      = LOWORD (wParam)
 			notifyCode = HIWORD (wParam)
 			hCtr       = lParam
@@ -8457,18 +8519,20 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 		CASE $$WM_DESTROYCLIPBOARD
 			IF g_hClipMem THEN
 				GlobalFree (g_hClipMem)
-				g_hClipMem = 0 'Guy-18dec08-prevents from freeing twice
+				g_hClipMem = 0 ' Guy-18dec08-prevents from freeing twice g_hClipMem
 			ENDIF
 
 		CASE $$WM_DROPFILES
 			DragQueryPoint (wParam, &pt)
 			cFiles = DragQueryFileA (wParam, -1, 0, 0)
 			IF cFiles THEN
-				DIM files$[cFiles-1]
-				FOR i = 0 TO UBOUND(files$[])
-					files$[i] = NULL$(DragQueryFileA (wParam, i, 0, 0))
-					DragQueryFileA (wParam, i, &files$[i], LEN(files$[i]))
-				NEXT
+				upp = cFiles-1
+				DIM files$[upp]
+				FOR i = 0 TO upp
+					cch = DragQueryFileA (wParam, i, 0, 0)
+					files$[i] = NULL$(cch)
+					DragQueryFileA (wParam, i, &files$[i], cch)
+				NEXT i
 				DragFinish (wParam)
 
 				RETURN @binding.onDropFiles (hwnd, pt.x, pt.y, @files$[])
@@ -8935,9 +8999,9 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 			XLONGAT(&&nmlvdi) = pNmlvdi
 			'
 		'CASE $$TVN_SELCHANGED
-		'Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
+		' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
-			'Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
+			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
 	END SELECT
@@ -9433,15 +9497,8 @@ FUNCTION WinXGrid_Reset (hGrid, colHeadings$, @colWidth[])
 	SendMessageA (hGrid, $$BGM_CLEARGRID, 0, 0)
 
 	WinXGrid_SetHeadings (hGrid, colHeadings$)
-	WinXGrid_SetColWidth (hGrid, @colWidth[]) ' set columns' width
 
-END FUNCTION
-
-FUNCTION WinXGrid_SetColWidth (hGrid, @colWidth[])		' set columns' width
-
-	IFZ hGrid THEN RETURN $$TRUE		' fail
-	IFZ colWidth[] THEN RETURN $$TRUE		' fail
-
+	' set columns' width
 	upp = UBOUND (colWidth[])
 	FOR i = 0 TO upp
 		IF colWidth[i] < 0 THEN colWidth[i] = 0		' invisible column
@@ -9451,24 +9508,13 @@ FUNCTION WinXGrid_SetColWidth (hGrid, @colWidth[])		' set columns' width
 
 END FUNCTION
 
-FUNCTION WinXGrid_Protect (hGrid) ' protect all cells
-	BGCELL cell
+FUNCTION WinXGrid_SetColWidth (hGrid, iCol, nWidth)
+	IFZ hGrid THEN RETURN ' fail
+	IF (iCol < 0) || (iCol > 256) THEN RETURN ' fail
 
-	IFZ hGrid THEN RETURN $$TRUE ' fail
-
-	' turn on automatic cell protection
-	SendMessageA (hGrid, $$BGM_SETPROTECT, 1, 0)
-
-END FUNCTION
-
-FUNCTION WinXGrid_Unprotect (hGrid) ' unprotect all cells
-	BGCELL cell
-
-	IFZ hGrid THEN RETURN $$TRUE ' fail
-
-	' turn off automatic cell protection
-	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0)
-
+	IF nWidth < 0 THEN nWidth = 0		' invisible column
+	SendMessageA (hGrid, $$BGM_SETCOLWIDTH, iCol, nWidth)
+	RETURN $$TRUE ' success
 END FUNCTION
 
 ' Deletes a cell in a grid control
@@ -9511,21 +9557,60 @@ FUNCTION WinXGrid_GetCellType$ (hGrid, row, col) ' get cell's type
 	RETURN ret$
 
 END FUNCTION
+'
+' ###################################
+' #####  WinXGrid_GetSelection  #####
+' ###################################
+' Gets the current selection
+' cellRowCol[] = the array in which to store the row and col numbers of selected cell
+' returns the number of selected items
+FUNCTION WinXGrid_GetSelection (hGrid, @cellRowCol[])
 
+	DIM cellRowCol[1]
+	IFZ hGrid THEN RETURN ' fail
 
-' Sets the row selection in a grid control
-' hGrid = the handle to the grid control
-' row = the row to be selected
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_SelectRow (hGrid, row)
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF rowLast < 2 THEN RETURN ' fail
 
-	IFZ hGrid THEN RETURN $$TRUE ' fail
+	cellRowCol[0] = SendMessageA (hGrid, $$BGM_GETROW, 0, 0)
+	IF cellRowCol[0] < 1 THEN
+		cellRowCol[0] = 0
+		RETURN ' fail
+	ENDIF
 
+	cellRowCol[1] = SendMessageA (hGrid, $$BGM_GETCOL, 0, 0)
+	IF cellRowCol[1] < 1 THEN
+		cellRowCol[1] = 0
+		RETURN ' fail
+	ENDIF
+
+	RETURN 1 ' number of selected cells
+END FUNCTION
+'
+' ###################################
+' #####  WinXGrid_SetSelection  #####
+' ###################################
+' Sets the selection in a grid control
+' cellRowCol[] = the array in which to store the row and col numbers of selected cell
+' Returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXGrid_SetSelection (hGrid, @cellRowCol[])
+
+	REDIM cellRowCol[1]
+	IFZ hGrid THEN RETURN		' fail
+
+	rowNum = cellRowCol[0]
+	IF rowNum < 1 THEN rowNum = 1		' say it's the first row
 	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)		' get the last row
-	IF row < 0 THEN row = 0
-	IF row > rowLast THEN row = rowLast
-	SendMessageA (hGrid, $$BGM_SETCURSORPOS, row, 0)
-	SetFocus (hGrid)
+	IF rowNum > rowLast THEN rowNum = rowLast		' say it's the last row
+
+	colNum = cellRowCol[1]
+	IF colNum < 1 THEN colNum = 1		' say it's the first column
+	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
+	IF colNum > colLast THEN colNum = colLast		' say it's the last column
+
+	SendMessageA (hGrid, $$BGM_SETCURSORPOS, rowNum, colNum)
+
+	RETURN $$TRUE		' success
 END FUNCTION
 
 ' Gets the selected row in a grid control
@@ -9533,6 +9618,10 @@ END FUNCTION
 ' returns the selected row on success or 0 on fail
 FUNCTION WinXGrid_GetSelectedRow (hGrid)
 	IFZ hGrid THEN RETURN ' fail
+
+	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
+	IF rowLast < 2 THEN RETURN ' fail
+
 	RETURN SendMessageA (hGrid, $$BGM_GETROW, 0, 0)
 END FUNCTION
 
@@ -9583,7 +9672,7 @@ FUNCTION WinXGrid_UpdeteRow (hGrid, rowUpd, @val$[])
 	IFZ val$[] THEN RETURN ' fail
 
 	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF rowLast < 1 THEN RETURN ' empty grid
+	IF rowLast < 2 THEN RETURN ' empty grid
 
 	IF rowDel = -1 THEN rowDel = rowLast
 	IF rowDel > rowLast THEN rowDel = rowLast
@@ -9622,7 +9711,7 @@ FUNCTION WinXGrid_DeleteRow (hGrid, rowDel)
 	IFZ hGrid THEN RETURN ' fail
 
 	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF rowLast < 1 THEN RETURN ' empty grid
+	IF rowLast < 2 THEN RETURN ' empty grid
 
 	IF rowDel = -1 THEN rowDel = rowLast
 	IF rowDel > rowLast THEN rowDel = rowLast
@@ -9637,6 +9726,98 @@ FUNCTION WinXGrid_DeleteRow (hGrid, rowDel)
 
 	RETURN $$TRUE ' success
 
+END FUNCTION
+'
+' #######################################
+' #####  WinXGrid_NotifyRowChanged  #####
+' #######################################
+'
+'
+'
+FUNCTION WinXGrid_NotifyRowChanged (hGrid)
+	IFZ hGrid THEN RETURN ' fail
+	SendMessageA (hGrid, $$BGM_NOTIFYROWCHANGED, 0, 0)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' #####################################
+' #####  WinXGrid_SetHeadingFont  #####
+' #####################################
+'
+'
+'
+FUNCTION WinXGrid_SetHeadingFont (hGrid, hFont)
+	IFZ hGrid THEN RETURN ' fail
+	IFZ hFont THEN RETURN ' fail
+	SendMessageA (hGrid, $$BGM_SETHEADINGFONT, hFont, 0)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' ######################################
+' #####  WinXGrid_SetColAutoWidth  #####
+' ######################################
+'
+'
+'
+FUNCTION WinXGrid_SetColAutoWidth (hGrid)
+	IFZ hGrid THEN RETURN ' fail
+	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' #################################
+' #####  WinXGrid_SetGridDim  #####
+' #################################
+'
+'
+'
+FUNCTION WinXGrid_SetGridDim (hGrid, nRows, nCols)
+	IFZ hGrid THEN RETURN ' fail
+	IF (nRows < 0) || (nRows > 32000) THEN RETURN ' fail
+	IF (nCols < 0) || (nCols > 256) THEN RETURN ' fail
+
+	SendMessageA (hGrid, $$BGM_SETGRIDDIM, nRows, nCols)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' #########################################
+' #####  WinXGrid_SetHeaderRowHeight  #####
+' #########################################
+'
+'
+'
+FUNCTION WinXGrid_SetHeaderRowHeight (hGrid, nHeight)
+	IFZ hGrid THEN RETURN ' fail
+
+	IF nHeight < 0 THEN nHeight = 0		' invisible row
+	SendMessageA (hGrid, $$BGM_SETHEADERROWHEIGHT, nHeight, 0)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' #################################
+' #####  WinXGrid_SetProtect  #####
+' #################################
+'
+'
+'
+FUNCTION WinXGrid_SetProtect (hGrid, protected)
+	IFZ hGrid THEN RETURN ' fail
+	IF protected THEN fSet = 1 ELSE fSet = 0
+	SendMessageA (hGrid, $$BGM_SETPROTECT, fSet, 0)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' ######################################
+' #####  WinXGrid_SetProtectColor  #####
+' ######################################
+'
+' Gives a visual indication of which cells are protected.
+FUNCTION WinXGrid_SetProtectColor (hGrid, color)
+	IFZ hGrid THEN RETURN ' fail
+
+	IFZ color THEN color = RGB (210,210,210)
+	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, color, 0)
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #######################
