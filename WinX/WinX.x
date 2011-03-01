@@ -709,6 +709,7 @@ DECLARE FUNCTION WinXGrid_SetGridDim (hGrid, nRows, nCols)
 DECLARE FUNCTION WinXGrid_SetHeaderRowHeight (hGrid, nHeight)
 DECLARE FUNCTION WinXGrid_SetProtect (hGrid, protected)
 DECLARE FUNCTION WinXGrid_SetProtectColor (hGrid, color)
+DECLARE FUNCTION WinXGrid_GetCellDataType (hGrid, row, col)
 
 END EXPORT
 '
@@ -9818,6 +9819,25 @@ FUNCTION WinXGrid_SetProtectColor (hGrid, color)
 	IFZ color THEN color = RGB (210,210,210)
 	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, color, 0)
 	RETURN $$TRUE ' success
+END FUNCTION
+'
+' ######################################
+' #####  WinXGrid_GetCellDataType  #####
+' ######################################
+'
+'
+'
+FUNCTION WinXGrid_GetCellDataType (hGrid, row, col)
+	BGCELL cell
+
+	IFZ hGrid THEN RETURN ' fail
+	IF (row < 0) || (row > 32000) THEN RETURN ' fail
+	IF (col < 0) || (col > 256) THEN RETURN ' fail
+
+	cell.row = row
+	cell.col = col
+	dtype = SendMessageA (hGrid, $$BGM_SETGRIDDIM, &cell, 0)
+	RETURN dtype ' success
 END FUNCTION
 '
 ' #######################
