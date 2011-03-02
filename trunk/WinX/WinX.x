@@ -126,7 +126,7 @@ TYPE BINDING
   XLONG      .hUpdateRegion
   FUNCADDR   .paint (XLONG, XLONG)               'hWnd, hdc : paint the window
   FUNCADDR   .dimControls (XLONG, XLONG, XLONG)  'hWnd, w, h : dimension the controls
-  FUNCADDR   .onCommand(XLONG, XLONG, XLONG)     'idCtr, notifyCode, hCtr
+  FUNCADDR   .onCommand(XLONG, XLONG, XLONG)     'idCtr, notifyCode, lParam
   FUNCADDR   .onMouseMove(XLONG, XLONG, XLONG)   'hWnd, x, y
   FUNCADDR   .onMouseDown(XLONG, XLONG, XLONG, XLONG)   'hWnd, MBT const, x, y
   FUNCADDR   .onMouseUp(XLONG, XLONG, XLONG, XLONG)     'hWnd, MBT const, x, y
@@ -402,7 +402,7 @@ DECLARE FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
 DECLARE FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDest, hdcSrc, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc, BLENDFUNCTION blendFunction)
 DECLARE FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 DECLARE FUNCTION splitterProc (hWnd, msg, wParam, lParam)
-DECLARE FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
+DECLARE FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 DECLARE FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, w, h, currPos)
 DECLARE FUNCTION XWSStoWS (xwss)
@@ -2632,10 +2632,10 @@ FUNCTION WinXDoEvents ()
 			CASE -1 : RETURN $$TRUE		' fail
 			CASE ELSE
 				' deal with window messages
-				hwnd = GetActiveWindow ()
+				hWnd = GetActiveWindow ()
 				'
-				'binding_get (GetWindowLongA (hwnd, $$GWL_USERDATA), @binding)
-				idBinding = GetWindowLongA (hwnd, $$GWL_USERDATA)
+				'binding_get (GetWindowLongA (hWnd, $$GWL_USERDATA), @binding)
+				idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 				bOK = binding_get (idBinding, @binding)
 				IF bOK THEN ' window
 					hAccel = binding.hAccelTable ' get its associated accelerator table
@@ -2644,8 +2644,8 @@ FUNCTION WinXDoEvents ()
 				ENDIF
 				'
 				' Process accelerator keys for menu commands
-				IFZ TranslateAcceleratorA (hwnd, hAccel, &msg) THEN
-					IF (!IsWindow (hwnd)) || (!IsDialogMessageA (hwnd, &msg)) THEN
+				IFZ TranslateAcceleratorA (hWnd, hAccel, &msg) THEN
+					IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &msg)) THEN
 						' send only non-dialog messages
 						' translate virtual-key messages into character messages
 						' ex.: SHIFT + a is translated as "A"
@@ -8496,14 +8496,14 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	SELECT CASE msg
 		CASE $$WM_COMMAND
 			' Guy-15apr09-RETURN @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
-			idCtr      = LOWORD (wParam)
-			notifyCode = HIWORD (wParam)
-			hCtr       = lParam
-			retCode = @binding.onCommand (idCtr, notifyCode, hCtr)
-			RETURN retCode
+			IF binding.onCommand THEN
+				retCode = @binding.onCommand (LOWORD(wParam), HIWORD(wParam), lParam)
+				IF retCode THEN handled = $$TRUE ' handled
+			ENDIF
 
 		CASE $$WM_NOTIFY
-			RETURN onNotify (hwnd, wParam, lParam, binding)
+			' Guy-02mar11-RETURN FnOnNotify (hwnd, wParam, lParam, binding)
+			retCode = FnOnNotify (hwnd, wParam, lParam, binding, @handled)
 
 		CASE $$WM_DRAWCLIPBOARD
 			IF binding.hwndNextClipViewer THEN SendMessageA (binding.hwndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
@@ -8888,11 +8888,11 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	END SUB
 END FUNCTION ' mainWndProc
 '
-' ######################
-' #####  onNotify  #####
-' ######################
+' ########################
+' #####  FnOnNotify  #####
+' ########################
 ' Handles notify messages
-FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
+FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
 	SHARED tvDragButton
 	SHARED tvDragging
 	SHARED hIml
@@ -8906,35 +8906,54 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 	RECT rect
 
 	ret = 0
+	handled = $$FALSE ' Guy-02mar11-indicates if handled
 
 	nmhdrAddr = &nmhdr
 	XLONGAT(&&nmhdr) = lParam
 
 	SELECT CASE nmhdr.code
 		CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
+			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
 		CASE $$NM_KEYDOWN
+			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmkey = &nmkey
 			XLONGAT(&&nmkey) = lParam
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
 			XLONGAT(&&nmkey) = pNmkey
 		CASE $$MCN_SELECT
+			IFZ binding.onCalendarSelect THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmsc = &nmsc
 			XLONGAT(&&nmsc) = lParam
 			ret = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
 			XLONGAT(&&nmsc) = pNmsc
 		CASE $$TVN_BEGINLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmtvdi = &nmtvdi
 			XLONGAT(&&nmtvdi) = lParam
 			ret = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
 			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
 			XLONGAT(&&nmtvdi) = pNmtvdi
 		CASE $$TVN_ENDLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmtvdi = &nmtvdi
 			XLONGAT(&&nmtvdi) = lParam
 			ret = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$(nmtvdi.item.pszText))
 			XLONGAT(&&nmtvdi) = pNmtvdi
 		CASE $$TVN_BEGINDRAG,$$TVN_BEGINRDRAG
+			IFZ binding.onDrag THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmtv = &nmtv
 			XLONGAT(&&nmtv) = lParam
 			IF @binding.onDrag(nmtv.hdr.idFrom, $$DRAG_START, nmtv.itemNew.hItem, nmtv.ptDrag.x, nmtv.ptDrag.y) THEN
@@ -8971,6 +8990,8 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 			ENDIF
 			XLONGAT(&&nmtv) = pNmtv
 		CASE $$TCN_SELCHANGE
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			currTab = WinXTabs_GetCurrentTab (nmhdr.hwndFrom)
 			maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0)-1
 			FOR i = 0 TO maxTab
@@ -8983,17 +9004,26 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 				ENDIF
 			NEXT
 		CASE $$LVN_COLUMNCLICK
+			IFZ binding.onColumnClick THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmlv = &nmlv
 			XLONGAT(&&nmlv) = lParam
 			ret = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
 			XLONGAT(&&nmlv) = pNmlv
 		CASE $$LVN_BEGINLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmlvdi = &nmlvdi
 			XLONGAT(&&nmlvdi) = lParam
 			ret = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
 			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
 			XLONGAT(&&nmlvdi) = pNmlvdi
 		CASE $$LVN_ENDLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			pNmlvdi = &nmlvdi
 			XLONGAT(&&nmlvdi) = lParam
 			ret = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$(nmlvdi.item.pszText))
@@ -9002,6 +9032,9 @@ FUNCTION onNotify (hwnd, wParam, lParam, BINDING binding)
 		'CASE $$TVN_SELCHANGED
 		' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
+			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
