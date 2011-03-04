@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.14"
+VERSION "0.6.0.13"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -74,7 +74,6 @@ VERSION "0.6.0.14"
 '                      (shows the check box "Read Only" and checks it initially).
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
-' 0.6.0.13-Guy-01jan11-added grid support.
 '
 ' Win32API DLL headers
 '
@@ -88,7 +87,6 @@ VERSION "0.6.0.14"
 	IMPORT "comdlg32"   ' standard dialog boxes (opening and saving files ...)
 '
 	IMPORT "msimg32"
-	IMPORT "xbgrid"     ' for the grid control
 '
 ' Xblite DLL headers
 '
@@ -613,7 +611,7 @@ DECLARE FUNCTION WinXSetWindowColour (hWnd, color)
 DECLARE FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, iIcon, hMod)
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
-DECLARE FUNCTION WinXSplitter_SetProperties (series, hCtrl, min, max, dock)
+DECLARE FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 DECLARE FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result)
 DECLARE FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
 DECLARE FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
@@ -621,8 +619,8 @@ DECLARE FUNCTION WinXRegistry_WriteInt (hKey, subKey$, value$, SECURITY_ATTRIBUT
 DECLARE FUNCTION WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, buffer$)
 DECLARE FUNCTION WinXRegistry_WriteBin (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, buffer$)
 DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
-DECLARE FUNCTION WinXSplitter_GetPos (series, hCtrl, @position, @docked)
-DECLARE FUNCTION WinXSplitter_SetPos (series, hCtrl, position, docked)
+DECLARE FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
+DECLARE FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 DECLARE FUNCTION WinXClip_IsString ()
 DECLARE FUNCTION WinXClip_PutString (Stri$)
 DECLARE FUNCTION WinXClip_GetString$ ()
@@ -647,7 +645,7 @@ DECLARE FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR onCalendarSelect)
 DECLARE FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr)
 DECLARE FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 DECLARE FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid)
-DECLARE FUNCTION WinXSetFont (hCtrl, hFont)
+DECLARE FUNCTION WinXSetFont (hCtr, hFont)
 DECLARE FUNCTION WinXClip_IsImage ()
 DECLARE FUNCTION WinXClip_GetImage ()
 DECLARE FUNCTION WinXClip_PutImage (hImage)
@@ -685,8 +683,7 @@ DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerato
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
 'new in 0.6.0.13
-DECLARE FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
-DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
+DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
 
 END EXPORT
 '
@@ -831,10 +828,6 @@ FUNCTION WinX ()
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE ' fail
-
-	' initialize XbGrid control AFTER registering WinX's window class
-	bErr = Xbgrid ()
-	IF bErr THEN RETURN $$TRUE ' fail
 
 	init = $$TRUE ' protect for reentry
 
@@ -1079,35 +1072,6 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 	RETURN hEdit
 END FUNCTION
 '
-' #########################
-' #####  WinXAddGrid  #####
-' #########################
-' Adds a new grid control
-' parent = the window to add the grid to
-' title = the initial text to appear in the grid - not all controls use this parameter
-' idCtr = the unique idCtr to identify the grid
-' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
-' exStyle = the extended style of the grid.  For most controls this will be 0
-' returns the handle of the grid, or 0 on fail
-FUNCTION WinXAddGrid (parent, STRING title, idCtr)
-	IFZ idCtr THEN RETURN ' fail
-
-	IFZ title THEN title = "Custom Grid Control" ' an empty title causes a crash
-	style = $$WS_CHILD|$$WS_VISIBLE
-	hInst = GetModuleHandleA (0)
-
-	hGrid = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$XBGRIDCLASSNAME, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hGrid THEN RETURN ' fail
-
-	WinXSetDefaultFont (hGrid)
-
-	' shaded cells are write-protected
-	' $$BGM_SETPROTECTCOLOR is optional, but it gives a visual indication of which cells are protected
-	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, RGB (238, 234, 234), 0) ' $$COLOR_BTNFACE + 1 for Windows XP
-
-	RETURN hGrid
-END FUNCTION
-'
 ' #############################
 ' #####  WinXAddGroupBox  #####
 ' #############################
@@ -1330,11 +1294,14 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
 
 	'and finally, set the text
-	' Guy-11dec08-SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$TRUE)
-	WinXSetDefaultFont (hCtr)
 	FOR i = 0 TO uppPart
 		SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
 	NEXT i
+
+	'WinXSetDefaultFont (hCtr)
+	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
+	WinXSetFont (hCtr, hFont) ' redraw
+	DeleteObject (hFont) ' release the font
 
 	'and update the binding
 	binding_update (idBinding, binding)
@@ -5883,26 +5850,34 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
-
-FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
-	IF hCtr THEN
-		hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-		IF hFont THEN
-			SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-			DeleteObject (hFont) ' release the font
-		ENDIF
-	ENDIF
+'
+' ################################
+' #####  WinXSetDefaultFont  #####
+' ################################
+' Sets the font for a control to the default GUI font
+' hCtr = the handle to the control
+' hFont = the handle to the font
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXSetDefaultFont (hCtr)
+	IFZ hCtr THEN RETURN ' ignore a null handle
+	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
+	IFZ hFont THEN RETURN ' ignore a null handle
+	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
+	DeleteObject (hFont) ' release the font
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #########################
 ' #####  WinXSetFont  #####
 ' #########################
 ' Sets the font for a control
-' hCtrl = the handle to the control
+' hCtr = the handle to the control
 ' hFont = the handle to the font
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXSetFont (hCtrl, hFont)
-	SendMessageA (hCtrl, $$WM_SETFONT, hFont, $$TRUE)
+FUNCTION WinXSetFont (hCtr, hFont)
+	IFZ hCtr THEN RETURN ' ignore a null handle
+	IFZ hFont THEN RETURN ' ignore a null handle
+	SendMessageA (hCtr, $$WM_SETFONT, hFont, 1) ' redraw
 	RETURN $$TRUE ' success
 END FUNCTION
 '
@@ -6124,11 +6099,11 @@ END FUNCTION
 ' ################################
 ' Get the current position of a splitter control
 ' series = the series to which the splitter belongs
-' hCtrl = the control the splitter is attached to
+' hCtr = the control the splitter is attached to
 ' position = the variable to store the position of the splitter
 ' docked = the variable to store the docking state, $$TRUE when docked else $$FALSE
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXSplitter_GetPos (series, hCtrl, @position, @docked)
+FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
 	SHARED	AUTOSIZERINFO	g_autoSizerInfo[]	'info for the autosizer
 	SHARED	SIZELISTHEAD	g_autoSizerInfoUM[]
 	SPLITTERINFO splitterInfo
@@ -6140,7 +6115,7 @@ FUNCTION WinXSplitter_GetPos (series, hCtrl, @position, @docked)
 	found = $$FALSE
 	i = g_autoSizerInfoUM[series].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[series, i].hwnd = hCtrl THEN
+		IF g_autoSizerInfo[series, i].hwnd = hCtr THEN
 			found = $$TRUE
 			EXIT DO
 		ENDIF
@@ -6168,10 +6143,10 @@ END FUNCTION
 ' ################################
 ' Sets the current position of a splitter control
 ' series = the series to which the splitter belongs
-' hCtrl = the control the splitter is attached to
+' hCtr = the control the splitter is attached to
 ' position = the new position for the splitter
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXSplitter_SetPos (series, hCtrl, position, docked)
+FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 	SHARED	AUTOSIZERINFO	g_autoSizerInfo[]	'info for the autosizer
 	SHARED	SIZELISTHEAD	g_autoSizerInfoUM[]
 	SPLITTERINFO splitterInfo
@@ -6184,7 +6159,7 @@ FUNCTION WinXSplitter_SetPos (series, hCtrl, position, docked)
 	found = $$FALSE
 	i = g_autoSizerInfoUM[series].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[series, i].hwnd = hCtrl THEN
+		IF g_autoSizerInfo[series, i].hwnd = hCtr THEN
 			found = $$TRUE
 			EXIT DO
 		ENDIF
@@ -6206,8 +6181,8 @@ FUNCTION WinXSplitter_SetPos (series, hCtrl, position, docked)
 
 	SPLITTERINFO_Update (iSplitter, splitterInfo)
 
-	GetClientRect (GetParent (hCtrl), &rect)
-	sizeWindow (GetParent (hCtrl), rect.right-rect.left, rect.bottom-rect.top)
+	GetClientRect (GetParent (hCtr), &rect)
+	sizeWindow (GetParent (hCtr), rect.right-rect.left, rect.bottom-rect.top)
 
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -6217,12 +6192,12 @@ END FUNCTION
 ' ########################################
 ' Sets splitter info
 ' series = the series the control is located in
-' hCtrl = the handle to the control
+' hCtr = the handle to the control
 ' min = the minimum size of the control
 ' max = the maximum size of the control
 ' dock = $$TRUE to allow docking - else $$FALSE
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXSplitter_SetProperties (series, hCtrl, min, max, dock)
+FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	SHARED	AUTOSIZERINFO	g_autoSizerInfo[]	'info for the autosizer
 	SHARED	SIZELISTHEAD	g_autoSizerInfoUM[]
 	SPLITTERINFO splitterInfo
@@ -6234,7 +6209,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtrl, min, max, dock)
 	found = $$FALSE
 	i = g_autoSizerInfoUM[series].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[series, i].hwnd = hCtrl THEN
+		IF g_autoSizerInfo[series, i].hwnd = hCtr THEN
 			found = $$TRUE
 			EXIT DO
 		ENDIF
