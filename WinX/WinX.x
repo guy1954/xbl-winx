@@ -687,29 +687,6 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) 'give hCtr a nice font
 DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
-DECLARE FUNCTION WinXGrid_SetHeadings (hGrid, colHeadings$)
-DECLARE FUNCTION WinXGrid_AddRow (hGrid, rowAdd, @val$[])
-DECLARE FUNCTION WinXGrid_AddItem (hGrid, iItem, item$, dummy)
-
-'new in 0.6.0.14
-DECLARE FUNCTION WinXGrid_Reset (hGrid, colHeadings$, @colWidth[]) ' delete all cells and place new column headings
-DECLARE FUNCTION WinXGrid_SetColWidth (hGrid, iCol, nWidth) ' set column width
-DECLARE FUNCTION WinXGrid_DeleteCell (hGrid, rowDel, colDel) ' delete cell
-DECLARE FUNCTION WinXGrid_GetCellType$ (hGrid, row, col) ' get cell's type
-DECLARE FUNCTION WinXGrid_GetSelection (hGrid, @cellRowCol[])
-DECLARE FUNCTION WinXGrid_SetSelection (hGrid, @cellRowCol[])
-DECLARE FUNCTION WinXGrid_GetSelectedRow (hGrid) ' get the selected row
-DECLARE FUNCTION WinXGrid_GetRow (hGrid, row, @val$[]) ' get row's values
-DECLARE FUNCTION WinXGrid_UpdeteRow (hGrid, rowUpd, @val$[]) ' update row
-DECLARE FUNCTION WinXGrid_DeleteRow (hGrid, rowDel) ' delete row
-DECLARE FUNCTION WinXGrid_NotifyRowChanged (hGrid)
-DECLARE FUNCTION WinXGrid_SetHeadingFont (hGrid, hFont)
-DECLARE FUNCTION WinXGrid_SetColAutoWidth (hGrid)
-DECLARE FUNCTION WinXGrid_SetGridDim (hGrid, nRows, nCols)
-DECLARE FUNCTION WinXGrid_SetHeaderRowHeight (hGrid, nHeight)
-DECLARE FUNCTION WinXGrid_SetProtect (hGrid, protected)
-DECLARE FUNCTION WinXGrid_SetProtectColor (hGrid, color)
-DECLARE FUNCTION WinXGrid_GetCellDataType (hGrid, row, col)
 
 END EXPORT
 '
@@ -3696,128 +3673,6 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 	ENDIF
 
 	RETURN $$TRUE ' success
-END FUNCTION
-'
-' #############################
-' #####  WinXGrid_AddRow  #####
-' #############################
-' Adds a new row to a grid
-' row = the number at which to insert the row, 0 to add to the end of the grid
-' val$[] = an array of the row's values
-' returns the number to the row or 0 on error
-FUNCTION WinXGrid_AddRow (hGrid, row, @val$[])
-	BGCELL cell
-
-	IFZ hGrid THEN RETURN ' fail
-	IFZ val$[] THEN RETURN ' fail
-
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF row < 1 || row > rowLast THEN row = rowLast + 1
-
-	'set the cell
-	upp = UBOUND(val$[])
-	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	IF upp >= colLast THEN upp = colLast - 1
-
-	FOR i = 0 TO upp
-		buffer$ = val$[i]
-		SELECT CASE TRIM$ (val$[i])
-			CASE "T", "$$TRUE"  : buffer$ = "TRUE"
-			CASE "F", "$$FALSE" : buffer$ = "FALSE"
-		END SELECT
-		'
-		'PutCell(hGrid, row, i + 1, text$)
-		cell.row = row
-		cell.col = i + 1
-		SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &buffer$)
-	NEXT i
-
-	RETURN row
-END FUNCTION
-'
-' ##############################
-' #####  WinXGrid_AddItem  #####
-' ##############################
-'
-' Adds a new row to a grid control
-' iItem = the index at which to insert the row, -1 to add to the end of the grid
-' item$ = the cells in the form "cell1\0cell2\0cell3..."
-'               or (more User-frendly) "cell1|cell2|cell3..."
-' returns the index to the row or -1 on error
-FUNCTION WinXGrid_AddItem (hGrid, iItem, item$, dummy)
-	BGCELL	cell
-
-	IFZ hGrid THEN RETURN -1 ' fail
-
-	' replace all embedded NULL characters by separator "|"
-	FOR i = SIZE (item$) - 1 TO 0 STEP -1
-		IF item${i} = '\0' THEN item${i} = '|'
-	NEXT i
-
-	'parse the string item$
-	XstParseStringToStringArray (item$, "|", @val$[])
-	IFZ val$[] THEN RETURN -1 ' fail
-
-	'set the row
-	FOR i = 0 TO upp
-		buffer$ = val$[i]
-		SELECT CASE TRIM$ (val$[i])
-			CASE "T", "$$TRUE"  : buffer$ = "TRUE"
-			CASE "F", "$$FALSE" : buffer$ = "FALSE"
-		END SELECT
-		'
-		'PutCell(hGrid, iItem, i + 1, text$)
-		cell.row = iItem
-		cell.col = i + 1
-		SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &buffer$)
-	NEXT i
-
-	RETURN index
-END FUNCTION
-'
-' ##################################
-' #####  WinXGrid_SetHeadings  #####
-' ##################################
-' Sets the grid's column titles
-' colHeadings$ = a list of column titles in the form "column 1 title|column 2 title|..."
-' returns $$TRUE on error
-FUNCTION WinXGrid_SetHeadings (hGrid, colHeadings$)
-	BGCELL cell
-
-	IFZ hGrid THEN RETURN $$TRUE ' fail
-	IFZ colHeadings$ THEN RETURN $$TRUE ' fail
-	IFZ INSTR (colHeadings$, "|") THEN RETURN $$TRUE ' fail
-
-	'parse the string colHeadings$
-	XstParseStringToStringArray (colHeadings$, "|", @colTitle$[])
-	IFZ colTitle$[] THEN RETURN $$TRUE ' fail
-
-	upp = UBOUND(colTitle$[])
-
-	'set the headings
-	IF colTitle$[] THEN
-		SendMessageA (hGrid, $$BGM_SETGRIDDIM, 0, upp + 1) ' set column number
-		'
-		' replace the standard 2nd row headings with the provided headings
-		bFirst = $$TRUE
-		FOR i = 0 TO upp
-			IF colTitle$[i] THEN
-				IF bFirst THEN
-					SendMessageA (hGrid, $$BGM_SETCOLSNUMBERED, 0, 0) ' remove standard 2nd row headings "A B C..."
-					bFirst = $$FALSE
-				ENDIF
-				'
-				'PutCell(hGrid, 0, i + 1, colTitle$[i])
-				cell.row = 0
-				cell.col = i + 1
-				SendMessageA (hGrid, $$BGM_SETCELLDATA, &cell, &colTitle$[i])
-			ENDIF
-		NEXT i
-	ENDIF
-
-	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0) ' auto-size the columns
-'	SendMessageA (hGrid, $$BGM_SETPROTECT, 0, 0) ' unprotect the grid
-
 END FUNCTION
 '
 ' #############################################
@@ -7440,6 +7295,162 @@ FUNCTION CompareLVItems (item1, item2, hLV)
 
 	IF lvs_desc THEN RETURN (-ret) ELSE RETURN ret
 END FUNCTION
+'
+' ########################
+' #####  FnOnNotify  #####
+' ########################
+' Handles notify messages
+FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
+	SHARED tvDragButton
+	SHARED tvDragging
+	SHARED hIml
+	NMHDR nmhdr
+	TV_DISPINFO nmtvdi
+	NM_TREEVIEW nmtv
+	LV_DISPINFO nmlvdi
+	NMKEY nmkey
+	NM_LISTVIEW nmlv
+	NMSELCHANGE nmsc
+	RECT rect
+
+	ret = 0
+	handled = $$FALSE ' Guy-02mar11-indicates if handled
+
+	nmhdrAddr = &nmhdr
+	XLONGAT(&&nmhdr) = lParam
+
+	SELECT CASE nmhdr.code
+		CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
+			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+		CASE $$NM_KEYDOWN
+			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmkey = &nmkey
+			XLONGAT(&&nmkey) = lParam
+			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
+			XLONGAT(&&nmkey) = pNmkey
+		CASE $$MCN_SELECT
+			IFZ binding.onCalendarSelect THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmsc = &nmsc
+			XLONGAT(&&nmsc) = lParam
+			ret = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
+			XLONGAT(&&nmsc) = pNmsc
+		CASE $$TVN_BEGINLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmtvdi = &nmtvdi
+			XLONGAT(&&nmtvdi) = lParam
+			ret = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
+			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
+			XLONGAT(&&nmtvdi) = pNmtvdi
+		CASE $$TVN_ENDLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmtvdi = &nmtvdi
+			XLONGAT(&&nmtvdi) = lParam
+			ret = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$(nmtvdi.item.pszText))
+			XLONGAT(&&nmtvdi) = pNmtvdi
+		CASE $$TVN_BEGINDRAG,$$TVN_BEGINRDRAG
+			IFZ binding.onDrag THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmtv = &nmtv
+			XLONGAT(&&nmtv) = lParam
+			IF @binding.onDrag(nmtv.hdr.idFrom, $$DRAG_START, nmtv.itemNew.hItem, nmtv.ptDrag.x, nmtv.ptDrag.y) THEN
+				tvDragging = nmtv.hdr.hwndFrom
+
+				SELECT CASE nmhdr.code
+					CASE $$TVN_BEGINDRAG	: tvDragButton = $$MBT_LEFT
+					CASE $$TVN_BEGINRDRAG	: tvDragButton = $$MBT_RIGHT
+				END SELECT
+
+				XLONGAT(&rect) = nmtv.itemNew.hItem
+				SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETITEMRECT, $$TRUE, &rect)
+				rect.left = rect.left-SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETINDENT, 0, 0)
+
+				'create the dragging image
+				w = rect.right-rect.left
+				h = rect.bottom-rect.top
+				hDCtv = GetDC (nmtv.hdr.hwndFrom)
+				mDC = CreateCompatibleDC (hDCtv)
+				hBmp = CreateCompatibleBitmap (hDCtv, w, h)
+				hEmpty = SelectObject (mDC, hBmp)
+				BitBlt (mDC, 0, 0, w, h, hDCtv, rect.left, rect.top, $$SRCCOPY)
+				SelectObject (mDC, hEmpty)
+				ReleaseDC (nmtv.hdr.hwndFrom, hDCtv)
+				DeleteDC (mDC)
+
+				hIml = ImageList_Create (w, h, $$ILC_COLOR32|$$ILC_MASK, 1, 0)
+				ImageList_AddMasked (hIml, hBmp, 0x00FFFFFF)
+
+				ImageList_BeginDrag (hIml, 0, nmtv.ptDrag.x-rect.left, nmtv.ptDrag.y-rect.top)
+				ImageList_DragEnter (GetDesktopWindow (), rect.left, rect.top)
+
+				SetCapture (hwnd)
+			ENDIF
+			XLONGAT(&&nmtv) = pNmtv
+		CASE $$TCN_SELCHANGE
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			currTab = WinXTabs_GetCurrentTab (nmhdr.hwndFrom)
+			maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0)-1
+			FOR i = 0 TO maxTab
+				IF i != currTab THEN
+					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$FALSE)
+				ELSE
+					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$TRUE)
+					GetClientRect (GetParent(nmhdr.hwndFrom), &rect)
+					sizeWindow (GetParent(nmhdr.hwndFrom), rect.right-rect.left, rect.bottom-rect.top)
+				ENDIF
+			NEXT
+		CASE $$LVN_COLUMNCLICK
+			IFZ binding.onColumnClick THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmlv = &nmlv
+			XLONGAT(&&nmlv) = lParam
+			ret = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
+			XLONGAT(&&nmlv) = pNmlv
+		CASE $$LVN_BEGINLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmlvdi = &nmlvdi
+			XLONGAT(&&nmlvdi) = lParam
+			ret = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
+			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
+			XLONGAT(&&nmlvdi) = pNmlvdi
+		CASE $$LVN_ENDLABELEDIT
+			IFZ binding.onLabelEdit THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			pNmlvdi = &nmlvdi
+			XLONGAT(&&nmlvdi) = lParam
+			ret = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$(nmlvdi.item.pszText))
+			XLONGAT(&&nmlvdi) = pNmlvdi
+			'
+		'CASE $$TVN_SELCHANGED
+		' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
+		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
+			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
+			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
+			'
+	END SELECT
+
+	XLONGAT(&&nmhdr) = nmhdrAddr
+	RETURN ret
+END FUNCTION
 
 FUNCTION GuiTellDialogError (parent, title$) ' display WinXDialog_'s run-time error message
 
@@ -8888,162 +8899,6 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	END SUB
 END FUNCTION ' mainWndProc
 '
-' ########################
-' #####  FnOnNotify  #####
-' ########################
-' Handles notify messages
-FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
-	SHARED tvDragButton
-	SHARED tvDragging
-	SHARED hIml
-	NMHDR nmhdr
-	TV_DISPINFO nmtvdi
-	NM_TREEVIEW nmtv
-	LV_DISPINFO nmlvdi
-	NMKEY nmkey
-	NM_LISTVIEW nmlv
-	NMSELCHANGE nmsc
-	RECT rect
-
-	ret = 0
-	handled = $$FALSE ' Guy-02mar11-indicates if handled
-
-	nmhdrAddr = &nmhdr
-	XLONGAT(&&nmhdr) = lParam
-
-	SELECT CASE nmhdr.code
-		CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
-			IFZ binding.onItem THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
-		CASE $$NM_KEYDOWN
-			IFZ binding.onItem THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmkey = &nmkey
-			XLONGAT(&&nmkey) = lParam
-			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
-			XLONGAT(&&nmkey) = pNmkey
-		CASE $$MCN_SELECT
-			IFZ binding.onCalendarSelect THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmsc = &nmsc
-			XLONGAT(&&nmsc) = lParam
-			ret = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
-			XLONGAT(&&nmsc) = pNmsc
-		CASE $$TVN_BEGINLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmtvdi = &nmtvdi
-			XLONGAT(&&nmtvdi) = lParam
-			ret = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
-			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
-			XLONGAT(&&nmtvdi) = pNmtvdi
-		CASE $$TVN_ENDLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmtvdi = &nmtvdi
-			XLONGAT(&&nmtvdi) = lParam
-			ret = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$(nmtvdi.item.pszText))
-			XLONGAT(&&nmtvdi) = pNmtvdi
-		CASE $$TVN_BEGINDRAG,$$TVN_BEGINRDRAG
-			IFZ binding.onDrag THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmtv = &nmtv
-			XLONGAT(&&nmtv) = lParam
-			IF @binding.onDrag(nmtv.hdr.idFrom, $$DRAG_START, nmtv.itemNew.hItem, nmtv.ptDrag.x, nmtv.ptDrag.y) THEN
-				tvDragging = nmtv.hdr.hwndFrom
-
-				SELECT CASE nmhdr.code
-					CASE $$TVN_BEGINDRAG	: tvDragButton = $$MBT_LEFT
-					CASE $$TVN_BEGINRDRAG	: tvDragButton = $$MBT_RIGHT
-				END SELECT
-
-				XLONGAT(&rect) = nmtv.itemNew.hItem
-				SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETITEMRECT, $$TRUE, &rect)
-				rect.left = rect.left-SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETINDENT, 0, 0)
-
-				'create the dragging image
-				w = rect.right-rect.left
-				h = rect.bottom-rect.top
-				hDCtv = GetDC (nmtv.hdr.hwndFrom)
-				mDC = CreateCompatibleDC (hDCtv)
-				hBmp = CreateCompatibleBitmap (hDCtv, w, h)
-				hEmpty = SelectObject (mDC, hBmp)
-				BitBlt (mDC, 0, 0, w, h, hDCtv, rect.left, rect.top, $$SRCCOPY)
-				SelectObject (mDC, hEmpty)
-				ReleaseDC (nmtv.hdr.hwndFrom, hDCtv)
-				DeleteDC (mDC)
-
-				hIml = ImageList_Create (w, h, $$ILC_COLOR32|$$ILC_MASK, 1, 0)
-				ImageList_AddMasked (hIml, hBmp, 0x00FFFFFF)
-
-				ImageList_BeginDrag (hIml, 0, nmtv.ptDrag.x-rect.left, nmtv.ptDrag.y-rect.top)
-				ImageList_DragEnter (GetDesktopWindow (), rect.left, rect.top)
-
-				SetCapture (hwnd)
-			ENDIF
-			XLONGAT(&&nmtv) = pNmtv
-		CASE $$TCN_SELCHANGE
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			currTab = WinXTabs_GetCurrentTab (nmhdr.hwndFrom)
-			maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0)-1
-			FOR i = 0 TO maxTab
-				IF i != currTab THEN
-					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$FALSE)
-				ELSE
-					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$TRUE)
-					GetClientRect (GetParent(nmhdr.hwndFrom), &rect)
-					sizeWindow (GetParent(nmhdr.hwndFrom), rect.right-rect.left, rect.bottom-rect.top)
-				ENDIF
-			NEXT
-		CASE $$LVN_COLUMNCLICK
-			IFZ binding.onColumnClick THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmlv = &nmlv
-			XLONGAT(&&nmlv) = lParam
-			ret = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
-			XLONGAT(&&nmlv) = pNmlv
-		CASE $$LVN_BEGINLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmlvdi = &nmlvdi
-			XLONGAT(&&nmlvdi) = lParam
-			ret = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
-			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
-			XLONGAT(&&nmlvdi) = pNmlvdi
-		CASE $$LVN_ENDLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			pNmlvdi = &nmlvdi
-			XLONGAT(&&nmlvdi) = lParam
-			ret = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$(nmlvdi.item.pszText))
-			XLONGAT(&&nmlvdi) = pNmlvdi
-			'
-		'CASE $$TVN_SELCHANGED
-		' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
-		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
-			IFZ binding.onItem THEN EXIT SELECT
-			' Guy-02mar11-handled
-			handled = $$TRUE
-			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
-			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
-			'
-	END SELECT
-
-	XLONGAT(&&nmhdr) = nmhdrAddr
-	RETURN ret
-END FUNCTION
-'
 ' ############################
 ' #####  printAbortProc  #####
 ' ############################
@@ -9518,359 +9373,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
-END FUNCTION
-
-' Deletes all cells and places new column headings
-' colHeadings$ = a list of column titles in the form "column 1 title|column 2 title|..."
-' returns $$TRUE on error
-FUNCTION WinXGrid_Reset (hGrid, colHeadings$, @colWidth[])
-	BGCELL cell
-
-	IFZ hGrid THEN RETURN $$TRUE		' fail
-
-	SendMessageA (hGrid, $$BGM_CLEARGRID, 0, 0)
-
-	WinXGrid_SetHeadings (hGrid, colHeadings$)
-
-	' set columns' width
-	upp = UBOUND (colWidth[])
-	FOR i = 0 TO upp
-		IF colWidth[i] < 0 THEN colWidth[i] = 0		' invisible column
-		' set column (i+1)'s width
-		SendMessageA (hGrid, $$BGM_SETCOLWIDTH, (i + 1), colWidth[i])
-	NEXT i
-
-END FUNCTION
-
-FUNCTION WinXGrid_SetColWidth (hGrid, iCol, nWidth)
-	IFZ hGrid THEN RETURN ' fail
-	IF (iCol < 0) || (iCol > 256) THEN RETURN ' fail
-
-	IF nWidth < 0 THEN nWidth = 0		' invisible column
-	SendMessageA (hGrid, $$BGM_SETCOLWIDTH, iCol, nWidth)
-	RETURN $$TRUE ' success
-END FUNCTION
-
-' Deletes a cell in a grid control
-' hGrid = the handle to the grid control
-' rowDel = the cell's row
-' colDel = the cell's column
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_DeleteCell (hGrid, rowDel, colDel)
-	BGCELL cellDel
-
-	IFZ hGrid THEN RETURN ' fail
-	IF rowDel < 1 THEN RETURN ' row 0 is the header
-	IF colDel < 0 THEN RETURN ' fail
-
-	cellDel.row = rowDel
-	cellDel.col = colDel
-	SendMessageA (hGrid, $$BGM_DELETECELL, &cellDel, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-
-FUNCTION WinXGrid_GetCellType$ (hGrid, row, col) ' get cell's type
-	BGCELL cell
-
-	IFZ hGrid THEN RETURN "?" ' fail
-	IF row < 1 THEN RETURN "?" ' row 0 is the header
-	IF col < 0 THEN RETURN "?" ' fail
-
-	cell.row = row
-	cell.col = col
-	ret = SendMessageA (hGrid, $$BGM_GETTYPE, &cell, 0)
-
-	ret$ = "?"
-	SELECT CASE ret
-		CASE 1 : ret$ = "A"
-		CASE 2 : ret$ = "N"
-		CASE 3 : ret$ = "T"
-		CASE 4 : ret$ = "F"
-		CASE 5 : ret$ = "G"
-	END SELECT
-	RETURN ret$
-
-END FUNCTION
-'
-' ###################################
-' #####  WinXGrid_GetSelection  #####
-' ###################################
-' Gets the current selection
-' cellRowCol[] = the array in which to store the row and col numbers of selected cell
-' returns the number of selected items
-FUNCTION WinXGrid_GetSelection (hGrid, @cellRowCol[])
-
-	DIM cellRowCol[1]
-	IFZ hGrid THEN RETURN ' fail
-
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF rowLast < 2 THEN RETURN ' fail
-
-	cellRowCol[0] = SendMessageA (hGrid, $$BGM_GETROW, 0, 0)
-	IF cellRowCol[0] < 1 THEN
-		cellRowCol[0] = 0
-		RETURN ' fail
-	ENDIF
-
-	cellRowCol[1] = SendMessageA (hGrid, $$BGM_GETCOL, 0, 0)
-	IF cellRowCol[1] < 1 THEN
-		cellRowCol[1] = 0
-		RETURN ' fail
-	ENDIF
-
-	RETURN 1 ' number of selected cells
-END FUNCTION
-'
-' ###################################
-' #####  WinXGrid_SetSelection  #####
-' ###################################
-' Sets the selection in a grid control
-' cellRowCol[] = the array in which to store the row and col numbers of selected cell
-' Returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_SetSelection (hGrid, @cellRowCol[])
-
-	REDIM cellRowCol[1]
-	IFZ hGrid THEN RETURN		' fail
-
-	rowNum = cellRowCol[0]
-	IF rowNum < 1 THEN rowNum = 1		' say it's the first row
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)		' get the last row
-	IF rowNum > rowLast THEN rowNum = rowLast		' say it's the last row
-
-	colNum = cellRowCol[1]
-	IF colNum < 1 THEN colNum = 1		' say it's the first column
-	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	IF colNum > colLast THEN colNum = colLast		' say it's the last column
-
-	SendMessageA (hGrid, $$BGM_SETCURSORPOS, rowNum, colNum)
-
-	RETURN $$TRUE		' success
-END FUNCTION
-
-' Gets the selected row in a grid control
-' hGrid = the handle to the grid control
-' returns the selected row on success or 0 on fail
-FUNCTION WinXGrid_GetSelectedRow (hGrid)
-	IFZ hGrid THEN RETURN ' fail
-
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF rowLast < 2 THEN RETURN ' fail
-
-	RETURN SendMessageA (hGrid, $$BGM_GETROW, 0, 0)
-END FUNCTION
-
-' Gets the values of a given row in a grid control
-' hGrid = the handle to the grid control
-' row = the row to get the cells from
-' val$[] = an array of the row's values
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_GetRow (hGrid, row, @val$[])
-	BGCELL cell
-
-	' validate passed arguments
-	DIM val$[]
-	IFZ hGrid THEN RETURN ' fail
-
-	IF row < 1 THEN row = 1 ' say it's the first row
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)		' get the last row
-	IF row > rowLast THEN row = rowLast ' say it's the last row
-
-	' retrieve the cells from the grid control
-	' and build a CVS list of the row's cells
-	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	IF colLast < 0 THEN RETURN ' fail
-	DIM val$[colLast - 1]
-	IF colLast >= 1 THEN
-		FOR colNum = 1 TO colLast
-			cell.row = row
-			cell.col = colNum
-			buffer$ = NULL$ (1024)
-			SendMessageA (hGrid, $$BGM_GETCELLDATA, &cell, &buffer$)
-			val$[colNum - 1] = TRIM$ (CSTRING$ (&buffer$))
-		NEXT colNum
-	ENDIF
-
-	RETURN $$TRUE ' success
-
-END FUNCTION
-
-' Updates the row in a grid control
-' hGrid = the handle to the grid control
-' rowUpd = the row to be updated
-' val$[] = an array of the row's values
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_UpdeteRow (hGrid, rowUpd, @val$[])
-	BGCELL cellUpd
-
-	IFZ hGrid THEN RETURN ' fail
-	IFZ val$[] THEN RETURN ' fail
-
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF rowLast < 2 THEN RETURN ' empty grid
-
-	IF rowDel = -1 THEN rowDel = rowLast
-	IF rowDel > rowLast THEN rowDel = rowLast
-	IF rowDel < 1 THEN RETURN ' fail
-
-	'set the cell
-	upp = UBOUND(val$[])
-	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	IF upp >= colLast THEN upp = colLast - 1
-
-	FOR i = 0 TO upp
-		'
-		SELECT CASE UCASE$ (TRIM$ (val$[i]))
-			CASE "T", "$$TRUE"  : buffer$ = "TRUE"
-			CASE "F", "$$FALSE" : buffer$ = "FALSE"
-			CASE ELSE           : buffer$ = val$[i]
-		END SELECT
-		'
-		'PutCell(hGrid, rowUpd, i + 1, buffer$)
-		cellUpd.row = rowUpd
-		cellUpd.col = i + 1
-		SendMessageA (hGrid, $$BGM_SETCELLDATA, &cellUpd, &buffer$)
-	NEXT i
-
-	RETURN $$TRUE ' success
-
-END FUNCTION
-
-' Deletes the row in a grid control
-' hGrid = the handle to the grid control
-' rowDel = the row to be deleted, -1 for the last
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGrid_DeleteRow (hGrid, rowDel)
-	BGCELL cellDel
-
-	IFZ hGrid THEN RETURN ' fail
-
-	rowLast = SendMessageA (hGrid, $$BGM_GETROWS, 0, 0)
-	IF rowLast < 2 THEN RETURN ' empty grid
-
-	IF rowDel = -1 THEN rowDel = rowLast
-	IF rowDel > rowLast THEN rowDel = rowLast
-	IF rowDel < 1 THEN RETURN ' fail
-
-	colLast = SendMessageA (hGrid, $$BGM_GETCOLS, 0, 0)
-	FOR colNum = 1 TO colLast
-		cellDel.row = rowDel
-		cellDel.col = colNum
-		SendMessageA (hGrid, $$BGM_DELETECELL, &cellDel, 0)
-	NEXT colNum
-
-	RETURN $$TRUE ' success
-
-END FUNCTION
-'
-' #######################################
-' #####  WinXGrid_NotifyRowChanged  #####
-' #######################################
-'
-'
-'
-FUNCTION WinXGrid_NotifyRowChanged (hGrid)
-	IFZ hGrid THEN RETURN ' fail
-	SendMessageA (hGrid, $$BGM_NOTIFYROWCHANGED, 0, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' #####################################
-' #####  WinXGrid_SetHeadingFont  #####
-' #####################################
-'
-'
-'
-FUNCTION WinXGrid_SetHeadingFont (hGrid, hFont)
-	IFZ hGrid THEN RETURN ' fail
-	IFZ hFont THEN RETURN ' fail
-	SendMessageA (hGrid, $$BGM_SETHEADINGFONT, hFont, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' ######################################
-' #####  WinXGrid_SetColAutoWidth  #####
-' ######################################
-'
-'
-'
-FUNCTION WinXGrid_SetColAutoWidth (hGrid)
-	IFZ hGrid THEN RETURN ' fail
-	SendMessageA (hGrid, $$BGM_SETCOLAUTOWIDTH, 1, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' #################################
-' #####  WinXGrid_SetGridDim  #####
-' #################################
-'
-'
-'
-FUNCTION WinXGrid_SetGridDim (hGrid, nRows, nCols)
-	IFZ hGrid THEN RETURN ' fail
-	IF (nRows < 0) || (nRows > 32000) THEN RETURN ' fail
-	IF (nCols < 0) || (nCols > 256) THEN RETURN ' fail
-
-	SendMessageA (hGrid, $$BGM_SETGRIDDIM, nRows, nCols)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' #########################################
-' #####  WinXGrid_SetHeaderRowHeight  #####
-' #########################################
-'
-'
-'
-FUNCTION WinXGrid_SetHeaderRowHeight (hGrid, nHeight)
-	IFZ hGrid THEN RETURN ' fail
-
-	IF nHeight < 0 THEN nHeight = 0		' invisible row
-	SendMessageA (hGrid, $$BGM_SETHEADERROWHEIGHT, nHeight, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' #################################
-' #####  WinXGrid_SetProtect  #####
-' #################################
-'
-'
-'
-FUNCTION WinXGrid_SetProtect (hGrid, protected)
-	IFZ hGrid THEN RETURN ' fail
-	IF protected THEN fSet = 1 ELSE fSet = 0
-	SendMessageA (hGrid, $$BGM_SETPROTECT, fSet, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' ######################################
-' #####  WinXGrid_SetProtectColor  #####
-' ######################################
-'
-' Gives a visual indication of which cells are protected.
-FUNCTION WinXGrid_SetProtectColor (hGrid, color)
-	IFZ hGrid THEN RETURN ' fail
-
-	IFZ color THEN color = RGB (210,210,210)
-	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, color, 0)
-	RETURN $$TRUE ' success
-END FUNCTION
-'
-' ######################################
-' #####  WinXGrid_GetCellDataType  #####
-' ######################################
-'
-'
-'
-FUNCTION WinXGrid_GetCellDataType (hGrid, row, col)
-	BGCELL cell
-
-	IFZ hGrid THEN RETURN ' fail
-	IF (row < 0) || (row > 32000) THEN RETURN ' fail
-	IF (col < 0) || (col > 256) THEN RETURN ' fail
-
-	cell.row = row
-	cell.col = col
-	dtype = SendMessageA (hGrid, $$BGM_SETGRIDDIM, &cell, 0)
-	RETURN dtype ' success
 END FUNCTION
 '
 ' #######################
