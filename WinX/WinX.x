@@ -74,6 +74,7 @@ VERSION "0.6.0.13"
 '                      (shows the check box "Read Only" and checks it initially).
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
+' 0.6.0.13-Guy-01jan11-added grid support.
 '
 ' Win32API DLL headers
 '
@@ -85,6 +86,7 @@ VERSION "0.6.0.13"
 	IMPORT "advapi32"   ' advanced API: security, services, registry ...
 	IMPORT "comctl32"   ' common controls; ==> initialize w/ InitCommonControlsEx ()
 	IMPORT "comdlg32"   ' standard dialog boxes (opening and saving files ...)
+	IMPORT "xbgrid"     ' for the grid control
 '
 	IMPORT "msimg32"
 '
@@ -684,6 +686,7 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
+DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
 
 END EXPORT
 '
@@ -828,6 +831,9 @@ FUNCTION WinX ()
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE ' fail
+
+	' initialize XbGrid control
+	Xbgrid ()
 
 	init = $$TRUE ' protect for reentry
 
@@ -3877,6 +3883,9 @@ END FUNCTION
 ' #####  WinXListView_AddCheckBoxes  #####
 ' ########################################
 ' Adds the check boxes to a list view if they are missing
+' $$LVS_EX_CHECKBOXES: Enables items in a list view control to be displayed
+' as check boxes. This style uses item state images to produce the check
+' box effect.
 '
 FUNCTION WinXListView_AddCheckBoxes (hLV)
 
@@ -3884,7 +3893,7 @@ FUNCTION WinXListView_AddCheckBoxes (hLV)
 
 	' add the check boxes if they are missing
 	exStyle = SendMessageA (hLV, $$LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0)
-	IFZ (exStyle & $$LVS_EX_CHECKBOXES) THEN
+	IF (exStyle & $$LVS_EX_CHECKBOXES) <> $$LVS_EX_CHECKBOXES THEN
 		exStyle = exStyle | $$LVS_EX_CHECKBOXES
 		SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
 	ENDIF
@@ -4033,6 +4042,8 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN ' fail
+	IF iItem < 0 THEN RETURN ' fail
+	IF cSubItems < 0 THEN RETURN ' fail
 
 	DIM text$[cSubItems]
 	FOR i = 0 TO cSubItems
@@ -4043,7 +4054,7 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 		lvi.iItem = iItem
 		lvi.iSubItem = i
 
-		IFF SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN ' fail
+		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN ' fail
 		text$[i] = CSTRING$(&buffer$)
 	NEXT i
 	RETURN $$TRUE ' success
@@ -6352,7 +6363,7 @@ FUNCTION WinXTabs_GetAutosizerSeries (hTabs, iTab)
 	TC_ITEM tci
 
 	tci.mask = $$TCIF_PARAM
-	IFF SendMessageA (hTabs, $$TCM_GETITEM, iTab, &tci) THEN RETURN -1 ' fail
+	IFZ SendMessageA (hTabs, $$TCM_GETITEM, iTab, &tci) THEN RETURN -1 ' fail
 	RETURN tci.lParam
 END FUNCTION
 '
@@ -6656,6 +6667,9 @@ END FUNCTION
 ' #####  WinXTreeView_AddCheckBoxes  #####
 ' ########################################
 ' Adds the check boxes to a tree view if they are missing
+' $$TVS_CHECKBOXES: Enables items in a tree view control to be displayed
+' as check boxes. This style uses item state images to produce the check
+' box effect.
 ' returns $$TRUE on success or $$FALSE on fail
 '
 FUNCTION WinXTreeView_AddCheckBoxes (hTV)
@@ -6664,7 +6678,7 @@ FUNCTION WinXTreeView_AddCheckBoxes (hTV)
 
 	' add the check boxes if they are missing
 	style = GetWindowLongA (hTV, $$GWL_STYLE)
-	IFZ (style & $$TVS_CHECKBOXES) THEN
+	IFZ (style & $$TVS_CHECKBOXES) <> $$TVS_CHECKBOXES THEN
 		style = style | $$TVS_CHECKBOXES
 		SetWindowLongA (hTV, $$GWL_STYLE, style)
 	ENDIF
@@ -9348,6 +9362,35 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+'
+' #########################
+' #####  WinXAddGrid  #####
+' #########################
+' Adds a new grid control
+' parent = the window to add the grid to
+' title = the initial text to appear in the grid - not all controls use this parameter
+' idCtr = the unique idCtr to identify the grid
+' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
+' exStyle = the extended style of the grid.  For most controls this will be 0
+' returns the handle of the grid, or 0 on fail
+FUNCTION WinXAddGrid (parent, STRING title, idCtr)
+	IFZ idCtr THEN RETURN ' fail
+
+	IFZ title THEN title = "Custom Grid Control" ' an empty title causes a crash
+	style = $$WS_CHILD|$$WS_VISIBLE
+	hInst = GetModuleHandleA (0)
+
+	hGrid = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$XBGRIDCLASSNAME, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
+	IFZ hGrid THEN RETURN ' fail
+
+	WinXSetDefaultFont (hGrid)
+
+	' shaded cells are write-protected
+	' $$BGM_SETPROTECTCOLOR is optional, but it gives a visual indication of which cells are protected
+	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, RGB (238, 234, 234), 0) ' $$COLOR_BTNFACE + 1 for Windows XP
+
+	RETURN hGrid
 END FUNCTION
 '
 ' #######################
