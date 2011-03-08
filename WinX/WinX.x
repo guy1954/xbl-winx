@@ -74,7 +74,6 @@ VERSION "0.6.0.13"
 '                      (shows the check box "Read Only" and checks it initially).
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
-' 0.6.0.13-Guy-01jan11-added grid support.
 '
 ' Win32API DLL headers
 '
@@ -86,7 +85,6 @@ VERSION "0.6.0.13"
 	IMPORT "advapi32"   ' advanced API: security, services, registry ...
 	IMPORT "comctl32"   ' common controls; ==> initialize w/ InitCommonControlsEx ()
 	IMPORT "comdlg32"   ' standard dialog boxes (opening and saving files ...)
-	IMPORT "xbgrid"     ' for the grid control
 '
 	IMPORT "msimg32"
 '
@@ -686,7 +684,6 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
-DECLARE FUNCTION WinXAddGrid (parent, title$, idCtr)
 
 END EXPORT
 '
@@ -831,9 +828,6 @@ FUNCTION WinX ()
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE ' fail
-
-	' initialize XbGrid control
-	Xbgrid ()
 
 	init = $$TRUE ' protect for reentry
 
@@ -9362,35 +9356,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
-END FUNCTION
-'
-' #########################
-' #####  WinXAddGrid  #####
-' #########################
-' Adds a new grid control
-' parent = the window to add the grid to
-' title = the initial text to appear in the grid - not all controls use this parameter
-' idCtr = the unique idCtr to identify the grid
-' style = the style of the grid.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
-' exStyle = the extended style of the grid.  For most controls this will be 0
-' returns the handle of the grid, or 0 on fail
-FUNCTION WinXAddGrid (parent, STRING title, idCtr)
-	IFZ idCtr THEN RETURN ' fail
-
-	IFZ title THEN title = "Custom Grid Control" ' an empty title causes a crash
-	style = $$WS_CHILD|$$WS_VISIBLE
-	hInst = GetModuleHandleA (0)
-
-	hGrid = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$XBGRIDCLASSNAME, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hGrid THEN RETURN ' fail
-
-	WinXSetDefaultFont (hGrid)
-
-	' shaded cells are write-protected
-	' $$BGM_SETPROTECTCOLOR is optional, but it gives a visual indication of which cells are protected
-	SendMessageA (hGrid, $$BGM_SETPROTECTCOLOR, RGB (238, 234, 234), 0) ' $$COLOR_BTNFACE + 1 for Windows XP
-
-	RETURN hGrid
 END FUNCTION
 '
 ' #######################
