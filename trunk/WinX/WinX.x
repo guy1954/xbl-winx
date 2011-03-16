@@ -118,12 +118,12 @@ TYPE BINDING
   XLONG      .vScrollPageC
   XLONG      .vScrollUnit
   XLONG      .useDialogInterface   'true to enable dialog style keyboard navigation amoung controls
-  XLONG      .hwndNextClipViewer   'if the onClipChange callback is used, we become a clipboard viewer
+  XLONG      .hwndNextClipViewer   'if the FnOnClipChange callback is used, we become a clipboard viewer
   XLONG      .hCursor              'custom cursor for this window
   XLONG      .isMouseInWindow
   XLONG      .hUpdateRegion
-  FUNCADDR   .paint (XLONG, XLONG)               'hWnd, hdc : paint the window
-  FUNCADDR   .dimControls (XLONG, XLONG, XLONG)  'hWnd, w, h : dimension the controls
+  FUNCADDR   .onPaint (XLONG, XLONG)               'hWnd, hdc : paint the window
+  FUNCADDR   .onDimControls (XLONG, XLONG, XLONG)  'hWnd, w, h : dimension the controls
   FUNCADDR   .onCommand(XLONG, XLONG, XLONG)     'idCtr, notifyCode, lParam
   FUNCADDR   .onMouseMove(XLONG, XLONG, XLONG)   'hWnd, x, y
   FUNCADDR   .onMouseDown(XLONG, XLONG, XLONG, XLONG)   'hWnd, MBT const, x, y
@@ -272,68 +272,8 @@ m4_include(`accessors.m4')
 '
 EXPORT
 
-'constants and structures missing from the XBlite headers, uncomment ids as necessary
-'missing from msimg32.dec
-'$$AC_SRC_OVER = 0x00
-'$$AC_SRC_ALPHA = 0x01
-''missing from commctl32.dec
-'$$PBS_MARQUEE = 0x08
-'$$PBM_SETMARQUEE = 1034
-'$$TBSTYLE_EX_DOUBLEBUFFER = 0x00000080
-'$$ACS_CENTER			= 0x0001
-'$$ACS_TRANSPARENT	= 0x0002
-'$$LVM_SORTITEMSEX = 0x1051
-
-'' from user32
-''$$TPM_LEFTBUTTON  = 0x0000
-'$$TPM_TOPALIGN        = 0x0000
-'$$TPM_RECURSE         = 0x0001
-'$$TPM_HORPOSANIMATION = 0x0400
-'$$TPM_HORNEGANIMATION = 0x0800
-'$$TPM_VERPOSANIMATION = 0x1000
-'$$TPM_VERNEGANIMATION = 0x2000
-'$$TPM_NOANIMATION     = 0x4000
-'$$TPM_LAYOUTRTL       = 0x8000
-
-'' Guy-30jul08-Duplicate Type(8)
-''PACKED BITMAPFILEHEADER
-''  USHORT  .bfType
-''  ULONG   .bfSize
-''  USHORT  .bfReserved1
-''  USHORT  .bfReserved2
-''  ULONG   .bfOffBits
-''END TYPE
-
-'$$TBMF_PAD                = 0x00000001
-'$$TBMF_BARPAD             = 0x00000002
-'$$TBMF_BUTTONSPACING      = 0x00000004
-'$$TB_GETMETRICS           = 1125
-'$$TB_SETMETRICS           = 1126
-
-'TYPE TBMETRICS
-'	ULONG .cbSize
-'	ULONG .dwMask
-'	XLONG .cxPad
-'	XLONG .cyPad
-'	XLONG .cxBarPad
-'	XLONG .cyBarPad
-'	XLONG .cxButtonSpacing
-'	XLONG .cyButtonSpacing
-'END TYPE
-
-'$$CB_GETCOMBOBOXINFO         = 0x0164
-'TYPE COMBOBOXINFO
-'	ULONG	.cbSize
-'	RECT	.rcItem
-'	RECT	.rcButton
-'	ULONG	.stateButton
-'	XLONG	.hwndCombo
-'	XLONG	.hwndItem
-'	XLONG	.hwndList
-'END TYPE
-
-'Now the WinX specific stuff
-TYPE RGBA
+'WinX specific stuff
+TYPE WINX_RGBA
 	UBYTE	.blue
 	UBYTE	.green
 	UBYTE	.red
@@ -398,9 +338,9 @@ END EXPORT
 
 DECLARE FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
 DECLARE FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDest, hdcSrc, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc, BLENDFUNCTION blendFunction)
-DECLARE FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
+DECLARE FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 DECLARE FUNCTION splitterProc (hWnd, msg, wParam, lParam)
-DECLARE FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
+DECLARE FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 DECLARE FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, w, h, currPos)
 DECLARE FUNCTION XWSStoWS (xwss)
@@ -437,11 +377,11 @@ DECLARE FUNCTION initPrintInfo ()
 
 EXPORT
 DECLARE FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
-DECLARE FUNCTION WinXRegOnPaint (hWnd, FUNCADDR onPaint)
+DECLARE FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 DECLARE FUNCTION WinXDisplay (hWnd)
 DECLARE FUNCTION WinXDoEvents ()
-DECLARE FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR msgHandler)
-DECLARE FUNCTION WinXRegControlSizer (hWnd, FUNCADDR controlSizer)
+DECLARE FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR FnMsgHandler)
+DECLARE FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 DECLARE FUNCTION WinXAddButton (parent, title$, hImage, idCtr)
 DECLARE FUNCTION WinXSetText (hWnd, text$)
 DECLARE FUNCTION WinXGetText$ (hWnd)
@@ -451,7 +391,7 @@ DECLARE FUNCTION WinXAddStatic (parent, title$, hImage, style, idCtr)
 DECLARE FUNCTION WinXAddEdit (parent, title$, style, idCtr)
 DECLARE FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, flags)
 DECLARE FUNCTION WinXSetMinSize (hWnd, w, h)
-DECLARE FUNCTION WinXRegOnCommand (hWnd, FUNCADDR onCommand)
+DECLARE FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 
 DECLARE FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 DECLARE FUNCTION WinXClear (hWnd)
@@ -463,10 +403,10 @@ DECLARE FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
 DECLARE FUNCTION WinXAddStatusBar (hWnd, initialStatus$, idCtr)
 DECLARE FUNCTION WinXStatus_SetText (hWnd, part, text$)
 DECLARE FUNCTION WinXStatus_GetText$ (hWnd, part)
-DECLARE FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR onMouseMove)
-DECLARE FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR onMouseDown)
-DECLARE FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR onMouseWheel)
-DECLARE FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR onMouseUp)
+DECLARE FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR FnOnMouseMove)
+DECLARE FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR FnOnMouseDown)
+DECLARE FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR FnOnMouseWheel)
+DECLARE FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR FnOnMouseUp)
 DECLARE FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, rgbTrans, toolTips, customisable)
 DECLARE FUNCTION WinXToolbar_AddButton (hToolbar, commandId, iImage, tooltipText$, optional, moveable)
 DECLARE FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
@@ -475,9 +415,9 @@ DECLARE FUNCTION WinXGetUseableRect (hWnd, RECT @rect)
 DECLARE FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisable)
 DECLARE FUNCTION WinXUndo (hWnd, idCtr)
 'new in 0.3
-DECLARE FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR onKeyDown)
-DECLARE FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR onKeyUp)
-DECLARE FUNCTION WinXRegOnChar (hWnd, FUNCADDR onChar)
+DECLARE FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown)
+DECLARE FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp)
+DECLARE FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
 DECLARE FUNCTION WinXIsKeyDown (key)
 DECLARE FUNCTION WinXIsMousePressed (button)
 DECLARE FUNCTION WinXAddControl (parent, class$, title$, style, exStyle, idCtr)
@@ -509,17 +449,17 @@ DECLARE FUNCTION WinXAddProgressBar (parent, smooth, idCtr)
 DECLARE FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 DECLARE FUNCTION WinXAddTabs (parent, multiline, idCtr)
 DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr)
-DECLARE FUNCTION WinXRegOnDrag (hWnd, FUNCADDR onDrag)
+DECLARE FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
 DECLARE FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity)
 DECLARE FUNCTION WinXProgress_SetPos (hProg, DOUBLE pos)
 DECLARE FUNCTION WinXProgress_SetMarquee (hProg, enable)
-DECLARE FUNCTION WinXRegOnScroll (hWnd, FUNCADDR onScroll)
+DECLARE FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 DECLARE FUNCTION WinXScroll_Show (hWnd, horiz, vert)
 DECLARE FUNCTION WinXScroll_SetRange (hWnd, direction, min, max)
 DECLARE FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
-DECLARE FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR onTrackerPos)
+DECLARE FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
 DECLARE FUNCTION WinXTracker_GetPos (hTracker)
 DECLARE FUNCTION WinXTracker_SetPos (hTracker, newPos)
 DECLARE FUNCTION WinXTracker_SetRange  (hTracker, USHORT min, USHORT max, ticks)
@@ -542,7 +482,7 @@ DECLARE FUNCTION WinXTreeView_GetSelection (hTV)
 DECLARE FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_GetItemLabel$ (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
-DECLARE FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR onLabelEdit)
+DECLARE FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 DECLARE FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 DECLARE FUNCTION WinXTabs_AddTab (hTabs, label$, index)
 DECLARE FUNCTION WinXTabs_DeleteTab (hTabs, iTab)
@@ -565,7 +505,7 @@ DECLARE FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 DECLARE FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 DECLARE FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 DECLARE FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
-DECLARE FUNCTION WinXRegOnClose (hWnd, FUNCADDR onClose)
+DECLARE FUNCTION WinXRegOnClose (hWnd, FUNCADDR FnOnClose)
 DECLARE FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, DOUBLE space, DOUBLE size, flags)
 DECLARE FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
 DECLARE FUNCTION WinXListView_SetView (hLV, view)
@@ -590,7 +530,7 @@ DECLARE FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 DECLARE FUNCTION WinXDraw_SaveImage (hImage, fileName$, fileType)
 DECLARE FUNCTION WinXDraw_ResizeImage (hImage, w, h)
 DECLARE FUNCTION WinXDraw_SetImagePixel (hImage, x, y, color)
-DECLARE FUNCTION RGBA WinXDraw_GetImagePixel (hImage, x, y)
+DECLARE FUNCTION WINX_RGBA WinXDraw_GetImagePixel (hImage, x, y)
 DECLARE FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 DECLARE FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE @data[])
 DECLARE FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE @data[])
@@ -606,7 +546,7 @@ DECLARE FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyP
 DECLARE FUNCTION WinXPrint_Done (hPrinter)
 'new in 0.6
 DECLARE FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
-DECLARE FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR onFocusChange)
+DECLARE FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 DECLARE FUNCTION WinXSetWindowColour (hWnd, color)
 DECLARE FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, iIcon, hMod)
@@ -624,14 +564,14 @@ DECLARE FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 DECLARE FUNCTION WinXClip_IsString ()
 DECLARE FUNCTION WinXClip_PutString (Stri$)
 DECLARE FUNCTION WinXClip_GetString$ ()
-DECLARE FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR onClipChange)
+DECLARE FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR FnOnClipChange)
 DECLARE FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
 DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
 DECLARE FUNCTION WinXScroll_GetPos (hWnd, direction, @pos)
 DECLARE FUNCTION WinXScroll_SetPos (hWnd, direction, pos)
-DECLARE FUNCTION WinXRegOnItem (hWnd, FUNCADDR onItem)
-DECLARE FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR onColumnClick)
-DECLARE FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR onEnterLeave)
+DECLARE FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
+DECLARE FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
+DECLARE FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 DECLARE FUNCTION WinXListView_GetItemFromPoint (hLV, x, y)
 DECLARE FUNCTION WinXListView_Sort (hLV, iCol, desc)
 DECLARE FUNCTION WinXTreeView_GetItemFromPoint (hTV, x, y)
@@ -641,7 +581,7 @@ DECLARE FUNCTION WinXGetMousePos (hWnd, @x, @y)
 DECLARE FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
 DECLARE FUNCTION WinXCalendar_SetSelection (hCal, SYSTEMTIME time)
 DECLARE FUNCTION WinXCalendar_GetSelection (hCal, SYSTEMTIME @time)
-DECLARE FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR onCalendarSelect)
+DECLARE FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 DECLARE FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr)
 DECLARE FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 DECLARE FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid)
@@ -649,7 +589,7 @@ DECLARE FUNCTION WinXSetFont (hCtr, hFont)
 DECLARE FUNCTION WinXClip_IsImage ()
 DECLARE FUNCTION WinXClip_GetImage ()
 DECLARE FUNCTION WinXClip_PutImage (hImage)
-DECLARE FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR onDrag)
+DECLARE FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDrag)
 DECLARE FUNCTION WinXDraw_GetFontHeight (hFont, @ascent, @descenct)
 'new in 0.6.0.3
 DECLARE FUNCTION WinXListView_AddCheckBoxes (hLV) ' add the check boxes to a list view
@@ -684,6 +624,7 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
+DECLARE FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem) ' set the focus on item
 
 END EXPORT
 '
@@ -1134,7 +1075,7 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 	IF editable THEN style = style|$$LVS_EDITLABELS
 
 	' Guy-21sep10-don't keep a zero view, since it make the list view go berserk
-	IFZ view THEN view = $$LVS_REPORT
+	IFZ view THEN view = $$LVS_LIST
 	style = style|view
 
 	hInst = GetModuleHandleA (0)
@@ -3214,9 +3155,9 @@ END FUNCTION
 ' hImage =  the handle to the image
 ' x, y = the x and y coordinates of the pixel
 ' returns the color at the point or 0 on fail
-FUNCTION RGBA WinXDraw_GetImagePixel (hImage, x, y)
+FUNCTION WINX_RGBA WinXDraw_GetImagePixel (hImage, x, y)
 	BITMAP bmp
-	RGBA ret
+	WINX_RGBA ret
 
 	IFZ GetObjectA (hImage, SIZE(BITMAP), &bmp) THEN RETURN ' fail
 	IF x < 0 || x >= bmp.width || y < 0 || y >= bmp.height THEN RETURN ' fail
@@ -3327,7 +3268,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXDraw_PremultiplyImage (hImage)
 	BITMAP bmp
-	RGBA rgba
+	WINX_RGBA rgba
 
 	IFZ GetObjectA (hImage, SIZE(BITMAP), &bmp) THEN RETURN ' fail
 
@@ -3720,7 +3661,7 @@ END FUNCTION
 ' ########################################
 ' #####  WinXListBox_EnableDragging  #####
 ' ########################################
-' Enables dragging on a list box.  Make sure to register the onDrag callback as well
+' Enables dragging on a list box.  Make sure to register the FnOnDrag callback as well
 ' hListBox = the handle to the list box to enable dragging on
 ' reuturns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListBox_EnableDragging (hListBox)
@@ -4873,10 +4814,10 @@ END FUNCTION
 '
 '	[WinXRegControlSizer]
 ' Description = Registers a callback function to handle the sizing of controls
-' Function    = WinXRegControlSizer (hWnd, FUNCADDR func)
+' Function    = WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 ' ArgCount    = 2
 '	Arg1        = hWnd : The window to register the callback for
-' Arg2				= func : The address of the callback function
+' Arg2				= FnControlSizer : The address of the callback function
 '	Return      = $$TRUE on success or $$FALSE on error
 ' Remarks     = This function allows you to use your own control sizing code instead of the default
 'WinX auto sizer.  You will have to resize all controls, including status bars and toolbars, if you use
@@ -4884,18 +4825,18 @@ END FUNCTION
 '	See Also    =
 '	Examples    = WinXRegControlSizer (#hMain, &customSizer())
 '
-FUNCTION WinXRegControlSizer (hWnd, FUNCADDR func)
+FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 	BINDING			binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ func THEN RETURN ' fail
+	IFZ FnControlSizer THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
 	'set the function
-	binding.dimControls = func
+	binding.onDimControls = FnControlSizer
 	RETURN binding_update (idBinding, binding)
 END FUNCTION
 '
@@ -4905,11 +4846,11 @@ END FUNCTION
 '
 '	[WinXRegMessageHandler]
 ' Description = Registers a message handler callback function
-' Function    = WinXRegMessageHandler (hWnd, msg, FUNCADDR func)
+' Function    = WinXRegMessageHandler (hWnd, msg, FUNCADDR FnMsgHandler)
 ' ArgCount    = 3
 '	Arg1        = hWnd : The window to register the callback for
 ' Arg2				= msg : The message the callback processes
-' Arg3				= func : The address of the callback function
+' Arg3				= FnMsgHandler : The address of the callback function
 '	Return      = $$TRUE on success or $$FALSE on error
 ' Remarks     = This function is designed for developers who need custom processing of a windows message,
 'for example, to use a custom control that sends custom messages.
@@ -4919,12 +4860,12 @@ END FUNCTION
 '	See Also    =
 '	Examples    = WinXRegMessageHandler (#hMain, $$WM_NOTIFY, &handleNotify())
 '
-FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR func)
+FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR FnMsgHandler)
 	BINDING			binding
 	MSGHANDLER	handler
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ func THEN RETURN ' fail
+	IFZ FnMsgHandler THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
@@ -4932,7 +4873,7 @@ FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR func)
 
 	'prepare the handler
 	handler.msg = msg
-	handler.handler = func
+	handler.handler = FnMsgHandler
 
 	'and add it
 	IF handler_add (binding.msgHandlers, handler) = -1 THEN RETURN ' fail
@@ -4943,21 +4884,21 @@ END FUNCTION
 ' #####################################
 ' #####  WinXRegOnCalendarSelect  #####
 ' #####################################
-' Sets the onCalendarSelect callback
+' Sets the FnOnCalendarSelect callback
 ' hWnd = the handle to the window to set the callback for
-' onCalendarSelect = the address of the callback
+' FnOnCalendarSelect = the address of the callback
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR onCalendarSelect)
+FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onCalendarSelect THEN RETURN ' fail
+	IFZ FnOnCalendarSelect THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onCalendarSelect = onCalendarSelect
+	binding.onCalendarSelect = FnOnCalendarSelect
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -4965,21 +4906,21 @@ END FUNCTION
 ' ###########################
 ' #####  WinXRegOnChar  #####
 ' ###########################
-' Registers the onChar callback function
+' Registers the FnOnChar callback function
 ' hWnd = the handle to the window to register the callback for
-' onChar = the address of the callback function
+' FnOnChar = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnChar (hWnd, FUNCADDR onChar)
+FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onChar THEN RETURN ' fail
+	IFZ FnOnChar THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onChar = onChar
+	binding.onChar = FnOnChar
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -4989,13 +4930,13 @@ END FUNCTION
 ' #################################
 ' Registers a callback for when the clipboard changes
 ' hWnd = the handle to the window
-' onFocusChange = the address of the callback
+' FnOnFocusChange = the address of the callback
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR onClipChange)
+FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR FnOnClipChange)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onClipChange THEN RETURN ' fail
+	IFZ FnOnClipChange THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
@@ -5003,7 +4944,7 @@ FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR onClipChange)
 
 	binding.hwndNextClipViewer = SetClipboardViewer (hWnd)
 
-	binding.onClipChange = onClipChange
+	binding.onClipChange = FnOnClipChange
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5011,18 +4952,18 @@ END FUNCTION
 ' ############################
 ' #####  WinXRegOnClose  #####
 ' ############################
-' Registers the onClose callback
-FUNCTION WinXRegOnClose (hWnd, FUNCADDR onClose)
+' Registers the FnOnClose callback
+FUNCTION WinXRegOnClose (hWnd, FUNCADDR FnOnClose)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onClose THEN RETURN ' fail
+	IFZ FnOnClose THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onClose = onClose
+	binding.onClose = FnOnClose
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5030,21 +4971,21 @@ END FUNCTION
 ' ##################################
 ' #####  WinXRegOnColumnClick  #####
 ' ##################################
-' Registers the onColumnClick callback for a list view control
+' Registers the FnOnColumnClick callback for a list view control
 ' hWnd = the window to register the callback for
-' onColumnClick = the address of the callback function
+' FnOnColumnClick = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR onColumnClick)
+FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onColumnClick THEN RETURN ' fail
+	IFZ FnOnColumnClick THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onColumnClick = onColumnClick
+	binding.onColumnClick = FnOnColumnClick
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5052,21 +4993,21 @@ END FUNCTION
 ' ##############################
 ' #####  WinXRegOnCommand  #####
 ' ##############################
-' Registers the onCommand callback function
+' Registers the FnOnCommand callback function
 ' hWnd = the window to register
 ' func = the function to process commands
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnCommand (hWnd, FUNCADDR onCommand)
+FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 	BINDING			binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onCommand THEN RETURN ' fail
+	IFZ FnOnCommand THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onCommand = onCommand
+	binding.onCommand = FnOnCommand
 	binding_update (idBinding, binding)
 
 	RETURN $$TRUE ' success
@@ -5075,18 +5016,18 @@ END FUNCTION
 ' ###########################
 ' #####  WinXRegOnDrag  #####
 ' ###########################
-' Register onDrag
-FUNCTION WinXRegOnDrag (hWnd, FUNCADDR onDrag)
+' Register FnOnDrag
+FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onDrag THEN RETURN ' fail
+	IFZ FnOnDrag THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onDrag = onDrag
+	binding.onDrag = FnOnDrag
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5094,22 +5035,22 @@ END FUNCTION
 ' ################################
 ' #####  WinXRegOnDropFiles  #####
 ' ################################
-' Registers the onDropFiles callback for a window
+' Registers the FnOnDropFiles callback for a window
 ' hWnd = the window to register the callback for
-' onDropFiles = the address of the callback function
+' FnOnDropFiles = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR onDropFiles)
+FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onDropFiles THEN RETURN ' fail
+	IFZ FnOnDropFiles THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
 	DragAcceptFiles (hWnd, $$TRUE)
-	binding.onDropFiles = onDropFiles
+	binding.onDropFiles = FnOnDropFiles
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5117,21 +5058,21 @@ END FUNCTION
 ' #################################
 ' #####  WinXRegOnEnterLeave  #####
 ' #################################
-' Registers the onEnterLeave callback
+' Registers the FnOnEnterLeave callback
 ' hWnd = the handle to the window to register the callback for
-' onEnterLeave = the address of the callback function
+' FnOnEnterLeave = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR onEnterLeave)
+FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onEnterLeave THEN RETURN ' fail
+	IFZ FnOnEnterLeave THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onEnterLeave = onEnterLeave
+	binding.onEnterLeave = FnOnEnterLeave
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5141,19 +5082,19 @@ END FUNCTION
 ' ##################################
 ' Registers a callback for when the focus changes
 ' hWnd = the handle to the window
-' onFocusChange = the callback function
+' FnOnFocusChange = the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR onFocusChange)
+FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onFocusChange THEN RETURN ' fail
+	IFZ FnOnFocusChange THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onFocusChange = onFocusChange
+	binding.onFocusChange = FnOnFocusChange
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5161,21 +5102,21 @@ END FUNCTION
 ' ###########################
 ' #####  WinXRegOnItem  #####
 ' ###########################
-' Registers the onItem callback for a list view or a tree view control
+' Registers the FnOnItem callback for a list view or a tree view control
 ' hWnd = the window to register the message for
-' onItem = the address of the callback function
+' FnOnItem = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnItem (hWnd, FUNCADDR onItem)
+FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onItem THEN RETURN ' fail
+	IFZ FnOnItem THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onItem = onItem
+	binding.onItem = FnOnItem
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5183,21 +5124,21 @@ END FUNCTION
 ' ##############################
 ' #####  WinXRegOnKeyDown  #####
 ' ##############################
-' Registers the onKeyDown callback function
+' Registers the FnOnKeyDown callback function
 ' hWnd = the handle to the window to register the callback for
-' onKeyDown = the address of the onKeyDown callback function
+' FnOnKeyDown = the address of the FnOnKeyDown callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR onKeyDown)
+FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onKeyDown THEN RETURN ' fail
+	IFZ FnOnKeyDown THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onKeyDown = onKeyDown
+	binding.onKeyDown = FnOnKeyDown
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5205,21 +5146,21 @@ END FUNCTION
 ' ############################
 ' #####  WinXRegOnKeyUp  #####
 ' ############################
-' Registers the onKeyUp callback function
+' Registers the FnOnKeyUp callback function
 ' hWnd = the handle to the window to register the callback for
-' onKeyUp = the address of the callback function
+' FnOnKeyUp = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR onKeyUp)
+FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onKeyUp THEN RETURN ' fail
+	IFZ FnOnKeyUp THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onKeyUp = onKeyUp
+	binding.onKeyUp = FnOnKeyUp
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5227,18 +5168,18 @@ END FUNCTION
 ' ################################
 ' #####  WinXRegOnLabelEdit  #####
 ' ################################
-' Register the onLabelEdit callback
-FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR onLabelEdit)
+' Register the FnOnLabelEdit callback
+FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onLabelEdit THEN RETURN ' fail
+	IFZ FnOnLabelEdit THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onLabelEdit = onLabelEdit
+	binding.onLabelEdit = FnOnLabelEdit
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5248,19 +5189,19 @@ END FUNCTION
 ' ################################
 ' Registers a callback for when the mouse is pressed
 ' hWnd = the handle to the window
-' onMouseDown = the function to call when the mouse is pressed
+' FnOnMouseDown = the function to call when the mouse is pressed
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR onMouseDown)
+FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR FnOnMouseDown)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onMouseDown THEN RETURN ' fail
+	IFZ FnOnMouseDown THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onMouseDown = onMouseDown
+	binding.onMouseDown = FnOnMouseDown
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5270,19 +5211,19 @@ END FUNCTION
 ' ################################
 ' Registers a callback for when the mouse is moved
 ' hWnd = the handle to the window
-' onMouseMove = the function to call when the mouse moves
+' FnOnMouseMove = the function to call when the mouse moves
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR onMouseMove)
+FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR FnOnMouseMove)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onMouseMove THEN RETURN ' fail
+	IFZ FnOnMouseMove THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onMouseMove = onMouseMove
+	binding.onMouseMove = FnOnMouseMove
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5292,19 +5233,19 @@ END FUNCTION
 ' ##############################
 ' Registers a callback for when the mouse is released
 ' hWnd = the handle to the window
-' onMouseUp = the function to call when the mouse is released
+' FnOnMouseUp = the function to call when the mouse is released
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR onMouseUp)
+FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR FnOnMouseUp)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onMouseUp THEN RETURN ' fail
+	IFZ FnOnMouseUp THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onMouseUp = onMouseUp
+	binding.onMouseUp = FnOnMouseUp
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5314,19 +5255,19 @@ END FUNCTION
 ' #################################
 ' Registers a callback for when the mouse wheel is rotated
 ' hWnd = the handle to the window
-' onMouseWheel = the function to call when the mouse wheel is rotated
+' FnOnMouseWheel = the function to call when the mouse wheel is rotated
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR onMouseWheel)
+FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR FnOnMouseWheel)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onMouseWheel THEN RETURN ' fail
+	IFZ FnOnMouseWheel THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onMouseWheel = onMouseWheel
+	binding.onMouseWheel = FnOnMouseWheel
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5337,29 +5278,29 @@ END FUNCTION
 '
 '	[WinXRegOnPaint]
 ' Description = Registers a callback function to process painting events
-' Function    = WinXRegOnPaint (hWnd, FUNCADDR onPaint)
+' Function    = WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 ' ArgCount    = 2
 '	Arg1        = hWnd : The handle to the window to register the callback for
-' Arg2				= onPaint : The address of the function to use for the callback
+' Arg2				= FnOnPaint : The address of the function to use for the callback
 '	Return      = $$TRUE on success or $$FALSE on fail
 ' Remarks     = The callback function must take a single XLONG parameter called
 'hdc, this parameter is the handle to the device context to draw on.
 'If you register this callback, autodraw is disabled
 '	See Also    =
-'	Examples    = WinXRegOnPaint (#hMain, &onPaint())
+'	Examples    = WinXRegOnPaint (#hMain, &FnOnPaint())
 '
-FUNCTION WinXRegOnPaint (hWnd, FUNCADDR onPaint)
+FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 	BINDING binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onPaint THEN RETURN ' fail
+	IFZ FnOnPaint THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
 	'set the paint function
-	binding.paint = onPaint
+	binding.onPaint = FnOnPaint
 	binding_update (idBinding, binding)
 
 	RETURN $$TRUE ' success
@@ -5368,21 +5309,21 @@ END FUNCTION
 ' #############################
 ' #####  WinXRegOnScroll  #####
 ' #############################
-' Registers the onScroll callback
+' Registers the FnOnScroll callback
 ' hWnd = the handle to the window to register the callback for
-' onScroll = the address of the callback function
+' FnOnScroll = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnScroll (hWnd, FUNCADDR onScroll)
+FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onScroll THEN RETURN ' fail
+	IFZ FnOnScroll THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onScroll = onScroll
+	binding.onScroll = FnOnScroll
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -5390,21 +5331,21 @@ END FUNCTION
 ' #################################
 ' #####  WinXRegOnTrackerPos  #####
 ' #################################
-' Registers the onTrackerPos callback
+' Registers the FnOnTrackerPos callback
 ' hWnd = the handle of the window to register the callback for
-' onTrackerPos = the address of the callback function
+' FnOnTrackerPos = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR onTrackerPos)
+FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
 	BINDING	binding
 
 	IFZ hWnd THEN RETURN ' fail
-	IFZ onTrackerPos THEN RETURN ' fail
+	IFZ FnOnTrackerPos THEN RETURN ' fail
 
 	'get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF binding_get (idBinding, @binding) THEN RETURN ' fail
 
-	binding.onTrackerPos = onTrackerPos
+	binding.onTrackerPos = FnOnTrackerPos
 	binding_update (idBinding, binding)
 	RETURN $$TRUE ' success
 END FUNCTION
@@ -7283,7 +7224,7 @@ END FUNCTION
 ' #####  FnOnNotify  #####
 ' ########################
 ' Handles notify messages
-FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
+FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 	SHARED tvDragButton
 	SHARED tvDragging
 	SHARED hIml
@@ -7377,7 +7318,7 @@ FUNCTION FnOnNotify (hwnd, wParam, lParam, BINDING binding, @handled)
 				ImageList_BeginDrag (hIml, 0, nmtv.ptDrag.x-rect.left, nmtv.ptDrag.y-rect.top)
 				ImageList_DragEnter (GetDesktopWindow (), rect.left, rect.top)
 
-				SetCapture (hwnd)
+				SetCapture (hWnd)
 			ENDIF
 			XLONGAT(&&nmtv) = pNmtv
 		CASE $$TCN_SELCHANGE
@@ -7570,8 +7511,8 @@ END FUNCTION
 FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, currPos)
 	RECT rect
 	SPLITTERINFO splitterInfo
-	FUNCADDR leftInfo (XLONG, XLONG)
-	FUNCADDR rightInfo (XLONG, XLONG)
+	FUNCADDR FnLeftInfo (XLONG, XLONG) ' groupBox_SizeContents (hGB, pRect)
+	FUNCADDR FnRightInfo (XLONG, XLONG) ' Guy-16mar11-unused???
 	'if there is an info block, here, resize the window
 
 	'calculate the SIZE
@@ -7677,14 +7618,14 @@ FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, cur
 			MoveWindow (autoSizerBlock.hwnd, autoSizerBlock.x+boxX, autoSizerBlock.y+boxY, autoSizerBlock.w, autoSizerBlock.h, $$TRUE)
 		ENDIF
 
-		leftInfo = GetPropA (autoSizerBlock.hwnd, &"WinXLeftSubSizer")
-		rightInfo = GetPropA (autoSizerBlock.hwnd, &"WinXRightSubSizer")
-		IF leftInfo THEN
-			series = @leftInfo(autoSizerBlock.hwnd, &rect)
+		FnLeftInfo = GetPropA (autoSizerBlock.hwnd, &"WinXLeftSubSizer")
+		FnRightInfo = GetPropA (autoSizerBlock.hwnd, &"WinXRightSubSizer")
+		IF FnLeftInfo THEN
+			series = @FnLeftInfo(autoSizerBlock.hwnd, &rect)
 			autoSizerInfo_sizeGroup (series, autoSizerBlock.x+boxX+rect.left, autoSizerBlock.y+boxY+rect.top, (rect.right-rect.left), (rect.bottom-rect.top))
 		ENDIF
-		IF rightInfo THEN
-			series = @rightInfo(autoSizerBlock.hwnd, &rect)
+		IF FnRightInfo THEN
+			series = @FnRightInfo(autoSizerBlock.hwnd, &rect)
 			autoSizerInfo_sizeGroup (series, autoSizerBlock.x+boxX+rect.left, _
 			autoSizerBlock.y+boxY+rect.top, (rect.right-rect.left), (rect.bottom-rect.top))
 		ENDIF
@@ -8058,7 +7999,7 @@ END FUNCTION
 ' ##############################
 ' #####  cancelDlgOnClose  #####
 ' ##############################
-' onClose callback for the cancel printing dialog box
+' FnOnClose callback for the cancel printing dialog box
 FUNCTION cancelDlgOnClose (hWnd)
 	SHARED	PRINTINFO	printInfo
 	printInfo.continuePrinting = $$FALSE
@@ -8069,7 +8010,7 @@ END FUNCTION
 ' ################################
 ' #####  cancelDlgOnCommand  #####
 ' ################################
-' onCommand callback for the cancel printing dialog box
+' FnOnCommand callback for the cancel printing dialog box
 FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
 	SHARED	PRINTINFO	printInfo
 
@@ -8444,7 +8385,7 @@ END FUNCTION
 ' #########################
 ' The main window procedure
 ' parameters and return are as usual
-FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
+FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 	SHARED tvDragButton
 	SHARED tvDragging
 	SHARED hIml
@@ -8468,7 +8409,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	POINT mouseXY
 	TRACKMOUSEEVENT tme
 
-	IFZ hwnd THEN RETURN ' fail
+	IFZ hWnd THEN RETURN ' fail
 
 	'set to true if we handle the message
 	handled = $$FALSE
@@ -8477,12 +8418,12 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 	retCode = 0
 
 	'get the binding
-	idBinding = GetWindowLongA (hwnd, $$GWL_USERDATA)
+	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	bOK = binding_get (idBinding, @binding)
-	IFF bOK THEN RETURN DefWindowProcA (hwnd, msg, wParam, lParam)
+	IFF bOK THEN RETURN DefWindowProcA (hWnd, msg, wParam, lParam)
 
 	'call any associated message handler
-	IF handler_call (binding.msgHandlers, @retCode, hwnd, msg, wParam, lParam) THEN
+	IF handler_call (binding.msgHandlers, @retCode, hWnd, msg, wParam, lParam) THEN
 		handled = $$TRUE
 	ENDIF
 
@@ -8496,8 +8437,8 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			ENDIF
 
 		CASE $$WM_NOTIFY
-			' Guy-02mar11-RETURN FnOnNotify (hwnd, wParam, lParam, binding)
-			retCode = FnOnNotify (hwnd, wParam, lParam, binding, @handled)
+			' Guy-02mar11-RETURN FnOnNotify (hWnd, wParam, lParam, binding)
+			retCode = FnOnNotify (hWnd, wParam, lParam, binding, @handled)
 
 		CASE $$WM_DRAWCLIPBOARD
 			IF binding.hwndNextClipViewer THEN SendMessageA (binding.hwndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
@@ -8530,43 +8471,43 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				NEXT i
 				DragFinish (wParam)
 
-				RETURN @binding.onDropFiles (hwnd, pt.x, pt.y, @files$[])
+				RETURN @binding.onDropFiles (hWnd, pt.x, pt.y, @files$[])
 			ENDIF
 
 			DragFinish (wParam)
 			RETURN 0
 		CASE $$WM_ERASEBKGND
 			IF binding.backCol THEN
-				GetClientRect (hwnd, &rect)
+				GetClientRect (hWnd, &rect)
 				FillRect (wParam, &rect, binding.backCol)
 				RETURN 0
 			ELSE
-				RETURN DefWindowProcA (hwnd, msg, wParam, lParam)
+				RETURN DefWindowProcA (hWnd, msg, wParam, lParam)
 			ENDIF
 		CASE $$WM_PAINT
-			hDC = BeginPaint (hwnd, &ps)
+			hDC = BeginPaint (hWnd, &ps)
 
 			'use auto draw
-			WinXGetUseableRect (hwnd, @rect)
+			WinXGetUseableRect (hWnd, @rect)
 
 			' Auto scroll?
 '				IF binding.hScrollPageM THEN
-'					GetScrollInfo (hwnd, $$SB_HORZ, &si)
+'					GetScrollInfo (hWnd, $$SB_HORZ, &si)
 '					xOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
-'					GetScrollInfo (hwnd, $$SB_VERT, &si)
+'					GetScrollInfo (hWnd, $$SB_VERT, &si)
 '					yOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
 '				ENDIF
 			autoDraw_draw(hDC, binding.autoDrawInfo, xOff, yOff)
 
-			retCode = @binding.paint(hwnd, hDC)
+			retCode = @binding.onPaint(hWnd, hDC)
 
-			EndPaint (hwnd, &ps)
+			EndPaint (hWnd, &ps)
 
 			RETURN retCode
 		CASE $$WM_SIZE
 			w = LOWORD (lParam)
 			h = HIWORD (lParam)
-			sizeWindow (hwnd, w, h)
+			sizeWindow (hWnd, w, h)
 			handled = $$TRUE
 
 		CASE $$WM_HSCROLL,$$WM_VSCROLL
@@ -8588,7 +8529,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 
 			si.cbSize = SIZE(SCROLLINFO)
 			si.fMask = $$SIF_ALL|$$SIF_DISABLENOSCROLL
-			GetScrollInfo (hwnd, sb, &si)
+			GetScrollInfo (hWnd, sb, &si)
 
 			IF si.nPage <= (si.nMax-si.nMin) THEN
 				SELECT CASE sbval
@@ -8609,14 +8550,14 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				END SELECT
 			ENDIF
 
-			SetScrollInfo (hwnd, sb, &si, $$TRUE)
-			RETURN @binding.onScroll(si.nPos, hwnd, dir)
+			SetScrollInfo (hWnd, sb, &si, $$TRUE)
+			RETURN @binding.onScroll(si.nPos, hWnd, dir)
 
 		' This allows for mouse activation of child windows, for some reason WM_ACTIVATE doesn't work
-		' unfortunately it interferes with label editing - hence the strange hwnd != wParam condition
+		' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
 		'CASE $$WM_MOUSEACTIVATE
-			'IF hwnd != wParam THEN
-			'	SetFocus (hwnd)
+			'IF hWnd != wParam THEN
+			'	SetFocus (hWnd)
 			'	RETURN $$MA_NOACTIVATE
 			'ENDIF
 			'RETURN $$MA_ACTIVATE
@@ -8628,15 +8569,15 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			'LOOP
 			'IF wParam = GetFocus() THEN RETURN $$MA_NOACTIVATE
 		CASE $$WM_KEYDOWN
-			IF binding.onKeyDown THEN RETURN @binding.onKeyDown(hwnd, wParam)
+			IF binding.onKeyDown THEN RETURN @binding.onKeyDown(hWnd, wParam)
 		CASE $$WM_KEYUP
-			IF binding.onKeyUp THEN RETURN @binding.onKeyUp(hwnd, wParam)
+			IF binding.onKeyUp THEN RETURN @binding.onKeyUp(hWnd, wParam)
 		CASE $$WM_CHAR
-			IF binding.onChar THEN RETURN @binding.onChar(hwnd, wParam)
+			IF binding.onChar THEN RETURN @binding.onChar(hWnd, wParam)
 		CASE $$WM_SETFOCUS
-			IF binding.onFocusChange THEN RETURN @binding.onFocusChange(hwnd, $$TRUE)
+			IF binding.onFocusChange THEN RETURN @binding.onFocusChange(hWnd, $$TRUE)
 		CASE $$WM_KILLFOCUS
-			IF binding.onFocusChange THEN RETURN @binding.onFocusChange(hwnd, $$FALSE)
+			IF binding.onFocusChange THEN RETURN @binding.onFocusChange(hWnd, $$FALSE)
 		CASE $$WM_SETCURSOR
 			IF binding.hCursor && LOWORD(lParam) = $$HTCLIENT THEN
 				SetCursor (binding.hCursor)
@@ -8649,12 +8590,12 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 			IFF binding.isMouseInWindow THEN
 				tme.cbSize = SIZE(tme)
 				tme.dwFlags = $$TME_LEAVE
-				tme.hwndTrack = hwnd
+				tme.hwndTrack = hWnd
 				TrackMouseEvent (&tme)
 				binding.isMouseInWindow = $$TRUE
 				binding_update (idBinding, binding)
 
-				@binding.onEnterLeave (hwnd, $$TRUE)
+				@binding.onEnterLeave (hWnd, $$TRUE)
 			ENDIF
 
 			IF (tvDragButton = $$MBT_LEFT) || (tvDragButton = $$MBT_RIGHT) THEN
@@ -8662,26 +8603,26 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				IFZ retCode THEN SetCursor (LoadCursorA (0, $$IDC_NO)) ELSE SetCursor (LoadCursorA (0, $$IDC_ARROW))
 				RETURN 0
 			ELSE
-				RETURN @binding.onMouseMove(hwnd, LOWORD(lParam), HIWORD(lParam))
+				RETURN @binding.onMouseMove(hWnd, LOWORD(lParam), HIWORD(lParam))
 			ENDIF
 		CASE $$WM_MOUSELEAVE
 				binding.isMouseInWindow = $$FALSE
 				binding_update (idBinding, binding)
 
-				@binding.onEnterLeave (hwnd, $$FALSE)
+				@binding.onEnterLeave (hWnd, $$FALSE)
 			RETURN 0
 		CASE $$WM_LBUTTONDOWN
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
-			RETURN @binding.onMouseDown(hwnd, $$MBT_LEFT, LOWORD(lParam), HIWORD(lParam))
+			RETURN @binding.onMouseDown(hWnd, $$MBT_LEFT, LOWORD(lParam), HIWORD(lParam))
 		CASE $$WM_MBUTTONDOWN
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
-			RETURN @binding.onMouseDown(hwnd, $$MBT_MIDDLE, LOWORD(lParam), HIWORD(lParam))
+			RETURN @binding.onMouseDown(hWnd, $$MBT_MIDDLE, LOWORD(lParam), HIWORD(lParam))
 		CASE $$WM_RBUTTONDOWN
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
-			RETURN @binding.onMouseDown(hwnd, $$MBT_RIGHT, LOWORD(lParam), HIWORD(lParam))
+			RETURN @binding.onMouseDown(hWnd, $$MBT_RIGHT, LOWORD(lParam), HIWORD(lParam))
 		CASE $$WM_LBUTTONUP
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
@@ -8691,12 +8632,12 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				GOSUB endDragTreeViewItem
 				RETURN 0
 			ELSE
-				RETURN @binding.onMouseUp(hwnd, $$MBT_LEFT,LOWORD(lParam), HIWORD(lParam))
+				RETURN @binding.onMouseUp(hWnd, $$MBT_LEFT,LOWORD(lParam), HIWORD(lParam))
 			ENDIF
 		CASE $$WM_MBUTTONUP
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
-			RETURN @binding.onMouseUp(hwnd, $$MBT_MIDDLE, LOWORD(lParam), HIWORD(lParam))
+			RETURN @binding.onMouseUp(hWnd, $$MBT_MIDDLE, LOWORD(lParam), HIWORD(lParam))
 		CASE $$WM_RBUTTONUP
 			mouseXY.x = LOWORD(lParam)
 			mouseXY.y = HIWORD(lParam)
@@ -8706,7 +8647,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 				GOSUB endDragTreeViewItem
 				RETURN 0
 			ELSE
-				RETURN @binding.onMouseUp(hwnd, $$MBT_RIGHT, LOWORD(lParam), HIWORD(lParam))
+				RETURN @binding.onMouseUp(hWnd, $$MBT_RIGHT, LOWORD(lParam), HIWORD(lParam))
 			ENDIF
 		CASE $$WM_MOUSEWHEEL
 			' This message is broken.  It gets passed to active window rather than the window under the mouse
@@ -8714,7 +8655,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 '			mouseXY.x = LOWORD(lParam)
 '			mouseXY.y = HIWORD(lParam)
 
-'			? "-";hwnd
+'			? "-";hWnd
 '			hChild = WindowFromPoint (mouseXY.x, mouseXY.y)
 '			? hChild
 '			ScreenToClient (hChild, &mouseXY)
@@ -8723,12 +8664,12 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 
 '			idInnerBinding = GetWindowLongA (hChild, $$GWL_USERDATA)
 '			IFF binding_get (idInnerBinding, @innerBinding) THEN
-				RETURN @binding.onMouseWheel(hwnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
+				RETURN @binding.onMouseWheel(hWnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
 '			ELSE
 '				IF innerBinding.onMouseWheel THEN
 '					RETURN @innerBinding.onMouseWheel(hChild, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
 '				ELSE
-'					RETURN @binding.onMouseWheel(hwnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
+'					RETURN @binding.onMouseWheel(hWnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
 '				ENDIF
 '			ENDIF
 
@@ -8822,33 +8763,33 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 						SendMessageA (tvDragging, $$TVM_EXPAND, $$TVE_EXPAND, dragItem)
 						ImageList_DragShowNolock ($$TRUE)
 					ENDIF
-					KillTimer (hwnd, -1)
+					KillTimer (hWnd, -1)
 			END SELECT
 			RETURN 0
 
 		CASE $$WM_CLOSE
 			IFZ binding.onClose THEN
-				DestroyWindow (hwnd)
+				DestroyWindow (hWnd)
 				PostQuitMessage(0)
 			ELSE
-				RETURN @binding.onClose (hwnd)
+				RETURN @binding.onClose (hWnd)
 			ENDIF
 
 		CASE $$WM_DESTROY
-			ChangeClipboardChain (hwnd, binding.hwndNextClipViewer)
+			ChangeClipboardChain (hWnd, binding.hwndNextClipViewer)
 			'clear the binding
 			binding_delete (idBinding)
 			handled = $$TRUE
 	END SELECT
 
-	IF handled THEN RETURN retCode ELSE RETURN DefWindowProcA (hwnd, msg, wParam, lParam)
+	IF handled THEN RETURN retCode ELSE RETURN DefWindowProcA (hWnd, msg, wParam, lParam)
 
 	SUB dragTreeViewItem
 		IFZ tvDragging THEN EXIT SUB
 
 		tvHit.pt.x = LOWORD(lParam)
 		tvHit.pt.y = HIWORD(lParam)
-		ClientToScreen (hwnd, &tvHit.pt)
+		ClientToScreen (hWnd, &tvHit.pt)
 		pt = tvHit.pt
 
 		GetWindowRect (tvDragging, &rect)
@@ -8866,7 +8807,7 @@ FUNCTION mainWndProc (hwnd, msg, wParam, lParam)
 		ENDIF
 
 		IF WinXTreeView_GetChildItem (tvDragging, tvHit.hItem) != 0 THEN
-			SetTimer (hwnd, -1, 400, 0)
+			SetTimer (hWnd, -1, 400, 0)
 			lastDragItem = dragItem
 		ENDIF
 
@@ -8966,7 +8907,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 
 	'InvalidateRect (hWnd, 0, $$FALSE)
 
-	RETURN @binding.dimControls(hWnd, w, h)
+	RETURN @binding.onDimControls(hWnd, w, h)
 END FUNCTION
 '
 ' ##########################
@@ -9356,6 +9297,53 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+'
+' #######################################
+' #####  WinXListView_SetItemFocus  #####
+' #######################################
+' Sets the focus on an item
+' iItem = the zero-based index of the item
+' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
+	LVITEM lvi
+
+	IFZ hLV THEN RETURN ' fail
+
+	IF iItem < 0 THEN RETURN ' fail
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IF iItem >= count THEN RETURN ' fail
+
+	IF iSubItem < 0 THEN iSubItem = 0
+
+	lvi.iItem = iItem
+	lvi.iSubItem = iSubItem
+	lvi.mask = $$LVIF_TEXT
+	lvi.state = $$LVIS_FOCUSED | $$LVIS_SELECTED
+	lvi.stateMask = $$LVIS_FOCUSED | $$LVIS_SELECTED
+
+	ret = SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+	IFZ ret THEN RETURN ' fail
+
+	' unselect all the items
+	lvi.mask = $$LVIF_STATE
+	lvi.stateMask = $$LVIS_SELECTED
+	lvi.state = 0
+	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+
+	' select the focused item
+	lvi.iItem = iItem
+	lvi.iSubItem = iSubItem
+	lvi.mask = $$LVIF_STATE
+	lvi.stateMask = $$LVIS_SELECTED
+	lvi.state = $$LVIS_SELECTED
+	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+
+	' show the item
+	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, 0)
+
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #######################
