@@ -1,5 +1,5 @@
 PROGRAM "adt"
-VERSION "0.2"
+VERSION "0.1"
 '
 ' ADT - Abstract data types for XBlite
 ' (C) Callum Lowcay 2008 - Liscensed under the GNU LGPL
