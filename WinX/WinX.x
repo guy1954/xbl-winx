@@ -149,7 +149,7 @@ END TYPE
 'message handler data type
 TYPE MSGHANDLER
 	XLONG			.msg	'when 0, this record is not in use
-	FUNCADDR	.handler(XLONG, XLONG, XLONG, XLONG)
+	FUNCADDR	.handler(XLONG, XLONG, XLONG, XLONG) ' hWnd, msg, wParam, lParam
 END TYPE
 'Headers for grouped lists
 TYPE DRAWLISTHEAD
@@ -624,7 +624,12 @@ DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator t
 
 'new in 0.6.0.13
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
+DECLARE FUNCTION WinXListView_DeleteAllItems (hLV)
 DECLARE FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem) ' set the focus on item
+DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
+DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
+DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
+DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
 
 END EXPORT
 '
@@ -652,6 +657,7 @@ DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
 DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 DECLARE FUNCTION GuiTellDialogError (parent, title$) ' display WinXDialog_'s run-time error message
+DECLARE FUNCTION WinXListView_SetAllUnselected ()
 '
 '
 ' #####################
@@ -3940,7 +3946,7 @@ END FUNCTION
 ' returns $$TRUE if the button is checked, $$FALSE otherwise
 FUNCTION WinXListView_GetCheckState (hLV, iItem)
 	IFZ hLV THEN RETURN ' fail
-	IF iItem < 0 THEN RETURN ' fail
+	IF iItem < 0 THEN iItem = 0
 	ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_STATEIMAGEMASK)
 	IF (ret & 0x2000) = 0x2000 THEN RETURN $$TRUE  ELSE RETURN $$FALSE ' button NOT checked
 END FUNCTION
@@ -3977,7 +3983,7 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN ' fail
-	IF iItem < 0 THEN RETURN ' fail
+	IF iItem < 0 THEN iItem = 0
 	IF cSubItems < 0 THEN RETURN ' fail
 
 	DIM text$[cSubItems]
@@ -4860,6 +4866,10 @@ END FUNCTION
 '	See Also    =
 '	Examples    = WinXRegMessageHandler (#hMain, $$WM_NOTIFY, &handleNotify())
 '
+' Guy-17mar11-Note:
+' mainWndProc expects FUNCTION FnMsgHandler (hWnd, msg, wParam, lParam)
+' to return a non-zero value if it handled the message msg
+'
 FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR FnMsgHandler)
 	BINDING			binding
 	MSGHANDLER	handler
@@ -4873,7 +4883,7 @@ FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR FnMsgHandler)
 
 	'prepare the handler
 	handler.msg = msg
-	handler.handler = FnMsgHandler
+	handler.handler = FnMsgHandler ' (hWnd, msg, wParam, lParam)
 
 	'and add it
 	IF handler_add (binding.msgHandlers, handler) = -1 THEN RETURN ' fail
@@ -8179,33 +8189,36 @@ END FUNCTION
 ' handler = the handler to add
 ' returns the idCtr of the new handler or -1 on fail
 FUNCTION handler_add (group, MSGHANDLER handler)
-	SHARED		MSGHANDLER	g_handlers[]	'a 2D array of handlers
-	SHARED		g_handlersUM[]	'a usage map so we can see which groups are in use
-	MSGHANDLER	group[]	'a local version of the group
+	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
+	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
+	MSGHANDLER group[]		'a local version of the group
 
-	'bounds checking
-	IF group < 0 || group > UBOUND(g_handlers[]) THEN RETURN -1 ' fail
-	IF  handlersUM != 0 THEN RETURN -1 ' fail
+	' bounds checking
+	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN -1		' fail
+	IF handlersUM <> 0 THEN RETURN -1		' fail
+	IFZ handler.msg THEN RETURN -1		' Guy-17mar11-fail
 
-	'find a free slot
+	' find a free slot
 	slot = -1
-	upp = UBOUND(g_handlers[group,])
+	upp = UBOUND (g_handlers[group,])
 	FOR i = 0 TO upp
-		IF g_handlers[group,i].msg = 0 THEN
+		IF g_handlers[group, i].msg = handler.msg THEN RETURN -1		' Guy-17mar11-fail: already there
+		'
+		IF g_handlers[group, i].msg = 0 THEN
 			slot = i
 			EXIT FOR
 		ENDIF
 	NEXT i
 
-	IF slot = -1 THEN	'allocate more memmory
-		slot = UBOUND(g_handlers[group,])+1
+	IF slot = -1 THEN		'allocate more memmory
+		slot = UBOUND (g_handlers[group,]) + 1
 		SWAP group[], g_handlers[group,]
-		REDIM group[((UBOUND(group[])+1)<<1)-1]
+		REDIM group[ ((UBOUND (group[]) + 1) << 1) - 1]
 		SWAP group[], g_handlers[group,]
 	ENDIF
 
-	'now finish it off
-	g_handlers[group,slot] = handler
+	' now finish it off
+	g_handlers[group, slot] = handler
 	RETURN slot
 END FUNCTION
 '
@@ -8245,21 +8258,22 @@ END FUNCTION
 ' group = the group to call from
 ' ret = the variable to hold the message return value
 ' hWnd, msg, wParam, lParam = the usual definitions for these parameters
-' returns $$TRUE on success or $$FALSE on fail
+' returns retCode on success or $$FALSE on fail
 FUNCTION handler_call (group, ret, hWnd, msg, wParam, lParam)
 	SHARED		MSGHANDLER	g_handlers[]	'a 2D array of handlers
 
 	IF group < 0 THEN RETURN ' Guy-15apr09-no registered handler
 
 	'first, find the handler
-	idCtr = handler_find (group, msg)
+	index = handler_find (group, msg)
 
-	IF idCtr < 0 THEN RETURN ' fail
+	IF index < 0 THEN RETURN ' fail
 
 	'then call it
-	ret = @g_handlers[group, idCtr].handler(hWnd, msg, wParam, lParam)
+	retCode = @g_handlers[group, index].handler(hWnd, msg, wParam, lParam)
 
-	RETURN $$TRUE ' success
+	' Guy-17mar11-RETURN $$TRUE ' success
+	RETURN retCode
 END FUNCTION
 '
 ' ############################
@@ -8303,23 +8317,32 @@ END FUNCTION
 ' ##########################
 ' Locates a handler in the handler array
 ' group = the group to search
-' msg = the message to search for
+' v_msg = the message to search for
 ' returns the idCtr of the message handler, -1 if it fails
 '  to find anything and -2 if there is a bounds error
-FUNCTION handler_find (group, msg)
+FUNCTION handler_find (group, v_msg)
 	SHARED		MSGHANDLER	g_handlers[]	'a 2D array of handlers
 
 	IF group < 0 || group > UBOUND(g_handlers[]) THEN RETURN -2 ' fail: bounds error
+	IFZ v_msg THEN RETURN -2 ' fail: bounds error
 
 	i = 0
 	iMax = UBOUND(g_handlers[group,])
-	IF i > iMax THEN RETURN -1 ' fail
-	DO UNTIL g_handlers[group,i].msg = msg
-		INC i
-		IF i > iMax THEN RETURN -1 ' fail
-	LOOP
 
-	RETURN i
+'	IF i > iMax THEN RETURN -1 ' fail
+'	DO UNTIL g_handlers[group,i].msg = v_msg
+'		INC i
+'		IF i > iMax THEN RETURN -1 ' fail
+'	LOOP
+'	RETURN i
+
+	FOR i = 0 TO iMax
+		IF g_handlers[group,i].msg THEN
+			IF g_handlers[group,i].msg = v_msg THEN RETURN i
+		ENDIF
+	NEXT i
+	RETURN -1 ' fail
+
 END FUNCTION
 '
 ' #########################
@@ -8423,9 +8446,8 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 	IFF bOK THEN RETURN DefWindowProcA (hWnd, msg, wParam, lParam)
 
 	'call any associated message handler
-	IF handler_call (binding.msgHandlers, @retCode, hWnd, msg, wParam, lParam) THEN
-		handled = $$TRUE
-	ENDIF
+	ret = handler_call (binding.msgHandlers, @retCode, hWnd, msg, wParam, lParam)
+	IF ret THEN handled = $$TRUE
 
 	'and handle the message
 	SELECT CASE msg
@@ -9302,6 +9324,7 @@ END FUNCTION
 ' #######################################
 ' #####  WinXListView_SetItemFocus  #####
 ' #######################################
+'
 ' Sets the focus on an item
 ' iItem = the zero-based index of the item
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
@@ -9311,7 +9334,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN ' fail
 
-	IF iItem < 0 THEN RETURN ' fail
+	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF iItem >= count THEN RETURN ' fail
 
@@ -9343,6 +9366,126 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 	' show the item
 	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, 0)
 
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' #########################################
+' #####  WinXListView_DeleteAllItems  #####
+' #########################################
+'
+' Deletes all item from a list view control
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_DeleteAllItems(hLV)
+
+	IFZ hLV THEN RETURN ' fail
+	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
+	IFZ ret THEN RETURN
+	RETURN $$TRUE
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXListView_GetHeaderHeight  #####
+' ##########################################
+'
+FUNCTION WinXListView_GetHeaderHeight (hLV)
+	RECT rect
+
+	IFZ hLV THEN RETURN ' fail
+	hHeader = SendMessageA (hLV, $$LVM_GETHEADER, 0, 0)
+	IFZ hHeader THEN RETURN
+	GetWindowRect (hHeader, &rect)
+	RETURN rect.bottom - rect.top
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXListView_ShowItemByIndex  #####
+' ##########################################
+'
+' Shows an item using its index
+' iItem = the zero-based index of the item
+' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
+	IFZ hLV THEN RETURN ' fail
+
+	IF iItem < 0 THEN iItem = 0
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IF iItem >= count THEN RETURN ' fail
+
+	IF iSubItem < 0 THEN iSubItem = 0
+
+	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, iSubItem)
+	RETURN $$TRUE ' success
+
+END FUNCTION
+'
+' ############################################
+' #####  WinXListView_SetTopItemByIndex  #####
+' ############################################
+'
+' Shows an item on top using its index
+' iItem = the zero-based index of the item
+' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
+
+	RECT rect
+
+	IFZ hLV THEN RETURN ' fail
+
+	IF iItem < 0 THEN iItem = 0
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IF iItem >= count THEN RETURN ' fail
+
+	IF iSubItem < 0 THEN iSubItem = 0
+
+	topIndex = SendMessageA (hLV, $$LVM_GETTOPINDEX, 0, 0)
+	IF iItem = topIndex THEN RETURN
+
+	rect.left = $$LVIR_BOUNDS
+	SendMessageA (hLV, $$LVM_GETITEMRECT, 0, &rect)
+	scrollY = (iItem - topIndex) * (rect.bottom - rect.top)
+	SendMessageA (hLV, $$LVM_SCROLL, 0, scrollY)
+	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, iSubItem)
+	RETURN $$TRUE ' success
+
+END FUNCTION
+'
+' #########################################
+' #####  WinXListView_SetAllSelected  #####
+' #########################################
+'
+' Selects all items
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_SetAllSelected (hLV)
+	LVITEM lvi
+
+	IFZ hLV THEN RETURN ' fail
+	lvi.mask = $$LVIF_STATE
+	lvi.stateMask = $$LVIS_SELECTED
+	lvi.state = $$LVIS_SELECTED
+
+	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' ###########################################
+' #####  WinXListView_SetAllUnselected  #####
+' ###########################################
+'
+' Unselects all items
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_SetAllUnselected ()
+	LVITEM lvi
+
+	IFZ hLV THEN RETURN ' fail
+	lvi.mask = $$LVIF_STATE
+	lvi.stateMask = $$LVIS_SELECTED
+	lvi.state = 0
+
+	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
 	RETURN $$TRUE ' success
 END FUNCTION
 '
