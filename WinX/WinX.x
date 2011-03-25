@@ -8246,7 +8246,7 @@ FUNCTION handler_addGroup ()
 		REDIM g_handlers[UBOUND(g_handlersUM[]),]
 	ENDIF
 
-	g_handlersUM[slot] = $$TRUE
+	g_handlersUM[slot] = -1
 
 	RETURN slot
 END FUNCTION
