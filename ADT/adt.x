@@ -1,5 +1,5 @@
 PROGRAM "adt"
-VERSION "0.1"
+VERSION "0.2"
 '
 ' ADT - Abstract data types for XBlite
 ' (C) Callum Lowcay 2008 - Liscensed under the GNU LGPL
@@ -11,6 +11,9 @@ VERSION "0.1"
 ' ***** Versions *****
 ' Contributors:
 '     Callum Lowcay (original version)
+'     Guy Lonne (evolutions)
+'
+' 0.2-25mar11-Guy-small changes in accessors.m4.
 '
 '
 	IMPORT "xst"        ' xblite Standard Library
@@ -41,7 +44,6 @@ TYPE BINWALK
 	BINNODE	.node
 END TYPE
 EXPORT
-
 $$ADT_PREORDER	= 0
 $$ADT_INORDER		= 1
 $$ADT_POSTORDER	= 2
@@ -136,8 +138,9 @@ DeclareAccess(STACK)
 ' returns $$TRUE on error otherwise $$FALSE
 FUNCTION ADT ()
 	STATIC initialised
-	IF initialised THEN RETURN $$FALSE ' success: already initialized!
+	IF initialised THEN RETURN $$FALSE
 
+	Xst ()		' Xblite Standard Library
 	STRING_Init()
 	LINKEDNODE_Init()
 	LINKEDWALK_Init()
@@ -145,7 +148,7 @@ FUNCTION ADT ()
 	BINWALK_Init()
 	STACK_Init()
 
-	initialised = $$TRUE ' protect for reentry
+	initialised = $$TRUE
   RETURN $$FALSE
 END FUNCTION
 '
@@ -223,7 +226,7 @@ END FUNCTION
 ' ################################
 ' #####  LinkedList_GetItem  #####
 ' ################################
-' Retrieves a particular item from a linked list
+' Retreives a particular item from a linked list
 ' list = the list to get the item from
 ' index = the 0 based index of the item to get
 ' iData = the variable to store the data
