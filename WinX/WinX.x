@@ -348,11 +348,7 @@ DECLARE FUNCTION XWSStoWS (xwss)
 DECLARE FUNCTION cancelDlgOnClose (hWnd)
 DECLARE FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
 DECLARE FUNCTION printAbortProc (hdc, nCode)
-' These functions abstract away access to the arrays
-DECLARE FUNCTION binding_add (BINDING binding)
-DECLARE FUNCTION binding_delete (idDel)		' delete a binding from the binding table
-DECLARE FUNCTION binding_get (idBind, BINDING @binding)
-DECLARE FUNCTION binding_update (idBind, BINDING binding)
+
 DECLARE FUNCTION handler_addGroup ()
 DECLARE FUNCTION handler_add (group, MSGHANDLER handler)
 DECLARE FUNCTION handler_get (group, idCtr, MSGHANDLER @handler)
@@ -361,12 +357,15 @@ DECLARE FUNCTION handler_find (group, msg)
 DECLARE FUNCTION handler_call (group, @ret, hWnd, msg, wParam, lParam)
 DECLARE FUNCTION handler_delete (group, idCtr)
 DECLARE FUNCTION handler_deleteGroup (group)
-DECLARE FUNCTION autoSizerInfo_addGroup (direction)
-DECLARE FUNCTION autoSizerInfo_deleteGroup (group)
-DECLARE FUNCTION autoSizerInfo_add (group, AUTOSIZERINFO autoSizerBlock)
-DECLARE FUNCTION autoSizerInfo_delete (group, idCtr)
-DECLARE FUNCTION autoSizerInfo_get (group, idCtr, AUTOSIZERINFO @autoSizerBlock)
-DECLARE FUNCTION autoSizerInfo_update (group, idCtr, AUTOSIZERINFO autoSizerBlock)
+
+DECLARE FUNCTION AUTOSIZERINFO_Init ()
+DECLARE FUNCTION AUTOSIZERINFO_New (direction)
+DECLARE FUNCTION AUTOSIZERINFO_Get (group, idCtr, AUTOSIZERINFO @autoSizerBlock)
+DECLARE FUNCTION AUTOSIZERINFO_Update (group, idCtr, AUTOSIZERINFO autoSizerBlock)
+DECLARE FUNCTION AUTOSIZERINFO_Delete (group)
+
+DECLARE FUNCTION autoSizerInfo_AddGroup (group, AUTOSIZERINFO autoSizerBlock)
+DECLARE FUNCTION autoSizerBlock_Delete (group, idCtr)
 DECLARE FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 DECLARE FUNCTION autoSizerInfo_showGroup (group, visible)
 DECLARE FUNCTION autoDraw_clear (group)
@@ -639,6 +638,8 @@ END EXPORT
 ' Notes:
 ' - use the compiler switch -m4
 '
+' These functions abstract away access to the arrays
+DeclareAccess(BINDING)
 DeclareAccess(SPLITTERINFO)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
@@ -673,15 +674,12 @@ DECLARE FUNCTION WinXListView_SetAllUnselected ()
 ' Examples    = IFF WinX () THEN QUIT(0)
 '
 FUNCTION WinX ()
-	SHARED BINDING g_binding_array[]		'a simple array of bindings
+	SHARED BINDING BINDING_array[]		'a simple array of bindings
 	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
 	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
 
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
-
-	SHARED AUTODRAWRECORD g_autoDrawInfo[]		'info for the auto draw
-	SHARED DRAWLISTHEAD g_autoDrawInfoUM[]
+	SHARED AUTODRAWRECORD AUTODRAWRECORD_array[]		'info for the auto draw
+	SHARED DRAWLISTHEAD AUTODRAWRECORD_head[]
 
 	SHARED TBBUTTONDATA g_tbbd[]		' info for toolbar customisation
 	SHARED g_tbbdUM[]
@@ -721,15 +719,15 @@ FUNCTION WinX ()
 	' Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE ' fail
 	InitCommonControlsEx (&iccex)
 
-	DIM g_binding_array[0]
+	BINDING_Init ()
+
 	DIM g_handlers[0, 0]
 	DIM g_handlersUM[0]
 
-	DIM g_autoSizerInfo[0, 0]
-	DIM g_autoSizerInfoUM[0]
+	AUTOSIZERINFO_Init ()
 
-	DIM g_autoDrawInfo[0, 0]
-	DIM g_autoDrawInfoUM[0]
+	DIM AUTODRAWRECORD_array[0, 0]
+	DIM AUTODRAWRECORD_head[0]
 
 	DIM g_tbbd[0]
 	DIM g_tbbdUM[0]
@@ -1040,7 +1038,7 @@ FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
 	WinXSetDefaultFont (hGroup)
 
 	SetPropA (hGroup, &"WinXLeftSubSizer", &groupBox_SizeContents ())
-	SetPropA (hGroup, &"WinXAutoSizerSeries", autoSizerInfo_addGroup ($$DIR_VERT))
+	SetPropA (hGroup, &"WinXAutoSizerSeries", AUTOSIZERINFO_New ($$DIR_VERT))
 	RETURN hGroup
 END FUNCTION
 '
@@ -1196,7 +1194,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	RECT rect
 
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 
@@ -1251,7 +1249,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	DeleteObject (hFont)		' release the font
 
 	' and update the binding
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	RETURN hCtr
 END FUNCTION
@@ -1335,7 +1333,7 @@ FUNCTION WinXAddTooltip (hCtr, tip$)
 
 	' get the binding
 	idBinding = GetWindowLongA (parent, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' is there any info on this control?
 	ti.cbSize = SIZE (TOOLINFO)
@@ -1454,10 +1452,10 @@ FUNCTION WinXAttachAccelerators (hWnd, hAccel)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.hAccelTable = hAccel
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 
 END FUNCTION
@@ -1475,7 +1473,7 @@ FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN -1		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN -1		' fail
 
 	RETURN binding.autoSizerInfo
 END FUNCTION
@@ -1492,7 +1490,7 @@ END FUNCTION
 ' flags = a set of $$SIZER flags
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, flags)
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
 	BINDING binding
 	AUTOSIZERINFO autoSizerBlock
@@ -1507,7 +1505,7 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 		IFZ parent THEN RETURN		' fail
 		' get the binding
 		idBinding = GetWindowLongA (parent, $$GWL_USERDATA)
-		IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+		IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 		series = binding.autoSizerInfo
 	ENDIF
 
@@ -1526,10 +1524,10 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 
 	IF idBlock THEN
 		' update the old one
-		bOK = autoSizerInfo_update (series, idBlock - 1, autoSizerBlock)
+		bOK = AUTOSIZERINFO_Update (series, idBlock - 1, autoSizerBlock)
 	ELSE
 		' make a new block
-		idBlock = autoSizerInfo_add (series, autoSizerBlock) + 1
+		idBlock = autoSizerInfo_AddGroup (series, autoSizerBlock) + 1
 		IFF idBlock THEN RETURN		' fail
 		IFZ SetPropA (hWnd, &"autoSizerInfoBlock", idBlock) THEN RETURN		' fail
 
@@ -1537,9 +1535,9 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 		IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
 			splitterInfo.group = series
 			splitterInfo.id = idBlock - 1
-			splitterInfo.direction = g_autoSizerInfoUM[series].direction
+			splitterInfo.direction = AUTOSIZERINFO_head[series].direction
 
-			autoSizerInfo_get (series, idBlock - 1, @autoSizerBlock)
+			AUTOSIZERINFO_Get (series, idBlock - 1, @autoSizerBlock)
 
 			style = $$WS_CHILD | $$WS_VISIBLE
 			style = style | $$WS_CLIPSIBLINGS
@@ -1551,7 +1549,7 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 			IFZ ret THEN RETURN		' fail
 
 			autoSizerBlock.hSplitter = ret
-			autoSizerInfo_update (series, idBlock - 1, autoSizerBlock)
+			AUTOSIZERINFO_Update (series, idBlock - 1, autoSizerBlock)
 		ENDIF
 		bOK = $$TRUE
 	ENDIF
@@ -1635,15 +1633,15 @@ END FUNCTION
 ' this is the place where all allocated memory is freed
 '
 FUNCTION WinXCleanUp ()		' optional cleanup
-	SHARED BINDING g_binding_array[]		'a simple array of bindings
+	SHARED BINDING BINDING_array[]		'a simple array of bindings
 	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
 	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
 
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
-	SHARED AUTODRAWRECORD g_autoDrawInfo[]		'info for the auto draw
-	SHARED DRAWLISTHEAD g_autoDrawInfoUM[]
+	SHARED AUTODRAWRECORD AUTODRAWRECORD_array[]		'info for the auto draw
+	SHARED DRAWLISTHEAD AUTODRAWRECORD_head[]
 
 	SHARED TBBUTTONDATA g_tbbd[]		' info for toolbar customisation
 	SHARED g_tbbdUM[]
@@ -1655,18 +1653,18 @@ FUNCTION WinXCleanUp ()		' optional cleanup
 		g_hClipMem = 0		' prevents from being freed twice g_hClipMem
 	ENDIF
 
-	IF g_binding_array[] THEN
-		FOR i = UBOUND (g_binding_array[]) TO 0 STEP -1
-			IF g_binding_array[i].hAccelTable THEN
-				DestroyAcceleratorTable (g_binding_array[i].hAccelTable)		' destroy the accelerator table
+	IF BINDING_array[] THEN
+		FOR i = UBOUND (BINDING_array[]) TO 0 STEP -1
+			IF BINDING_array[i].hAccelTable THEN
+				DestroyAcceleratorTable (BINDING_array[i].hAccelTable)		' destroy the accelerator table
 			ENDIF
-			g_binding_array[i].hAccelTable = 0
+			BINDING_array[i].hAccelTable = 0
 			'
-			IF g_binding_array[i].hwnd THEN
-				ret = ShowWindow (g_binding_array[i].hwnd, $$SW_HIDE)		' Guy-01feb10-prevent from crashing
-				IF ret THEN DestroyWindow (g_binding_array[i].hwnd)		' destroy the window
+			IF BINDING_array[i].hwnd THEN
+				ret = ShowWindow (BINDING_array[i].hwnd, $$SW_HIDE)		' Guy-01feb10-prevent from crashing
+				IF ret THEN DestroyWindow (BINDING_array[i].hwnd)		' destroy the window
 			ENDIF
-			g_binding_array[i].hwnd = 0
+			BINDING_array[i].hwnd = 0
 		NEXT i
 	ENDIF
 
@@ -1681,15 +1679,15 @@ FUNCTION WinXCleanUp ()		' optional cleanup
 	UnregisterClassA (&className$, hInst)		' unregister the window class
 
 	' free the structures
-	DIM g_binding_array[]		'bindings
+	DIM BINDING_array[]		'bindings
 	DIM g_handlers[]		'handlers
 	DIM g_handlersUM[]		'usage map
 
-	DIM g_autoSizerInfo[]		'info for the autosizer
-	DIM g_autoSizerInfoUM[]
+	DIM AUTOSIZERINFO_array[]		'info for the autosizer
+	DIM AUTOSIZERINFO_head[]
 
-	DIM g_autoDrawInfo[]		'info for the auto draw
-	DIM g_autoDrawInfoUM[]
+	DIM AUTODRAWRECORD_array[]		'info for the auto draw
+	DIM AUTODRAWRECORD_head[]
 
 	DIM g_tbbd[]		' info for toolbar customisation
 	DIM g_tbbdUM[]
@@ -1710,7 +1708,7 @@ FUNCTION WinXClear (hWnd)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	ret = GetClientRect (hWnd, &rect)
 	IFZ ret THEN RETURN		' fail
@@ -1718,7 +1716,7 @@ FUNCTION WinXClear (hWnd)
 	winRight = rect.right + 2
 	winBottom = rect.bottom + 2
 	binding.hUpdateRegion = CreateRectRgn (0, 0, winRight, winBottom)
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	RETURN autoDraw_clear (binding.autoDrawInfo)
 END FUNCTION
@@ -2525,9 +2523,9 @@ FUNCTION WinXDoEvents ()
 				' deal with window messages
 				hWnd = GetActiveWindow ()
 				'
-				' binding_get (GetWindowLongA (hWnd, $$GWL_USERDATA), @binding)
+				' BINDING_Get (GetWindowLongA (hWnd, $$GWL_USERDATA), @binding)
 				idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-				bOK = binding_get (idBinding, @binding)
+				bOK = BINDING_Get (idBinding, @binding)
 				IF bOK THEN		' window
 					hAccel = binding.hAccelTable		' get its associated accelerator table
 				ELSE
@@ -2612,7 +2610,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -2632,7 +2630,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2649,7 +2647,7 @@ FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -2669,7 +2667,7 @@ FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2686,7 +2684,7 @@ FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -2703,7 +2701,7 @@ FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2721,7 +2719,7 @@ FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	GetWindowRect (hWnd, &rect)
 	record.hUpdateRegion = CreateRectRgn (rect.left, rect.top, rect.right, rect.bottom)
@@ -2737,7 +2735,7 @@ FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2758,7 +2756,7 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -2775,7 +2773,7 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2795,7 +2793,7 @@ FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -2812,7 +2810,7 @@ FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2835,7 +2833,7 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hUpdateRegion = CreateRectRgn (x - 1, y - 1, x + w + 2, y + h + 2)
 	record.image.x = x
@@ -2854,7 +2852,7 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2875,7 +2873,7 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -2891,7 +2889,7 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2908,7 +2906,7 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -2924,7 +2922,7 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -2949,7 +2947,7 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	hDC = CreateCompatibleDC (0)
 	SelectObject (hDC, hFont)
@@ -2971,7 +2969,7 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 	ELSE
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	ret = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, ret)
@@ -3441,7 +3439,7 @@ FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	hDC = CreateCompatibleDC (0)
 	hOld = SelectObject (hDC, hImage)
@@ -3464,10 +3462,10 @@ FUNCTION WinXEnableDialogInterface (hWnd, enable)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.useDialogInterface = enable
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -3573,7 +3571,7 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	GetClientRect (hWnd, &rect)
 	IF binding.hBar THEN
@@ -4361,7 +4359,7 @@ END FUNCTION
 ' direction = $$DIR_VERT or $$DIR_HORIZ
 ' returns the handle of the new autosizer series
 FUNCTION WinXNewAutoSizerSeries (direction)
-	RETURN autoSizerInfo_addGroup (direction)
+	RETURN AUTOSIZERINFO_New (direction)
 END FUNCTION
 '
 ' ################################
@@ -4384,9 +4382,9 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	binding.msgHandlers = handler_addGroup ()
 	LinkedList_Init (@autoDraw)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDraw)
-	binding.autoSizerInfo = autoSizerInfo_addGroup ($$DIR_VERT)
+	binding.autoSizerInfo = AUTOSIZERINFO_New ($$DIR_VERT)
 
-	SetWindowLongA (hWnd, $$GWL_USERDATA, binding_add (binding))
+	SetWindowLongA (hWnd, $$GWL_USERDATA, BINDING_New (binding))
 
 	' and we're done
 	RETURN hWnd
@@ -4684,9 +4682,9 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	LinkedList_Init (@autoDraw)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDraw)
 
-	binding.autoSizerInfo = autoSizerInfo_addGroup ($$DIR_VERT)
+	binding.autoSizerInfo = AUTOSIZERINFO_New ($$DIR_VERT)
 
-	SetWindowLongA (hWnd, $$GWL_USERDATA, binding_add (binding))
+	SetWindowLongA (hWnd, $$GWL_USERDATA, BINDING_New (binding))
 
 	' and we're done
 	RETURN hWnd
@@ -4746,7 +4744,7 @@ FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pag
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' get the clipping rect for the printer
 	rect.left = (GetDeviceCaps (hPrinter, $$LOGPIXELSX) * printInfo.marginLeft) \ 1000
@@ -4989,11 +4987,11 @@ FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' set the function
 	binding.onDimControls = FnControlSizer
-	RETURN binding_update (idBinding, binding)
+	RETURN BINDING_Update (idBinding, binding)
 END FUNCTION
 '
 ' ###################################
@@ -5029,7 +5027,7 @@ FUNCTION WinXRegMessageHandler (hWnd, msg, FUNCADDR FnMsgHandler)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' prepare the handler
 	handler.msg = msg
@@ -5056,10 +5054,10 @@ FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onCalendarSelect = FnOnCalendarSelect
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5078,10 +5076,10 @@ FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onChar = FnOnChar
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5100,12 +5098,12 @@ FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR FnOnClipChange)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.hwndNextClipViewer = SetClipboardViewer (hWnd)
 
 	binding.onClipChange = FnOnClipChange
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5121,10 +5119,10 @@ FUNCTION WinXRegOnClose (hWnd, FUNCADDR FnOnClose)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onClose = FnOnClose
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5143,10 +5141,10 @@ FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onColumnClick = FnOnColumnClick
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5165,10 +5163,10 @@ FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onCommand = FnOnCommand
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -5185,10 +5183,10 @@ FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onDrag = FnOnDrag
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5207,11 +5205,11 @@ FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	DragAcceptFiles (hWnd, $$TRUE)
 	binding.onDropFiles = FnOnDropFiles
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5230,10 +5228,10 @@ FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onEnterLeave = FnOnEnterLeave
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5252,10 +5250,10 @@ FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onFocusChange = FnOnFocusChange
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5274,10 +5272,10 @@ FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onItem = FnOnItem
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5296,10 +5294,10 @@ FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onKeyDown = FnOnKeyDown
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5318,10 +5316,10 @@ FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onKeyUp = FnOnKeyUp
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5337,10 +5335,10 @@ FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onLabelEdit = FnOnLabelEdit
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5359,10 +5357,10 @@ FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR FnOnMouseDown)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onMouseDown = FnOnMouseDown
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5381,10 +5379,10 @@ FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR FnOnMouseMove)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onMouseMove = FnOnMouseMove
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5403,10 +5401,10 @@ FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR FnOnMouseUp)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onMouseUp = FnOnMouseUp
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5425,10 +5423,10 @@ FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR FnOnMouseWheel)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onMouseWheel = FnOnMouseWheel
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5457,11 +5455,11 @@ FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' set the paint function
 	binding.onPaint = FnOnPaint
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -5481,10 +5479,10 @@ FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onScroll = FnOnScroll
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5503,10 +5501,10 @@ FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.onTrackerPos = FnOnTrackerPos
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5814,7 +5812,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	GetClientRect (hWnd, &rect)
 
@@ -5840,7 +5838,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 			RETURN		' fail
 	END SELECT
 
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	SetScrollInfo (hWnd, sb, &si, $$TRUE)
 
 	RETURN $$TRUE		' success
@@ -5950,10 +5948,10 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	binding.hCursor = hCursor
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -6000,7 +5998,7 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	rect.right = w
 	rect.bottom = h
@@ -6008,7 +6006,7 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 
 	binding.minW = rect.right - rect.left
 	binding.minH = rect.bottom - rect.top
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6150,11 +6148,11 @@ FUNCTION WinXSetWindowColour (hWnd, color)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	IF binding.backCol THEN DeleteObject (binding.backCol)
 	binding.backCol = CreateSolidBrush (color)
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -6172,7 +6170,7 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' set the toolbar parent
 	SetParent (hToolbar, hWnd)
@@ -6186,7 +6184,7 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 
 	' and update the binding
 	binding.hBar = hToolbar
-	RETURN binding_update (idBinding, binding)
+	RETURN BINDING_Update (idBinding, binding)
 END FUNCTION
 '
 ' ######################
@@ -6210,34 +6208,34 @@ END FUNCTION
 ' docked = the variable to store the docking state, $$TRUE when docked else $$FALSE
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 	SPLITTERINFO splitterInfo
 
-	IFF series >= 0 && series <= UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[series].inUse THEN RETURN		' fail
+	IFF series >= 0 && series <= UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[series].inUse THEN RETURN		' fail
 
 	' Walk the list untill we find the autodraw record we need
 	found = $$FALSE
-	i = g_autoSizerInfoUM[series].firstItem
+	i = AUTOSIZERINFO_head[series].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[series, i].hwnd = hCtr THEN
+		IF AUTOSIZERINFO_array[series, i].hwnd = hCtr THEN
 			found = $$TRUE
 			EXIT DO
 		ENDIF
-		i = g_autoSizerInfo[series, i].nextItem
+		i = AUTOSIZERINFO_array[series, i].nextItem
 	LOOP
 
 	IFF found THEN RETURN		' fail
 
-	iSplitter = GetWindowLongA (g_autoSizerInfo[series, i].hSplitter, $$GWL_USERDATA)
+	iSplitter = GetWindowLongA (AUTOSIZERINFO_array[series, i].hSplitter, $$GWL_USERDATA)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
 
 	IF splitterInfo.docked THEN
 		position = splitterInfo.docked
 		docked = $$TRUE
 	ELSE
-		position = g_autoSizerInfo[series, i].size
+		position = AUTOSIZERINFO_array[series, i].size
 		docked = $$FALSE
 	ENDIF
 
@@ -6253,35 +6251,35 @@ END FUNCTION
 ' position = the new position for the splitter
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 	SPLITTERINFO splitterInfo
 	RECT rect
 
-	IFF series >= 0 && series <= UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[series].inUse THEN RETURN		' fail
+	IFF series >= 0 && series <= UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[series].inUse THEN RETURN		' fail
 
 	' Walk the list untill we find the autosizer record we need
 	found = $$FALSE
-	i = g_autoSizerInfoUM[series].firstItem
+	i = AUTOSIZERINFO_head[series].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[series, i].hwnd = hCtr THEN
+		IF AUTOSIZERINFO_array[series, i].hwnd = hCtr THEN
 			found = $$TRUE
 			EXIT DO
 		ENDIF
-		i = g_autoSizerInfo[series, i].nextItem
+		i = AUTOSIZERINFO_array[series, i].nextItem
 	LOOP
 
 	IFF found THEN RETURN		' fail
 
-	iSplitter = GetWindowLongA (g_autoSizerInfo[series, i].hSplitter, $$GWL_USERDATA)
+	iSplitter = GetWindowLongA (AUTOSIZERINFO_array[series, i].hSplitter, $$GWL_USERDATA)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
 
 	IF docked THEN
-		g_autoSizerInfo[series, i].size = 8
+		AUTOSIZERINFO_array[series, i].size = 8
 		splitterInfo.docked = position
 	ELSE
-		g_autoSizerInfo[series, i].size = position
+		AUTOSIZERINFO_array[series, i].size = position
 		splitterInfo.docked = 0
 	ENDIF
 
@@ -6304,33 +6302,33 @@ END FUNCTION
 ' dock = $$TRUE to allow docking - else $$FALSE
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 	SPLITTERINFO splitterInfo
 
-	IFF series >= 0 && series <= UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[series].inUse THEN RETURN		' fail
+	IFF series >= 0 && series <= UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[series].inUse THEN RETURN		' fail
 
 	' Walk the list untill we find the autodraw record we need
 	found = $$FALSE
-	i = g_autoSizerInfoUM[series].firstItem
+	i = AUTOSIZERINFO_head[series].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[series, i].hwnd = hCtr THEN
+		IF AUTOSIZERINFO_array[series, i].hwnd = hCtr THEN
 			found = $$TRUE
 			EXIT DO
 		ENDIF
-		i = g_autoSizerInfo[series, i].nextItem
+		i = AUTOSIZERINFO_array[series, i].nextItem
 	LOOP
 
 	IFF found THEN RETURN		' fail
 
-	iSplitter = GetWindowLongA (g_autoSizerInfo[series, i].hSplitter, $$GWL_USERDATA)
+	iSplitter = GetWindowLongA (AUTOSIZERINFO_array[series, i].hSplitter, $$GWL_USERDATA)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
 	splitterInfo.min = min
 	splitterInfo.max = max
 	IF dock THEN
 
-		IF g_autoSizerInfoUM[series].direction AND $$DIR_REVERSE
+		IF AUTOSIZERINFO_head[series].direction AND $$DIR_REVERSE
 		splitterInfo.dock = $$DOCK_BACKWARD
 	ELSE
 		splitterInfo.dock = $$DOCK_FOWARD
@@ -6356,7 +6354,7 @@ FUNCTION WinXStatus_GetText$ (hWnd, part)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN ""		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN ""		' fail
 
 	IF part > binding.statusParts THEN RETURN ""		' fail
 
@@ -6382,7 +6380,7 @@ FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' validate argument part (zero-based partition)
 	bOK = $$TRUE		' assume success
@@ -6424,7 +6422,7 @@ FUNCTION WinXTabs_AddTab (hTabs, STRING label, index)
 	tci.mask = $$TCIF_PARAM | $$TCIF_TEXT
 	tci.pszText = &label
 	tci.cchTextMax = LEN (label)
-	tci.lParam = autoSizerInfo_addGroup ($$DIR_VERT)
+	tci.lParam = AUTOSIZERINFO_New ($$DIR_VERT)
 
 	IF index = -1 THEN index = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
 
@@ -7247,7 +7245,7 @@ FUNCTION WinXUndo (hWnd, idCtr)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' LINKEDLIST_Get (binding.autoDrawInfo, @autoDraw)
 	' LinkedList_GetItem (autoDraw, idCtr, @iData)
@@ -7264,7 +7262,7 @@ FUNCTION WinXUndo (hWnd, idCtr)
 	' LinkedList_DeleteItem (@autoDraw, idCtr)
 	' LINKEDLIST_Update (binding.autoDrawInfo, @autoDraw)
 
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -7283,13 +7281,13 @@ FUNCTION WinXUpdate (hWnd)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' PRINT binding.hUpdateRegion
 	InvalidateRgn (hWnd, binding.hUpdateRegion, $$TRUE)
 	DeleteObject (binding.hUpdateRegion)
 	binding.hUpdateRegion = 0
-	binding_update (idBinding, binding)
+	BINDING_Update (idBinding, binding)
 
 END FUNCTION
 '
@@ -7815,166 +7813,188 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 		RETURN currPos + autoSizerBlock.space + autoSizerBlock.size
 	ENDIF
 END FUNCTION
-'
-' ###############################
-' #####  autoSizerInfo_add  #####
-' ###############################
-' Adds a new autosizer info block
-' autoSizerBlock = the auto sizer block to add
-' returns the idCtr of the auto sizer block or -1 on fail
-FUNCTION autoSizerInfo_add (group, AUTOSIZERINFO autoSizerBlock)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
 
-	AUTOSIZERINFO autoSizerInfoLocal[]
+FUNCTION AUTOSIZERINFO_Init ()
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED autoSizerInfo_idMax
 
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN -1		' fail
-	IFF g_autoSizerInfoUM[group].inUse THEN RETURN -1		' fail
-
-	slot = -1
-	upp = UBOUND (g_autoSizerInfo[group,])
-	FOR i = 0 TO upp
-		IFZ g_autoSizerInfo[group, i].hwnd THEN
-			slot = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	IF slot = -1 THEN
-		slot = UBOUND (g_autoSizerInfo[group,]) + 1
-		SWAP autoSizerInfoLocal[], g_autoSizerInfo[group,]
-		REDIM autoSizerInfoLocal[ ((UBOUND (autoSizerInfoLocal[]) + 1) << 1) - 1]
-		SWAP autoSizerInfoLocal[], g_autoSizerInfo[group,]
-	ENDIF
-
-	g_autoSizerInfo[group, slot] = autoSizerBlock
-
-	g_autoSizerInfo[group, slot].nextItem = -1
-
-	IF g_autoSizerInfoUM[group].lastItem = -1 THEN
-		' Make this the first item
-		g_autoSizerInfoUM[group].firstItem = slot
-		g_autoSizerInfoUM[group].lastItem = slot
-		g_autoSizerInfo[group, slot].prevItem = -1
-	ELSE
-		' add to the end of the list
-		g_autoSizerInfo[group, slot].prevItem = g_autoSizerInfoUM[group].lastItem
-		g_autoSizerInfo[group, g_autoSizerInfoUM[group].lastItem].nextItem = slot
-		g_autoSizerInfoUM[group].lastItem = slot
-	ENDIF
-
-	RETURN slot
-END FUNCTION
-'
-' ####################################
-' #####  autoSizerInfo_addGroup  #####
-' ####################################
-' Adds a new group of auto sizer info blocks
-' returns the if of the new group or -1 on fail
-FUNCTION autoSizerInfo_addGroup (direction)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
-
-	AUTOSIZERINFO autoSizerInfoLocal[]
-
-	slot = -1
-	upp = UBOUND (g_autoSizerInfoUM[])
-	FOR i = 0 TO upp
-		IFF g_autoSizerInfoUM[i].inUse THEN
-			slot = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	IF slot = -1 THEN
-		slot = UBOUND (g_autoSizerInfoUM[]) + 1
-		REDIM g_autoSizerInfoUM[ ((UBOUND (g_autoSizerInfoUM[]) + 1) << 1) - 1]
-		REDIM g_autoSizerInfo[UBOUND (g_autoSizerInfoUM[]),]
-	ENDIF
-
-	g_autoSizerInfoUM[slot].inUse = $$TRUE
-	g_autoSizerInfoUM[slot].direction = direction
-	g_autoSizerInfoUM[slot].firstItem = -1
-	g_autoSizerInfoUM[slot].lastItem = -1
-
-	DIM autoSizerInfoLocal[0]
-	SWAP autoSizerInfoLocal[], g_autoSizerInfo[slot,]
-
-	RETURN slot
-END FUNCTION
-'
-' ##################################
-' #####  autoSizerInfo_delete  #####
-' ##################################
-' Deletes an autosizer info block
-' idCtr = the if of the auto sizer to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION autoSizerInfo_delete (group, idCtr)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
-
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[group].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (g_autoSizerInfo[group,]) THEN RETURN		' fail
-	IFZ g_autoSizerInfo[group, idCtr].hwnd THEN RETURN		' fail
-
-	g_autoSizerInfo[group, idCtr].hwnd = 0
-
-	IF idCtr = g_autoSizerInfoUM[group].firstItem THEN
-		g_autoSizerInfoUM[group].firstItem = g_autoSizerInfo[group, idCtr].nextItem
-		g_autoSizerInfo[group, g_autoSizerInfo[group, idCtr].nextItem].prevItem = -1
-		IF g_autoSizerInfoUM[group].firstItem = -1 THEN g_autoSizerInfoUM[group].lastItem = -1
-	ELSE
-		IF idCtr = g_autoSizerInfoUM[group].lastItem THEN
-			g_autoSizerInfo[group, g_autoSizerInfoUM[group].lastItem].nextItem = -1
-			g_autoSizerInfoUM[group].lastItem = g_autoSizerInfo[group, idCtr].prevItem
-			IF g_autoSizerInfoUM[group].lastItem = -1 THEN g_autoSizerInfoUM[group].firstItem = -1
-		ELSE
-			g_autoSizerInfo[group, g_autoSizerInfo[group, idCtr].nextItem].prevItem = g_autoSizerInfo[group, idCtr].prevItem
-			g_autoSizerInfo[group, g_autoSizerInfo[group, idCtr].prevItem].nextItem = g_autoSizerInfo[group, idCtr].nextItem
-		ENDIF
-	ENDIF
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' #######################################
-' #####  autoSizerInfo_deleteGroup  #####
-' #######################################
-' Deletes a group of auto sizer info blocks
-' group = the group to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION autoSizerInfo_deleteGroup (group)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
-
-	AUTOSIZERINFO autoSizerInfoLocal[]
-
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-
-	g_autoSizerInfoUM[group].inUse = $$FALSE
-	SWAP g_autoSizerInfo[group,], autoSizerInfoLocal[]
-
-	RETURN $$TRUE		' success
+	DIM AUTOSIZERINFO_array[0, 0]
+	DIM AUTOSIZERINFO_head[0]
+	autoSizerInfo_idMax = 0
 END FUNCTION
 '
 ' ###############################
-' #####  autoSizerInfo_get  #####
+' #####  AUTOSIZERINFO_Get  #####
 ' ###############################
 ' Get an autosizer info block
 ' idCtr = the idCtr of the block to get
-' autoSizerBlock = the variable to store the block
+' item = the variable to store the block
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION autoSizerInfo_get (group, idCtr, AUTOSIZERINFO autoSizerBlock)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+FUNCTION AUTOSIZERINFO_Get (id, idCtr, AUTOSIZERINFO item)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[group].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (g_autoSizerInfo[group,]) THEN RETURN		' fail
-	IFZ g_autoSizerInfo[group, idCtr].hwnd THEN RETURN		' fail
+	IF id < 0 || id > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[id].inUse THEN RETURN		' fail
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
+	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
 
-	autoSizerBlock = g_autoSizerInfo[group, idCtr]
+	item = AUTOSIZERINFO_array[id, idCtr]
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ###############################
+' #####  AUTOSIZERINFO_New  #####
+' ###############################
+' Adds a new group of auto sizer info blocks
+' returns the if of the new group or -1 on fail
+FUNCTION AUTOSIZERINFO_New (direction)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED AUTOSIZERINFO_idMax
+
+	AUTOSIZERINFO autoSizerInfoLocal[]
+
+	slot = -1
+	upper_slot = UBOUND (AUTOSIZERINFO_head[])
+	FOR i = AUTOSIZERINFO_idMax TO upper_slot
+		IFF AUTOSIZERINFO_head[i].inUse THEN
+			slot = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM AUTOSIZERINFO_head[upper_slot]
+		REDIM AUTOSIZERINFO_array[upper_slot,]
+		slot = AUTOSIZERINFO_idMax
+		INC AUTOSIZERINFO_idMax
+	ELSE
+		AUTOSIZERINFO_idMax = slot + 1
+	ENDIF
+
+	AUTOSIZERINFO_head[slot].inUse = $$TRUE
+	AUTOSIZERINFO_head[slot].direction = direction
+	AUTOSIZERINFO_head[slot].firstItem = -1
+	AUTOSIZERINFO_head[slot].lastItem = -1
+
+	DIM autoSizerInfoLocal[0]
+	SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[slot,]
+
+	RETURN slot
+END FUNCTION
+'
+' ##################################
+' #####  AUTOSIZERINFO_Delete  #####
+' ##################################
+' Deletes a group of auto sizer info blocks
+' group = the group to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION AUTOSIZERINFO_Delete (group)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED AUTOSIZERINFO_idMax
+
+	AUTOSIZERINFO autoSizerInfoLocal[]
+
+	upper_slot = UBOUND (AUTOSIZERINFO_head[])
+
+	slot = group
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF AUTOSIZERINFO_head[slot].inUse THEN RETURN
+
+	AUTOSIZERINFO_head[group].inUse = $$FALSE
+	SWAP AUTOSIZERINFO_array[group,], autoSizerInfoLocal[]
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ####################################
+' #####  autoSizerInfo_AddGroup  #####
+' ####################################
+' Adds a new autosizer info block
+' item = the auto sizer block to add
+' returns the idCtr of the auto sizer block or -1 on fail
+FUNCTION autoSizerInfo_AddGroup (id, AUTOSIZERINFO item)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED autoSizerInfo_idMax
+
+	AUTOSIZERINFO autoSizerInfoLocal[]
+
+	IF id < 0 || id > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN -1		' fail
+	IFF AUTOSIZERINFO_head[id].inUse THEN RETURN -1		' fail
+
+	slot = -1
+	upp = UBOUND (AUTOSIZERINFO_array[id,])
+	FOR i = 0 TO upp
+		IFZ AUTOSIZERINFO_array[id, i].hwnd THEN
+			slot = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	IF slot = -1 THEN
+		slot = UBOUND (AUTOSIZERINFO_array[id,]) + 1
+		SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[id,]
+		REDIM autoSizerInfoLocal[ ((UBOUND (autoSizerInfoLocal[]) + 1) << 1) - 1]
+		SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[id,]
+	ENDIF
+
+	AUTOSIZERINFO_array[id, slot] = item
+
+	AUTOSIZERINFO_array[id, slot].nextItem = -1
+
+	IF AUTOSIZERINFO_head[id].lastItem = -1 THEN
+		' Make this the first item
+		AUTOSIZERINFO_head[id].firstItem = slot
+		AUTOSIZERINFO_head[id].lastItem = slot
+		AUTOSIZERINFO_array[id, slot].prevItem = -1
+	ELSE
+		' add to the end of the list
+		AUTOSIZERINFO_array[id, slot].prevItem = AUTOSIZERINFO_head[id].lastItem
+		AUTOSIZERINFO_array[id, AUTOSIZERINFO_head[id].lastItem].nextItem = slot
+		AUTOSIZERINFO_head[id].lastItem = slot
+	ENDIF
+
+	RETURN slot
+END FUNCTION
+'
+' ###################################
+' #####  autoSizerBlock_Delete  #####
+' ###################################
+' Deletes an autosizer info block
+' idCtr = the id of the auto sizer to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION autoSizerBlock_Delete (id, idCtr)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+
+	IF id < 0 || id > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[id].inUse THEN RETURN		' fail
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
+	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
+
+	AUTOSIZERINFO_array[id, idCtr].hwnd = 0
+
+	IF idCtr = AUTOSIZERINFO_head[id].firstItem THEN
+		AUTOSIZERINFO_head[id].firstItem = AUTOSIZERINFO_array[id, idCtr].nextItem
+		AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].nextItem].prevItem = -1
+		IF AUTOSIZERINFO_head[id].firstItem = -1 THEN AUTOSIZERINFO_head[id].lastItem = -1
+	ELSE
+		IF idCtr = AUTOSIZERINFO_head[id].lastItem THEN
+			AUTOSIZERINFO_array[id, AUTOSIZERINFO_head[id].lastItem].nextItem = -1
+			AUTOSIZERINFO_head[id].lastItem = AUTOSIZERINFO_array[id, idCtr].prevItem
+			IF AUTOSIZERINFO_head[id].lastItem = -1 THEN AUTOSIZERINFO_head[id].firstItem = -1
+		ELSE
+			AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].nextItem].prevItem = AUTOSIZERINFO_array[id, idCtr].prevItem
+			AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].prevItem].nextItem = AUTOSIZERINFO_array[id, idCtr].nextItem
+		ENDIF
+	ENDIF
+
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7986,21 +8006,21 @@ END FUNCTION
 ' visible = $$TRUE to make the group visible, $$FALSE to hide them
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION autoSizerInfo_showGroup (group, visible)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[group].inUse THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[group].inUse THEN RETURN		' fail
 
 	IF visible THEN command = $$SW_SHOWNA ELSE command = $$SW_HIDE
 
-	i = g_autoSizerInfoUM[group].firstItem
+	i = AUTOSIZERINFO_head[group].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[group, i].hwnd THEN
-			ShowWindow (g_autoSizerInfo[group, i].hwnd, command)
+		IF AUTOSIZERINFO_array[group, i].hwnd THEN
+			ShowWindow (AUTOSIZERINFO_array[group, i].hwnd, command)
 		ENDIF
 
-		i = g_autoSizerInfo[group, i].nextItem
+		i = AUTOSIZERINFO_array[group, i].nextItem
 	LOOP
 
 	RETURN $$TRUE		' success
@@ -8015,23 +8035,23 @@ END FUNCTION
 ' h = the new height of the parent window
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[group].inUse THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[group].inUse THEN RETURN		' fail
 
 	' Guy-13jan11-#hWinPosInfo = BeginDeferWindowPos (cItem)
 	cItem = 0
-	i = g_autoSizerInfoUM[group].firstItem
+	i = AUTOSIZERINFO_head[group].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[group, i].hwnd THEN INC cItem
-		i = g_autoSizerInfo[group, i].nextItem
+		IF AUTOSIZERINFO_array[group, i].hwnd THEN INC cItem
+		i = AUTOSIZERINFO_array[group, i].nextItem
 	LOOP
 	IF cItem < 1 THEN RETURN		' fail
 
-	IF g_autoSizerInfoUM[group].direction AND $$DIR_REVERSE THEN
-		SELECT CASE g_autoSizerInfoUM[group].direction AND 0x00000003
+	IF AUTOSIZERINFO_head[group].direction AND $$DIR_REVERSE THEN
+		SELECT CASE AUTOSIZERINFO_head[group].direction AND 0x00000003
 			CASE $$DIR_HORIZ
 				currPos = w
 			CASE $$DIR_VERT
@@ -8044,13 +8064,13 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 	' Guy-13jan11-cItem is known
 	' #hWinPosInfo = BeginDeferWindowPos (10)
 	#hWinPosInfo = BeginDeferWindowPos (cItem)
-	i = g_autoSizerInfoUM[group].firstItem
+	i = AUTOSIZERINFO_head[group].firstItem
 	DO WHILE i > -1
-		IF g_autoSizerInfo[group, i].hwnd THEN
-			currPos = autoSizer (g_autoSizerInfo[group, i], g_autoSizerInfoUM[group].direction, x0, y0, w, h, currPos)
+		IF AUTOSIZERINFO_array[group, i].hwnd THEN
+			currPos = autoSizer (AUTOSIZERINFO_array[group, i], AUTOSIZERINFO_head[group].direction, x0, y0, w, h, currPos)
 		ENDIF
 
-		i = g_autoSizerInfo[group, i].nextItem
+		i = AUTOSIZERINFO_array[group, i].nextItem
 	LOOP
 	EndDeferWindowPos (#hWinPosInfo)
 
@@ -8058,39 +8078,52 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 END FUNCTION
 '
 ' ##################################
-' #####  autoSizerInfo_update  #####
+' #####  AUTOSIZERINFO_Update  #####
 ' ##################################
 ' Update an autosizer info block
 ' idCtr = the block to update
-' autoSizerBlock = the new version of the info block
+' item = the new version of the info block
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION autoSizerInfo_update (group, idCtr, AUTOSIZERINFO autoSizerBlock)
-	SHARED AUTOSIZERINFO g_autoSizerInfo[]		'info for the autosizer
-	SHARED SIZELISTHEAD g_autoSizerInfoUM[]
+FUNCTION AUTOSIZERINFO_Update (group, idCtr, AUTOSIZERINFO item)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
-	IF group < 0 || group > UBOUND (g_autoSizerInfoUM[]) THEN RETURN		' fail
-	IFF g_autoSizerInfoUM[group].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (g_autoSizerInfo[group,]) THEN RETURN		' fail
-	IFZ g_autoSizerInfo[group, idCtr].hwnd THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[group].inUse THEN RETURN		' fail
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[group,]) THEN RETURN		' fail
+	IFZ AUTOSIZERINFO_array[group, idCtr].hwnd THEN RETURN		' fail
 
-	g_autoSizerInfo[group, idCtr] = autoSizerBlock
+	AUTOSIZERINFO_array[group, idCtr] = item
 	RETURN $$TRUE		' success
+END FUNCTION
+
+FUNCTION BINDING_Init ()
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+	SHARED BINDING_idMax
+
+	DIM BINDING_array[7]
+	DIM BINDING_arrayUM[7]
+	BINDING_idMax = 0
 END FUNCTION
 '
 ' #########################
-' #####  binding_add  #####
+' #####  BINDING_New  #####
 ' #########################
 ' Add a binding to the binding table
 ' binding = the binding to add
 ' returns the id of the binding
-FUNCTION binding_add (BINDING binding)
-	SHARED BINDING g_binding_array[]
+FUNCTION BINDING_New (BINDING item)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+	SHARED BINDING_idMax
+
+	upper_slot = UBOUND (BINDING_arrayUM[])
 
 	' look for a blank slot
 	slot = -1
-	upp = UBOUND (g_binding_array[])
-	FOR i = 0 TO upp
-		IFZ g_binding_array[i].hwnd THEN
+	FOR i = BINDING_idMax TO upper_slot
+		IFF BINDING_arrayUM[i] THEN
 			slot = i
 			EXIT FOR
 		ENDIF
@@ -8098,80 +8131,106 @@ FUNCTION binding_add (BINDING binding)
 
 	' allocate more memory if needed
 	IF slot = -1 THEN
-		slot = UBOUND (g_binding_array[]) + 1
-		REDIM g_binding_array[ ((UBOUND (g_binding_array[]) + 1) << 1) - 1]
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM BINDING_arrayUM[upper_slot]
+		REDIM BINDING_array[upper_slot]
+		slot = BINDING_idMax
+		INC BINDING_idMax
+	ELSE
+		BINDING_idMax = slot + 1
 	ENDIF
 
-	' set the binding
-	g_binding_array[slot] = binding
-	RETURN slot + 1
+	BINDING_idMax = slot + 1
+	BINDING_array[slot] = item
+	BINDING_arrayUM[slot] = $$TRUE
+	RETURN (slot + 1)
 END FUNCTION
 '
 ' ############################
-' #####  binding_delete  #####
+' #####  BINDING_Delete  #####
 ' ############################
 ' Deletes a binding from the binding table
-' idDel = the id of the binding to delete
+' id = the id of the binding to delete
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION binding_delete (idDel)
-	SHARED BINDING g_binding_array[]
+FUNCTION BINDING_Delete (id)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+	SHARED BINDING_idMax
+
 	LINKEDLIST list
 
-	i = idDel - 1		' binding's index is zero-based
+	upper_slot = UBOUND (BINDING_arrayUM[])
 
-	IF i < 0 || i > UBOUND (g_binding_array[]) THEN RETURN		' fail
-	IFZ g_binding_array[i].hwnd THEN RETURN		' fail
+	slot = id - 1
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF BINDING_arrayUM[slot] THEN RETURN
+
+	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
 
 	' delete the auto draw info
-	autoDraw_clear (g_binding_array[i].autoDrawInfo)
-	LINKEDLIST_Get (g_binding_array[i].autoDrawInfo, @list)
+	autoDraw_clear (BINDING_array[slot].autoDrawInfo)
+	LINKEDLIST_Get (BINDING_array[slot].autoDrawInfo, @list)
 	LinkedList_Uninit (@list)
-	LINKEDLIST_Delete (g_binding_array[i].autoDrawInfo)
+	LINKEDLIST_Delete (BINDING_array[slot].autoDrawInfo)
 	' delete the message handlers
-	handler_deleteGroup (g_binding_array[i].msgHandlers)
+	handler_deleteGroup (BINDING_array[slot].msgHandlers)
 	' delete the auto sizer info
-	autoSizerInfo_deleteGroup (g_binding_array[i].autoSizerInfo)
+	AUTOSIZERINFO_Delete (BINDING_array[slot].autoSizerInfo)
 
-	g_binding_array[i].hwnd = 0
-	RETURN $$TRUE		' success
+	BINDING_array[slot].hwnd = 0
+
+	IF id >= BINDING_idMax THEN BINDING_idMax = id - 1
+	BINDING_arrayUM[slot] = $$FALSE
+	RETURN $$TRUE
 END FUNCTION
 '
 ' #########################
-' #####  binding_get  #####
+' #####  BINDING_Get  #####
 ' #########################
 ' Retrieves a binding
-' idBind = the id of the binding to get
-' binding = the variable to store the binding
+' id = the id of the binding to get
+' item = the variable to store the binding
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION binding_get (idBind, BINDING binding)
-	SHARED BINDING g_binding_array[]
+FUNCTION BINDING_Get (id, BINDING item)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
 
-	i = idBind - 1		' binding's index is zero-based
+	upper_slot = UBOUND (BINDING_arrayUM[])
 
-	IF i < 0 || i > UBOUND (g_binding_array[]) THEN RETURN		' fail
-	IFZ g_binding_array[i].hwnd THEN RETURN		' fail
+	slot = id - 1
 
-	binding = g_binding_array[i]
-	RETURN $$TRUE		' success
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF BINDING_arrayUM[slot] THEN RETURN
+
+	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
+
+	item = BINDING_array[slot]
+	RETURN $$TRUE
 END FUNCTION
 '
 ' ############################
-' #####  binding_update  #####
+' #####  BINDING_Update  #####
 ' ############################
 ' Updates a binding
-' idBind = the id of the binding to update
-' binding = the new version of the binding
+' id = the id of the binding to update
+' item = the new version of the binding
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION binding_update (idBind, BINDING binding)
-	SHARED BINDING g_binding_array[]
+FUNCTION BINDING_Update (id, BINDING item)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
 
-	i = idBind - 1		' binding's index is zero-based
+	upper_slot = UBOUND (BINDING_arrayUM[])
 
-	IF i < 0 || i > UBOUND (g_binding_array[]) THEN RETURN		' fail
-	IFZ g_binding_array[i].hwnd THEN RETURN		' fail
+	slot = id - 1
 
-	g_binding_array[i] = binding
-	RETURN $$TRUE		' success
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF BINDING_arrayUM[slot] THEN RETURN
+
+	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
+
+	BINDING_array[slot] = item
+	RETURN $$TRUE
 END FUNCTION
 '
 ' ##############################
@@ -8610,7 +8669,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	bOK = binding_get (idBinding, @binding)
+	bOK = BINDING_Get (idBinding, @binding)
 	IFF bOK THEN RETURN DefWindowProcA (hWnd, msg, wParam, lParam)
 
 	' call any associated message handler
@@ -8783,7 +8842,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 				tme.hwndTrack = hWnd
 				TrackMouseEvent (&tme)
 				binding.isMouseInWindow = $$TRUE
-				binding_update (idBinding, binding)
+				BINDING_Update (idBinding, binding)
 
 				@binding.onEnterLeave (hWnd, $$TRUE)
 			ENDIF
@@ -8797,7 +8856,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 			ENDIF
 		CASE $$WM_MOUSELEAVE
 			binding.isMouseInWindow = $$FALSE
-			binding_update (idBinding, binding)
+			BINDING_Update (idBinding, binding)
 
 			@binding.onEnterLeave (hWnd, $$FALSE)
 			RETURN 0
@@ -8853,7 +8912,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 			' ? hChild
 
 			' idInnerBinding = GetWindowLongA (hChild, $$GWL_USERDATA)
-			' IFF binding_get (idInnerBinding, @innerBinding) THEN
+			' IFF BINDING_Get (idInnerBinding, @innerBinding) THEN
 			RETURN @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
 			' ELSE
 			' IF innerBinding.onMouseWheel THEN
@@ -8941,7 +9000,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 			SELECT CASE LOWORD (wParam)
 				CASE $$WM_DESTROY
 					' free the auto sizer block if there is one
-					autoSizerInfo_delete (binding.autoSizerInfo, GetPropA (lParam, &"autoSizerInfoBlock") - 1)
+					autoSizerBlock_Delete (binding.autoSizerInfo, GetPropA (lParam, &"autoSizerInfoBlock") - 1)
 			END SELECT
 			handled = $$TRUE
 
@@ -8968,7 +9027,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 		CASE $$WM_DESTROY
 			ChangeClipboardChain (hWnd, binding.hwndNextClipViewer)
 			' clear the binding
-			binding_delete (idBinding)
+			BINDING_Delete (idBinding)
 			handled = $$TRUE
 	END SELECT
 
@@ -9046,7 +9105,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF binding_get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' now handle the bar
 	IF w > maxX THEN
@@ -9312,7 +9371,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 
 				' PRINT mouseX, newMouseX, mouseY, newMouseY
 
-				autoSizerInfo_get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
+				AUTOSIZERINFO_Get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
 
 				SELECT CASE splitterInfo.direction AND 0x00000003
 					CASE $$DIR_HORIZ
@@ -9344,7 +9403,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 					IF autoSizerBlock.size > splitterInfo.maxSize THEN autoSizerBlock.size = splitterInfo.maxSize
 				ENDIF
 
-				autoSizerInfo_update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
+				AUTOSIZERINFO_Update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
 				hParent = GetParent (hWnd)
 				GetClientRect (hParent, &rect)
 				sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
@@ -9359,24 +9418,24 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 			ScreenToClient (hWnd, &pt)
 			IF PtInRect (&dock, pt.x, pt.y) THEN
 				IF splitterInfo.docked THEN
-					autoSizerInfo_get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
+					AUTOSIZERINFO_Get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
 					autoSizerBlock.size = splitterInfo.docked
 					splitterInfo.docked = 0
 
 					SPLITTERINFO_Update (GetWindowLongA (hWnd, $$GWL_USERDATA), splitterInfo)
 
-					autoSizerInfo_update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
+					AUTOSIZERINFO_Update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
 					hParent = GetParent (hWnd)
 					GetClientRect (hParent, &rect)
 					sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
 				ELSE
-					autoSizerInfo_get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
+					AUTOSIZERINFO_Get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
 					splitterInfo.docked = autoSizerBlock.size
 					autoSizerBlock.size = 8
 
 					SPLITTERINFO_Update (GetWindowLongA (hWnd, $$GWL_USERDATA), splitterInfo)
 
-					autoSizerInfo_update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
+					AUTOSIZERINFO_Update (splitterInfo.group, splitterInfo.id, autoSizerBlock)
 					hParent = GetParent (hWnd)
 					GetClientRect (hParent, &rect)
 					sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
