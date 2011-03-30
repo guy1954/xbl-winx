@@ -140,7 +140,7 @@ FUNCTION ADT ()
 	STATIC initialised
 	IF initialised THEN RETURN $$FALSE
 
-	Xst ()		' Xblite Standard Library
+	Xst ()		' Xblite Standard Library: initialize xst_s
 	STRING_Init()
 	LINKEDNODE_Init()
 	LINKEDWALK_Init()
@@ -226,7 +226,7 @@ END FUNCTION
 ' ################################
 ' #####  LinkedList_GetItem  #####
 ' ################################
-' Retreives a particular item from a linked list
+' Retrieves a particular item from a linked list
 ' list = the list to get the item from
 ' index = the 0 based index of the item to get
 ' iData = the variable to store the data
@@ -898,13 +898,13 @@ END FUNCTION
 ' Locates an item in an associative array
 ' array = the array to locate the item in
 ' key$ = the key of the item to locate
-' iData = the varaible to store the data for the item
+' iData = the variable to store the data for the item
 ' returns $$TRUE on success or $$FASLE on fail
 FUNCTION AssocArray_Find (ASSOCARRAY array, key$, @iData)
 	iKey = STRING_New (key$)
-	ret = BinTree_Find (@array.tree, iKey, @iData)
+	bFound = BinTree_Find (@array.tree, iKey, @iData)
 	STRING_Delete (iKey)
-	RETURN ret
+	RETURN bFound
 END FUNCTION
 '
 ' ##############################
