@@ -8118,6 +8118,7 @@ FUNCTION BINDING_New (BINDING item)
 	SHARED BINDING_arrayUM[]
 	SHARED BINDING_idMax
 
+	IFZ BINDING_arrayUM[] THEN BINDING_Init ()
 	upper_slot = UBOUND (BINDING_arrayUM[])
 
 	' look for a blank slot
@@ -8159,6 +8160,7 @@ FUNCTION BINDING_Delete (id)
 
 	LINKEDLIST list
 
+	IFZ BINDING_arrayUM[] THEN RETURN
 	upper_slot = UBOUND (BINDING_arrayUM[])
 
 	slot = id - 1
@@ -8196,6 +8198,7 @@ FUNCTION BINDING_Get (id, BINDING item)
 	SHARED BINDING BINDING_array[]
 	SHARED BINDING_arrayUM[]
 
+	IFZ BINDING_arrayUM[] THEN RETURN
 	upper_slot = UBOUND (BINDING_arrayUM[])
 
 	slot = id - 1
@@ -8220,6 +8223,7 @@ FUNCTION BINDING_Update (id, BINDING item)
 	SHARED BINDING BINDING_array[]
 	SHARED BINDING_arrayUM[]
 
+	IFZ BINDING_arrayUM[] THEN RETURN
 	upper_slot = UBOUND (BINDING_arrayUM[])
 
 	slot = id - 1
