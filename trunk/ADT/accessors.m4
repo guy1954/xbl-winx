@@ -19,6 +19,7 @@ FUNCTION $1_New ($1 item)
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
+	IFZ $1_arrayUM[] THEN $1_Init ()
 	upper_slot = UBOUND ($1_arrayUM[])
 
 	slot = -1
@@ -48,6 +49,7 @@ FUNCTION $1_Get (id, $1 item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 
+	IFZ $1_arrayUM[] THEN RETURN
 	upper_slot = UBOUND ($1_arrayUM[])
 
 	slot = id - 1
@@ -63,6 +65,7 @@ FUNCTION $1_Update (id, $1 item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 
+	IFZ $1_arrayUM[] THEN RETURN
 	upper_slot = UBOUND ($1_arrayUM[])
 
 	slot = id - 1
@@ -79,6 +82,7 @@ FUNCTION $1_Delete (id)
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
+	IFZ $1_arrayUM[] THEN RETURN
 	upper_slot = UBOUND ($1_arrayUM[])
 
 	slot = id - 1
