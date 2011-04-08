@@ -96,7 +96,9 @@ DECLARE FUNCTION Stack_Pop (STACK @stack, @iData)
 DECLARE FUNCTION Stack_Peek (STACK stack, @iData)
 
 ' Bin Trees
-DECLARE FUNCTION BinTree_Init (BINTREE @tree, FUNCADDR FnComparator, FUNCADDR FnDeleter)
+' User functions FnCompareNodeKeys(index_1, index_2) and FnDeleteTreeNode(indexDelete)
+DECLARE FUNCTION BinTree_Init (BINTREE @tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
+
 DECLARE FUNCTION BinTree_Add (BINTREE @tree, iKey, iData)
 DECLARE FUNCTION BinTree_Remove (BINTREE @tree, iKey, @iData)
 DECLARE FUNCTION BinTree_Find (BINTREE tree, iKey, @iData)
@@ -104,6 +106,11 @@ DECLARE FUNCTION BinTree_Uninit (BINTREE @tree)
 DECLARE FUNCTION BinTree_StartTraversal (BINTREE tree, order)
 DECLARE FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 DECLARE FUNCTION BinTree_EndTraversal (traverse)
+
+' Needed for coding the body of User functions
+' - FnCompareNodeKeys(index_1, index_2)
+' - and FnDeleteTreeNode(indexDelete)
+DeclareAccess(BINNODE)
 
 ' Associative arrays
 DECLARE FUNCTION AssocArray_Insert (ASSOCARRAY @array, key$, iData)
@@ -119,14 +126,14 @@ DeclareAccess(STRING)
 END EXPORT
 
 DECLARE FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
-DECLARE FUNCTION BinTree_RealAdd (FUNCADDR FnComparator, iNode, iKey, iData)
-DECLARE FUNCTION BinTree_RealUninit (iNode, FUNCADDR FnDeleter)
-DECLARE FUNCTION BinTree_RealFind (FUNCADDR FnComparator, @iParentNode, iKey, @iData)
-DECLARE FUNCTION BinTree_RealRemove (FUNCADDR FnDeleter, iNode, iParentNode)
+DECLARE FUNCTION BinTree_RealAdd (FUNCADDR FnCompareNodeKeys, iNode, iKey, iData)
+DECLARE FUNCTION BinTree_RealUninit (iNode, FUNCADDR FnDeleteTreeNode)
+DECLARE FUNCTION BinTree_RealFind (FUNCADDR FnCompareNodeKeys, @iParentNode, iKey, @iData)
+DECLARE FUNCTION BinTree_RealRemove (FUNCADDR FnDeleteTreeNode, iNode, iParentNode)
 
 DeclareAccess(LINKEDNODE)
 DeclareAccess(LINKEDWALK)
-DeclareAccess(BINNODE)
+'Declare_Access(BINNODE)
 DeclareAccess(BINWALK)
 DeclareAccess(STACK)
 '
@@ -278,11 +285,13 @@ END FUNCTION
 ' ##########################
 ' Initialises a bin tree
 ' tree = the tree to initialise
-' FnComparator = the comparator function for sorting keys
+' FnCompareNodeKeys = User comparator function for sorting keys
+'                     FnCompareNodeKeys(index_1, index_2)
+' FnDeleteTreeNode = User delete function: FnDeleteTreeNode(indexDelete)
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_Init (BINTREE tree, FUNCADDR FnComparator, FUNCADDR FnDeleter)
-	tree.comparator = FnComparator
-	tree.keyDeleter = FnDeleter
+FUNCTION BinTree_Init (BINTREE tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
+	tree.comparator = FnCompareNodeKeys
+	tree.keyDeleter = FnDeleteTreeNode
 	tree.iHead = 0
 	RETURN $$TRUE
 END FUNCTION
@@ -970,19 +979,19 @@ END FUNCTION
 ' #####  BinTree_RealAdd  #####
 ' #############################
 ' Adds an item to a bin tree
-' FnComparator = the comparator to order the keys
+' FnCompareNodeKeys = the comparator to order the keys
 ' iNode = the node to add the item to
 ' iKey = the key for the data
 ' iData = the item to add
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_RealAdd (FUNCADDR FnComparator, iNode, iKey, iData)
+FUNCTION BinTree_RealAdd (FUNCADDR FnCompareNodeKeys, iNode, iKey, iData)
 	BINNODE node
 	BINNODE newNode
 	FUNCADDR comp (XLONG, XLONG)
 
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
 
-	comp = FnComparator
+	comp = FnCompareNodeKeys
 	order = @comp (iKey, node.iKey)
 
 	IF order = 0 THEN RETURN $$FALSE		' duplicate key
@@ -998,7 +1007,7 @@ FUNCTION BinTree_RealAdd (FUNCADDR FnComparator, iNode, iKey, iData)
 			' PRINT "Inserted ";key$;" before ";nodeKey$
 			RETURN BINNODE_Update (iNode, node)
 		ELSE
-			RETURN BinTree_RealAdd (FnComparator, node.iLeft, iKey, iData)
+			RETURN BinTree_RealAdd (FnCompareNodeKeys, node.iLeft, iKey, iData)
 		END IF
 	ELSE
 		IFZ node.iRight THEN
@@ -1012,7 +1021,7 @@ FUNCTION BinTree_RealAdd (FUNCADDR FnComparator, iNode, iKey, iData)
 			' PRINT "Inserted ";key$;" after ";nodeKey$
 			RETURN BINNODE_Update (iNode, node)
 		ELSE
-			RETURN BinTree_RealAdd (FnComparator, node.iRight, iKey, iData)
+			RETURN BinTree_RealAdd (FnCompareNodeKeys, node.iRight, iKey, iData)
 		END IF
 	END IF
 
@@ -1024,18 +1033,18 @@ END FUNCTION
 ' #####  BinTree_RealFind  #####
 ' ##############################
 ' Finds a particular node in a bin tree
-' FnComparator = the comparator used to order the keys
+' FnCompareNodeKeys = the comparator used to order the keys
 ' iParentNode = the node to search from
 ' iKey = the key of the node to find
 ' iData = the variable to store the item of the node
 ' returns the node with the matching key
-FUNCTION BinTree_RealFind (FUNCADDR FnComparator, @iParentNode, iKey, @iData)
+FUNCTION BinTree_RealFind (FUNCADDR FnCompareNodeKeys, @iParentNode, iKey, @iData)
 	BINNODE node
 	FUNCADDR comp (XLONG, XLONG)
 
 	IFF BINNODE_Get (iParentNode, @node) THEN RETURN 0
 
-	comp = FnComparator
+	comp = FnCompareNodeKeys
 	order = @comp (iKey, node.iKey)
 
 	IF order = 0 THEN		' This will only happen if this is the root node
@@ -1057,7 +1066,7 @@ FUNCTION BinTree_RealFind (FUNCADDR FnComparator, @iParentNode, iKey, @iData)
 			iParentNode = iNode
 		END IF
 		' PRINT "Recursing"
-		RETURN BinTree_RealFind (FnComparator, @iParentNode, iKey, @iData)
+		RETURN BinTree_RealFind (FnCompareNodeKeys, @iParentNode, iKey, @iData)
 	END IF
 
 	' We should never end up here
@@ -1081,7 +1090,7 @@ END FUNCTION
 ' iNode = the node to remove
 ' iParentNode = the parent of the node to remove
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_RealRemove (FUNCADDR FnDeleter, iNode, iParentNode)
+FUNCTION BinTree_RealRemove (FUNCADDR FnDeleteTreeNode, iNode, iParentNode)
 	BINNODE node
 	BINNODE parentNode
 	BINNODE childNode
@@ -1090,7 +1099,7 @@ FUNCTION BinTree_RealRemove (FUNCADDR FnDeleter, iNode, iParentNode)
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
 	IFF BINNODE_Get (iParentNode, @parentNode) THEN RETURN $$FALSE
 
-	delete = FnDeleter
+	delete = FnDeleteTreeNode
 	SELECT CASE TRUE
 		CASE (node.iLeft = 0) && (node.iRight = 0)
 			' No children
@@ -1166,7 +1175,7 @@ FUNCTION BinTree_RealRemove (FUNCADDR FnDeleter, iNode, iParentNode)
 			childNode.iKey = 0
 			BINNODE_Update (iChildNode, childNode)
 
-			BinTree_RealRemove (FnDeleter, iChildNode, iParentNode)
+			BinTree_RealRemove (FnDeleteTreeNode, iChildNode, iParentNode)
 	END SELECT
 END FUNCTION
 '
@@ -1176,15 +1185,15 @@ END FUNCTION
 ' Deletes iNode and all its children
 ' iNode = the node to delete
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_RealUninit (iNode, FUNCADDR FnDeleter)
+FUNCTION BinTree_RealUninit (iNode, FUNCADDR FnDeleteTreeNode)
 	BINNODE node
 	FUNCADDR delete (XLONG)
 
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
-	IF node.iLeft THEN BinTree_RealUninit (node.iLeft, FnDeleter)
-	IF node.iRight THEN BinTree_RealUninit (node.iRight, FnDeleter)
+	IF node.iLeft THEN BinTree_RealUninit (node.iLeft, FnDeleteTreeNode)
+	IF node.iRight THEN BinTree_RealUninit (node.iRight, FnDeleteTreeNode)
 
-	delete = FnDeleter
+	delete = FnDeleteTreeNode
 	@delete (node.iKey)
 
 	BINNODE_Delete (iNode)
