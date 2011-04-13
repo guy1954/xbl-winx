@@ -21,6 +21,7 @@ VERSION "0.2"
 '
 m4_include(`accessors.m4')
 
+EXPORT
 TYPE LINKEDNODE
 	XLONG	.iNext
 	XLONG	.iData
@@ -43,7 +44,7 @@ TYPE BINWALK
 	XLONG		.nextItem
 	BINNODE	.node
 END TYPE
-EXPORT
+' Guy-10apr11-EXPORT
 $$ADT_PREORDER	= 0
 $$ADT_INORDER		= 1
 $$ADT_POSTORDER	= 2
@@ -55,7 +56,7 @@ TYPE LINKEDLIST
 END TYPE
 TYPE BINTREE
 	XLONG	.iHead
-	FUNCADDR	.comparator(XLONG, XLONG) ' (index_1, index_2)
+	FUNCADDR	.comparator(XLONG, XLONG) ' (id_1, id_2)
 	FUNCADDR	.keyDeleter(XLONG) ' (indexDelete)
 END TYPE
 
@@ -96,7 +97,7 @@ DECLARE FUNCTION Stack_Pop (STACK @stack, @iData)
 DECLARE FUNCTION Stack_Peek (STACK stack, @iData)
 
 ' Bin Trees
-' User functions FnCompareNodeKeys(index_1, index_2) and FnDeleteTreeNode(indexDelete)
+' User functions FnCompareNodeKeys(id_1, id_2) and FnDeleteTreeNode(indexDelete)
 DECLARE FUNCTION BinTree_Init (BINTREE @tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
 
 DECLARE FUNCTION BinTree_Add (BINTREE @tree, iKey, iData)
@@ -108,7 +109,7 @@ DECLARE FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 DECLARE FUNCTION BinTree_EndTraversal (traverse)
 
 ' Needed for coding the body of User functions
-' - FnCompareNodeKeys(index_1, index_2)
+' - FnCompareNodeKeys(id_1, id_2)
 ' - and FnDeleteTreeNode(indexDelete)
 DeclareAccess(BINNODE)
 
@@ -286,7 +287,7 @@ END FUNCTION
 ' Initialises a bin tree
 ' tree = the tree to initialise
 ' FnCompareNodeKeys = User comparator function for sorting keys
-'                     FnCompareNodeKeys(index_1, index_2)
+'                     FnCompareNodeKeys(id_1, id_2)
 ' FnDeleteTreeNode = User delete function: FnDeleteTreeNode(indexDelete)
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION BinTree_Init (BINTREE tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
@@ -991,7 +992,12 @@ FUNCTION BinTree_RealAdd (FUNCADDR FnCompareNodeKeys, iNode, iKey, iData)
 
 	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
 
-	comp = FnCompareNodeKeys
+	' Guy-10apr11-comp = FnCompareNodeKeys
+	IFZ FnCompareNodeKeys THEN
+		comp = &StringCompare()
+	ELSE
+		comp = FnCompareNodeKeys
+	ENDIF
 	order = @comp (iKey, node.iKey)
 
 	IF order = 0 THEN RETURN $$FALSE		' duplicate key
@@ -1104,7 +1110,8 @@ FUNCTION BinTree_RealRemove (FUNCADDR FnDeleteTreeNode, iNode, iParentNode)
 		CASE (node.iLeft = 0) && (node.iRight = 0)
 			' No children
 
-			@delete (node.iKey)
+			' Guy-10apr11-@delete (node.iKey)
+			IF delete THEN @delete (node.iKey)
 			iData = node.iData
 			BINNODE_Delete (iNode)
 
@@ -1127,7 +1134,8 @@ FUNCTION BinTree_RealRemove (FUNCADDR FnDeleteTreeNode, iNode, iParentNode)
 			END SELECT
 			BINNODE_Get (iChildNode, @childNode)
 
-			@delete (node.iKey)
+			' Guy-10apr11-@delete (node.iKey)
+			IF delete THEN @delete (node.iKey)
 			iData = node.iData
 
 			node.iKey = childNode.iKey
@@ -1168,7 +1176,8 @@ FUNCTION BinTree_RealRemove (FUNCADDR FnDeleteTreeNode, iNode, iParentNode)
 				LOOP
 			END IF
 
-			@delete (node.iKey)
+			' Guy-10apr11-@delete (node.iKey)
+			IF delete THEN @delete (node.iKey)
 			node.iKey = childNode.iKey
 			node.iData = childNode.iData
 			BINNODE_Update (iNode, node)
