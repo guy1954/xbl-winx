@@ -267,6 +267,12 @@ TYPE TBBUTTONDATA
 	TBBUTTON .tbb
 END TYPE
 
+'
+' #######################
+' #####  M4 macros  #####
+' #######################
+' Notes:
+' - use the compiler switch -m4
 m4_include(`accessors.m4')
 
 '
@@ -331,6 +337,10 @@ $$CHANNEL_BLUE = 0
 $$CHANNEL_ALPHA = 3
 
 $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
+
+' Most Recently Used
+$$MRU_SECTION$     = "Recent files"
+$$UPP_MRU          = 19
 
 DECLARE FUNCTION WinX ()
 END EXPORT
@@ -607,7 +617,6 @@ DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)		' Search for a label
 DECLARE FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem)		' expand the tree view item
 DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem)		' collapse the tree view item
-
 ' new in 0.6.0.4
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows directory picker dialog
 DECLARE FUNCTION WinXFolder_GetDir$ (parent, nFolder)		' get the path for a Windows special folder
@@ -629,14 +638,36 @@ DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
 DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
+DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
+DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
+
+DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path with \
+DECLARE FUNCTION WinXDir_Create (dir$) ' create the directory
+DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if a directory exists
+DECLARE FUNCTION WinXPath_Trim$ (path$) ' trim a path
+DECLARE FUNCTION WinXDir_GetXblDir$ () ' get xblite's dir
+DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
+
+DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an INI file
+DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from INI file
+DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the INI file
+
+DECLARE FUNCTION WinXMRU_Init ()
+DECLARE FUNCTION WinXMRU_New (item$)
+DECLARE FUNCTION WinXMRU_Get (id, @item$)
+DECLARE FUNCTION WinXMRU_Update (id, item$)
+DECLARE FUNCTION WinXMRU_Delete (id)
+DECLARE FUNCTION WinXMRU_Find (find$)
+
+DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$) ' load the Most Recently Used project list from the .INI file
+DECLARE FUNCTION WinXMRU_MakeKey$ (id)
+DECLARE FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$) ' Save the Most Recently Used project list
 
 END EXPORT
 '
 ' #######################
 ' #####  M4 macros  #####
 ' #######################
-' Notes:
-' - use the compiler switch -m4
 '
 ' These functions abstract away access to the arrays
 DeclareAccess(BINDING)
@@ -659,6 +690,9 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 DECLARE FUNCTION GuiTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 DECLARE FUNCTION WinXListView_SetAllUnselected ()
+'
+' for API FormatMessageA, GdipCreateStringFormat
+$$LANG_NEUTRAL              = 0
 '
 '
 ' #####################
@@ -3722,7 +3756,7 @@ END FUNCTION
 FUNCTION WinXListBox_GetSelection (hListBox, index[])
 
 	' Guy-15apr09-prevent invalid handle
-	' IFZ hListBox THEN RETURN ' fail
+	' IFZ hListBox THEN RETURN		' fail
 	IFZ hListBox THEN
 		DIM index[]
 		RETURN 0
@@ -3731,7 +3765,7 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
 	IF style AND $$LBS_EXTENDEDSEL THEN
 		numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-		' Guy-15apr09-IF numItems = 0 THEN RETURN ' fail
+		' Guy-15apr09-IF numItems = 0 THEN RETURN		' fail
 		IF numItems < 1 THEN
 			DIM index[]
 			RETURN 0
@@ -3806,9 +3840,9 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 	ELSE
 		' Guy-17feb11-does not seem right :-(
 		' IFZ index[] THEN
-		' IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN ' fail
+		' IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN		' fail
 		' ELSE
-		' RETURN ' fail
+		' RETURN		' fail
 		' ENDIF
 		' index[0] = -1, deselect previous selection
 		IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] <> -1) THEN failed = $$TRUE
@@ -6841,9 +6875,9 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 
 	tvi.mask = $$TVIF_CHILDREN | $$TVIF_HANDLE | $$TVIF_IMAGE | $$TVIF_PARAM | $$TVIF_SELECTEDIMAGE | $$TVIF_STATE | $$TVIF_TEXT
 	tvi.hItem = hItem
-	buffer$ = NULL$ (512)
+	buffer$ = NULL$ ($$MAX_PATH)
 	tvi.pszText = &buffer$
-	tvi.cchTextMax = 512
+	tvi.cchTextMax = $$MAX_PATH
 	tvi.stateMask = 0xFFFFFFFF
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
 	IFZ ret THEN RETURN		' fail
@@ -9550,6 +9584,723 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+'
+' ##############################
+' #####  WinXTellApiError  #####
+' ##############################
+'
+' [WinXTellApiError]
+' Description = display an API failure message
+' Function    = WinXTellApiError (msg$)
+' ArgCount    = 1
+' Return      = $$TRUE = real failure, $$FALSE = false failure
+'
+' Usage:
+'	SetLastError (0)
+'	hImage = LoadBitmapA (hInst, &image$)
+'	IFZ hImage THEN		' fail
+'		msg$ = "CreateWindows: Can't load image " + image$
+'		WinXTellApiError (msg$)
+'	ENDIF
+'
+FUNCTION WinXTellApiError (msg$)		' display an API fail message
+
+	' get the last fail code, then clear it
+	errNum = GetLastError ()
+	SetLastError (0)
+	IFZ errNum THEN RETURN		' was success
+
+	fmtMsg$ = "Last fail code " + STRING$ (errNum) + ": "
+	bufLen = 1020
+	buf$ = NULL$ (bufLen)		' fill buf$ with (bufLen + 1) null chars
+
+	' set up FormatMessageA arguments
+	dwFlags = $$FORMAT_MESSAGE_FROM_SYSTEM | $$FORMAT_MESSAGE_IGNORE_INSERTS
+	lpBuffer = &buf$
+
+	' format a message string
+	ret = FormatMessageA (dwFlags, 0, errNum, $$LANG_NEUTRAL, lpBuffer, bufLen, 0)
+	IFZ ret THEN
+		fmtMsg$ = fmtMsg$ + "(unknown)"
+	ELSE
+		fmtMsg$ = fmtMsg$ + CSTRING$ (&buf$)
+	ENDIF
+	fmtMsg$ = fmtMsg$ + $$CRLF$ + msg$
+
+	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "Win32 API fail"
+	XstGetOSName (@os$)
+	XstGetOSVersion (@major, @minor, @platformId, @version$, @platform$)
+	text$ = $$CRLF$ + "OS: " + os$ + STR$ (major) + "." + STRING$ (minor) + " " + platform$
+
+	' set up MessageBoxA arguments
+	fmtMsg$ = fmtMsg$ + text$
+	title$ = "WinX-API Error"
+	hWnd = GetActiveWindow ()
+	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
+
+	RETURN $$TRUE		' an fail really occurred!
+
+END FUNCTION
+'
+' ##############################
+' #####  WinXTellRunError  #####
+' ##############################
+'
+' [WinXTellRunError]
+' Description = display a run-time failure message
+' Function    = WinXTellRunError (msg$)
+' ArgCount    = 1
+' Return      = $$TRUE = real failure, $$FALSE = false failure
+'
+' Usage:
+' errNum = ERROR (0) ' clear the last-fail code
+' inFile = OPEN (inFile$, $$RD)
+' IF inFile < 3 THEN
+'  msg$ = "Can't open input file " + inFile$
+'  WinXTellRunError (msg$)
+' ENDIF
+FUNCTION WinXTellRunError (msg$)		' display the run-time fail message
+
+	' get current fail, then clear it
+	errNum = ERROR (0)
+	fmtMsg$ = "Error code " + STRING$ (errNum) + ": " + ERROR$ (errNum) + $$CRLF$ + msg$
+	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "XBLite library failure"
+
+	' set up MessageBoxA arguments
+	title$ = "WinX-Execution Error"
+	hWnd = GetActiveWindow ()
+	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
+
+	RETURN $$TRUE		' an fail really occurred!
+
+END FUNCTION
+
+' OUT			: dir$ - directory path
+
+' Usage:
+' dir$ = "  c:/my dir   "
+' WinXDir_AppendSlash (@dir$) ' end directory path with \
+' ' => dir$ == "c:\\my dir\\"
+FUNCTION WinXDir_AppendSlash (@dir$)		' end a directory path with \
+
+	upp = LEN (dir$) - 1
+	IF upp < 0 THEN RETURN		' empty
+
+	' search the last non-space character, its index is iLast
+	iLast = -1
+	FOR i = upp TO 0 STEP -1
+		IF dir${i} <> ' ' THEN
+			' non-space character
+			iLast = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+	IF iLast = -1 THEN		' only spaces => empty directory path
+		dir$ = ""		' return a null string
+		RETURN
+	ENDIF
+
+	' search the 1st non-space character, its index is iFirst
+	FOR i = 0 TO iLast
+		IF dir${i} <> ' ' THEN
+			' non-space character
+			iFirst = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	' make sure there are only Windows PathSlashes
+	pos = INSTR (dir$, "/")		' Unix PathSlash
+	IF pos THEN		' Unix PathSlash
+		FOR i = pos - 1 TO iLast
+			IF dir${i} = '/' THEN dir${i} = '\\'		' Windows PathSlash
+		NEXT i
+	ENDIF
+
+	' allocate a new string
+	newLen = iLast - iFirst + 1
+	IF dir${iLast} <> '\\' THEN INC newLen		' no trailing slash: add 1 slot for the added trailing slash
+	oDir$ = NULL$ (newLen)
+
+	' trim off leading and trailing spaces
+	ioDir = 0
+	FOR i = iFirst TO iLast
+		oDir${ioDir} = dir${i}
+		INC ioDir
+	NEXT i
+
+	IF dir${iLast} <> '\\' THEN		' no trailing slash
+		oDir${ioDir} = '\\'		' add the trailing slash
+	ENDIF
+
+	dir$ = oDir$		' replace the directory path
+
+END FUNCTION
+
+' OUT			: dir$ - directory path
+
+' returns $$TRUE on success or $$FALSE on fail
+
+' Usage:
+' bOK = WinXDir_Exists (dir$)
+' IFF bOK THEN		' directory not found
+'  bOK = WinXDir_Create (dir$)		' create the directory
+'  IFF bOK THEN		' fail
+'   msg$ = "WinXDir_Create: Can't create directory " + dir$
+'   XstAlert (msg$)
+'  ENDIF
+' ENDIF
+
+FUNCTION WinXDir_Create (dir$)		' Creates a directory making sure that the directory is created
+
+	dir$ = TRIM$ (dir$)
+	IFZ dir$ THEN RETURN $$TRUE		' dir$ is empty
+	XstPathToAbsolutePath (dir$, @dir$)		' Get the complete path
+	XstTranslateChars (@dir$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
+
+	WinXDir_AppendSlash (@dir$)		' end directory path with \
+	' create all the parent folders before creating the directory
+	dirLen = LEN (dir$)
+	posSlash = INSTR (dir$, $$PathSlash$)		' skip the drive
+	IF posSlash = dirLen THEN RETURN $$TRUE		' fail: Can't create a drive
+	DO
+		posFirst = posSlash + 1
+		IF posFirst > dirLen THEN EXIT DO
+
+		posSlash = INSTR (dir$, $$PathSlash$, posFirst)
+		IFZ posSlash THEN EXIT DO		' should never occur!
+
+		subDir$ = LEFT$ (dir$, posSlash)
+
+		' determine if subDir$ exists
+		bOK = WinXDir_Exists (subDir$)
+		IFF bOK THEN		' directory not found
+			XstMakeDirectory (subDir$)		' creating the directory subDir$
+		ENDIF
+	LOOP
+
+	' determine if dir$ was created
+	bOK = WinXDir_Exists (dir$)
+	RETURN bOK
+
+END FUNCTION
+'
+' ############################
+' #####  WinXDir_Exists  #####
+' ############################
+'
+' [WinXDir_Exists]
+' Description = determine if a directory exists
+' Function    = WinXDir_Exists (dir$)
+' ArgCount    = 1
+' Return      = $$TRUE = directory exists, $$FALSE = directory not found
+' Examples    = bFound = WinXDir_Exists (dir$)
+'
+FUNCTION WinXDir_Exists (dir$)
+
+	' trim the directory path
+	dirToFind$ = WinXPath_Trim$ (dir$)
+	IFZ dirToFind$ THEN RETURN		' fail, directory is empty
+
+	XstTranslateChars (@dirToFind$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
+	XstGetFileAttributes (@dirToFind$, @attrib)
+
+	' check if dirToFind$ is really directory
+	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE ' success directory exists
+
+END FUNCTION
+'
+' ############################
+' #####  WinXPath_Trim$  #####
+' ############################
+'
+' [WinXPath_Trim$]
+' Description = trim a path, directory or file
+' Function    = WinXPath_Trim$ (path$)
+' ArgCount    = 1
+' Return      = the trimmed path
+' Examples    = pathNew$ = WinXPath_Trim$ (path$)
+'
+FUNCTION WinXPath_Trim$ (path$)
+
+' the direct way----------------------------------------------------
+' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
+'	pathNew$ = TRIM$ (path$)
+'	IF pathNew$ THEN
+'		XstReplace (@pathNew$, "/", $$PathSlash$, 0) ' make sure there are only Windows PathSlashes
+'	ENDIF
+'	RETURN pathNew$
+' ------------------------------------------------------------------
+
+	IFZ path$ THEN RETURN "" ' empty
+	upp = LEN (path$) - 1
+
+	' search the last non-space character, its index is iLast
+	iLast = -1
+	FOR i = upp TO 0 STEP -1
+		IF path${i} <> ' ' THEN ' non-space character
+			iLast = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+	IF iLast = -1 THEN RETURN "" ' empty directory path => return a null string
+
+	' search the 1st non-space character, its index is iFirst
+	FOR i = 0 TO iLast
+		IF path${i} <> ' ' THEN ' non-space character
+			iFirst = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	newLen = iLast - iFirst + 1
+	IF newLen < 1 THEN RETURN "" ' empty
+
+	' allocate a new string
+	pathNew$ = NULL$ (newLen)
+
+	' trim off leading and trailing spaces
+	inew = 0
+	FOR i = iFirst TO iLast
+		IF path${i} = '/' THEN
+			' make sure there are only Windows PathSlashes
+			pathNew${inew} = '\\'
+		ELSE
+			pathNew${inew} = path${i}
+		ENDIF
+		INC inew
+	NEXT i
+	RETURN pathNew$
+
+END FUNCTION
+' returns "" on fail
+
+' Usage:
+' xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
+FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
+	STATIC s_xblDir$
+
+	IF s_xblDir$ THEN
+		' XstAlert ("Path of xblite's directory reset by WinXDir_GetXblDir$ " + s_xblDir$)
+		RETURN s_xblDir$
+	ENDIF
+	XstGetEnvironmentVariable ("XBLDIR", @dir$)
+	dir$ = TRIM$ (dir$)
+	IFZ dir$ THEN
+		envKey$ = "Environment"
+		IFZ RegOpenKeyExA ($$HKEY_CURRENT_USER, &envKey$, 0, $$KEY_READ, &hkey) THEN
+			index = 0
+			type = 0
+			DO
+				szName$ = NULL$ ($$MAX_PATH)
+				lenName = LEN (szName$)
+				szData$ = NULL$ ($$MAX_PATH)
+				lenData = LEN (szData$)
+				ret = RegEnumValueA (hkey, index, &szName$, &lenName, 0, &type, &szData$, &lenData)
+				IFZ ret THEN
+					subKey$ = CSTRING$ (&szName$)
+					IF UCASE$ (subKey$) = "XBLDIR" THEN
+						dir$ = CSTRING$ (&szData$)
+						dir$ = TRIM$ (dir$)
+						' XstAlert ("Path of xblite's directory read from the registry " + dir$)
+						EXIT DO
+					ENDIF
+					INC index
+				ENDIF
+			LOOP UNTIL ret
+			RegCloseKey (hkey)
+		ENDIF
+	ENDIF
+	IFZ dir$ THEN
+		dir$ = "C:" + $$PathSlash$ + "xblite" + $$PathSlash$
+		' XstAlert ("Path of xblite's directory set by WinXDir_GetXblDir$ " + dir$)
+	ENDIF
+	WinXDir_AppendSlash (@dir$)		' end directory path with \
+	s_xblDir$ = dir$
+
+	RETURN s_xblDir$
+
+END FUNCTION
+
+' returns "" on fail
+
+' Usage:
+' xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get xblite's program dir
+FUNCTION WinXDir_GetXblProgramDir$ ()		' Gets the complete path of xblite's programs' directory
+
+	pgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
+	RETURN pgmDir$
+
+END FUNCTION
+'
+' ############################
+' #####  WinXIni_Delete  #####
+' ############################
+'
+' [WinXIni_Delete]
+' Description = delete an information from an .INI file
+' Function    = WinXIni_Delete (iniPath$, section$, key$)
+' ArgCount    = 3
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the key to delete
+' Return      = $$FALSE = failure, $$TRUE = success
+' Examples    = bDeleted = WinXIni_Delete (iniPath$, section$, key$)
+'
+FUNCTION WinXIni_Delete (iniPath$, section$, key$)
+
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN		' fail
+
+	section$ = WinXPath_Trim$ (section$)
+	IFZ section$ THEN RETURN		' fail
+
+	key$ = WinXPath_Trim$ (key$)
+	IFZ key$ THEN RETURN		' fail
+
+	' passing argument lpString set to zero causes the key deletion
+	SetLastError (0)
+	ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
+	IFZ ret THEN
+		' can't delete a key from INI file iniPath$
+		' [section$]
+		' key$=value$
+		msg$ = "WinXIni_Delete: Can't delete a key from INI file " + iniPath$
+		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
+		WinXTellApiError (msg$)
+		RETURN		' fail
+	ENDIF
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ###########################
+' #####  WinXIni_Read$  #####
+' ###########################
+'
+' [WinXIni_Read$]
+' Description = read an information from an .INI file
+' Function    = WinXIni_Read$ (iniPath$, section$, key$, defVal$)
+' ArgCount    = 4
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the key to read from
+' defVal$     = a default value
+' Return      = defVal$ = failure, read value = success
+' Examples    = value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+'
+FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
+
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN defVal$
+
+	bErr = XstFileExists (iniPath$)
+	IF bErr THEN RETURN defVal$ ' file NOT found
+
+	section$ = WinXPath_Trim$ (section$)
+	IFZ section$ THEN
+		' can't read an empty section
+		' default value defVal$ returned
+		msg$ = "WinXIni_Read$: Can't read an empty section."
+		msg$ = msg$ + "\nDefault value (" + defVal$ + ") returned"
+		XstAlert (msg$)
+		RETURN defVal$
+	ENDIF
+
+	' read from the INI file
+	'bufSize = $$MAX_PATH
+	bufSize = 4095
+	buf$ = NULL$ (bufSize)
+	SetLastError (0)
+	cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
+	IF cCh < 1 THEN RETURN defVal$		' default value returned
+
+	' value$ = CSTRING$ (&buf$)
+	value$ = LEFT$ (buf$, cCh)
+	RETURN value$
+
+END FUNCTION
+'
+' ###########################
+' #####  WinXIni_Write  #####
+' ###########################
+'
+' [WinXIni_Write]
+' Description = write an information into an .INI file
+' Function    = WinXIni_Write (iniPath$, section$, key$, value$)
+' ArgCount    = 4
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the information's key
+' value$      = the information
+' Return      = $$FALSE = failure, $$TRUE = success
+' Examples    = WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, fPath$)
+'
+FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
+
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN		' fail
+
+	section$ = WinXPath_Trim$ (section$)
+	IFZ section$ THEN RETURN		' fail
+
+	key$ = WinXPath_Trim$ (key$)
+	IFZ key$ THEN RETURN		' fail
+
+	SetLastError (0)
+	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
+	IFZ ret THEN
+		' can't write into INI file iniPath$
+		' [section$]
+		' key$=value$
+		msg$ = "WinXIni_Write: Can't write into INI file " + iniPath$
+		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
+		WinXTellApiError (msg$)
+		RETURN		' fail
+	ENDIF
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+
+FUNCTION WinXMRU_Init ()
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN
+		DIM MRU_array$[$$UPP_MRU]
+		DIM MRU_arrayUM[$$UPP_MRU]
+	ELSE
+		upper_slot = UBOUND (MRU_arrayUM[])
+		FOR i = 0 TO upper_slot
+			MRU_array$[i] = ""
+			MRU_arrayUM[i] = 0
+		NEXT i
+	ENDIF
+	MRU_idMax = 0
+END FUNCTION
+
+FUNCTION WinXMRU_New (item$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN WinXMRU_Init ()
+	upper_slot = UBOUND (MRU_arrayUM[])
+
+	slot = -1
+	IF MRU_idMax <= upper_slot THEN
+		FOR i = MRU_idMax TO upper_slot
+			IFF MRU_arrayUM[i] THEN
+				slot = i
+				EXIT FOR
+			ENDIF
+		NEXT i
+	ENDIF
+
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM MRU_arrayUM[upper_slot]
+		REDIM MRU_array$[upper_slot]
+		slot = MRU_idMax
+		INC MRU_idMax
+	ELSE
+		MRU_idMax = slot + 1
+	ENDIF
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	MRU_array$[slot] = item$
+	MRU_arrayUM[slot] = $$TRUE
+	RETURN (slot + 1)
+END FUNCTION
+
+' returns $$TRUE if found, $$FALSE otherwise
+FUNCTION WinXMRU_Get (id, @item$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	item$ = ""
+	IFZ MRU_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > MRU_idMax) THEN RETURN
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF MRU_arrayUM[slot] THEN RETURN
+
+	item$ = MRU_array$[slot]
+	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION WinXMRU_Update (id, item$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > MRU_idMax) THEN RETURN
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF MRU_arrayUM[slot] THEN RETURN
+
+	MRU_array$[slot] = item$
+	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION WinXMRU_Delete (id)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > MRU_idMax) THEN RETURN
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF MRU_arrayUM[slot] THEN RETURN
+
+	MRU_arrayUM[slot] = $$FALSE
+	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION WinXMRU_Find (find$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	find_lc$ = WinXPath_Trim$ (find$)
+	IFZ find_lc$ THEN RETURN
+
+	IFZ MRU_arrayUM[] THEN RETURN ' not found
+
+	find_lc$ = LCASE$ (find_lc$)
+	findLen = LEN (find_lc$)
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IFF MRU_arrayUM[slot] THEN DO NEXT
+		IF LEN (MRU_array$[slot]) <> findLen THEN DO NEXT
+		IF LCASE$ (MRU_array$[slot]) = find_lc$ THEN RETURN (slot + 1)
+	NEXT slot
+END FUNCTION
+
+' load the Most Recently Used project list from the .INI file
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$)
+
+	' reset the Most Recently Used project lists
+	WinXMRU_Init ()
+	IFZ iniPath$ THEN RETURN		' fail
+
+	' load the MRU projects list into MRU_array$[]
+	IF pathNew$ THEN
+		pathNew$ = WinXPath_Trim$ (pathNew$)
+		IF pathNew$ THEN WinXMRU_New (pathNew$)
+	ENDIF
+
+	' create ini file if it does not exist
+	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, "File 0", "")
+	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, "File 0", "-")
+
+	' load the MRU projects list
+	FOR id = 1 TO ($$UPP_MRU + 1)
+		key$ = WinXMRU_MakeKey$ (id)
+		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+		IFZ fpath$ THEN DO NEXT ' empty => skip it!
+		'
+		fpath$ = WinXPath_Trim$ (fpath$)
+		IFZ fpath$ THEN DO NEXT ' empty => skip it!
+		'
+		bErr = XstFileExists (fpath$)
+		IF bErr THEN DO NEXT		' file not found => skip it!
+		'
+		idFound = WinXMRU_Find (fpath$)
+		IF idFound THEN DO NEXT
+		'
+		WinXMRU_New (fpath$)
+		'
+	NEXT id
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+
+FUNCTION WinXMRU_MakeKey$ (id)
+
+	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
+	RETURN "File " + id$
+
+END FUNCTION
+
+' Save the Most Recently Used project list
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$)
+	' Add file to MRU file list. If file already exists in list then it is
+	' simply moved up to the top of the list and not added again. If list is
+	' full then the least recently used item is removed to make room.
+
+	' if pathNew$ is found, it becomes first in list
+	pathNew$ = TRIM$ (pathNew$)
+	IFZ pathNew$ THEN
+		bErr = XstFileExists (pathNew$)
+		IF bErr THEN pathNew$ = ""
+	ENDIF
+
+	DIM arr$[$$UPP_MRU]
+
+	upp = -1
+	IF pathNew$ THEN
+		INC upp
+		arr$[upp] = pathNew$
+	ENDIF
+
+	FOR id = 1 TO ($$UPP_MRU + 1)
+		bOK = WinXMRU_Get (id, @item$)
+		'
+		IFF bOK THEN DO NEXT
+		IFZ item$ THEN DO NEXT ' just in case!
+		IF item$ = pathNew$ THEN DO NEXT
+		bErr = XstFileExists (item$)
+		IF bErr THEN DO NEXT		' file not found
+		'
+		IF upp >= $$UPP_MRU THEN EXIT FOR
+		'
+		INC upp
+		arr$[upp] = item$
+	NEXT id
+
+	' reset the Most Recently Used project lists
+	WinXMRU_Init ()
+
+	' save the Most Recently Used project list in the .INI file
+	FOR i = 0 TO upp
+		WinXMRU_New (arr$[i])
+		'
+		key$ = WinXMRU_MakeKey$ (i + 1)
+		WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, arr$[i])
+	NEXT i
+
+	' delete from .INI file extraneous MRU items
+	iInf = upp + 1
+	IF iInf <= $$UPP_MRU THEN
+		FOR i = iInf TO $$UPP_MRU
+			key$ = WinXMRU_MakeKey$ (i + 1)
+			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+			' delete an existing key
+			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
+		NEXT i
+	ENDIF
+
+	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' #######################
