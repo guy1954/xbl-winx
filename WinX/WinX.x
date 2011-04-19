@@ -342,6 +342,8 @@ $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
 $$MRU_SECTION$     = "Recent files"
 $$UPP_MRU          = 19
 
+$$WINX_CLASS$ = "WinXMainClass"
+
 DECLARE FUNCTION WinX ()
 END EXPORT
 
@@ -354,6 +356,7 @@ DECLARE FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 DECLARE FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, w, h, currPos)
 DECLARE FUNCTION XWSStoWS (xwss)
+
 ' callbacks for internal dialogs
 DECLARE FUNCTION cancelDlgOnClose (hWnd)
 DECLARE FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
@@ -638,6 +641,8 @@ DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
 DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
+DECLARE FUNCTION WinXListView_SetAllUnselected ()
+
 DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
 DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
 
@@ -688,8 +693,8 @@ DECLARE FUNCTION VOID drawImage (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
 DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
-DECLARE FUNCTION GuiTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
-DECLARE FUNCTION WinXListView_SetAllUnselected ()
+
+DECLARE FUNCTION FnTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
@@ -790,7 +795,7 @@ FUNCTION WinX ()
 	wc.hIcon = hWinXIcon
 	wc.hCursor = LoadCursorA (0, $$IDC_ARROW)
 	wc.hbrBackground = $$COLOR_BTNFACE + 1
-	wc.lpszClassName = &"WinXMainClass"
+	wc.lpszClassName = &$$WINX_CLASS$
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE		' fail
@@ -1708,7 +1713,7 @@ FUNCTION WinXCleanUp ()		' optional cleanup
 	UnregisterClassA (&className$, hInst)		' unregister the window class
 
 	' unregister WinX main window class
-	className$ = "WinXMainClass"
+	className$ = $$WINX_CLASS$
 	hInst = GetModuleHandleA (0)
 	UnregisterClassA (&className$, hInst)		' unregister the window class
 
@@ -2272,7 +2277,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	ret = GetOpenFileNameA (&ofn)		' fire off dialog
 	' ==================================================
 	IFZ ret THEN		' fail
-		GuiTellDialogError (parent, title$)
+		FnTellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -2418,7 +2423,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	' IFZ GetSaveFileNameA (&ofn) THEN RETURN ""
 	ret = GetSaveFileNameA (&ofn)
 	IFZ ret THEN
-		GuiTellDialogError (parent, title$)
+		FnTellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -2499,6 +2504,200 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 	SHELL (command$)		' launch command command$
 
 	RETURN $$TRUE		' success
+
+END FUNCTION
+
+' OUT			: dir$ - directory path
+
+' Usage:
+' dir$ = "  c:/my dir   "
+' WinXDir_AppendSlash (@dir$) ' end directory path with \
+' ' => dir$ == "c:\\my dir\\"
+FUNCTION WinXDir_AppendSlash (@dir$)		' end a directory path with \
+
+	upp = LEN (dir$) - 1
+	IF upp < 0 THEN RETURN		' empty
+
+	' search the last non-space character, its index is iLast
+	iLast = -1
+	FOR i = upp TO 0 STEP -1
+		IF dir${i} <> ' ' THEN
+			' non-space character
+			iLast = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+	IF iLast = -1 THEN		' only spaces => empty directory path
+		dir$ = ""		' return a null string
+		RETURN
+	ENDIF
+
+	' search the 1st non-space character, its index is iFirst
+	FOR i = 0 TO iLast
+		IF dir${i} <> ' ' THEN
+			' non-space character
+			iFirst = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	' make sure there are only Windows PathSlashes
+	pos = INSTR (dir$, "/")		' Unix PathSlash
+	IF pos THEN		' Unix PathSlash
+		FOR i = pos - 1 TO iLast
+			IF dir${i} = '/' THEN dir${i} = '\\'		' Windows PathSlash
+		NEXT i
+	ENDIF
+
+	' allocate a new string
+	newLen = iLast - iFirst + 1
+	IF dir${iLast} <> '\\' THEN INC newLen		' no trailing slash: add 1 slot for the added trailing slash
+	oDir$ = NULL$ (newLen)
+
+	' trim off leading and trailing spaces
+	ioDir = 0
+	FOR i = iFirst TO iLast
+		oDir${ioDir} = dir${i}
+		INC ioDir
+	NEXT i
+
+	IF dir${iLast} <> '\\' THEN		' no trailing slash
+		oDir${ioDir} = '\\'		' add the trailing slash
+	ENDIF
+
+	dir$ = oDir$		' replace the directory path
+
+END FUNCTION
+
+' OUT			: dir$ - directory path
+
+' returns $$TRUE on success or $$FALSE on fail
+
+' Usage:
+' bOK = WinXDir_Exists (dir$)
+' IFF bOK THEN		' directory not found
+'  bOK = WinXDir_Create (dir$)		' create the directory
+'  IFF bOK THEN		' fail
+'   msg$ = "WinXDir_Create: Can't create directory " + dir$
+'   XstAlert (msg$)
+'  ENDIF
+' ENDIF
+
+FUNCTION WinXDir_Create (dir$)		' Creates a directory making sure that the directory is created
+
+	dir$ = TRIM$ (dir$)
+	IFZ dir$ THEN RETURN $$TRUE		' dir$ is empty
+	XstPathToAbsolutePath (dir$, @dir$)		' Get the complete path
+	XstTranslateChars (@dir$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
+
+	WinXDir_AppendSlash (@dir$)		' end directory path with \
+	' create all the parent folders before creating the directory
+	dirLen = LEN (dir$)
+	posSlash = INSTR (dir$, $$PathSlash$)		' skip the drive
+	IF posSlash = dirLen THEN RETURN $$TRUE		' fail: Can't create a drive
+	DO
+		posFirst = posSlash + 1
+		IF posFirst > dirLen THEN EXIT DO
+
+		posSlash = INSTR (dir$, $$PathSlash$, posFirst)
+		IFZ posSlash THEN EXIT DO		' should never occur!
+
+		subDir$ = LEFT$ (dir$, posSlash)
+
+		' determine if subDir$ exists
+		bOK = WinXDir_Exists (subDir$)
+		IFF bOK THEN		' directory not found
+			XstMakeDirectory (subDir$)		' creating the directory subDir$
+		ENDIF
+	LOOP
+
+	' determine if dir$ was created
+	bOK = WinXDir_Exists (dir$)
+	RETURN bOK
+
+END FUNCTION
+'
+' ############################
+' #####  WinXDir_Exists  #####
+' ############################
+'
+' [WinXDir_Exists]
+' Description = determine if a directory exists
+' Function    = WinXDir_Exists (dir$)
+' ArgCount    = 1
+' Return      = $$TRUE = directory exists, $$FALSE = directory not found
+' Examples    = bFound = WinXDir_Exists (dir$)
+'
+FUNCTION WinXDir_Exists (dir$)
+
+	' trim the directory path
+	dirToFind$ = WinXPath_Trim$ (dir$)
+	IFZ dirToFind$ THEN RETURN		' fail, directory is empty
+
+	XstTranslateChars (@dirToFind$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
+	XstGetFileAttributes (@dirToFind$, @attrib)
+
+	' check if dirToFind$ is really directory
+	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE ' success directory exists
+
+END FUNCTION
+' returns "" on fail
+
+' Usage:
+' xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
+FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
+	STATIC s_xblDir$
+
+	IF s_xblDir$ THEN
+		' XstAlert ("Path of xblite's directory reset by WinXDir_GetXblDir$ " + s_xblDir$)
+		RETURN s_xblDir$
+	ENDIF
+	XstGetEnvironmentVariable ("XBLDIR", @dir$)
+	dir$ = TRIM$ (dir$)
+	IFZ dir$ THEN
+		envKey$ = "Environment"
+		IFZ RegOpenKeyExA ($$HKEY_CURRENT_USER, &envKey$, 0, $$KEY_READ, &hkey) THEN
+			index = 0
+			type = 0
+			DO
+				szName$ = NULL$ ($$MAX_PATH)
+				lenName = LEN (szName$)
+				szData$ = NULL$ ($$MAX_PATH)
+				lenData = LEN (szData$)
+				ret = RegEnumValueA (hkey, index, &szName$, &lenName, 0, &type, &szData$, &lenData)
+				IFZ ret THEN
+					subKey$ = CSTRING$ (&szName$)
+					IF UCASE$ (subKey$) = "XBLDIR" THEN
+						dir$ = CSTRING$ (&szData$)
+						dir$ = TRIM$ (dir$)
+						' XstAlert ("Path of xblite's directory read from the registry " + dir$)
+						EXIT DO
+					ENDIF
+					INC index
+				ENDIF
+			LOOP UNTIL ret
+			RegCloseKey (hkey)
+		ENDIF
+	ENDIF
+	IFZ dir$ THEN
+		dir$ = "C:" + $$PathSlash$ + "xblite" + $$PathSlash$
+		' XstAlert ("Path of xblite's directory set by WinXDir_GetXblDir$ " + dir$)
+	ENDIF
+	WinXDir_AppendSlash (@dir$)		' end directory path with \
+	s_xblDir$ = dir$
+
+	RETURN s_xblDir$
+
+END FUNCTION
+
+' returns "" on fail
+
+' Usage:
+' xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get xblite's program dir
+FUNCTION WinXDir_GetXblProgramDir$ ()		' Gets the complete path of xblite's programs' directory
+
+	pgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
+	RETURN pgmDir$
 
 END FUNCTION
 '
@@ -3163,7 +3362,7 @@ FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE data[])
 	FOR i = 0 TO maxPixel
 		pixel = ULONGAT (bmp.bits, i << 2)
 		data[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
-	NEXT
+	NEXT i
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -3318,7 +3517,7 @@ FUNCTION WinXDraw_PremultiplyImage (hImage)
 		rgba.green = UBYTE ((XLONG (rgba.green) * XLONG (rgba.alpha)) \ 255)
 		rgba.red = UBYTE ((XLONG (rgba.red) * XLONG (rgba.alpha)) \ 255)
 		ULONGAT (bmp.bits, i << 2) = ULONGAT (&rgba)
-	NEXT
+	NEXT i
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -3411,7 +3610,7 @@ FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 	maxPixel = bmp.width * bmp.height - 1
 	FOR i = 0 TO maxPixel
 		ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) AND 0x00FFFFFFFF) | intAlpha
-	NEXT
+	NEXT i
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -3642,6 +3841,137 @@ END FUNCTION
 FUNCTION WinXHide (hWnd)
 	ShowWindow (hWnd, $$SW_HIDE)
 	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ############################
+' #####  WinXIni_Delete  #####
+' ############################
+'
+' [WinXIni_Delete]
+' Description = delete an information from an .INI file
+' Function    = WinXIni_Delete (iniPath$, section$, key$)
+' ArgCount    = 3
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the key to delete
+' Return      = $$FALSE = failure, $$TRUE = success
+' Examples    = bDeleted = WinXIni_Delete (iniPath$, section$, key$)
+'
+FUNCTION WinXIni_Delete (iniPath$, section$, key$)
+
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN		' fail
+
+	section$ = WinXPath_Trim$ (section$)
+	IFZ section$ THEN RETURN		' fail
+
+	key$ = WinXPath_Trim$ (key$)
+	IFZ key$ THEN RETURN		' fail
+
+	' passing argument lpString set to zero causes the key deletion
+	SetLastError (0)
+	ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
+	IFZ ret THEN
+		' can't delete a key from INI file iniPath$
+		' [section$]
+		' key$=value$
+		msg$ = "WinXIni_Delete: Can't delete a key from INI file " + iniPath$
+		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
+		WinXTellApiError (msg$)
+		RETURN		' fail
+	ENDIF
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ###########################
+' #####  WinXIni_Read$  #####
+' ###########################
+'
+' [WinXIni_Read$]
+' Description = read an information from an .INI file
+' Function    = WinXIni_Read$ (iniPath$, section$, key$, defVal$)
+' ArgCount    = 4
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the key to read from
+' defVal$     = a default value
+' Return      = defVal$ = failure, read value = success
+' Examples    = value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+'
+FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
+
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN defVal$
+
+	bErr = XstFileExists (iniPath$)
+	IF bErr THEN RETURN defVal$ ' file NOT found
+
+	section$ = WinXPath_Trim$ (section$)
+	IFZ section$ THEN
+		' can't read an empty section
+		' default value defVal$ returned
+		msg$ = "WinXIni_Read$: Can't read an empty section."
+		msg$ = msg$ + "\nDefault value (" + defVal$ + ") returned"
+		XstAlert (msg$)
+		RETURN defVal$
+	ENDIF
+
+	' read from the INI file
+	'bufSize = $$MAX_PATH
+	bufSize = 4095
+	buf$ = NULL$ (bufSize)
+	SetLastError (0)
+	cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
+	IF cCh < 1 THEN RETURN defVal$		' default value returned
+
+	' value$ = CSTRING$ (&buf$)
+	value$ = LEFT$ (buf$, cCh)
+	RETURN value$
+
+END FUNCTION
+'
+' ###########################
+' #####  WinXIni_Write  #####
+' ###########################
+'
+' [WinXIni_Write]
+' Description = write an information into an .INI file
+' Function    = WinXIni_Write (iniPath$, section$, key$, value$)
+' ArgCount    = 4
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the information's key
+' value$      = the information
+' Return      = $$FALSE = failure, $$TRUE = success
+' Examples    = WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, fPath$)
+'
+FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
+
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN		' fail
+
+	section$ = WinXPath_Trim$ (section$)
+	IFZ section$ THEN RETURN		' fail
+
+	key$ = WinXPath_Trim$ (key$)
+	IFZ key$ THEN RETURN		' fail
+
+	SetLastError (0)
+	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
+	IFZ ret THEN
+		' can't write into INI file iniPath$
+		' [section$]
+		' key$=value$
+		msg$ = "WinXIni_Write: Can't write into INI file " + iniPath$
+		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
+		WinXTellApiError (msg$)
+		RETURN		' fail
+	ENDIF
+
+	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ###########################
@@ -4084,7 +4414,7 @@ FUNCTION WinXListView_GetSelection (hLV, iItems[])
 			iItems[slot] = i
 			INC slot
 		ENDIF
-	NEXT
+	NEXT i
 
 	RETURN cSelItems
 END FUNCTION
@@ -4335,6 +4665,245 @@ FUNCTION WinXListView_Sort (hLV, iCol, desc)
 	IFZ ret THEN RETURN		' fail
 	RETURN $$TRUE		' success
 END FUNCTION
+
+FUNCTION WinXMRU_Delete (id)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > MRU_idMax) THEN RETURN
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF MRU_arrayUM[slot] THEN RETURN
+
+	MRU_arrayUM[slot] = $$FALSE
+	RETURN $$TRUE
+END FUNCTION
+
+' Usage: idFound = WinXMRU_Find (find$)
+FUNCTION WinXMRU_Find (find$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	find_lc$ = TRIM$ (find$)
+	IFZ find_lc$ THEN RETURN
+
+	IFZ MRU_arrayUM[] THEN RETURN ' not found
+
+	find_lc$ = LCASE$ (find_lc$)
+	findLen = LEN (find_lc$)
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IFF MRU_arrayUM[slot] THEN DO NEXT
+		IF LEN (MRU_array$[slot]) <> findLen THEN DO NEXT
+		IF LCASE$ (MRU_array$[slot]) = find_lc$ THEN RETURN (slot + 1)
+	NEXT slot
+END FUNCTION
+
+' returns $$TRUE if found, $$FALSE otherwise
+FUNCTION WinXMRU_Get (id, @item$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	item$ = ""
+	IFZ MRU_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > MRU_idMax) THEN RETURN
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF MRU_arrayUM[slot] THEN RETURN
+
+	item$ = MRU_array$[slot]
+	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION WinXMRU_Init ()
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN
+		DIM MRU_array$[$$UPP_MRU]
+		DIM MRU_arrayUM[$$UPP_MRU]
+	ELSE
+		upper_slot = UBOUND (MRU_arrayUM[])
+		FOR i = 0 TO upper_slot
+			MRU_array$[i] = ""
+			MRU_arrayUM[i] = 0
+		NEXT i
+	ENDIF
+	MRU_idMax = 0
+END FUNCTION
+
+' load the Most Recently Used project list from the .INI file
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$)
+
+	' reset the Most Recently Used project lists
+	WinXMRU_Init ()
+	IFZ iniPath$ THEN RETURN		' fail
+
+	' load the MRU projects list into MRU_array$[]
+	IF pathNew$ THEN
+		pathNew$ = WinXPath_Trim$ (pathNew$)
+		IF pathNew$ THEN WinXMRU_New (pathNew$)
+	ENDIF
+
+	' create ini file if it does not exist
+	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, "File 0", "")
+	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, "File 0", "-")
+
+	' load the MRU projects list
+	FOR id = 1 TO ($$UPP_MRU + 1)
+		key$ = WinXMRU_MakeKey$ (id)
+		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+		IFZ fpath$ THEN DO NEXT ' empty => skip it!
+		'
+		fpath$ = WinXPath_Trim$ (fpath$)
+		IFZ fpath$ THEN DO NEXT ' empty => skip it!
+		'
+		bErr = XstFileExists (fpath$)
+		IF bErr THEN DO NEXT		' file not found => skip it!
+		'
+		idFound = WinXMRU_Find (fpath$)
+		IF idFound THEN DO NEXT
+		'
+		WinXMRU_New (fpath$)
+		'
+	NEXT id
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+
+FUNCTION WinXMRU_MakeKey$ (id)
+
+	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
+	RETURN "File " + id$
+
+END FUNCTION
+
+FUNCTION WinXMRU_New (item$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN WinXMRU_Init ()
+	upper_slot = UBOUND (MRU_arrayUM[])
+
+	slot = -1
+	IF MRU_idMax <= upper_slot THEN
+		FOR i = MRU_idMax TO upper_slot
+			IFF MRU_arrayUM[i] THEN
+				slot = i
+				EXIT FOR
+			ENDIF
+		NEXT i
+	ENDIF
+
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM MRU_arrayUM[upper_slot]
+		REDIM MRU_array$[upper_slot]
+		slot = MRU_idMax
+		INC MRU_idMax
+	ELSE
+		MRU_idMax = slot + 1
+	ENDIF
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	MRU_array$[slot] = item$
+	MRU_arrayUM[slot] = $$TRUE
+	RETURN (slot + 1)
+END FUNCTION
+
+' Save the Most Recently Used project list
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$)
+	' Add file to MRU file list. If file already exists in list then it is
+	' simply moved up to the top of the list and not added again. If list is
+	' full then the least recently used item is removed to make room.
+
+	' if pathNew$ is found, it becomes first in list
+	pathNew$ = TRIM$ (pathNew$)
+	IFZ pathNew$ THEN
+		bErr = XstFileExists (pathNew$)
+		IF bErr THEN pathNew$ = ""
+	ENDIF
+
+	DIM arr$[$$UPP_MRU]
+
+	upp = -1
+	IF pathNew$ THEN
+		INC upp
+		arr$[upp] = pathNew$
+	ENDIF
+
+	FOR id = 1 TO ($$UPP_MRU + 1)
+		bOK = WinXMRU_Get (id, @item$)
+		'
+		IFF bOK THEN DO NEXT
+		IFZ item$ THEN DO NEXT ' just in case!
+		IF item$ = pathNew$ THEN DO NEXT
+		bErr = XstFileExists (item$)
+		IF bErr THEN DO NEXT		' file not found
+		'
+		IF upp >= $$UPP_MRU THEN EXIT FOR
+		'
+		INC upp
+		arr$[upp] = item$
+	NEXT id
+
+	' reset the Most Recently Used project lists
+	WinXMRU_Init ()
+
+	' save the Most Recently Used project list in the .INI file
+	FOR i = 0 TO upp
+		WinXMRU_New (arr$[i])
+		'
+		key$ = WinXMRU_MakeKey$ (i + 1)
+		WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, arr$[i])
+	NEXT i
+
+	' delete from .INI file extraneous MRU items
+	iInf = upp + 1
+	IF iInf <= $$UPP_MRU THEN
+		FOR i = iInf TO $$UPP_MRU
+			key$ = WinXMRU_MakeKey$ (i + 1)
+			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+			' delete an existing key
+			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
+		NEXT i
+	ENDIF
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+
+FUNCTION WinXMRU_Update (id, item$)
+	SHARED MRU_array$[]
+	SHARED MRU_arrayUM[]
+	SHARED MRU_idMax
+
+	IFZ MRU_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > MRU_idMax) THEN RETURN
+
+	upper_slot = UBOUND (MRU_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF MRU_arrayUM[slot] THEN RETURN
+
+	MRU_array$[slot] = item$
+	RETURN $$TRUE
+END FUNCTION
 '
 ' ###############################
 ' #####  WinXMenu_Attach  #####
@@ -4406,7 +4975,7 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
 	hInst = GetModuleHandleA (0)
-	hWnd = CreateWindowExA (exStyle, &"WinXMainClass", &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
+	hWnd = CreateWindowExA (exStyle, &$$WINX_CLASS$, &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
 
 	' make a binding
 	binding.hwnd = hWnd
@@ -4520,8 +5089,8 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 			FOR x = 0 TO (bmpWidth - 1)
 				col = GetPixel (hSource, x, y)
 				IF col = 0x00000000 THEN SetPixel (hMem, x, y, 0x00808080)
-			NEXT
-		NEXT
+			NEXT x
+		NEXT y
 	ENDIF
 
 	SelectObject (hSource, hblankS)
@@ -4557,8 +5126,8 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 					CASE c3 > 255 : c3 = 255
 				END SELECT
 				SetPixel (hMem, x, y, c1 | (c2 << 8) | (c3 << 16))
-			NEXT
-		NEXT
+			NEXT x
+		NEXT y
 	ENDIF
 
 	SelectObject (hSource, hblankS)
@@ -4685,21 +5254,32 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	rect.bottom = h
 
 	style = XWSStoWS (simpleStyle)
-	AdjustWindowRectEx (&rect, style, menu, exStyle)
+	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
+	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
 
-	IF x = -1 THEN
-		screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
-		x = (screenWidth - (rect.right - rect.left)) / 2
+	IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
+		rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
+	ENDIF
+	IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
+		rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
 	ENDIF
 
+	width = rect.right - rect.left
+	IF width < 0 THEN width = 0
+	IF x = -1 THEN
+		screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
+		x = (screenWidth - width) >> 1
+	ENDIF
+
+	height = rect.bottom - rect.top
+	IF height < 0 THEN height = 0
 	IF y = -1 THEN
 		screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
-		y = (screenHeight - (rect.bottom - rect.top)) / 2
+		y = (screenHeight - height) >> 1
 	ENDIF
 
 	hInst = GetModuleHandleA (0)
-	hWnd = CreateWindowExA (exStyle, &"WinXMainClass", &title, style, x, y, _
-	rect.right - rect.left, rect.bottom - rect.top, hOwner, menu, hInst, 0)
+	hWnd = CreateWindowExA (exStyle, &$$WINX_CLASS$, &title, style, x, y, width, height, hOwner, menu, hInst, 0)
 
 	' now add the icon
 	IF icon THEN
@@ -4722,6 +5302,70 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 
 	' and we're done
 	RETURN hWnd
+END FUNCTION
+'
+' ############################
+' #####  WinXPath_Trim$  #####
+' ############################
+'
+' [WinXPath_Trim$]
+' Description = trim a path, directory or file
+' Function    = WinXPath_Trim$ (path$)
+' ArgCount    = 1
+' Return      = the trimmed path
+' Examples    = pathNew$ = WinXPath_Trim$ (path$)
+'
+FUNCTION WinXPath_Trim$ (path$)
+
+' the direct way----------------------------------------------------
+' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
+'	pathNew$ = TRIM$ (path$)
+'	IF pathNew$ THEN
+'		XstReplace (@pathNew$, "/", $$PathSlash$, 0) ' make sure there are only Windows PathSlashes
+'	ENDIF
+'	RETURN pathNew$
+' ------------------------------------------------------------------
+
+	IFZ path$ THEN RETURN "" ' empty
+	upp = LEN (path$) - 1
+
+	' search the last non-space character, its index is iLast
+	iLast = -1
+	FOR i = upp TO 0 STEP -1
+		IF path${i} <> ' ' THEN ' non-space character
+			iLast = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+	IF iLast = -1 THEN RETURN "" ' empty directory path => return a null string
+
+	' search the 1st non-space character, its index is iFirst
+	FOR i = 0 TO iLast
+		IF path${i} <> ' ' THEN ' non-space character
+			iFirst = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	newLen = iLast - iFirst + 1
+	IF newLen < 1 THEN RETURN "" ' empty
+
+	' allocate a new string
+	pathNew$ = NULL$ (newLen)
+
+	' trim off leading and trailing spaces
+	inew = 0
+	FOR i = iFirst TO iLast
+		IF path${i} = '/' THEN
+			' make sure there are only Windows PathSlashes
+			pathNew${inew} = '\\'
+		ELSE
+			pathNew${inew} = path${i}
+		ENDIF
+		INC inew
+	NEXT i
+	RETURN pathNew$
+
 END FUNCTION
 '
 ' #######################################
@@ -4938,7 +5582,7 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			devName$ = NULL$ (32)
 			FOR i = 0 TO 28 STEP 4
 				ULONGAT (&devName$, i) = ULONGAT (pDevMode, i)
-			NEXT
+			NEXT i
 			hDC = CreateDCA (0, &devName$, 0, pDevMode)
 		ENDIF
 		GlobalUnlock (printInfo.hDevMode)
@@ -5816,11 +6460,11 @@ FUNCTION WinXScroll_Scroll (hWnd, direction, unitType, scrollingDirection)
 			CASE $$DIR_HORIZ
 				FOR i = 1 TO i
 					SendMessageA (hWnd, $$WM_HSCROLL, wParam, 0)
-				NEXT
+				NEXT i
 			CASE $$DIR_VERT
 				FOR i = 1 TO i
 					SendMessageA (hWnd, $$WM_VSCROLL, wParam, 0)
-				NEXT
+				NEXT i
 			CASE ELSE
 				RETURN		' fail
 		END SELECT
@@ -6034,9 +6678,17 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
+	rect.left = 0
+	rect.top = 0
 	rect.right = w
 	rect.bottom = h
-	AdjustWindowRectEx (&rect, GetWindowLongA (hWnd, $$GWL_STYLE), GetMenu (hWnd), GetWindowLongA (hWnd, $$GWL_EXSTYLE))
+
+	' Guy-19apr11-AdjustWindowRectEx (&rect, GetWindowLongA (hWnd, $$GWL_STYLE), GetMenu (hWnd), GetWindowLongA (hWnd, $$GWL_EXSTYLE))
+	style = GetWindowLongA (hWnd, $$GWL_STYLE)
+	menu = GetMenu (hWnd)
+	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
+	exStyle = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
 
 	binding.minW = rect.right - rect.left
 	binding.minH = rect.bottom - rect.top
@@ -6502,9 +7154,9 @@ END FUNCTION
 ' returns the index of the currently selected tab, -1 fail
 FUNCTION WinXTabs_GetCurrentTab (hTabs)
 	IFZ hTabs THEN RETURN -1		' fail
-	index = SendMessageA (hTabs, $$TCM_GETCURSEL, 0, 0)
-	IF index < 0 THEN RETURN -1		' fail
-	RETURN index
+	currTab = SendMessageA (hTabs, $$TCM_GETCURSEL, 0, 0)
+	IF currTab < 0 THEN RETURN -1		' fail
+	RETURN currTab
 END FUNCTION
 '
 ' ####################################
@@ -6519,6 +7171,96 @@ FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
 	ret = SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
 	IFZ ret THEN RETURN		' fail
 	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ##############################
+' #####  WinXTellApiError  #####
+' ##############################
+'
+' [WinXTellApiError]
+' Description = display an API failure message
+' Function    = WinXTellApiError (msg$)
+' ArgCount    = 1
+' Return      = $$TRUE = real failure, $$FALSE = false failure
+'
+' Usage:
+'	SetLastError (0)
+'	hImage = LoadBitmapA (hInst, &image$)
+'	IFZ hImage THEN		' fail
+'		msg$ = "CreateWindows: Can't load image " + image$
+'		WinXTellApiError (msg$)
+'	ENDIF
+'
+FUNCTION WinXTellApiError (msg$)		' display an API fail message
+
+	' get the last fail code, then clear it
+	errNum = GetLastError ()
+	SetLastError (0)
+	IFZ errNum THEN RETURN		' was success
+
+	fmtMsg$ = "Last fail code " + STRING$ (errNum) + ": "
+	bufLen = 1020
+	buf$ = NULL$ (bufLen)		' fill buf$ with (bufLen + 1) null chars
+
+	' set up FormatMessageA arguments
+	dwFlags = $$FORMAT_MESSAGE_FROM_SYSTEM | $$FORMAT_MESSAGE_IGNORE_INSERTS
+	lpBuffer = &buf$
+
+	' format a message string
+	ret = FormatMessageA (dwFlags, 0, errNum, $$LANG_NEUTRAL, lpBuffer, bufLen, 0)
+	IFZ ret THEN
+		fmtMsg$ = fmtMsg$ + "(unknown)"
+	ELSE
+		fmtMsg$ = fmtMsg$ + CSTRING$ (&buf$)
+	ENDIF
+	fmtMsg$ = fmtMsg$ + $$CRLF$ + msg$
+
+	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "Win32 API fail"
+	XstGetOSName (@os$)
+	XstGetOSVersion (@major, @minor, @platformId, @version$, @platform$)
+	text$ = $$CRLF$ + "OS: " + os$ + STR$ (major) + "." + STRING$ (minor) + " " + platform$
+
+	' set up MessageBoxA arguments
+	fmtMsg$ = fmtMsg$ + text$
+	title$ = "WinX-API Error"
+	hWnd = GetActiveWindow ()
+	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
+
+	RETURN $$TRUE		' an fail really occurred!
+
+END FUNCTION
+'
+' ##############################
+' #####  WinXTellRunError  #####
+' ##############################
+'
+' [WinXTellRunError]
+' Description = display a run-time failure message
+' Function    = WinXTellRunError (msg$)
+' ArgCount    = 1
+' Return      = $$TRUE = real failure, $$FALSE = false failure
+'
+' Usage:
+' errNum = ERROR (0) ' clear the last-fail code
+' inFile = OPEN (inFile$, $$RD)
+' IF inFile < 3 THEN
+'  msg$ = "Can't open input file " + inFile$
+'  WinXTellRunError (msg$)
+' ENDIF
+FUNCTION WinXTellRunError (msg$)		' display the run-time fail message
+
+	' get current fail, then clear it
+	errNum = ERROR (0)
+	fmtMsg$ = "Error code " + STRING$ (errNum) + ": " + ERROR$ (errNum) + $$CRLF$ + msg$
+	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "XBLite library failure"
+
+	' set up MessageBoxA arguments
+	title$ = "WinX-Execution Error"
+	hWnd = GetActiveWindow ()
+	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
+
+	RETURN $$TRUE		' an fail really occurred!
+
 END FUNCTION
 '
 ' #####################################
@@ -7334,6 +8076,124 @@ FUNCTION WinXVersion$ ()		' get WinX's current version
 	version$ = VERSION$ (0)
 	RETURN (version$)
 END FUNCTION
+'
+' ##################################
+' #####  AUTOSIZERINFO_Delete  #####
+' ##################################
+' Deletes a group of auto sizer info blocks
+' group = the group to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION AUTOSIZERINFO_Delete (group)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED AUTOSIZERINFO_idMax
+
+	AUTOSIZERINFO autoSizerInfoLocal[]
+
+	upper_slot = UBOUND (AUTOSIZERINFO_head[])
+
+	slot = group
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF AUTOSIZERINFO_head[slot].inUse THEN RETURN
+
+	AUTOSIZERINFO_head[group].inUse = $$FALSE
+	SWAP AUTOSIZERINFO_array[group,], autoSizerInfoLocal[]
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ###############################
+' #####  AUTOSIZERINFO_Get  #####
+' ###############################
+' Get an autosizer info block
+' idCtr = the idCtr of the block to get
+' item = the variable to store the block
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION AUTOSIZERINFO_Get (id, idCtr, AUTOSIZERINFO item)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+
+	IF id < 0 || id > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[id].inUse THEN RETURN		' fail
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
+	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
+
+	item = AUTOSIZERINFO_array[id, idCtr]
+	RETURN $$TRUE		' success
+END FUNCTION
+
+FUNCTION AUTOSIZERINFO_Init ()
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED autoSizerInfo_idMax
+
+	DIM AUTOSIZERINFO_array[0, 0]
+	DIM AUTOSIZERINFO_head[0]
+	autoSizerInfo_idMax = 0
+END FUNCTION
+'
+' ###############################
+' #####  AUTOSIZERINFO_New  #####
+' ###############################
+' Adds a new group of auto sizer info blocks
+' returns the if of the new group or -1 on fail
+FUNCTION AUTOSIZERINFO_New (direction)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+	SHARED AUTOSIZERINFO_idMax
+
+	AUTOSIZERINFO autoSizerInfoLocal[]
+
+	slot = -1
+	upper_slot = UBOUND (AUTOSIZERINFO_head[])
+	FOR i = AUTOSIZERINFO_idMax TO upper_slot
+		IFF AUTOSIZERINFO_head[i].inUse THEN
+			slot = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM AUTOSIZERINFO_head[upper_slot]
+		REDIM AUTOSIZERINFO_array[upper_slot,]
+		slot = AUTOSIZERINFO_idMax
+		INC AUTOSIZERINFO_idMax
+	ELSE
+		AUTOSIZERINFO_idMax = slot + 1
+	ENDIF
+
+	AUTOSIZERINFO_head[slot].inUse = $$TRUE
+	AUTOSIZERINFO_head[slot].direction = direction
+	AUTOSIZERINFO_head[slot].firstItem = -1
+	AUTOSIZERINFO_head[slot].lastItem = -1
+
+	DIM autoSizerInfoLocal[0]
+	SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[slot,]
+
+	RETURN slot
+END FUNCTION
+'
+' ##################################
+' #####  AUTOSIZERINFO_Update  #####
+' ##################################
+' Update an autosizer info block
+' idCtr = the block to update
+' item = the new version of the info block
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION AUTOSIZERINFO_Update (group, idCtr, AUTOSIZERINFO item)
+	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
+
+	IF group < 0 || group > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
+	IFF AUTOSIZERINFO_head[group].inUse THEN RETURN		' fail
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[group,]) THEN RETURN		' fail
+	IFZ AUTOSIZERINFO_array[group, idCtr].hwnd THEN RETURN		' fail
+
+	AUTOSIZERINFO_array[group, idCtr] = item
+	RETURN $$TRUE		' success
+END FUNCTION
 
 ' A wrapper for the misdefined AlphaBlend function
 FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDest, hdcSrc, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc, BLENDFUNCTION blendFunction)
@@ -7365,6 +8225,146 @@ FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
 	item = XstCall ("LBItemFromPt", "comctl32.dll", @args[])
 
 	RETURN item
+END FUNCTION
+'
+' ############################
+' #####  BINDING_Delete  #####
+' ############################
+' Deletes a binding from the binding table
+' id = the id of the binding to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION BINDING_Delete (id)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+	SHARED BINDING_idMax
+
+	LINKEDLIST list
+
+	IFZ BINDING_arrayUM[] THEN RETURN
+	upper_slot = UBOUND (BINDING_arrayUM[])
+
+	slot = id - 1
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF BINDING_arrayUM[slot] THEN RETURN
+
+	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
+
+	' delete the auto draw info
+	autoDraw_clear (BINDING_array[slot].autoDrawInfo)
+	LINKEDLIST_Get (BINDING_array[slot].autoDrawInfo, @list)
+	LinkedList_Uninit (@list)
+	LINKEDLIST_Delete (BINDING_array[slot].autoDrawInfo)
+	' delete the message handlers
+	handler_deleteGroup (BINDING_array[slot].msgHandlers)
+	' delete the auto sizer info
+	AUTOSIZERINFO_Delete (BINDING_array[slot].autoSizerInfo)
+
+	BINDING_array[slot].hwnd = 0
+
+	IF id >= BINDING_idMax THEN BINDING_idMax = id - 1
+	BINDING_arrayUM[slot] = $$FALSE
+	RETURN $$TRUE
+END FUNCTION
+'
+' #########################
+' #####  BINDING_Get  #####
+' #########################
+' Retrieves a binding
+' id = the id of the binding to get
+' item = the variable to store the binding
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION BINDING_Get (id, BINDING item)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+
+	IFZ BINDING_arrayUM[] THEN RETURN
+	upper_slot = UBOUND (BINDING_arrayUM[])
+
+	slot = id - 1
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF BINDING_arrayUM[slot] THEN RETURN
+
+	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
+
+	item = BINDING_array[slot]
+	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION BINDING_Init ()
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+	SHARED BINDING_idMax
+
+	DIM BINDING_array[7]
+	DIM BINDING_arrayUM[7]
+	BINDING_idMax = 0
+END FUNCTION
+'
+' #########################
+' #####  BINDING_New  #####
+' #########################
+' Add a binding to the binding table
+' binding = the binding to add
+' returns the id of the binding
+FUNCTION BINDING_New (BINDING item)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+	SHARED BINDING_idMax
+
+	IFZ BINDING_arrayUM[] THEN BINDING_Init ()
+	upper_slot = UBOUND (BINDING_arrayUM[])
+
+	' look for a blank slot
+	slot = -1
+	FOR i = BINDING_idMax TO upper_slot
+		IFF BINDING_arrayUM[i] THEN
+			slot = i
+			EXIT FOR
+		ENDIF
+	NEXT i
+
+	' allocate more memory if needed
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM BINDING_arrayUM[upper_slot]
+		REDIM BINDING_array[upper_slot]
+		slot = BINDING_idMax
+		INC BINDING_idMax
+	ELSE
+		BINDING_idMax = slot + 1
+	ENDIF
+
+	BINDING_idMax = slot + 1
+	BINDING_array[slot] = item
+	BINDING_arrayUM[slot] = $$TRUE
+	RETURN (slot + 1)
+END FUNCTION
+'
+' ############################
+' #####  BINDING_Update  #####
+' ############################
+' Updates a binding
+' id = the id of the binding to update
+' item = the new version of the binding
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION BINDING_Update (id, BINDING item)
+	SHARED BINDING BINDING_array[]
+	SHARED BINDING_arrayUM[]
+
+	IFZ BINDING_arrayUM[] THEN RETURN
+	upper_slot = UBOUND (BINDING_arrayUM[])
+
+	slot = id - 1
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF BINDING_arrayUM[slot] THEN RETURN
+
+	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
+
+	BINDING_array[slot] = item
+	RETURN $$TRUE
 END FUNCTION
 '
 ' ############################
@@ -7402,7 +8402,7 @@ FUNCTION CompareLVItems (item1, item2, hLV)
 			ret = 1
 			EXIT FOR
 		ENDIF
-	NEXT
+	NEXT i
 
 	IF ret = 0 THEN
 		IF UBOUND (a$) < UBOUND (b$) THEN ret = -1
@@ -7516,17 +8516,37 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 		CASE $$TCN_SELCHANGE
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			currTab = WinXTabs_GetCurrentTab (nmhdr.hwndFrom)
-			maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0) - 1
+			' get the tabstrip's handle
+			hTabs = nmhdr.hwndFrom
+			IFZ hTabs THEN EXIT SELECT
+			'
+			maxTab = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0) - 1
+			IF maxTab < 0 THEN EXIT SELECT
+			'
+			' get current tab
+			currTab = SendMessageA (hTabs, $$TCM_GETCURSEL, 0, 0)
+			IF currTab < 0 THEN currTab = 0
+			'
+			' hide all tabs
 			FOR i = 0 TO maxTab
-				IF i <> currTab THEN
-					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$FALSE)
-				ELSE
-					autoSizerInfo_showGroup (WinXTabs_GetAutosizerSeries (nmhdr.hwndFrom, i), $$TRUE)
-					GetClientRect (GetParent (nmhdr.hwndFrom), &rect)
-					sizeWindow (GetParent (nmhdr.hwndFrom), rect.right - rect.left, rect.bottom - rect.top)
-				ENDIF
-			NEXT
+				series = WinXTabs_GetAutosizerSeries (hTabs, i)
+				IF series >= 0 THEN autoSizerInfo_showGroup (series, $$FALSE)
+			NEXT i
+			'
+			' show only current tab
+			series = WinXTabs_GetAutosizerSeries (hTabs, currTab)
+			IF series >= 0 THEN autoSizerInfo_showGroup (series, $$TRUE)
+			'
+			' resize parent
+			hParent = GetParent (hTabs)
+			IF hParent THEN
+				GetClientRect (hParent, &rect)
+				sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
+			ENDIF
+			'
+			' Guy-19apr11-relay to window.OnItem (idCtr, notifyCode, currTab) to process $$WM_NOTIFY msg
+			IF binding.onItem THEN ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, currTab)
+			'
 		CASE $$LVN_COLUMNCLICK
 			IFZ binding.onColumnClick THEN EXIT SELECT
 			' Guy-02mar11-handled
@@ -7568,7 +8588,7 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 	RETURN ret
 END FUNCTION
 
-FUNCTION GuiTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
+FUNCTION FnTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 
 	' call CommDlgExtendedError to get error code
 	extErr = CommDlgExtendedError ()
@@ -7847,25 +8867,14 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 		RETURN currPos + autoSizerBlock.space + autoSizerBlock.size
 	ENDIF
 END FUNCTION
-
-FUNCTION AUTOSIZERINFO_Init ()
-	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]
-	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
-	SHARED autoSizerInfo_idMax
-
-	DIM AUTOSIZERINFO_array[0, 0]
-	DIM AUTOSIZERINFO_head[0]
-	autoSizerInfo_idMax = 0
-END FUNCTION
 '
-' ###############################
-' #####  AUTOSIZERINFO_Get  #####
-' ###############################
-' Get an autosizer info block
-' idCtr = the idCtr of the block to get
-' item = the variable to store the block
+' ###################################
+' #####  autoSizerBlock_Delete  #####
+' ###################################
+' Deletes an autosizer info block
+' idCtr = the id of the auto sizer to delete
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AUTOSIZERINFO_Get (id, idCtr, AUTOSIZERINFO item)
+FUNCTION autoSizerBlock_Delete (id, idCtr)
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 
@@ -7874,74 +8883,22 @@ FUNCTION AUTOSIZERINFO_Get (id, idCtr, AUTOSIZERINFO item)
 	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
 	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
 
-	item = AUTOSIZERINFO_array[id, idCtr]
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ###############################
-' #####  AUTOSIZERINFO_New  #####
-' ###############################
-' Adds a new group of auto sizer info blocks
-' returns the if of the new group or -1 on fail
-FUNCTION AUTOSIZERINFO_New (direction)
-	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
-	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
-	SHARED AUTOSIZERINFO_idMax
+	AUTOSIZERINFO_array[id, idCtr].hwnd = 0
 
-	AUTOSIZERINFO autoSizerInfoLocal[]
-
-	slot = -1
-	upper_slot = UBOUND (AUTOSIZERINFO_head[])
-	FOR i = AUTOSIZERINFO_idMax TO upper_slot
-		IFF AUTOSIZERINFO_head[i].inUse THEN
-			slot = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	IF slot = -1 THEN
-		upper_slot = ((upper_slot + 1) << 1) - 1
-		REDIM AUTOSIZERINFO_head[upper_slot]
-		REDIM AUTOSIZERINFO_array[upper_slot,]
-		slot = AUTOSIZERINFO_idMax
-		INC AUTOSIZERINFO_idMax
+	IF idCtr = AUTOSIZERINFO_head[id].firstItem THEN
+		AUTOSIZERINFO_head[id].firstItem = AUTOSIZERINFO_array[id, idCtr].nextItem
+		AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].nextItem].prevItem = -1
+		IF AUTOSIZERINFO_head[id].firstItem = -1 THEN AUTOSIZERINFO_head[id].lastItem = -1
 	ELSE
-		AUTOSIZERINFO_idMax = slot + 1
+		IF idCtr = AUTOSIZERINFO_head[id].lastItem THEN
+			AUTOSIZERINFO_array[id, AUTOSIZERINFO_head[id].lastItem].nextItem = -1
+			AUTOSIZERINFO_head[id].lastItem = AUTOSIZERINFO_array[id, idCtr].prevItem
+			IF AUTOSIZERINFO_head[id].lastItem = -1 THEN AUTOSIZERINFO_head[id].firstItem = -1
+		ELSE
+			AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].nextItem].prevItem = AUTOSIZERINFO_array[id, idCtr].prevItem
+			AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].prevItem].nextItem = AUTOSIZERINFO_array[id, idCtr].nextItem
+		ENDIF
 	ENDIF
-
-	AUTOSIZERINFO_head[slot].inUse = $$TRUE
-	AUTOSIZERINFO_head[slot].direction = direction
-	AUTOSIZERINFO_head[slot].firstItem = -1
-	AUTOSIZERINFO_head[slot].lastItem = -1
-
-	DIM autoSizerInfoLocal[0]
-	SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[slot,]
-
-	RETURN slot
-END FUNCTION
-'
-' ##################################
-' #####  AUTOSIZERINFO_Delete  #####
-' ##################################
-' Deletes a group of auto sizer info blocks
-' group = the group to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AUTOSIZERINFO_Delete (group)
-	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
-	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
-	SHARED AUTOSIZERINFO_idMax
-
-	AUTOSIZERINFO autoSizerInfoLocal[]
-
-	upper_slot = UBOUND (AUTOSIZERINFO_head[])
-
-	slot = group
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF AUTOSIZERINFO_head[slot].inUse THEN RETURN
-
-	AUTOSIZERINFO_head[group].inUse = $$FALSE
-	SWAP AUTOSIZERINFO_array[group,], autoSizerInfoLocal[]
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -7995,41 +8952,6 @@ FUNCTION autoSizerInfo_AddGroup (id, AUTOSIZERINFO item)
 	ENDIF
 
 	RETURN slot
-END FUNCTION
-'
-' ###################################
-' #####  autoSizerBlock_Delete  #####
-' ###################################
-' Deletes an autosizer info block
-' idCtr = the id of the auto sizer to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION autoSizerBlock_Delete (id, idCtr)
-	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
-	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
-
-	IF id < 0 || id > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
-	IFF AUTOSIZERINFO_head[id].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
-	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
-
-	AUTOSIZERINFO_array[id, idCtr].hwnd = 0
-
-	IF idCtr = AUTOSIZERINFO_head[id].firstItem THEN
-		AUTOSIZERINFO_head[id].firstItem = AUTOSIZERINFO_array[id, idCtr].nextItem
-		AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].nextItem].prevItem = -1
-		IF AUTOSIZERINFO_head[id].firstItem = -1 THEN AUTOSIZERINFO_head[id].lastItem = -1
-	ELSE
-		IF idCtr = AUTOSIZERINFO_head[id].lastItem THEN
-			AUTOSIZERINFO_array[id, AUTOSIZERINFO_head[id].lastItem].nextItem = -1
-			AUTOSIZERINFO_head[id].lastItem = AUTOSIZERINFO_array[id, idCtr].prevItem
-			IF AUTOSIZERINFO_head[id].lastItem = -1 THEN AUTOSIZERINFO_head[id].firstItem = -1
-		ELSE
-			AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].nextItem].prevItem = AUTOSIZERINFO_array[id, idCtr].prevItem
-			AUTOSIZERINFO_array[id, AUTOSIZERINFO_array[id, idCtr].prevItem].nextItem = AUTOSIZERINFO_array[id, idCtr].nextItem
-		ENDIF
-	ENDIF
-
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' #####################################
@@ -8109,166 +9031,6 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 	EndDeferWindowPos (#hWinPosInfo)
 
 	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ##################################
-' #####  AUTOSIZERINFO_Update  #####
-' ##################################
-' Update an autosizer info block
-' idCtr = the block to update
-' item = the new version of the info block
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AUTOSIZERINFO_Update (group, idCtr, AUTOSIZERINFO item)
-	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
-	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
-
-	IF group < 0 || group > UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
-	IFF AUTOSIZERINFO_head[group].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[group,]) THEN RETURN		' fail
-	IFZ AUTOSIZERINFO_array[group, idCtr].hwnd THEN RETURN		' fail
-
-	AUTOSIZERINFO_array[group, idCtr] = item
-	RETURN $$TRUE		' success
-END FUNCTION
-
-FUNCTION BINDING_Init ()
-	SHARED BINDING BINDING_array[]
-	SHARED BINDING_arrayUM[]
-	SHARED BINDING_idMax
-
-	DIM BINDING_array[7]
-	DIM BINDING_arrayUM[7]
-	BINDING_idMax = 0
-END FUNCTION
-'
-' #########################
-' #####  BINDING_New  #####
-' #########################
-' Add a binding to the binding table
-' binding = the binding to add
-' returns the id of the binding
-FUNCTION BINDING_New (BINDING item)
-	SHARED BINDING BINDING_array[]
-	SHARED BINDING_arrayUM[]
-	SHARED BINDING_idMax
-
-	IFZ BINDING_arrayUM[] THEN BINDING_Init ()
-	upper_slot = UBOUND (BINDING_arrayUM[])
-
-	' look for a blank slot
-	slot = -1
-	FOR i = BINDING_idMax TO upper_slot
-		IFF BINDING_arrayUM[i] THEN
-			slot = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	' allocate more memory if needed
-	IF slot = -1 THEN
-		upper_slot = ((upper_slot + 1) << 1) - 1
-		REDIM BINDING_arrayUM[upper_slot]
-		REDIM BINDING_array[upper_slot]
-		slot = BINDING_idMax
-		INC BINDING_idMax
-	ELSE
-		BINDING_idMax = slot + 1
-	ENDIF
-
-	BINDING_idMax = slot + 1
-	BINDING_array[slot] = item
-	BINDING_arrayUM[slot] = $$TRUE
-	RETURN (slot + 1)
-END FUNCTION
-'
-' ############################
-' #####  BINDING_Delete  #####
-' ############################
-' Deletes a binding from the binding table
-' id = the id of the binding to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BINDING_Delete (id)
-	SHARED BINDING BINDING_array[]
-	SHARED BINDING_arrayUM[]
-	SHARED BINDING_idMax
-
-	LINKEDLIST list
-
-	IFZ BINDING_arrayUM[] THEN RETURN
-	upper_slot = UBOUND (BINDING_arrayUM[])
-
-	slot = id - 1
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF BINDING_arrayUM[slot] THEN RETURN
-
-	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
-
-	' delete the auto draw info
-	autoDraw_clear (BINDING_array[slot].autoDrawInfo)
-	LINKEDLIST_Get (BINDING_array[slot].autoDrawInfo, @list)
-	LinkedList_Uninit (@list)
-	LINKEDLIST_Delete (BINDING_array[slot].autoDrawInfo)
-	' delete the message handlers
-	handler_deleteGroup (BINDING_array[slot].msgHandlers)
-	' delete the auto sizer info
-	AUTOSIZERINFO_Delete (BINDING_array[slot].autoSizerInfo)
-
-	BINDING_array[slot].hwnd = 0
-
-	IF id >= BINDING_idMax THEN BINDING_idMax = id - 1
-	BINDING_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE
-END FUNCTION
-'
-' #########################
-' #####  BINDING_Get  #####
-' #########################
-' Retrieves a binding
-' id = the id of the binding to get
-' item = the variable to store the binding
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BINDING_Get (id, BINDING item)
-	SHARED BINDING BINDING_array[]
-	SHARED BINDING_arrayUM[]
-
-	IFZ BINDING_arrayUM[] THEN RETURN
-	upper_slot = UBOUND (BINDING_arrayUM[])
-
-	slot = id - 1
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF BINDING_arrayUM[slot] THEN RETURN
-
-	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
-
-	item = BINDING_array[slot]
-	RETURN $$TRUE
-END FUNCTION
-'
-' ############################
-' #####  BINDING_Update  #####
-' ############################
-' Updates a binding
-' id = the id of the binding to update
-' item = the new version of the binding
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BINDING_Update (id, BINDING item)
-	SHARED BINDING BINDING_array[]
-	SHARED BINDING_arrayUM[]
-
-	IFZ BINDING_arrayUM[] THEN RETURN
-	upper_slot = UBOUND (BINDING_arrayUM[])
-
-	slot = id - 1
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF BINDING_arrayUM[slot] THEN RETURN
-
-	IFZ BINDING_array[slot].hwnd THEN RETURN		' fail
-
-	BINDING_array[slot] = item
-	RETURN $$TRUE
 END FUNCTION
 '
 ' ##############################
@@ -8719,7 +9481,9 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 		CASE $$WM_COMMAND
 			' Guy-15apr09-RETURN @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
 			IF binding.onCommand THEN
-				retCode = @binding.onCommand (LOWORD (wParam), HIWORD (wParam), lParam)
+				idCtr = LOWORD (wParam)
+				notifyCode = HIWORD (wParam)
+				retCode = @binding.onCommand (idCtr, notifyCode, lParam)
 				IF retCode THEN handled = $$TRUE		' handled
 			ENDIF
 
@@ -8779,10 +9543,10 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 
 			' Auto scroll?
 			' IF binding.hScrollPageM THEN
-			' GetScrollInfo (hWnd, $$SB_HORZ, &si)
-			' xOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
-			' GetScrollInfo (hWnd, $$SB_VERT, &si)
-			' yOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
+			'  GetScrollInfo (hWnd, $$SB_HORZ, &si)
+			'  xOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
+			'  GetScrollInfo (hWnd, $$SB_VERT, &si)
+			'  yOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
 			' ENDIF
 			autoDraw_draw (hDC, binding.autoDrawInfo, xOff, yOff)
 
@@ -9156,7 +9920,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	DIM parts[binding.statusParts]
 	FOR i = 0 TO binding.statusParts
 		parts[i] = ((i + 1) * w) / (binding.statusParts + 1)
-	NEXT
+	NEXT i
 	SendMessageA (binding.hStatus, $$WM_SIZE, wParam, lParam)
 	SendMessageA (binding.hStatus, $$SB_SETPARTS, binding.statusParts + 1, &parts[0])
 
@@ -9518,7 +10282,7 @@ SUB DrawVert
 			CASE 2
 				state = 0
 		END SELECT
-	NEXT
+	NEXT i
 END SUB
 
 SUB DrawHoriz
@@ -9541,7 +10305,7 @@ SUB DrawHoriz
 			CASE 2
 				state = 0
 		END SELECT
-	NEXT
+	NEXT i
 END SUB
 
 SUB GetRect
@@ -9586,722 +10350,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
 END FUNCTION
 '
-' ##############################
-' #####  WinXTellApiError  #####
-' ##############################
-'
-' [WinXTellApiError]
-' Description = display an API failure message
-' Function    = WinXTellApiError (msg$)
-' ArgCount    = 1
-' Return      = $$TRUE = real failure, $$FALSE = false failure
-'
-' Usage:
-'	SetLastError (0)
-'	hImage = LoadBitmapA (hInst, &image$)
-'	IFZ hImage THEN		' fail
-'		msg$ = "CreateWindows: Can't load image " + image$
-'		WinXTellApiError (msg$)
-'	ENDIF
-'
-FUNCTION WinXTellApiError (msg$)		' display an API fail message
-
-	' get the last fail code, then clear it
-	errNum = GetLastError ()
-	SetLastError (0)
-	IFZ errNum THEN RETURN		' was success
-
-	fmtMsg$ = "Last fail code " + STRING$ (errNum) + ": "
-	bufLen = 1020
-	buf$ = NULL$ (bufLen)		' fill buf$ with (bufLen + 1) null chars
-
-	' set up FormatMessageA arguments
-	dwFlags = $$FORMAT_MESSAGE_FROM_SYSTEM | $$FORMAT_MESSAGE_IGNORE_INSERTS
-	lpBuffer = &buf$
-
-	' format a message string
-	ret = FormatMessageA (dwFlags, 0, errNum, $$LANG_NEUTRAL, lpBuffer, bufLen, 0)
-	IFZ ret THEN
-		fmtMsg$ = fmtMsg$ + "(unknown)"
-	ELSE
-		fmtMsg$ = fmtMsg$ + CSTRING$ (&buf$)
-	ENDIF
-	fmtMsg$ = fmtMsg$ + $$CRLF$ + msg$
-
-	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "Win32 API fail"
-	XstGetOSName (@os$)
-	XstGetOSVersion (@major, @minor, @platformId, @version$, @platform$)
-	text$ = $$CRLF$ + "OS: " + os$ + STR$ (major) + "." + STRING$ (minor) + " " + platform$
-
-	' set up MessageBoxA arguments
-	fmtMsg$ = fmtMsg$ + text$
-	title$ = "WinX-API Error"
-	hWnd = GetActiveWindow ()
-	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
-
-	RETURN $$TRUE		' an fail really occurred!
-
-END FUNCTION
-'
-' ##############################
-' #####  WinXTellRunError  #####
-' ##############################
-'
-' [WinXTellRunError]
-' Description = display a run-time failure message
-' Function    = WinXTellRunError (msg$)
-' ArgCount    = 1
-' Return      = $$TRUE = real failure, $$FALSE = false failure
-'
-' Usage:
-' errNum = ERROR (0) ' clear the last-fail code
-' inFile = OPEN (inFile$, $$RD)
-' IF inFile < 3 THEN
-'  msg$ = "Can't open input file " + inFile$
-'  WinXTellRunError (msg$)
-' ENDIF
-FUNCTION WinXTellRunError (msg$)		' display the run-time fail message
-
-	' get current fail, then clear it
-	errNum = ERROR (0)
-	fmtMsg$ = "Error code " + STRING$ (errNum) + ": " + ERROR$ (errNum) + $$CRLF$ + msg$
-	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "XBLite library failure"
-
-	' set up MessageBoxA arguments
-	title$ = "WinX-Execution Error"
-	hWnd = GetActiveWindow ()
-	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
-
-	RETURN $$TRUE		' an fail really occurred!
-
-END FUNCTION
-
-' OUT			: dir$ - directory path
-
-' Usage:
-' dir$ = "  c:/my dir   "
-' WinXDir_AppendSlash (@dir$) ' end directory path with \
-' ' => dir$ == "c:\\my dir\\"
-FUNCTION WinXDir_AppendSlash (@dir$)		' end a directory path with \
-
-	upp = LEN (dir$) - 1
-	IF upp < 0 THEN RETURN		' empty
-
-	' search the last non-space character, its index is iLast
-	iLast = -1
-	FOR i = upp TO 0 STEP -1
-		IF dir${i} <> ' ' THEN
-			' non-space character
-			iLast = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-	IF iLast = -1 THEN		' only spaces => empty directory path
-		dir$ = ""		' return a null string
-		RETURN
-	ENDIF
-
-	' search the 1st non-space character, its index is iFirst
-	FOR i = 0 TO iLast
-		IF dir${i} <> ' ' THEN
-			' non-space character
-			iFirst = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	' make sure there are only Windows PathSlashes
-	pos = INSTR (dir$, "/")		' Unix PathSlash
-	IF pos THEN		' Unix PathSlash
-		FOR i = pos - 1 TO iLast
-			IF dir${i} = '/' THEN dir${i} = '\\'		' Windows PathSlash
-		NEXT i
-	ENDIF
-
-	' allocate a new string
-	newLen = iLast - iFirst + 1
-	IF dir${iLast} <> '\\' THEN INC newLen		' no trailing slash: add 1 slot for the added trailing slash
-	oDir$ = NULL$ (newLen)
-
-	' trim off leading and trailing spaces
-	ioDir = 0
-	FOR i = iFirst TO iLast
-		oDir${ioDir} = dir${i}
-		INC ioDir
-	NEXT i
-
-	IF dir${iLast} <> '\\' THEN		' no trailing slash
-		oDir${ioDir} = '\\'		' add the trailing slash
-	ENDIF
-
-	dir$ = oDir$		' replace the directory path
-
-END FUNCTION
-
-' OUT			: dir$ - directory path
-
-' returns $$TRUE on success or $$FALSE on fail
-
-' Usage:
-' bOK = WinXDir_Exists (dir$)
-' IFF bOK THEN		' directory not found
-'  bOK = WinXDir_Create (dir$)		' create the directory
-'  IFF bOK THEN		' fail
-'   msg$ = "WinXDir_Create: Can't create directory " + dir$
-'   XstAlert (msg$)
-'  ENDIF
-' ENDIF
-
-FUNCTION WinXDir_Create (dir$)		' Creates a directory making sure that the directory is created
-
-	dir$ = TRIM$ (dir$)
-	IFZ dir$ THEN RETURN $$TRUE		' dir$ is empty
-	XstPathToAbsolutePath (dir$, @dir$)		' Get the complete path
-	XstTranslateChars (@dir$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
-
-	WinXDir_AppendSlash (@dir$)		' end directory path with \
-	' create all the parent folders before creating the directory
-	dirLen = LEN (dir$)
-	posSlash = INSTR (dir$, $$PathSlash$)		' skip the drive
-	IF posSlash = dirLen THEN RETURN $$TRUE		' fail: Can't create a drive
-	DO
-		posFirst = posSlash + 1
-		IF posFirst > dirLen THEN EXIT DO
-
-		posSlash = INSTR (dir$, $$PathSlash$, posFirst)
-		IFZ posSlash THEN EXIT DO		' should never occur!
-
-		subDir$ = LEFT$ (dir$, posSlash)
-
-		' determine if subDir$ exists
-		bOK = WinXDir_Exists (subDir$)
-		IFF bOK THEN		' directory not found
-			XstMakeDirectory (subDir$)		' creating the directory subDir$
-		ENDIF
-	LOOP
-
-	' determine if dir$ was created
-	bOK = WinXDir_Exists (dir$)
-	RETURN bOK
-
-END FUNCTION
-'
-' ############################
-' #####  WinXDir_Exists  #####
-' ############################
-'
-' [WinXDir_Exists]
-' Description = determine if a directory exists
-' Function    = WinXDir_Exists (dir$)
-' ArgCount    = 1
-' Return      = $$TRUE = directory exists, $$FALSE = directory not found
-' Examples    = bFound = WinXDir_Exists (dir$)
-'
-FUNCTION WinXDir_Exists (dir$)
-
-	' trim the directory path
-	dirToFind$ = WinXPath_Trim$ (dir$)
-	IFZ dirToFind$ THEN RETURN		' fail, directory is empty
-
-	XstTranslateChars (@dirToFind$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
-	XstGetFileAttributes (@dirToFind$, @attrib)
-
-	' check if dirToFind$ is really directory
-	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE ' success directory exists
-
-END FUNCTION
-'
-' ############################
-' #####  WinXPath_Trim$  #####
-' ############################
-'
-' [WinXPath_Trim$]
-' Description = trim a path, directory or file
-' Function    = WinXPath_Trim$ (path$)
-' ArgCount    = 1
-' Return      = the trimmed path
-' Examples    = pathNew$ = WinXPath_Trim$ (path$)
-'
-FUNCTION WinXPath_Trim$ (path$)
-
-' the direct way----------------------------------------------------
-' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
-'	pathNew$ = TRIM$ (path$)
-'	IF pathNew$ THEN
-'		XstReplace (@pathNew$, "/", $$PathSlash$, 0) ' make sure there are only Windows PathSlashes
-'	ENDIF
-'	RETURN pathNew$
-' ------------------------------------------------------------------
-
-	IFZ path$ THEN RETURN "" ' empty
-	upp = LEN (path$) - 1
-
-	' search the last non-space character, its index is iLast
-	iLast = -1
-	FOR i = upp TO 0 STEP -1
-		IF path${i} <> ' ' THEN ' non-space character
-			iLast = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-	IF iLast = -1 THEN RETURN "" ' empty directory path => return a null string
-
-	' search the 1st non-space character, its index is iFirst
-	FOR i = 0 TO iLast
-		IF path${i} <> ' ' THEN ' non-space character
-			iFirst = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	newLen = iLast - iFirst + 1
-	IF newLen < 1 THEN RETURN "" ' empty
-
-	' allocate a new string
-	pathNew$ = NULL$ (newLen)
-
-	' trim off leading and trailing spaces
-	inew = 0
-	FOR i = iFirst TO iLast
-		IF path${i} = '/' THEN
-			' make sure there are only Windows PathSlashes
-			pathNew${inew} = '\\'
-		ELSE
-			pathNew${inew} = path${i}
-		ENDIF
-		INC inew
-	NEXT i
-	RETURN pathNew$
-
-END FUNCTION
-' returns "" on fail
-
-' Usage:
-' xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
-FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
-	STATIC s_xblDir$
-
-	IF s_xblDir$ THEN
-		' XstAlert ("Path of xblite's directory reset by WinXDir_GetXblDir$ " + s_xblDir$)
-		RETURN s_xblDir$
-	ENDIF
-	XstGetEnvironmentVariable ("XBLDIR", @dir$)
-	dir$ = TRIM$ (dir$)
-	IFZ dir$ THEN
-		envKey$ = "Environment"
-		IFZ RegOpenKeyExA ($$HKEY_CURRENT_USER, &envKey$, 0, $$KEY_READ, &hkey) THEN
-			index = 0
-			type = 0
-			DO
-				szName$ = NULL$ ($$MAX_PATH)
-				lenName = LEN (szName$)
-				szData$ = NULL$ ($$MAX_PATH)
-				lenData = LEN (szData$)
-				ret = RegEnumValueA (hkey, index, &szName$, &lenName, 0, &type, &szData$, &lenData)
-				IFZ ret THEN
-					subKey$ = CSTRING$ (&szName$)
-					IF UCASE$ (subKey$) = "XBLDIR" THEN
-						dir$ = CSTRING$ (&szData$)
-						dir$ = TRIM$ (dir$)
-						' XstAlert ("Path of xblite's directory read from the registry " + dir$)
-						EXIT DO
-					ENDIF
-					INC index
-				ENDIF
-			LOOP UNTIL ret
-			RegCloseKey (hkey)
-		ENDIF
-	ENDIF
-	IFZ dir$ THEN
-		dir$ = "C:" + $$PathSlash$ + "xblite" + $$PathSlash$
-		' XstAlert ("Path of xblite's directory set by WinXDir_GetXblDir$ " + dir$)
-	ENDIF
-	WinXDir_AppendSlash (@dir$)		' end directory path with \
-	s_xblDir$ = dir$
-
-	RETURN s_xblDir$
-
-END FUNCTION
-
-' returns "" on fail
-
-' Usage:
-' xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get xblite's program dir
-FUNCTION WinXDir_GetXblProgramDir$ ()		' Gets the complete path of xblite's programs' directory
-
-	pgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
-	RETURN pgmDir$
-
-END FUNCTION
-'
-' ############################
-' #####  WinXIni_Delete  #####
-' ############################
-'
-' [WinXIni_Delete]
-' Description = delete an information from an .INI file
-' Function    = WinXIni_Delete (iniPath$, section$, key$)
-' ArgCount    = 3
-' iniPath$    = the .INI file path
-' section$    = the passed section
-' key$        = the key to delete
-' Return      = $$FALSE = failure, $$TRUE = success
-' Examples    = bDeleted = WinXIni_Delete (iniPath$, section$, key$)
-'
-FUNCTION WinXIni_Delete (iniPath$, section$, key$)
-
-	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN		' fail
-
-	section$ = WinXPath_Trim$ (section$)
-	IFZ section$ THEN RETURN		' fail
-
-	key$ = WinXPath_Trim$ (key$)
-	IFZ key$ THEN RETURN		' fail
-
-	' passing argument lpString set to zero causes the key deletion
-	SetLastError (0)
-	ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
-	IFZ ret THEN
-		' can't delete a key from INI file iniPath$
-		' [section$]
-		' key$=value$
-		msg$ = "WinXIni_Delete: Can't delete a key from INI file " + iniPath$
-		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
-		WinXTellApiError (msg$)
-		RETURN		' fail
-	ENDIF
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
-'
-' ###########################
-' #####  WinXIni_Read$  #####
-' ###########################
-'
-' [WinXIni_Read$]
-' Description = read an information from an .INI file
-' Function    = WinXIni_Read$ (iniPath$, section$, key$, defVal$)
-' ArgCount    = 4
-' iniPath$    = the .INI file path
-' section$    = the passed section
-' key$        = the key to read from
-' defVal$     = a default value
-' Return      = defVal$ = failure, read value = success
-' Examples    = value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-'
-FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
-
-	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN defVal$
-
-	bErr = XstFileExists (iniPath$)
-	IF bErr THEN RETURN defVal$ ' file NOT found
-
-	section$ = WinXPath_Trim$ (section$)
-	IFZ section$ THEN
-		' can't read an empty section
-		' default value defVal$ returned
-		msg$ = "WinXIni_Read$: Can't read an empty section."
-		msg$ = msg$ + "\nDefault value (" + defVal$ + ") returned"
-		XstAlert (msg$)
-		RETURN defVal$
-	ENDIF
-
-	' read from the INI file
-	'bufSize = $$MAX_PATH
-	bufSize = 4095
-	buf$ = NULL$ (bufSize)
-	SetLastError (0)
-	cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
-	IF cCh < 1 THEN RETURN defVal$		' default value returned
-
-	' value$ = CSTRING$ (&buf$)
-	value$ = LEFT$ (buf$, cCh)
-	RETURN value$
-
-END FUNCTION
-'
-' ###########################
-' #####  WinXIni_Write  #####
-' ###########################
-'
-' [WinXIni_Write]
-' Description = write an information into an .INI file
-' Function    = WinXIni_Write (iniPath$, section$, key$, value$)
-' ArgCount    = 4
-' iniPath$    = the .INI file path
-' section$    = the passed section
-' key$        = the information's key
-' value$      = the information
-' Return      = $$FALSE = failure, $$TRUE = success
-' Examples    = WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, fPath$)
-'
-FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
-
-	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN		' fail
-
-	section$ = WinXPath_Trim$ (section$)
-	IFZ section$ THEN RETURN		' fail
-
-	key$ = WinXPath_Trim$ (key$)
-	IFZ key$ THEN RETURN		' fail
-
-	SetLastError (0)
-	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
-	IFZ ret THEN
-		' can't write into INI file iniPath$
-		' [section$]
-		' key$=value$
-		msg$ = "WinXIni_Write: Can't write into INI file " + iniPath$
-		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
-		WinXTellApiError (msg$)
-		RETURN		' fail
-	ENDIF
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
-
-FUNCTION WinXMRU_Init ()
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN
-		DIM MRU_array$[$$UPP_MRU]
-		DIM MRU_arrayUM[$$UPP_MRU]
-	ELSE
-		upper_slot = UBOUND (MRU_arrayUM[])
-		FOR i = 0 TO upper_slot
-			MRU_array$[i] = ""
-			MRU_arrayUM[i] = 0
-		NEXT i
-	ENDIF
-	MRU_idMax = 0
-END FUNCTION
-
-FUNCTION WinXMRU_New (item$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN WinXMRU_Init ()
-	upper_slot = UBOUND (MRU_arrayUM[])
-
-	slot = -1
-	IF MRU_idMax <= upper_slot THEN
-		FOR i = MRU_idMax TO upper_slot
-			IFF MRU_arrayUM[i] THEN
-				slot = i
-				EXIT FOR
-			ENDIF
-		NEXT i
-	ENDIF
-
-	IF slot = -1 THEN
-		upper_slot = ((upper_slot + 1) << 1) - 1
-		REDIM MRU_arrayUM[upper_slot]
-		REDIM MRU_array$[upper_slot]
-		slot = MRU_idMax
-		INC MRU_idMax
-	ELSE
-		MRU_idMax = slot + 1
-	ENDIF
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	MRU_array$[slot] = item$
-	MRU_arrayUM[slot] = $$TRUE
-	RETURN (slot + 1)
-END FUNCTION
-
-' returns $$TRUE if found, $$FALSE otherwise
-FUNCTION WinXMRU_Get (id, @item$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	item$ = ""
-	IFZ MRU_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > MRU_idMax) THEN RETURN
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-	slot = id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF MRU_arrayUM[slot] THEN RETURN
-
-	item$ = MRU_array$[slot]
-	RETURN $$TRUE
-END FUNCTION
-
-FUNCTION WinXMRU_Update (id, item$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > MRU_idMax) THEN RETURN
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-	slot = id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF MRU_arrayUM[slot] THEN RETURN
-
-	MRU_array$[slot] = item$
-	RETURN $$TRUE
-END FUNCTION
-
-FUNCTION WinXMRU_Delete (id)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > MRU_idMax) THEN RETURN
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-
-	slot = id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF MRU_arrayUM[slot] THEN RETURN
-
-	MRU_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE
-END FUNCTION
-
-FUNCTION WinXMRU_Find (find$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	find_lc$ = WinXPath_Trim$ (find$)
-	IFZ find_lc$ THEN RETURN
-
-	IFZ MRU_arrayUM[] THEN RETURN ' not found
-
-	find_lc$ = LCASE$ (find_lc$)
-	findLen = LEN (find_lc$)
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-	FOR slot = 0 TO upper_slot
-		IFF MRU_arrayUM[slot] THEN DO NEXT
-		IF LEN (MRU_array$[slot]) <> findLen THEN DO NEXT
-		IF LCASE$ (MRU_array$[slot]) = find_lc$ THEN RETURN (slot + 1)
-	NEXT slot
-END FUNCTION
-
-' load the Most Recently Used project list from the .INI file
-' Return      = $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$)
-
-	' reset the Most Recently Used project lists
-	WinXMRU_Init ()
-	IFZ iniPath$ THEN RETURN		' fail
-
-	' load the MRU projects list into MRU_array$[]
-	IF pathNew$ THEN
-		pathNew$ = WinXPath_Trim$ (pathNew$)
-		IF pathNew$ THEN WinXMRU_New (pathNew$)
-	ENDIF
-
-	' create ini file if it does not exist
-	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, "File 0", "")
-	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, "File 0", "-")
-
-	' load the MRU projects list
-	FOR id = 1 TO ($$UPP_MRU + 1)
-		key$ = WinXMRU_MakeKey$ (id)
-		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-		IFZ fpath$ THEN DO NEXT ' empty => skip it!
-		'
-		fpath$ = WinXPath_Trim$ (fpath$)
-		IFZ fpath$ THEN DO NEXT ' empty => skip it!
-		'
-		bErr = XstFileExists (fpath$)
-		IF bErr THEN DO NEXT		' file not found => skip it!
-		'
-		idFound = WinXMRU_Find (fpath$)
-		IF idFound THEN DO NEXT
-		'
-		WinXMRU_New (fpath$)
-		'
-	NEXT id
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
-
-FUNCTION WinXMRU_MakeKey$ (id)
-
-	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
-	RETURN "File " + id$
-
-END FUNCTION
-
-' Save the Most Recently Used project list
-' Return      = $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$)
-	' Add file to MRU file list. If file already exists in list then it is
-	' simply moved up to the top of the list and not added again. If list is
-	' full then the least recently used item is removed to make room.
-
-	' if pathNew$ is found, it becomes first in list
-	pathNew$ = TRIM$ (pathNew$)
-	IFZ pathNew$ THEN
-		bErr = XstFileExists (pathNew$)
-		IF bErr THEN pathNew$ = ""
-	ENDIF
-
-	DIM arr$[$$UPP_MRU]
-
-	upp = -1
-	IF pathNew$ THEN
-		INC upp
-		arr$[upp] = pathNew$
-	ENDIF
-
-	FOR id = 1 TO ($$UPP_MRU + 1)
-		bOK = WinXMRU_Get (id, @item$)
-		'
-		IFF bOK THEN DO NEXT
-		IFZ item$ THEN DO NEXT ' just in case!
-		IF item$ = pathNew$ THEN DO NEXT
-		bErr = XstFileExists (item$)
-		IF bErr THEN DO NEXT		' file not found
-		'
-		IF upp >= $$UPP_MRU THEN EXIT FOR
-		'
-		INC upp
-		arr$[upp] = item$
-	NEXT id
-
-	' reset the Most Recently Used project lists
-	WinXMRU_Init ()
-
-	' save the Most Recently Used project list in the .INI file
-	FOR i = 0 TO upp
-		WinXMRU_New (arr$[i])
-		'
-		key$ = WinXMRU_MakeKey$ (i + 1)
-		WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, arr$[i])
-	NEXT i
-
-	' delete from .INI file extraneous MRU items
-	iInf = upp + 1
-	IF iInf <= $$UPP_MRU THEN
-		FOR i = iInf TO $$UPP_MRU
-			key$ = WinXMRU_MakeKey$ (i + 1)
-			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-			' delete an existing key
-			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
-		NEXT i
-	ENDIF
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
 '
 ' #######################
 ' #####  M4 macros  #####
