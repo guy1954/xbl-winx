@@ -5596,8 +5596,8 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 
 	' Sort out an abort proc
 	printInfo.hCancelDlg = WinXNewWindow (0, "Printing " + fileName$, -1, -1, 300, 70, $$XWSS_POPUP, 0, 0, 0)
-	MoveWindow (WinXAddStatic (printInfo.hCancelDlg, "Preparing to print", 0, $$SS_CENTER, $$DLGCANCEL_ST_PAGE), 0, 8, 300, 24, $$TRUE)
-	MoveWindow (WinXAddButton (printInfo.hCancelDlg, "Cancel", 0, $$IDCANCEL), 110, 30, 80, 25, $$TRUE)
+	MoveWindow (WinXAddStatic (printInfo.hCancelDlg, "Preparing to print", 0, $$SS_CENTER, $$DLGCANCEL_ST_PAGE), 0, 8, 300, 24, 1) ' repaint
+	MoveWindow (WinXAddButton (printInfo.hCancelDlg, "Cancel", 0, $$IDCANCEL), 110, 30, 80, 25, 1) ' repaint
 	WinXDisplay (printInfo.hCancelDlg)
 	SetAbortProc (hDC, &printAbortProc ())
 	printInfo.continuePrinting = $$TRUE
@@ -5620,7 +5620,7 @@ END FUNCTION
 FUNCTION WinXProgress_SetMarquee (hProg, enable)
 	IF enable THEN
 		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) | $$PBS_MARQUEE)
-		SendMessageA (hProg, $$PBM_SETMARQUEE, $$TRUE, 50)
+		SendMessageA (hProg, $$PBM_SETMARQUEE, 1, 50)
 	ELSE
 		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) AND NOT $$PBS_MARQUEE)
 		SendMessageA (hProg, $$PBM_SETMARQUEE, $$FALSE, 50)
@@ -5885,7 +5885,7 @@ FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
-	DragAcceptFiles (hWnd, $$TRUE)
+	DragAcceptFiles (hWnd, 1)
 	binding.onDropFiles = FnOnDropFiles
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
@@ -6517,7 +6517,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 	END SELECT
 
 	BINDING_Update (idBinding, binding)
-	SetScrollInfo (hWnd, sb, &si, $$TRUE)
+	SetScrollInfo (hWnd, sb, &si, 1) ' redraw
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6537,10 +6537,8 @@ FUNCTION WinXScroll_SetPos (hWnd, direction, pos)
 	si.fMask = $$SIF_POS
 	si.nPos = pos
 	SELECT CASE direction
-		CASE $$DIR_HORIZ
-			SetScrollInfo (hWnd, $$SB_HORZ, &si, $$TRUE)
-		CASE $$DIR_VERT
-			SetScrollInfo (hWnd, $$SB_VERT, &si, $$TRUE)
+		CASE $$DIR_HORIZ : SetScrollInfo (hWnd, $$SB_HORZ, &si, 1) ' redraw
+		CASE $$DIR_VERT : SetScrollInfo (hWnd, $$SB_VERT, &si, 1) ' redraw
 	END SELECT
 
 	RETURN $$TRUE		' success
@@ -6573,7 +6571,7 @@ FUNCTION WinXScroll_SetRange (hWnd, direction, min, max)
 	si.nMin = min
 	si.nMax = max
 
-	SetScrollInfo (hWnd, sb, &si, $$TRUE)
+	SetScrollInfo (hWnd, sb, &si, 1) ' redraw
 
 	GetClientRect (hWnd, &rect)
 	sizeWindow (hWnd, rect.right, rect.bottom)
@@ -7347,7 +7345,7 @@ FUNCTION WinXToolbar_AddControl (hToolbar, hCtr, w)
 	SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
 	SendMessageA (hToolbar, $$TB_GETITEMRECT, iControl, &rect2)
 
-	MoveWindow (hCtr, rect2.left + 2, rect2.top, w, rect2.bottom - rect2.top, $$TRUE)
+	MoveWindow (hCtr, rect2.left + 2, rect2.top, w, rect2.bottom - rect2.top, 1) ' repaint
 
 	SetParent (hCtr, hToolbar)
 
@@ -7459,7 +7457,7 @@ FUNCTION WinXTracker_SetLabels (hTracker, STRING leftLabel, STRING rightLabel)
 	SIZEAPI left
 	SIZEAPI right
 	' first, get any existing labels
-	hLeft = SendMessageA (hTracker, $$TBM_GETBUDDY, $$TRUE, 0)
+	hLeft = SendMessageA (hTracker, $$TBM_GETBUDDY, 1, 0)
 	hRight = SendMessageA (hTracker, $$TBM_GETBUDDY, $$FALSE, 0)
 
 	IF hLeft THEN DestroyWindow (hLeft)
@@ -7481,8 +7479,8 @@ FUNCTION WinXTracker_SetLabels (hTracker, STRING leftLabel, STRING rightLabel)
 	parent = GetParent (hTracker)
 	hLeft = WinXAddStatic (parent, leftLabel, 0, $$SS_CENTER, 1)
 	hRight = WinXAddStatic (parent, rightLabel, 0, $$SS_CENTER, 1)
-	MoveWindow (hLeft, 0, 0, left.cx + 4, left.cy + 4, $$TRUE)
-	MoveWindow (hRight, 0, 0, right.cx + 4, right.cy + 4, $$TRUE)
+	MoveWindow (hLeft, 0, 0, left.cx + 4, left.cy + 4, 1) ' repaint
+	MoveWindow (hRight, 0, 0, right.cx + 4, right.cy + 4, 1) ' repaint
 
 	' and set them
 	SendMessageA (hTracker, $$TBM_SETBUDDY, $$TRUE, hLeft)
@@ -8053,14 +8051,14 @@ FUNCTION WinXUpdate (hWnd)
 	BINDING binding
 	RECT rect
 	' WinXGetUseableRect (hWnd, @rect)
-	' InvalidateRect (hWnd, &rect, $$TRUE)
+	' InvalidateRect (hWnd, &rect, 1) ' erase
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
 
 	' PRINT binding.hUpdateRegion
-	InvalidateRgn (hWnd, binding.hUpdateRegion, $$TRUE)
+	InvalidateRgn (hWnd, binding.hUpdateRegion, 1) ' erase
 	DeleteObject (binding.hUpdateRegion)
 	binding.hUpdateRegion = 0
 	BINDING_Update (idBinding, binding)
@@ -8775,7 +8773,7 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 
 				IF direction AND $$DIR_REVERSE THEN h = boxY - boxH - 8 ELSE h = boxY + boxH
 				MoveWindow (autoSizerBlock.hSplitter, boxX, h, boxW, 8, $$FALSE)
-				InvalidateRect (autoSizerBlock.hSplitter, 0, $$TRUE)
+				InvalidateRect (autoSizerBlock.hSplitter, 0, 1) ' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTERINFO_Get (iSplitter, @splitterInfo)
@@ -8810,7 +8808,7 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 
 				IF direction AND $$DIR_REVERSE THEN h = boxX - boxW - 8 ELSE h = boxX + boxW
 				MoveWindow (autoSizerBlock.hSplitter, h, boxY, 8, boxH, $$FALSE)
-				InvalidateRect (autoSizerBlock.hSplitter, 0, $$TRUE)
+				InvalidateRect (autoSizerBlock.hSplitter, 0, 1) ' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTERINFO_Get (iSplitter, @splitterInfo)
@@ -8845,7 +8843,7 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 			ShowWindow (autoSizerBlock.hwnd, $$SW_HIDE)
 		ELSE
 			ShowWindow (autoSizerBlock.hwnd, $$SW_SHOW)
-			MoveWindow (autoSizerBlock.hwnd, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h, $$TRUE)
+			MoveWindow (autoSizerBlock.hwnd, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h, 1) ' repaint
 		ENDIF
 
 		FnLeftInfo = GetPropA (autoSizerBlock.hwnd, &"WinXLeftSubSizer")
@@ -9741,7 +9739,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 							IF @binding.onDrag (wParam, $$DRAG_DRAGGING, item, dli.ptCursor.x, dli.ptCursor.y) THEN
 								IF item <> dragItem THEN
 									SendMessageA (dli.hWnd, $$LB_GETITEMRECT, item, &rect)
-									InvalidateRect (dli.hWnd, 0, $$TRUE)
+									InvalidateRect (dli.hWnd, 0, 1) ' erase
 									UpdateWindow (dli.hWnd)
 									hDC = GetDC (dli.hWnd)
 									' draw insert bar
@@ -9768,20 +9766,20 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 								RETURN $$DL_MOVECURSOR
 							ELSE
 								IF item <> dragItem THEN
-									InvalidateRect (dli.hWnd, 0, $$TRUE)
+									InvalidateRect (dli.hWnd, 0, 1) ' erase
 									dragItem = item
 								ENDIF
 								RETURN $$DL_STOPCURSOR
 							ENDIF
 						ELSE
 							IF item <> dragItem THEN
-								InvalidateRect (dli.hWnd, 0, $$TRUE)
+								InvalidateRect (dli.hWnd, 0, 1) ' erase
 								dragItem = -1
 							ENDIF
 							RETURN $$DL_STOPCURSOR
 						ENDIF
 					CASE $$DL_DROPPED
-						InvalidateRect (dli.hWnd, 0, $$TRUE)
+						InvalidateRect (dli.hWnd, 0, 1) ' erase
 						item = ApiLBItemFromPt (dli.hWnd, dli.ptCursor.x, dli.ptCursor.y, $$TRUE)
 						IFF @binding.onDrag (wParam, $$DRAG_DRAGGING, item, dli.ptCursor.x, dli.ptCursor.y) THEN item = -1
 						@binding.onDrag (wParam, $$DRAG_DONE, item, dli.ptCursor.x, dli.ptCursor.y)
@@ -9956,7 +9954,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	@binding.onScroll (xoff, hWnd, $$DIR_HORIZ)
 	@binding.onScroll (yoff, hWnd, $$DIR_VERT)
 
-	' InvalidateRect (hWnd, 0, $$FALSE)
+	' InvalidateRect (hWnd, 0, 0)
 
 	RETURN @binding.onDimControls (hWnd, w, h)
 END FUNCTION
@@ -10136,13 +10134,13 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 			IF PtInRect (&dock, pt.x, pt.y) THEN
 				IFF inDock THEN
 					' SetCursor (LoadCursorA (0, $$IDC_HAND))
-					InvalidateRect (hWnd, 0, $$TRUE)
+					InvalidateRect (hWnd, 0, 1) ' erase
 				ENDIF
 				inDock = $$TRUE
 			ELSE
 				IF inDock THEN
 					' GOSUB SetSizeCursor
-					InvalidateRect (hWnd, 0, $$TRUE)
+					InvalidateRect (hWnd, 0, 1) ' erase
 				ENDIF
 				inDock = $$FALSE
 			ENDIF
@@ -10152,7 +10150,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				ScreenToClient (hWnd, &pt)
 				IF PtInRect (&dock, pt.x, pt.y) THEN
 					SetCursor (LoadCursorA (0, $$IDC_HAND))
-					InvalidateRect (hWnd, 0, $$TRUE)
+					InvalidateRect (hWnd, 0, 1) ' erase
 					inDock = $$TRUE
 				ELSE
 					GOSUB SetSizeCursor
@@ -10249,7 +10247,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 
 			RETURN 0
 		CASE $$WM_MOUSELEAVE
-			InvalidateRect (hWnd, 0, $$TRUE)
+			InvalidateRect (hWnd, 0, 1) ' erase
 			mouseIn = $$FALSE
 
 			RETURN 0
