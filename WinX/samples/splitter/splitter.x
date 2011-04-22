@@ -1,99 +1,123 @@
+PROGRAM "splitter"
+VERSION "1.00"
 '
-' ####################
-' #####  PROLOG  #####
-' ####################
-'
-' Demonstrates splitters and the new onClose callback FUNCTION
-'
+' splitter - Demonstrates splitters and the new onClose callback FUNCTION
+' Author: Callum Lowcay
 ' This program is in the public domain
 '
-VERSION	"0.0000"
+' ***** Description *****
+' (app's complete description).
 '
-	IMPORT	"xst"   		' standard library	: required by most programs
-'	IMPORT  "xsx"				' extended std library
-'	IMPORT	"xio"				' console io library
-	IMPORT	"gdi32"     ' gdi32.dll
-	IMPORT  "user32"    ' user32.dll
-	IMPORT  "kernel32"  ' kernel32.dll
-	IMPORT  "comctl32"	' comctl32.dll			: common controls library
-'	IMPORT	"comdlg32"  ' comdlg32.dll	    : common dialog library
-'	IMPORT	"xma"   		' math library			: Sin/Asin/Sinh/Asinh/Log/Exp/Sqrt...
-'	IMPORT	"xcm"				' complex math library
-'	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
-'	IMPORT  "shell32"   ' shell32.dll
-	IMPORT	"WinX"			' The Xwin GUI library
+' ***** Notes *****
+'
+' ***** Versions *****
+' 1.00-22apr11-Guy-generated GUI prototype using viXen v1.99u.
+' generation switches that are on:
+' - Use Windows® XP Style
+' - Use Callum Lowcay's WinX
+' - Use Text-only Pushbuttons
+' - Source Terse Mode
+' - Meticulous Cleanup
+'
+	IMPORT "kernel32"   ' operating system
+	IMPORT "gdi32"      ' Graphic Device Interface
+	IMPORT "shell32"    ' interface to the operating system
+	IMPORT "user32"     ' Windows management
+	IMPORT "comctl32"   ' common controls (needed for the Windows styles)
+'
+	IMPORT "xst"        ' Xblite Standard library
+	IMPORT "xsx"        ' Xblite Standard eXtended library
+	IMPORT "WinX"       ' Callum Lowcay's Windows GUI library
+'
+'
+'
+'
+DECLARE FUNCTION Entry () ' program entry point
 
+DECLARE FUNCTION CreateWindows () ' create windows and other child controls
+
+DECLARE FUNCTION StartUp () ' application setup
+
+DECLARE FUNCTION hMain_OnClose (hWnd) ' to process $$WM_CLOSE msg
+DECLARE FUNCTION hMain_OnCommand (idCtr, notifyCode, lParam) ' to process $$WM_COMMAND msg
 '
-DECLARE FUNCTION Entry ()
-DECLARE FUNCTION initWindow ()
-DECLARE FUNCTION onClose (hWnd)
+' Control IDs
 '
 '
-' ######################
-' #####  Entry ()  #####
-' ######################
+$$EdBottomRight = 101	' multiline edit 'Bottom right'
+$$EdTopRight    = 102	' multiline edit 'Top right'
+$$EdLeft        = 103	' multiline edit 'Left'
 '
 FUNCTION Entry ()
-	'make sure WinX is properly initialised
-	IF WinX() THEN QUIT(0)
+	STATIC entry
 
-	'quit if either of these fail
-	IF initWindow () THEN QUIT(0)
-
-	WinXDoEvents ()
+	IF entry THEN RETURN    ' enter once
+	entry = $$TRUE          ' enter occured
+	IF WinX () THEN QUIT (1)' abend
+	StartUp ()              ' initialize program and libraries
+	CreateWindows ()        ' create windows and other child controls
+	WinXDoEvents ()         ' monitor the events
+	WinXCleanUp ()          ' optional cleanup
+	QUIT (0)
 
 END FUNCTION
-'
-' ########################
-' #####  initWindow  #####
-' ########################
-'
-'
-'
-FUNCTION initWindow ()
-	#hMain = WinXNewWindow (0, "WinX Splitter demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 
-	' Create the right pane
-	vertical = WinXNewAutoSizerSeries ($$DIR_VERT|$$DIR_REVERSE)
-	' Note the use of the splitter flag to create a splitter
-	' Also notice the use of WinXAutoSizer_SetSimpleInfo to reduce parameters
-	hEdBottomRight = WinXAddEdit (#hMain, "Bottom right", $$ES_MULTILINE|$$WS_HSCROLL|$$WS_VSCROLL, 0)
-	hEdTopRight = WinXAddEdit (#hMain, "Top right", $$ES_MULTILINE|$$WS_HSCROLL|$$WS_VSCROLL, 0)
-	WinXAutoSizer_SetSimpleInfo (hEdBottomRight, vertical, 0, 100, $$SIZER_SPLITTER)
-	WinXAutoSizer_SetSimpleInfo (hEdTopRight, vertical, 0, 1, $$SIZER_SIZERELREST)
+FUNCTION CreateWindows ()	' create the windows of the application
+	SHARED hInst
 
-	' Now for the left pane
-	horizontal = WinXNewAutoSizerSeries ($$DIR_HORIZ)
-	hEdLeft = WinXAddEdit (#hMain, "Left", $$ES_MULTILINE|$$WS_HSCROLL|$$WS_VSCROLL, 0)
-	WinXAutoSizer_SetSimpleInfo (hEdLeft, horizontal, 0, 100, $$SIZER_SPLITTER)
-	WinXAutoSizer_SetSimpleInfo (vertical, horizontal, 0, 1, $$SIZER_SIZERELREST|$$SIZER_SERIES)
+	hIcon = 0
 
-	' And finnaly add them to the main series
-	WinXAutoSizer_SetSimpleInfo (horizontal, WinXAutoSizer_GetMainSeries (#hMain), 0, 1, $$SIZER_SERIES)
+	titleBar$ = "WinX Splitter demo"
+	#hMain = WinXNewWindow (0, titleBar$, -1, -1, 401, 301, $$XWSS_APP, 0, hIcon, 0) ' create new window #hMain
+	' keep the initial width and height as minimum size
+	WinXSetMinSize (#hMain, 401, 301) ' minimum size
 
-	' set the minimum ranges and make the left splitter dockable
-	WinXSplitter_SetProperties (vertical, hEdBottomRight, 48, 200, $$FALSE)
-	WinXSplitter_SetProperties (horizontal, hEdLeft, 48, 200, $$TRUE)
+	#hEdBottomRight = WinXAddEdit (#hMain, "Bottom right", 0, $$EdBottomRight) ' create multiline edit #hEdBottomRight
+	#hEdTopRight = WinXAddEdit (#hMain, "Top right", 0, $$EdTopRight) ' create multiline edit #hEdTopRight
+	#hEdLeft = WinXAddEdit (#hMain, "Left", 0, $$EdLeft) ' create multiline edit #hEdLeft
 
-	'remember to register callbacks
-	WinXRegOnClose (#hMain, &onClose())
+	MoveWindow (#hEdBottomRight, 194, 138, 203, 158, 1) ' repaint
+	MoveWindow (#hEdTopRight, 196, 4, 203, 124, 1) ' repaint
+	MoveWindow (#hEdLeft, 1, 1, 189, 291, 1) ' repaint
+
+	' register the callback functions
+	addrWndProc = &hMain_OnCommand () ' to process $$WM_COMMAND msg
+	WinXRegOnCommand (#hMain, addrWndProc)
+
+	addrWndProc = &hMain_OnClose () ' to process $$WM_CLOSE msg
+	WinXRegOnClose (#hMain, addrWndProc)
 
 	WinXDisplay (#hMain)
 
-	RETURN 0
+END FUNCTION ' CreateWindows
+
+FUNCTION StartUp () ' application setup
+
+	SHARED hInst
+
+	SetLastError (0)
+	hInst = GetModuleHandleA (0) ' get current instance handle
+	IFZ hInst THEN
+		msg$ = "GetModuleHandleA: Can't get current instance handle"
+		XstAlert (msg$)
+		RETURN $$TRUE ' fail
+	ENDIF
+
 END FUNCTION
-'
-' #####################
-' #####  onClose  #####
-' #####################
-' A callback for when the user attempts to close the window
-'
-'
-FUNCTION onClose (hWnd)
-	' Make sure the user really wanted to quit
-	IF MessageBoxA (#hMain, &"Really quit?", &"Question", $$MB_YESNO|$$MB_ICONQUESTION) = $$IDYES THEN
-		' This causes WinXDoEvents to return
-		PostQuitMessage (0)
-	END IF
+
+FUNCTION hMain_OnClose (hWnd)
+
+	DestroyWindow (#hMain)
+	#hMain = 0
+	PostQuitMessage ($$WM_QUIT) ' end execution
+
+END FUNCTION
+
+FUNCTION hMain_OnCommand (idCtr, notifyCode, lParam)
+	SHARED hInst ' for WinXDialog_Message (#hMain, msg$, title$, &"0", hInst)
+
+	SELECT CASE idCtr
+	END SELECT ' CASE idCtr
+
 END FUNCTION
 END PROGRAM

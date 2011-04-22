@@ -176,7 +176,8 @@ FUNCTION onCommand (id, code, hWnd)
 		CASE $$LOAD
 			'WinXOpenFile$ uses a standard windows Open dialog box to get a file name
 			'see docs for details
-			fileName$ = WinXDialog_OpenFile$ (#winMain, "Select an XBlite source file", $$FILTERSTRING$, "", $$FALSE)
+			title$ = "Select an XBlite source file"
+			fileName$ = WinXDialog_OpenFile$ (#winMain, title$, $$FILTERSTRING$, "", $$FALSE, $$TRUE)
 			IF fileName$ != "" THEN
 				IFF populateList (fileName$) THEN MessageBoxA (#winMain, &"Cannot open file", &"Error", $$MB_OK|$$MB_ICONSTOP)
 			END IF
