@@ -189,7 +189,7 @@ TYPE SPLITTERINFO
 	XLONG .docked		' 0 if not docked, old position when docked
 END TYPE
 $$DOCK_DISABLED = 0
-$$DOCK_FOWARD = 1
+$$DOCK_FORWARD = 1
 $$DOCK_BACKWARD = 2
 ' data structures for auto draw
 TYPE DRAWRECT
@@ -728,6 +728,11 @@ FUNCTION WinX ()
 
 	STATIC init
 	IF init THEN RETURN		' success: already initialized!
+
+	' in prevision of a static build
+	Xst ()		' initialize Xblite Standard Library
+	Xsx ()		' initialize Xblite Standard eXtended Library
+
 
 	ADT ()		' initialize the Abstract Data Types Library
 
@@ -1538,6 +1543,8 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 	RECT minRect
 	RECT rect
 
+	IFZ hWnd THEN RETURN ' fail
+
 	IF series = -1 THEN
 		' get the parent window
 		parent = GetParent (hWnd)
@@ -1608,8 +1615,9 @@ END FUNCTION
 ' #########################################
 ' A simplified version of WinXAutoSizer_SetInfo
 FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, DOUBLE space, DOUBLE size, flags)
+	IFZ hWnd THEN RETURN ' fail
 	' x, y, w, h = the size and position of the control on the current window
-	RETURN WinXAutoSizer_SetInfo (hWnd, series, space, size, 0, 0, 1, 1, flags)
+	RETURN WinXAutoSizer_SetInfo (hWnd, series, space, size, 0.0, 0.0, 1.0, 1.0, flags)
 END FUNCTION
 '
 ' #################################
@@ -2574,6 +2582,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage:
+' ' create dir$ if not found
 ' bOK = WinXDir_Exists (dir$)
 ' IFF bOK THEN		' directory not found
 '  bOK = WinXDir_Create (dir$)		' create the directory
@@ -6990,10 +6999,11 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	SHARED SIZELISTHEAD AUTOSIZERINFO_head[]
 	SPLITTERINFO splitterInfo
 
+	IFZ hCtr THEN RETURN		' fail
 	IFF series >= 0 && series <= UBOUND (AUTOSIZERINFO_head[]) THEN RETURN		' fail
 	IFF AUTOSIZERINFO_head[series].inUse THEN RETURN		' fail
 
-	' Walk the list untill we find the autodraw record we need
+	' Walk the list until we find the autodraw record we need
 	found = $$FALSE
 	i = AUTOSIZERINFO_head[series].firstItem
 	DO WHILE i > -1
@@ -7010,20 +7020,20 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
 	splitterInfo.min = min
 	splitterInfo.max = max
-	IF dock THEN
 
-		IF AUTOSIZERINFO_head[series].direction AND $$DIR_REVERSE
-		splitterInfo.dock = $$DOCK_BACKWARD
+	IFF dock THEN
+		splitterInfo.dock = $$DOCK_DISABLED
 	ELSE
-		splitterInfo.dock = $$DOCK_FOWARD
+		IF (AUTOSIZERINFO_head[series].direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
+			splitterInfo.dock = $$DOCK_BACKWARD
+		ELSE
+			splitterInfo.dock = $$DOCK_FORWARD
+		ENDIF
 	ENDIF
-ELSE
-	splitterInfo.dock = $$DOCK_DISABLED
-ENDIF
 
-SPLITTERINFO_Update (iSplitter, splitterInfo)
+	SPLITTERINFO_Update (iSplitter, splitterInfo)
 
-RETURN $$TRUE		' success
+	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' #################################
@@ -10006,7 +10016,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				CASE $$DIR_VERT
 					SELECT CASE TRUE
 						CASE $$DOCK_DISABLED
-						CASE ((splitterInfo.dock = $$DOCK_FOWARD) && (splitterInfo.docked = 0)) || _
+						CASE ((splitterInfo.dock = $$DOCK_FORWARD) && (splitterInfo.docked = 0)) || _
 							((splitterInfo.dock = $$DOCK_BACKWARD) && (splitterInfo.docked > 0))
 							GOSUB DrawVert
 							' Draw arrows
@@ -10027,7 +10037,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 							vertex[2].y = 2 + dock.top
 							Polygon (hDC, &vertex[0], 3)
 						CASE ((splitterInfo.dock = $$DOCK_BACKWARD) && (splitterInfo.docked = 0)) || _
-							((splitterInfo.dock = $$DOCK_FOWARD) && (splitterInfo.docked > 0))
+							((splitterInfo.dock = $$DOCK_FORWARD) && (splitterInfo.docked > 0))
 							GOSUB DrawVert
 							' Draw arrows
 							SelectObject (hDC, hBlackPen)
@@ -10050,7 +10060,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 				CASE $$DIR_HORIZ
 					SELECT CASE TRUE
 						CASE $$DOCK_DISABLED
-						CASE ((splitterInfo.dock = $$DOCK_FOWARD) && (splitterInfo.docked = 0)) || _
+						CASE ((splitterInfo.dock = $$DOCK_FORWARD) && (splitterInfo.docked = 0)) || _
 							((splitterInfo.dock = $$DOCK_BACKWARD) && (splitterInfo.docked > 0))
 							GOSUB DrawHoriz
 							' Draw arrows
@@ -10071,7 +10081,7 @@ FUNCTION splitterProc (hWnd, msg, wParam, lParam)
 							vertex[2].y = 9 + dock.top + 107
 							Polygon (hDC, &vertex[0], 3)
 						CASE ((splitterInfo.dock = $$DOCK_BACKWARD) && (splitterInfo.docked = 0)) || _
-							((splitterInfo.dock = $$DOCK_FOWARD) && (splitterInfo.docked > 0))
+							((splitterInfo.dock = $$DOCK_FORWARD) && (splitterInfo.docked > 0))
 							GOSUB DrawHoriz
 							' Draw arrows
 							SelectObject (hDC, hBlackPen)
