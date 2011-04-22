@@ -44,6 +44,7 @@ FUNCTION Entry ()
 	IF initWindow () THEN QUIT(0)
 
 	WinXDoEvents ()
+	WinXCleanUp () ' cleanup clipboard
 END FUNCTION
 '
 ' ########################
