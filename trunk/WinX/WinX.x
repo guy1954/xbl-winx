@@ -2213,7 +2213,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 
 	' set file filter fileFilter$ with argument extensions$
 	' ==============================================================================
-	' i.e.: extensions$ = "Text Files|*.TXT|Image Files (*.bmp,*.jpg)|*.bmp;*.jpg"
+	' i.e.: extensions$ = "Text Files|*.TXT|Image Files|*.bmp;*.jpg)|
 	'
 	' fileFilter$ = buffer containing pairs of null-terminated filter strings:
 	' i.e. extensions$ = "Desc_1|Ext_1|...Desc_n|Ext_n"
@@ -2320,6 +2320,18 @@ END FUNCTION
 ' cancel        = $$TRUE to enable the cancel button
 ' defaultButton = the zero-based index of the default button
 ' returns the idCtr of the button the user selected
+'
+' Usage:
+'	title$ = "Save File"
+'	text$ = "Do you confirm?"
+'	mret = WinXDialog_Question (#winMain, text$, title$, $$FALSE, 1) ' default to the 'No' button
+'	SELECT CASE mret
+'		CASE $$IDYES ' the 'Yes' button was selected
+'			MessageBoxA (#winMain, &"Confirmed", &title$, $$MB_ICONINFORMATION)
+'		CASE ELSE
+'			MessageBoxA (#winMain, &"Not confirmed", &title$, $$MB_ICONINFORMATION)
+'	END SELECT
+
 FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 	IF cancel THEN flags = $$MB_YESNOCANCEL ELSE flags = $$MB_YESNO
 	SELECT CASE defaultButton
