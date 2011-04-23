@@ -641,7 +641,9 @@ DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
 DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
-DECLARE FUNCTION WinXListView_SetAllUnselected ()
+DECLARE FUNCTION WinXListView_SetAllUnselected (hLV)
+DECLARE FUNCTION WinXListView_SetAllChecked (hLV)
+DECLARE FUNCTION WinXListView_SetAllUnchecked (hLV)
 
 DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
 DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
@@ -4468,6 +4470,7 @@ END FUNCTION
 ' Selects all items
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetAllSelected (hLV)
+	SHARED g_lvProtectOnItem
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN		' fail
@@ -4475,7 +4478,11 @@ FUNCTION WinXListView_SetAllSelected (hLV)
 	lvi.stateMask = $$LVIS_SELECTED
 	lvi.state = $$LVIS_SELECTED
 
+	' protect from an endless loop
+	g_lvProtectOnItem = $$TRUE
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+	g_lvProtectOnItem = $$FALSE
+
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -4488,16 +4495,27 @@ END FUNCTION
 ' checked = $$TRUE to check the item, $$FALSE to uncheck it
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
+	SHARED g_lvProtectOnItem
 	LV_ITEM lvi		' list view item
 
 	IFZ hLV THEN RETURN		' fail
 	IF iItem < 0 THEN RETURN		' fail
 
-	IF checked THEN lvi.state = 0x2000 ELSE lvi.state = 0x1000		' unchecked
+	IF checked THEN
+		lvi.state = 0x2000 ' on
+	ELSE
+		lvi.state = 0x1000 ' off
+	ENDIF
 	lvi.mask = $$LVIF_STATE
 	lvi.stateMask = $$LVIS_STATEIMAGEMASK
 
+	' protect from an endless loop
+	g_lvProtectOnItem = $$TRUE
+
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+
+	g_lvProtectOnItem = $$FALSE
+
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -4510,7 +4528,11 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
+	SHARED g_lvProtectOnItem
 	LVITEM lvi
+
+	' do unprotect from an endless loop
+	g_lvProtectOnItem = $$FALSE
 
 	IFZ hLV THEN RETURN		' fail
 
@@ -4557,7 +4579,11 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
+	SHARED g_lvProtectOnItem
 	LVITEM lvi
+
+	' do unprotect from an endless loop
+	g_lvProtectOnItem = $$FALSE
 
 	IFZ hLV THEN RETURN		' fail
 
@@ -4576,7 +4602,11 @@ END FUNCTION
 ' Sets the selection in a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetSelection (hLV, iItems[])
+	SHARED g_lvProtectOnItem
 	LVITEM lvi
+
+	' do unprotect from an endless loop
+	g_lvProtectOnItem = $$FALSE
 
 	IFZ hLV THEN RETURN		' fail
 	IFZ iItems[] THEN RETURN		' fail
@@ -4607,9 +4637,11 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
-
+	SHARED g_lvProtectOnItem
 	RECT rect
 
+	' do unprotect from an endless loop
+	g_lvProtectOnItem = $$FALSE
 	IFZ hLV THEN RETURN		' fail
 
 	IF iItem < 0 THEN iItem = 0
@@ -4638,6 +4670,10 @@ END FUNCTION
 ' view = the view to set
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetView (hLV, view)
+	SHARED g_lvProtectOnItem
+
+	' do unprotect from an endless loop
+	g_lvProtectOnItem = $$FALSE
 	IFZ hLV THEN RETURN		' fail
 
 	style = GetWindowLongA (hLV, $$GWL_STYLE)
@@ -8595,10 +8631,16 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			ret = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
 			XLONGAT (&&nmlvdi) = pNmlvdi
 			'
-			' CASE $$TVN_SELCHANGED
-			' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
-		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
+		CASE $$TVN_SELCHANGED
 			IFZ binding.onItem THEN EXIT SELECT
+			' Guy-02mar11-handled
+			handled = $$TRUE
+			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
+			'
+			' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
+		CASE $$LVN_ITEMCHANGED
+			IFZ binding.onItem THEN EXIT SELECT
+			IF g_lvProtectOnItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
@@ -8645,7 +8687,9 @@ END FUNCTION
 '
 ' Unselects all items
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXListView_SetAllUnselected ()
+'
+FUNCTION WinXListView_SetAllUnselected (hLV)
+	SHARED g_lvProtectOnItem
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN		' fail
@@ -8653,7 +8697,11 @@ FUNCTION WinXListView_SetAllUnselected ()
 	lvi.stateMask = $$LVIS_SELECTED
 	lvi.state = 0
 
+	' protect from an endless loop
+	g_lvProtectOnItem = $$TRUE
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+	g_lvProtectOnItem = $$FALSE
+
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -9463,6 +9511,7 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 	SHARED hIml
 	SHARED DLM_MESSAGE
 	SHARED g_hClipMem		' to copy to the clipboard
+	SHARED g_lvProtectOnItem
 
 	STATIC dragItem
 	STATIC lastDragItem
@@ -9626,21 +9675,22 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 			SetScrollInfo (hWnd, sb, &si, $$TRUE)
 			RETURN @binding.onScroll (si.nPos, hWnd, dir)
 
-			' This allows for mouse activation of child windows, for some reason WM_ACTIVATE doesn't work
-			' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
-			' CASE $$WM_MOUSEACTIVATE
-			' IF hWnd != wParam THEN
-			' SetFocus (hWnd)
-			' RETURN $$MA_NOACTIVATE
-			' ENDIF
-			' RETURN $$MA_ACTIVATE
-			' WinXGetMousePos (wParam, @x, @y)
-			' hChild = wParam
-			' DO WHILE hChild
-			' wParam = hChild
-			' hChild = ChildWindowFromPoint (wParam, x, y)
-			' LOOP
-			' IF wParam = GetFocus() THEN RETURN $$MA_NOACTIVATE
+		' This allows for mouse activation of child windows, for some reason WM_ACTIVATE doesn't work
+		' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
+		'CASE $$WM_MOUSEACTIVATE
+		'	IF hWnd <> wParam THEN
+		'		SetFocus (hWnd)
+		'		RETURN $$MA_NOACTIVATE
+		'	ENDIF
+		'	RETURN $$MA_ACTIVATE
+		'	WinXGetMousePos (wParam, @x, @y)
+		'	hChild = wParam
+		'	DO WHILE hChild
+		'		wParam = hChild
+		'		hChild = ChildWindowFromPoint (wParam, x, y)
+		'	LOOP
+		'	IF wParam = GetFocus () THEN RETURN $$MA_NOACTIVATE
+
 		CASE $$WM_KEYDOWN
 			IF binding.onKeyDown THEN RETURN @binding.onKeyDown (hWnd, wParam)
 		CASE $$WM_KEYUP
@@ -10370,6 +10420,72 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+'
+' ########################################
+' #####  WinXListView_SetAllChecked  #####
+' ########################################
+'
+' Checks all item's check state of a list view with check boxes
+' hLV = the handle to the list view
+'
+FUNCTION WinXListView_SetAllChecked (hLV)
+	SHARED g_lvProtectOnItem
+	LV_ITEM lvi		' list view item
+
+	IFZ hLV THEN RETURN		' fail
+
+	' protect from an endless loop
+	g_lvProtectOnItem = $$TRUE
+
+	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
+	IF uppItem >= 0 THEN
+		FOR iItem = 0 TO uppItem
+			lvi.mask = $$LVIF_STATE
+			lvi.state = 0x2000
+			lvi.stateMask = $$LVIS_STATEIMAGEMASK
+			'
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+		NEXT iItem
+	ENDIF
+
+	g_lvProtectOnItem = $$FALSE
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXListView_SetAllUnchecked  #####
+' ##########################################
+'
+' Unchecks all item's check state of a list view with check boxes
+' hLV = the handle to the list view
+'
+FUNCTION WinXListView_SetAllUnchecked (hLV)
+	SHARED g_lvProtectOnItem
+	LV_ITEM lvi		' list view item
+
+	IFZ hLV THEN RETURN		' fail
+
+	' protect from an endless loop
+	g_lvProtectOnItem = $$TRUE
+
+	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
+	IF uppItem >= 0 THEN
+		FOR iItem = 0 TO uppItem
+			lvi.mask = $$LVIF_STATE
+			lvi.state = 0x1000
+			lvi.stateMask = $$LVIS_STATEIMAGEMASK
+			'
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+		NEXT iItem
+	ENDIF
+
+	g_lvProtectOnItem = $$FALSE
+
+	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 '
