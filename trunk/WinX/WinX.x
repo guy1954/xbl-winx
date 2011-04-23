@@ -4491,6 +4491,8 @@ FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
 	LV_ITEM lvi		' list view item
 
 	IFZ hLV THEN RETURN		' fail
+	IF iItem < 0 THEN RETURN		' fail
+
 	IF checked THEN lvi.state = 0x2000 ELSE lvi.state = 0x1000		' unchecked
 	lvi.mask = $$LVIF_STATE
 	lvi.stateMask = $$LVIS_STATEIMAGEMASK
