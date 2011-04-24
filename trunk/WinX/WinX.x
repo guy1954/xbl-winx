@@ -710,7 +710,7 @@ DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION FnTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 DECLARE FUNCTION LOCK_FindControlHandle (hLV)
-DECLARE FUNCTION LOCK_IdcProtected (idLV)
+DECLARE FUNCTION LOCK_GetIdcProtectStatus (idLV)
 DECLARE FUNCTION LOCK_GetProtectStatus (id)
 DECLARE FUNCTION LOCK_SetProtectStatus (id, bProtect)
 '
@@ -8615,8 +8615,6 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onLabelEdit THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			bIsLocked = LOCK_IdcProtected (nmlvdi.hdr.idFrom)
-			IF bIsLocked THEN EXIT SELECT
 			pNmlvdi = &nmlvdi
 			XLONGAT (&&nmlvdi) = lParam
 			ret = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
@@ -8626,6 +8624,8 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
+			bIsLocked = LOCK_GetIdcProtectStatus (nmhdr.idFrom)
+			IF bIsLocked THEN EXIT SELECT
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
 			' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
@@ -8633,7 +8633,7 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			bIsLocked = LOCK_IdcProtected (nmhdr.idFrom)
+			bIsLocked = LOCK_GetIdcProtectStatus (nmhdr.idFrom)
 			IF bIsLocked THEN EXIT SELECT
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
@@ -10552,12 +10552,12 @@ FUNCTION LOCK_FindControlHandle (hLV)
 END FUNCTION
 '
 ' ##################################
-' #####  LOCK_IdcProtected  #####
+' #####  LOCK_GetIdcProtectStatus  #####
 ' ##################################
 '
 '
 '
-FUNCTION LOCK_IdcProtected (idLV)
+FUNCTION LOCK_GetIdcProtectStatus (idLV)
 	SHARED LOCK LOCK_array[]
 	SHARED LOCK_arrayUM[]
 	SHARED LOCK_idMax
