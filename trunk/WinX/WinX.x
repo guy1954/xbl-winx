@@ -270,7 +270,7 @@ END TYPE
 TYPE LOCK
 	XLONG .idc
 	XLONG .hwnd
-	XLONG .lock
+	XLONG .skipOnNotify
 END TYPE
 
 '
@@ -650,11 +650,11 @@ DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
 DECLARE FUNCTION WinXListView_SetAllUnselected (hLV)
 DECLARE FUNCTION WinXListView_SetAllChecked (hLV)
 DECLARE FUNCTION WinXListView_SetAllUnchecked (hLV)
-DECLARE FUNCTION WinXListView_ProtectOnItem (hLV)
-DECLARE FUNCTION WinXListView_UnprotectOnItem (hLV)
+DECLARE FUNCTION WinXListView_SkipOnItem (hLV)
+DECLARE FUNCTION WinXListView_UseOnItem (hLV)
 
-DECLARE FUNCTION WinXTreeView_ProtectOnItem (hTV)
-DECLARE FUNCTION WinXTreeView_UnprotectOnItem (hTV)
+DECLARE FUNCTION WinXTreeView_SkipOnItem (hTV)
+DECLARE FUNCTION WinXTreeView_UseOnItem (hTV)
 
 DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
 DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
@@ -709,10 +709,10 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION FnTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
-DECLARE FUNCTION LOCK_FindControlHandle (hLV)
-DECLARE FUNCTION LOCK_GetIdcProtectStatus (idLV)
-DECLARE FUNCTION LOCK_GetProtectStatus (id)
-DECLARE FUNCTION LOCK_SetProtectStatus (id, bProtect)
+DECLARE FUNCTION LOCK_GetId_hCtr (hCtr)
+DECLARE FUNCTION LOCK_GetSkipOnNotify_idCtr (idCtr)
+DECLARE FUNCTION LOCK_GetSkipOnNotify (id)
+DECLARE FUNCTION LOCK_SetSkipOnNotify (id, bSkip)
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
@@ -1159,7 +1159,7 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 
 	item.idc = idCtr
 	item.hwnd = hLV
-	item.lock = $$FALSE ' NOT locked
+	item.skipOnNotify = $$FALSE ' NOT locked
 	LOCK_New (item)
 
 	RETURN hLV
@@ -1480,7 +1480,7 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 
 	item.idc = idCtr
 	item.hwnd = hTV
-	item.lock = $$FALSE ' NOT locked
+	item.skipOnNotify = $$FALSE ' NOT locked
 	LOCK_New (item)
 
 	RETURN hTV
@@ -4330,14 +4330,14 @@ FUNCTION WinXListView_DeleteAllItems (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	id = LOCK_FindControlHandle (hLV)
-	statusOld = LOCK_GetProtectStatus (id)
-	LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_GetId_hCtr (hLV)
+	statusOld = LOCK_GetSkipOnNotify (id)
+	LOCK_SetSkipOnNotify (id, $$TRUE)
 
 	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
 	IFZ ret THEN RETURN
 
-	LOCK_SetProtectStatus (id, statusOld)
+	LOCK_SetSkipOnNotify (id, statusOld)
 
 	RETURN $$TRUE		' success
 
@@ -6771,8 +6771,8 @@ FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 	IF wp.showCmd THEN wp.showCmd = minMax
 	IF (restored.left | restored.right | restored.top | restored.bottom) THEN wp.rcNormalPosition = restored
 
-	IFZ SetWindowPlacement (hWnd, &wp) ret = $$FALSE ELSE ret = $$TRUE
-
+	ret = SetWindowPlacement (hWnd, &wp)
+	IF ret THEN ret = $$TRUE  ' true should be coded $$TRUE
 	GetClientRect (hWnd, &rect)
 	sizeWindow (hWnd, rect.right - rect.left, rect.bottom - rect.top)
 
@@ -7717,13 +7717,13 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	IFZ count THEN RETURN $$TRUE		' success
 
 	' protect from an endless loop
-	id = LOCK_FindControlHandle (hLV)
-	statusOld = LOCK_GetProtectStatus (id)
-	LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_GetId_hCtr (hLV)
+	statusOld = LOCK_GetSkipOnNotify (id)
+	LOCK_SetSkipOnNotify (id, $$TRUE)
 
 	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
 
-	LOCK_SetProtectStatus (id, statusOld)
+	LOCK_SetSkipOnNotify (id, statusOld)
 
 	IFZ ret THEN RETURN		' fail
 
@@ -8463,6 +8463,7 @@ END FUNCTION
 ' #####  FnOnNotify  #####
 ' ########################
 ' Handles notify messages
+' returns .on*'s return code (eg. .onItem's), 0 otherwise
 FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 	SHARED tvDragButton
 	SHARED tvDragging
@@ -8511,7 +8512,6 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			pNmtvdi = &nmtvdi
 			XLONGAT (&&nmtvdi) = lParam
 			ret = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
-			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
 			XLONGAT (&&nmtvdi) = pNmtvdi
 		CASE $$TVN_ENDLABELEDIT
 			IFZ binding.onLabelEdit THEN EXIT SELECT
@@ -8609,7 +8609,6 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			pNmlvdi = &nmlvdi
 			XLONGAT (&&nmlvdi) = lParam
 			ret = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
-			IFF ret THEN ret = $$TRUE ELSE ret = $$FALSE
 			XLONGAT (&&nmlvdi) = pNmlvdi
 		CASE $$LVN_ENDLABELEDIT
 			IFZ binding.onLabelEdit THEN EXIT SELECT
@@ -8624,8 +8623,9 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			bIsLocked = LOCK_GetIdcProtectStatus (nmhdr.idFrom)
-			IF bIsLocked THEN EXIT SELECT
+			'bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (nmhdr.idFrom)
+			bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (wParam) ' idCtr
+			IF bSkipOnNotify THEN EXIT SELECT
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
 			' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
@@ -8633,8 +8633,9 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			bIsLocked = LOCK_GetIdcProtectStatus (nmhdr.idFrom)
-			IF bIsLocked THEN EXIT SELECT
+			'bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (nmhdr.idFrom)
+			bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (wParam) ' idCtr
+			IF bSkipOnNotify THEN EXIT SELECT
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
@@ -10422,9 +10423,9 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	id = LOCK_FindControlHandle (hLV)
-	statusOld = LOCK_GetProtectStatus (id)
-	LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_GetId_hCtr (hLV)
+	statusOld = LOCK_GetSkipOnNotify (id)
+	LOCK_SetSkipOnNotify (id, $$TRUE)
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -10437,7 +10438,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	LOCK_SetProtectStatus (id, statusOld)
+	LOCK_SetSkipOnNotify (id, statusOld)
 
 	RETURN $$TRUE		' success
 
@@ -10456,9 +10457,9 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	id = LOCK_FindControlHandle (hLV)
-	statusOld = LOCK_GetProtectStatus (id)
-	LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_GetId_hCtr (hLV)
+	statusOld = LOCK_GetSkipOnNotify (id)
+	LOCK_SetSkipOnNotify (id, $$TRUE)
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -10471,105 +10472,105 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	LOCK_SetProtectStatus (id, statusOld)
+	LOCK_SetSkipOnNotify (id, statusOld)
 
 	RETURN $$TRUE		' success
 
 END FUNCTION
 '
-' ########################################
-' #####  WinXListView_ProtectOnItem  #####
-' ########################################
+' #####################################
+' #####  WinXListView_SkipOnItem  #####
+' #####################################
 '
 '
 '
-FUNCTION WinXListView_ProtectOnItem (hLV)
-	id = LOCK_FindControlHandle (hLV)
-	LOCK_SetProtectStatus (id, $$TRUE)
+FUNCTION WinXListView_SkipOnItem (hLV)
+	id = LOCK_GetId_hCtr (hLV)
+	LOCK_SetSkipOnNotify (id, $$TRUE)
 
 END FUNCTION
 '
-' ##########################################
-' #####  WinXListView_UnprotectOnItem  #####
-' ##########################################
+' ####################################
+' #####  WinXListView_UseOnItem  #####
+' ####################################
 '
 '
 '
-FUNCTION WinXListView_UnprotectOnItem (hLV)
+FUNCTION WinXListView_UseOnItem (hLV)
 
-	id = LOCK_FindControlHandle (hLV)
-	LOCK_SetProtectStatus (id, $$FALSE)
-
-END FUNCTION
-'
-' ########################################
-' #####  WinXTreeView_ProtectOnItem  #####
-' ########################################
-'
-'
-'
-FUNCTION WinXTreeView_ProtectOnItem (hTV)
-	id = LOCK_FindControlHandle (hTV)
-	LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_GetId_hCtr (hLV)
+	LOCK_SetSkipOnNotify (id, $$FALSE)
 
 END FUNCTION
 '
-' ##########################################
-' #####  WinXTreeView_UnprotectOnItem  #####
-' ##########################################
+' #####################################
+' #####  WinXTreeView_SkipOnItem  #####
+' #####################################
 '
 '
 '
-FUNCTION WinXTreeView_UnprotectOnItem (hTV)
-
-	id = LOCK_FindControlHandle (hTV)
-	LOCK_SetProtectStatus (id, $$FALSE)
+FUNCTION WinXTreeView_SkipOnItem (hTV)
+	id = LOCK_GetId_hCtr (hTV)
+	LOCK_SetSkipOnNotify (id, $$TRUE)
 
 END FUNCTION
 '
-' ##################################
-' #####  LOCK_FindControlHandle  #####
-' ##################################
+' ####################################
+' #####  WinXTreeView_UseOnItem  #####
+' ####################################
 '
 '
 '
-FUNCTION LOCK_FindControlHandle (hLV)
+FUNCTION WinXTreeView_UseOnItem (hTV)
+
+	id = LOCK_GetId_hCtr (hTV)
+	LOCK_SetSkipOnNotify (id, $$FALSE)
+
+END FUNCTION
+'
+' #############################
+' #####  LOCK_GetId_hCtr  #####
+' #############################
+'
+'
+'
+FUNCTION LOCK_GetId_hCtr (hCtr)
 	SHARED LOCK LOCK_array[]
 	SHARED LOCK_arrayUM[]
 	SHARED LOCK_idMax
 
-	IFZ hLV THEN RETURN 0
+	IFZ hCtr THEN RETURN 0
 	IFZ LOCK_arrayUM[] THEN RETURN 0
 
-	upper_slot = UBOUND (LOCK_arrayUM[])
+	upper_slot = LOCK_idMax - 1
 	FOR slot = 0 TO upper_slot
 		IF LOCK_arrayUM[slot] THEN
-			IF LOCK_array[slot].hwnd THEN RETURN (slot + 1)
+			IF LOCK_array[slot].hwnd = hCtr THEN RETURN (slot + 1)
 		ENDIF
 	NEXT slot
 	RETURN 0
 
 END FUNCTION
 '
-' ##################################
-' #####  LOCK_GetIdcProtectStatus  #####
-' ##################################
+' ########################################
+' #####  LOCK_GetSkipOnNotify_idCtr  #####
+' ########################################
 '
 '
 '
-FUNCTION LOCK_GetIdcProtectStatus (idLV)
+FUNCTION LOCK_GetSkipOnNotify_idCtr (idCtr)
 	SHARED LOCK LOCK_array[]
 	SHARED LOCK_arrayUM[]
 	SHARED LOCK_idMax
 
-	IFZ idLV THEN RETURN
+	IFZ idCtr THEN RETURN
 	IFZ LOCK_arrayUM[] THEN RETURN
 
-	upper_slot = UBOUND (LOCK_arrayUM[])
+	upper_slot = LOCK_idMax - 1
 	FOR slot = 0 TO upper_slot
 		IF LOCK_arrayUM[slot] THEN
-			IF LOCK_array[slot].idc = idLV THEN
-				IF LOCK_array[slot].lock THEN RETURN $$TRUE
+			IF LOCK_array[slot].idc = idCtr THEN
+				IF LOCK_array[slot].skipOnNotify THEN RETURN $$TRUE
 				RETURN
 			ENDIF
 		ENDIF
@@ -10577,13 +10578,13 @@ FUNCTION LOCK_GetIdcProtectStatus (idLV)
 
 END FUNCTION
 '
-' ######################################
-' #####  LOCK_GetProtectStatus  #####
-' ######################################
+' ##################################
+' #####  LOCK_GetSkipOnNotify  #####
+' ##################################
 '
 '
 '
-FUNCTION LOCK_GetProtectStatus (id)
+FUNCTION LOCK_GetSkipOnNotify (id)
 	SHARED LOCK LOCK_array[]
 	SHARED LOCK_arrayUM[]
 	SHARED LOCK_idMax
@@ -10594,17 +10595,17 @@ FUNCTION LOCK_GetProtectStatus (id)
 	slot = id - 1
 	IFF LOCK_arrayUM[slot] THEN RETURN
 
-	RETURN LOCK_array[slot].lock
+	RETURN LOCK_array[slot].skipOnNotify
 
 END FUNCTION
 '
-' ######################################
-' #####  LOCK_SetProtectStatus  #####
-' ######################################
+' ##################################
+' #####  LOCK_SetSkipOnNotify  #####
+' ##################################
 '
 '
 '
-FUNCTION LOCK_SetProtectStatus (id, bProtect)
+FUNCTION LOCK_SetSkipOnNotify (id, bSkip)
 	SHARED LOCK LOCK_array[]
 	SHARED LOCK_arrayUM[]
 	SHARED LOCK_idMax
@@ -10615,11 +10616,9 @@ FUNCTION LOCK_SetProtectStatus (id, bProtect)
 	slot = id - 1
 	IFF LOCK_arrayUM[slot] THEN RETURN
 
-	IF bProtect THEN
-		LOCK_array[slot].lock = $$TRUE
-	ELSE
-		LOCK_array[slot].lock = $$FALSE
-	ENDIF
+	IF bSkip THEN bSkip = $$TRUE ' true should be coded $$TRUE
+	LOCK_array[slot].skipOnNotify = bSkip
+
 	RETURN $$TRUE
 
 END FUNCTION
