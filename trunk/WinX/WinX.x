@@ -267,7 +267,7 @@ TYPE TBBUTTONDATA
 	TBBUTTON .tbb
 END TYPE
 
-TYPE LV_LOCK
+TYPE LOCK
 	XLONG .idc
 	XLONG .hwnd
 	XLONG .lock
@@ -653,6 +653,9 @@ DECLARE FUNCTION WinXListView_SetAllUnchecked (hLV)
 DECLARE FUNCTION WinXListView_ProtectOnItem (hLV)
 DECLARE FUNCTION WinXListView_UnprotectOnItem (hLV)
 
+DECLARE FUNCTION WinXTreeView_ProtectOnItem (hTV)
+DECLARE FUNCTION WinXTreeView_UnprotectOnItem (hTV)
+
 DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
 DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
 
@@ -689,7 +692,7 @@ DeclareAccess(BINDING)
 DeclareAccess(SPLITTERINFO)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
-DeclareAccess(LV_LOCK)
+DeclareAccess(LOCK)
 
 DECLARE FUNCTION VOID drawLine (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION VOID drawEllipse (hdc, AUTODRAWRECORD record, x0, y0)
@@ -706,10 +709,10 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION FnTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
-DECLARE FUNCTION LV_LOCK_FindListView (hLV)
-DECLARE FUNCTION LV_LOCK_IdcProtected (idLV)
-DECLARE FUNCTION LV_LOCK_GetProtectStatus (id)
-DECLARE FUNCTION LV_LOCK_SetProtectStatus (id, bProtect)
+DECLARE FUNCTION LOCK_FindControlHandle (hLV)
+DECLARE FUNCTION LOCK_IdcProtected (idLV)
+DECLARE FUNCTION LOCK_GetProtectStatus (id)
+DECLARE FUNCTION LOCK_SetProtectStatus (id, bProtect)
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
@@ -1133,7 +1136,7 @@ END FUNCTION
 ' editable enables/disables label editing.  view is a view constant
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
-	LV_LOCK item
+	LOCK item
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP
@@ -1156,8 +1159,8 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 
 	item.idc = idCtr
 	item.hwnd = hLV
-	item.lock = $$FALSE
-	LV_LOCK_New (item)
+	item.lock = $$FALSE ' NOT locked
+	LOCK_New (item)
 
 	RETURN hLV
 
@@ -1460,6 +1463,8 @@ END FUNCTION
 ' idCtr = the unique idCtr constant for this control
 ' returns the handle to the tree view or 0 on fail
 FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
+	LOCK item
+
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TVS_HASBUTTONS | $$TVS_HASLINES | $$TVS_LINESATROOT
 
@@ -1472,6 +1477,12 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 
 	WinXSetDefaultFont (hTV)
 	IF hImages THEN SendMessageA (hTV, $$TVM_SETIMAGELIST, $$TVSIL_NORMAL, hImages)
+
+	item.idc = idCtr
+	item.hwnd = hTV
+	item.lock = $$FALSE ' NOT locked
+	LOCK_New (item)
+
 	RETURN hTV
 
 END FUNCTION
@@ -4317,9 +4328,18 @@ END FUNCTION
 FUNCTION WinXListView_DeleteAllItems (hLV)
 
 	IFZ hLV THEN RETURN		' fail
+
+	' protect from an endless loop
+	id = LOCK_FindControlHandle (hLV)
+	statusOld = LOCK_GetProtectStatus (id)
+	LOCK_SetProtectStatus (id, $$TRUE)
+
 	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
 	IFZ ret THEN RETURN
-	RETURN $$TRUE
+
+	LOCK_SetProtectStatus (id, statusOld)
+
+	RETURN $$TRUE		' success
 
 END FUNCTION
 '
@@ -7696,26 +7716,15 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
 	IFZ count THEN RETURN $$TRUE		' success
 
-	' --------------------------------------------------------------------------------------------------
-	' Guy-24feb2010-risky idiom for Windows 7
-	' ' don't redraw the Treeview until all nodes are deleted, for speed improvement
-	' SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)
-	'
-	' ' get the handle of the tree view root
-	' hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
-	'
-	' ' remove all the nodes in reverse order
-	' DO UNTIL hItem = 0
-	' SendMessageA (hTV, $$TVM_DELETEITEM, 0, hItem)
-	' hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
-	' LOOP
-	' SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
-	'
-	' ' turn back on redrawing on the Treeview
-	' SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)
-	' --------------------------------------------------------------------------------------------------
+	' protect from an endless loop
+	id = LOCK_FindControlHandle (hLV)
+	statusOld = LOCK_GetProtectStatus (id)
+	LOCK_SetProtectStatus (id, $$TRUE)
 
 	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
+
+	LOCK_SetProtectStatus (id, statusOld)
+
 	IFZ ret THEN RETURN		' fail
 
 	RETURN $$TRUE		' success
@@ -8606,6 +8615,8 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onLabelEdit THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
+			bIsLocked = LOCK_IdcProtected (nmlvdi.hdr.idFrom)
+			IF bIsLocked THEN EXIT SELECT
 			pNmlvdi = &nmlvdi
 			XLONGAT (&&nmlvdi) = lParam
 			ret = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
@@ -8622,7 +8633,7 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			bIsLocked = LV_LOCK_IdcProtected (nmhdr.idFrom)
+			bIsLocked = LOCK_IdcProtected (nmhdr.idFrom)
 			IF bIsLocked THEN EXIT SELECT
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
@@ -10411,9 +10422,9 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	id = LV_LOCK_FindListView (hLV)
-	statusOld = LV_LOCK_GetProtectStatus (id)
-	LV_LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_FindControlHandle (hLV)
+	statusOld = LOCK_GetProtectStatus (id)
+	LOCK_SetProtectStatus (id, $$TRUE)
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -10426,7 +10437,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	LV_LOCK_SetProtectStatus (id, statusOld)
+	LOCK_SetProtectStatus (id, statusOld)
 
 	RETURN $$TRUE		' success
 
@@ -10445,9 +10456,9 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	id = LV_LOCK_FindListView (hLV)
-	statusOld = LV_LOCK_GetProtectStatus (id)
-	LV_LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_FindControlHandle (hLV)
+	statusOld = LOCK_GetProtectStatus (id)
+	LOCK_SetProtectStatus (id, $$TRUE)
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -10460,7 +10471,7 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	LV_LOCK_SetProtectStatus (id, statusOld)
+	LOCK_SetProtectStatus (id, statusOld)
 
 	RETURN $$TRUE		' success
 
@@ -10473,8 +10484,8 @@ END FUNCTION
 '
 '
 FUNCTION WinXListView_ProtectOnItem (hLV)
-	id = LV_LOCK_FindListView (hLV)
-	LV_LOCK_SetProtectStatus (id, $$TRUE)
+	id = LOCK_FindControlHandle (hLV)
+	LOCK_SetProtectStatus (id, $$TRUE)
 
 END FUNCTION
 '
@@ -10486,29 +10497,54 @@ END FUNCTION
 '
 FUNCTION WinXListView_UnprotectOnItem (hLV)
 
-	id = LV_LOCK_FindListView (hLV)
-	LV_LOCK_SetProtectStatus (id, $$FALSE)
+	id = LOCK_FindControlHandle (hLV)
+	LOCK_SetProtectStatus (id, $$FALSE)
+
+END FUNCTION
+'
+' ########################################
+' #####  WinXTreeView_ProtectOnItem  #####
+' ########################################
+'
+'
+'
+FUNCTION WinXTreeView_ProtectOnItem (hTV)
+	id = LOCK_FindControlHandle (hTV)
+	LOCK_SetProtectStatus (id, $$TRUE)
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXTreeView_UnprotectOnItem  #####
+' ##########################################
+'
+'
+'
+FUNCTION WinXTreeView_UnprotectOnItem (hTV)
+
+	id = LOCK_FindControlHandle (hTV)
+	LOCK_SetProtectStatus (id, $$FALSE)
 
 END FUNCTION
 '
 ' ##################################
-' #####  LV_LOCK_FindListView  #####
+' #####  LOCK_FindControlHandle  #####
 ' ##################################
 '
 '
 '
-FUNCTION LV_LOCK_FindListView (hLV)
-	SHARED LV_LOCK LV_LOCK_array[]
-	SHARED LV_LOCK_arrayUM[]
-	SHARED LV_LOCK_idMax
+FUNCTION LOCK_FindControlHandle (hLV)
+	SHARED LOCK LOCK_array[]
+	SHARED LOCK_arrayUM[]
+	SHARED LOCK_idMax
 
 	IFZ hLV THEN RETURN 0
-	IFZ LV_LOCK_arrayUM[] THEN RETURN 0
+	IFZ LOCK_arrayUM[] THEN RETURN 0
 
-	upper_slot = UBOUND (LV_LOCK_arrayUM[])
+	upper_slot = UBOUND (LOCK_arrayUM[])
 	FOR slot = 0 TO upper_slot
-		IF LV_LOCK_arrayUM[slot] THEN
-			IF LV_LOCK_array[slot].hwnd THEN RETURN (slot + 1)
+		IF LOCK_arrayUM[slot] THEN
+			IF LOCK_array[slot].hwnd THEN RETURN (slot + 1)
 		ENDIF
 	NEXT slot
 	RETURN 0
@@ -10516,24 +10552,24 @@ FUNCTION LV_LOCK_FindListView (hLV)
 END FUNCTION
 '
 ' ##################################
-' #####  LV_LOCK_IdcProtected  #####
+' #####  LOCK_IdcProtected  #####
 ' ##################################
 '
 '
 '
-FUNCTION LV_LOCK_IdcProtected (idLV)
-	SHARED LV_LOCK LV_LOCK_array[]
-	SHARED LV_LOCK_arrayUM[]
-	SHARED LV_LOCK_idMax
+FUNCTION LOCK_IdcProtected (idLV)
+	SHARED LOCK LOCK_array[]
+	SHARED LOCK_arrayUM[]
+	SHARED LOCK_idMax
 
 	IFZ idLV THEN RETURN
-	IFZ LV_LOCK_arrayUM[] THEN RETURN
+	IFZ LOCK_arrayUM[] THEN RETURN
 
-	upper_slot = UBOUND (LV_LOCK_arrayUM[])
+	upper_slot = UBOUND (LOCK_arrayUM[])
 	FOR slot = 0 TO upper_slot
-		IF LV_LOCK_arrayUM[slot] THEN
-			IF LV_LOCK_array[slot].idc = idLV THEN
-				IF LV_LOCK_array[slot].lock THEN RETURN $$TRUE
+		IF LOCK_arrayUM[slot] THEN
+			IF LOCK_array[slot].idc = idLV THEN
+				IF LOCK_array[slot].lock THEN RETURN $$TRUE
 				RETURN
 			ENDIF
 		ENDIF
@@ -10542,47 +10578,47 @@ FUNCTION LV_LOCK_IdcProtected (idLV)
 END FUNCTION
 '
 ' ######################################
-' #####  LV_LOCK_GetProtectStatus  #####
+' #####  LOCK_GetProtectStatus  #####
 ' ######################################
 '
 '
 '
-FUNCTION LV_LOCK_GetProtectStatus (id)
-	SHARED LV_LOCK LV_LOCK_array[]
-	SHARED LV_LOCK_arrayUM[]
-	SHARED LV_LOCK_idMax
+FUNCTION LOCK_GetProtectStatus (id)
+	SHARED LOCK LOCK_array[]
+	SHARED LOCK_arrayUM[]
+	SHARED LOCK_idMax
 
-	IFZ LV_LOCK_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > LV_LOCK_idMax) THEN RETURN
+	IFZ LOCK_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > LOCK_idMax) THEN RETURN
 
 	slot = id - 1
-	IFF LV_LOCK_arrayUM[slot] THEN RETURN
+	IFF LOCK_arrayUM[slot] THEN RETURN
 
-	RETURN LV_LOCK_array[slot].lock
+	RETURN LOCK_array[slot].lock
 
 END FUNCTION
 '
 ' ######################################
-' #####  LV_LOCK_SetProtectStatus  #####
+' #####  LOCK_SetProtectStatus  #####
 ' ######################################
 '
 '
 '
-FUNCTION LV_LOCK_SetProtectStatus (id, bProtect)
-	SHARED LV_LOCK LV_LOCK_array[]
-	SHARED LV_LOCK_arrayUM[]
-	SHARED LV_LOCK_idMax
+FUNCTION LOCK_SetProtectStatus (id, bProtect)
+	SHARED LOCK LOCK_array[]
+	SHARED LOCK_arrayUM[]
+	SHARED LOCK_idMax
 
-	IFZ LV_LOCK_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > LV_LOCK_idMax) THEN RETURN
+	IFZ LOCK_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > LOCK_idMax) THEN RETURN
 
 	slot = id - 1
-	IFF LV_LOCK_arrayUM[slot] THEN RETURN
+	IFF LOCK_arrayUM[slot] THEN RETURN
 
 	IF bProtect THEN
-		LV_LOCK_array[slot].lock = $$TRUE
+		LOCK_array[slot].lock = $$TRUE
 	ELSE
-		LV_LOCK_array[slot].lock = $$FALSE
+		LOCK_array[slot].lock = $$FALSE
 	ENDIF
 	RETURN $$TRUE
 
@@ -10599,6 +10635,6 @@ END FUNCTION
 DefineAccess(SPLITTERINFO)
 DefineAccess(LINKEDLIST)
 DefineAccess(AUTODRAWRECORD)
-DefineAccess(LV_LOCK)
+DefineAccess(LOCK)
 
 END PROGRAM
