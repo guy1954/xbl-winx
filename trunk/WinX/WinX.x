@@ -267,6 +267,12 @@ TYPE TBBUTTONDATA
 	TBBUTTON .tbb
 END TYPE
 
+TYPE LV_LOCK
+	XLONG .idc
+	XLONG .hwnd
+	XLONG .lock
+END TYPE
+
 '
 ' #######################
 ' #####  M4 macros  #####
@@ -644,6 +650,8 @@ DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
 DECLARE FUNCTION WinXListView_SetAllUnselected (hLV)
 DECLARE FUNCTION WinXListView_SetAllChecked (hLV)
 DECLARE FUNCTION WinXListView_SetAllUnchecked (hLV)
+DECLARE FUNCTION WinXListView_ProtectOnItem (hLV)
+DECLARE FUNCTION WinXListView_UnprotectOnItem (hLV)
 
 DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
 DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
@@ -681,6 +689,7 @@ DeclareAccess(BINDING)
 DeclareAccess(SPLITTERINFO)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
+DeclareAccess(LV_LOCK)
 
 DECLARE FUNCTION VOID drawLine (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION VOID drawEllipse (hdc, AUTODRAWRECORD record, x0, y0)
@@ -697,6 +706,10 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION FnTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
+DECLARE FUNCTION LV_LOCK_FindListView (hLV)
+DECLARE FUNCTION LV_LOCK_IdcProtected (idLV)
+DECLARE FUNCTION LV_LOCK_GetProtectStatus (id)
+DECLARE FUNCTION LV_LOCK_SetProtectStatus (id, bProtect)
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
@@ -1120,6 +1133,8 @@ END FUNCTION
 ' editable enables/disables label editing.  view is a view constant
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
+	LV_LOCK item
+
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP
 	IF editable THEN style = style | $$LVS_EDITLABELS
@@ -1138,6 +1153,11 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 	' set the list view's extended style mask
 	exStyle = $$LVS_EX_FULLROWSELECT | $$LVS_EX_LABELTIP
 	SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
+
+	item.idc = idCtr
+	item.hwnd = hLV
+	item.lock = $$FALSE
+	LV_LOCK_New (item)
 
 	RETURN hLV
 
@@ -2671,10 +2691,8 @@ END FUNCTION
 FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 	STATIC s_xblDir$
 
-	IF s_xblDir$ THEN
-		' XstAlert ("Path of xblite's directory reset by WinXDir_GetXblDir$ " + s_xblDir$)
-		RETURN s_xblDir$
-	ENDIF
+	IF s_xblDir$ THEN RETURN s_xblDir$
+
 	XstGetEnvironmentVariable ("XBLDIR", @dir$)
 	dir$ = TRIM$ (dir$)
 	IFZ dir$ THEN
@@ -2693,7 +2711,6 @@ FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 					IF UCASE$ (subKey$) = "XBLDIR" THEN
 						dir$ = CSTRING$ (&szData$)
 						dir$ = TRIM$ (dir$)
-						' XstAlert ("Path of xblite's directory read from the registry " + dir$)
 						EXIT DO
 					ENDIF
 					INC index
@@ -2702,10 +2719,8 @@ FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 			RegCloseKey (hkey)
 		ENDIF
 	ENDIF
-	IFZ dir$ THEN
-		dir$ = "C:" + $$PathSlash$ + "xblite" + $$PathSlash$
-		' XstAlert ("Path of xblite's directory set by WinXDir_GetXblDir$ " + dir$)
-	ENDIF
+	IFZ dir$ THEN dir$ = "C:" + $$PathSlash$ + "xblite" + $$PathSlash$
+
 	WinXDir_AppendSlash (@dir$)		' end directory path with \
 	s_xblDir$ = dir$
 
@@ -3932,14 +3947,7 @@ FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 	IF bErr THEN RETURN defVal$ ' file NOT found
 
 	section$ = WinXPath_Trim$ (section$)
-	IFZ section$ THEN
-		' can't read an empty section
-		' default value defVal$ returned
-		msg$ = "WinXIni_Read$: Can't read an empty section."
-		msg$ = msg$ + "\nDefault value (" + defVal$ + ") returned"
-		XstAlert (msg$)
-		RETURN defVal$
-	ENDIF
+	IFZ section$ THEN RETURN defVal$
 
 	' read from the INI file
 	'bufSize = $$MAX_PATH
@@ -4470,7 +4478,6 @@ END FUNCTION
 ' Selects all items
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetAllSelected (hLV)
-	SHARED g_lvProtectOnItem
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN		' fail
@@ -4478,10 +4485,7 @@ FUNCTION WinXListView_SetAllSelected (hLV)
 	lvi.stateMask = $$LVIS_SELECTED
 	lvi.state = $$LVIS_SELECTED
 
-	' protect from an endless loop
-	g_lvProtectOnItem = $$TRUE
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
-	g_lvProtectOnItem = $$FALSE
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -4495,7 +4499,6 @@ END FUNCTION
 ' checked = $$TRUE to check the item, $$FALSE to uncheck it
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
-	SHARED g_lvProtectOnItem
 	LV_ITEM lvi		' list view item
 
 	IFZ hLV THEN RETURN		' fail
@@ -4509,12 +4512,7 @@ FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
 	lvi.mask = $$LVIF_STATE
 	lvi.stateMask = $$LVIS_STATEIMAGEMASK
 
-	' protect from an endless loop
-	g_lvProtectOnItem = $$TRUE
-
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-
-	g_lvProtectOnItem = $$FALSE
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -4528,11 +4526,7 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
-	SHARED g_lvProtectOnItem
 	LVITEM lvi
-
-	' do unprotect from an endless loop
-	g_lvProtectOnItem = $$FALSE
 
 	IFZ hLV THEN RETURN		' fail
 
@@ -4579,11 +4573,7 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
-	SHARED g_lvProtectOnItem
 	LVITEM lvi
-
-	' do unprotect from an endless loop
-	g_lvProtectOnItem = $$FALSE
 
 	IFZ hLV THEN RETURN		' fail
 
@@ -4602,11 +4592,7 @@ END FUNCTION
 ' Sets the selection in a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetSelection (hLV, iItems[])
-	SHARED g_lvProtectOnItem
 	LVITEM lvi
-
-	' do unprotect from an endless loop
-	g_lvProtectOnItem = $$FALSE
 
 	IFZ hLV THEN RETURN		' fail
 	IFZ iItems[] THEN RETURN		' fail
@@ -4637,11 +4623,8 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
-	SHARED g_lvProtectOnItem
 	RECT rect
 
-	' do unprotect from an endless loop
-	g_lvProtectOnItem = $$FALSE
 	IFZ hLV THEN RETURN		' fail
 
 	IF iItem < 0 THEN iItem = 0
@@ -4670,10 +4653,7 @@ END FUNCTION
 ' view = the view to set
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetView (hLV, view)
-	SHARED g_lvProtectOnItem
 
-	' do unprotect from an endless loop
-	g_lvProtectOnItem = $$FALSE
 	IFZ hLV THEN RETURN		' fail
 
 	style = GetWindowLongA (hLV, $$GWL_STYLE)
@@ -8640,9 +8620,10 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 		CASE $$LVN_ITEMCHANGED
 			IFZ binding.onItem THEN EXIT SELECT
-			IF g_lvProtectOnItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
+			bIsLocked = LV_LOCK_IdcProtected (nmhdr.idFrom)
+			IF bIsLocked THEN EXIT SELECT
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure or a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
 			'
@@ -8689,7 +8670,6 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 FUNCTION WinXListView_SetAllUnselected (hLV)
-	SHARED g_lvProtectOnItem
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN		' fail
@@ -8697,10 +8677,7 @@ FUNCTION WinXListView_SetAllUnselected (hLV)
 	lvi.stateMask = $$LVIS_SELECTED
 	lvi.state = 0
 
-	' protect from an endless loop
-	g_lvProtectOnItem = $$TRUE
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
-	g_lvProtectOnItem = $$FALSE
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -9511,7 +9488,6 @@ FUNCTION mainWndProc (hWnd, msg, wParam, lParam)
 	SHARED hIml
 	SHARED DLM_MESSAGE
 	SHARED g_hClipMem		' to copy to the clipboard
-	SHARED g_lvProtectOnItem
 
 	STATIC dragItem
 	STATIC lastDragItem
@@ -10430,13 +10406,14 @@ END FUNCTION
 ' hLV = the handle to the list view
 '
 FUNCTION WinXListView_SetAllChecked (hLV)
-	SHARED g_lvProtectOnItem
 	LV_ITEM lvi		' list view item
 
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	g_lvProtectOnItem = $$TRUE
+	id = LV_LOCK_FindListView (hLV)
+	statusOld = LV_LOCK_GetProtectStatus (id)
+	LV_LOCK_SetProtectStatus (id, $$TRUE)
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -10449,7 +10426,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	g_lvProtectOnItem = $$FALSE
+	LV_LOCK_SetProtectStatus (id, statusOld)
 
 	RETURN $$TRUE		' success
 
@@ -10463,13 +10440,14 @@ END FUNCTION
 ' hLV = the handle to the list view
 '
 FUNCTION WinXListView_SetAllUnchecked (hLV)
-	SHARED g_lvProtectOnItem
 	LV_ITEM lvi		' list view item
 
 	IFZ hLV THEN RETURN		' fail
 
 	' protect from an endless loop
-	g_lvProtectOnItem = $$TRUE
+	id = LV_LOCK_FindListView (hLV)
+	statusOld = LV_LOCK_GetProtectStatus (id)
+	LV_LOCK_SetProtectStatus (id, $$TRUE)
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -10482,9 +10460,131 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	g_lvProtectOnItem = $$FALSE
+	LV_LOCK_SetProtectStatus (id, statusOld)
 
 	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ########################################
+' #####  WinXListView_ProtectOnItem  #####
+' ########################################
+'
+'
+'
+FUNCTION WinXListView_ProtectOnItem (hLV)
+	id = LV_LOCK_FindListView (hLV)
+	LV_LOCK_SetProtectStatus (id, $$TRUE)
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXListView_UnprotectOnItem  #####
+' ##########################################
+'
+'
+'
+FUNCTION WinXListView_UnprotectOnItem (hLV)
+
+	id = LV_LOCK_FindListView (hLV)
+	LV_LOCK_SetProtectStatus (id, $$FALSE)
+
+END FUNCTION
+'
+' ##################################
+' #####  LV_LOCK_FindListView  #####
+' ##################################
+'
+'
+'
+FUNCTION LV_LOCK_FindListView (hLV)
+	SHARED LV_LOCK LV_LOCK_array[]
+	SHARED LV_LOCK_arrayUM[]
+	SHARED LV_LOCK_idMax
+
+	IFZ hLV THEN RETURN 0
+	IFZ LV_LOCK_arrayUM[] THEN RETURN 0
+
+	upper_slot = UBOUND (LV_LOCK_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IF LV_LOCK_arrayUM[slot] THEN
+			IF LV_LOCK_array[slot].hwnd THEN RETURN (slot + 1)
+		ENDIF
+	NEXT slot
+	RETURN 0
+
+END FUNCTION
+'
+' ##################################
+' #####  LV_LOCK_IdcProtected  #####
+' ##################################
+'
+'
+'
+FUNCTION LV_LOCK_IdcProtected (idLV)
+	SHARED LV_LOCK LV_LOCK_array[]
+	SHARED LV_LOCK_arrayUM[]
+	SHARED LV_LOCK_idMax
+
+	IFZ idLV THEN RETURN
+	IFZ LV_LOCK_arrayUM[] THEN RETURN
+
+	upper_slot = UBOUND (LV_LOCK_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IF LV_LOCK_arrayUM[slot] THEN
+			IF LV_LOCK_array[slot].idc = idLV THEN
+				IF LV_LOCK_array[slot].lock THEN RETURN $$TRUE
+				RETURN
+			ENDIF
+		ENDIF
+	NEXT slot
+
+END FUNCTION
+'
+' ######################################
+' #####  LV_LOCK_GetProtectStatus  #####
+' ######################################
+'
+'
+'
+FUNCTION LV_LOCK_GetProtectStatus (id)
+	SHARED LV_LOCK LV_LOCK_array[]
+	SHARED LV_LOCK_arrayUM[]
+	SHARED LV_LOCK_idMax
+
+	IFZ LV_LOCK_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > LV_LOCK_idMax) THEN RETURN
+
+	slot = id - 1
+	IFF LV_LOCK_arrayUM[slot] THEN RETURN
+
+	RETURN LV_LOCK_array[slot].lock
+
+END FUNCTION
+'
+' ######################################
+' #####  LV_LOCK_SetProtectStatus  #####
+' ######################################
+'
+'
+'
+FUNCTION LV_LOCK_SetProtectStatus (id, bProtect)
+	SHARED LV_LOCK LV_LOCK_array[]
+	SHARED LV_LOCK_arrayUM[]
+	SHARED LV_LOCK_idMax
+
+	IFZ LV_LOCK_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > LV_LOCK_idMax) THEN RETURN
+
+	slot = id - 1
+	IFF LV_LOCK_arrayUM[slot] THEN RETURN
+
+	IF bProtect THEN
+		LV_LOCK_array[slot].lock = $$TRUE
+	ELSE
+		LV_LOCK_array[slot].lock = $$FALSE
+	ENDIF
+	RETURN $$TRUE
 
 END FUNCTION
 '
@@ -10499,5 +10599,6 @@ END FUNCTION
 DefineAccess(SPLITTERINFO)
 DefineAccess(LINKEDLIST)
 DefineAccess(AUTODRAWRECORD)
+DefineAccess(LV_LOCK)
 
 END PROGRAM
