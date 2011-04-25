@@ -8623,8 +8623,8 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			'bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (wParam) ' idCtr
-			bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (nmhdr.idFrom)
+			'bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (nmhdr.idFrom)
+			bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (wParam) ' idCtr
 			IF bSkipOnNotify THEN EXIT SELECT
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
@@ -8634,8 +8634,8 @@ FUNCTION FnOnNotify (hWnd, wParam, lParam, BINDING binding, @handled)
 			IFZ binding.onItem THEN EXIT SELECT
 			' Guy-02mar11-handled
 			handled = $$TRUE
-			'bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (wParam) ' idCtr
-			bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (nmhdr.idFrom)
+			'bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (nmhdr.idFrom)
+			bSkipOnNotify = LOCK_GetSkipOnNotify_idCtr (wParam) ' idCtr
 			IF bSkipOnNotify THEN EXIT SELECT
 			' Guy-26jan09-pass the lParam, which is a pointer to a NM_LISTVIEW structure
 			ret = @binding.onItem (nmhdr.idFrom, nmhdr.code, lParam)
