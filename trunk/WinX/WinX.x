@@ -5363,11 +5363,6 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN		' fail
-
-	' unprotect (just in case)
-	id = LOCK_Get_id_hCtr (hLV)
-	LOCK_Set_skipOnSelect (id, $$FALSE)
-
 	IFZ iItems[] THEN RETURN		' fail
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' fail
@@ -8848,11 +8843,6 @@ FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 	' Guy-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
 
 	IFZ hTV THEN RETURN		' fail
-
-	' unprotect (just in case)
-	id = LOCK_Get_id_hCtr (hTV)
-	LOCK_Set_skipOnSelect (id, $$FALSE)
-
 	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
 	IFZ hItem THEN RETURN		' fail
 
