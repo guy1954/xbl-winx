@@ -565,7 +565,7 @@ DECLARE FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
 DECLARE FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 DECLARE FUNCTION WinXSetWindowColour (hWnd, color)
 DECLARE FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
-DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, iIcon, hMod)
+DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 DECLARE FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 DECLARE FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result)
@@ -2772,14 +2772,17 @@ END FUNCTION
 ' hWnd = the handle to the owner window, 0 for none
 ' text$ = the text to display
 ' title$ = the title for the dialog
-' iIcon = the idCtr of the icon to use
+' icon$ = name of the icon to use
 ' hMod = the handle to the module from which the icon comes, 0 for this module
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXDialog_Message (hWnd, text$, title$, iIcon, hMod)
+'
+' Usage: WinXDialog_Message (#dlgAUD, "Not wanted", "Wanted?", "0", hInst)
+'
+FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
 	MSGBOXPARAMS mb
 
 	flags = $$MB_OK
-	IF iIcon THEN flags = flags | $$MB_USERICON
+	IF icon$ THEN flags = flags | $$MB_USERICON
 
 	IFZ hMod THEN hMod = GetModuleHandleA (0)
 
@@ -2789,7 +2792,7 @@ FUNCTION WinXDialog_Message (hWnd, text$, title$, iIcon, hMod)
 	mb.lpszText = &text$
 	mb.lpszCaption = &title$
 	mb.dwStyle = flags
-	mb.lpszIcon = iIcon
+	mb.lpszIcon = &icon$
 
 	MessageBoxIndirectA (&mb)
 	RETURN $$TRUE		' success
@@ -4837,9 +4840,9 @@ FUNCTION WinXListBox_SetCaret (hListBox, item)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
-' ################################
-' #####  WinXListBox_SetSel  #####
-' ################################
+' ######################################
+' #####  WinXListBox_SetSelection  #####
+' ######################################
 ' Sets the selection on a list box
 ' hListBox = the handle to the list box to set the selection for
 ' index[] = an array of item indexes to select
