@@ -665,6 +665,9 @@ DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
 DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an INI file
 DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from INI file
 DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the INI file
+DECLARE FUNCTION WinXIni_LoadSectionList (iniPath$, @section$[]) ' load all section names
+DECLARE FUNCTION WinXIni_LoadKeyList (iniPath$, section$, @key$[]) ' load all key names of a given section
+DECLARE FUNCTION WinXIni_DeleteSection (iniPath$, section$) ' delete section from .INI file
 
 DECLARE FUNCTION WinXMRU_Init ()
 DECLARE FUNCTION WinXMRU_New (item$)
@@ -4512,12 +4515,19 @@ END FUNCTION
 ' #############################################
 ' Gets the auto sizer series for a group box
 ' hGB = the handle to the group box
-' returns $$TRUE on success or $$FALSE on fail
+' returns the series on success or 0 on fail
 FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
-	ret = GetPropA (hGB, &"WinXAutoSizerSeries")
-	IFZ ret THEN RETURN		' fail
-	RETURN $$TRUE		' success
+	IFZ hGB THEN RETURN		' fail
+	RETURN GetPropA (hGB, &"WinXAutoSizerSeries")
 END FUNCTION
+'
+' Guy-06may11-corrected
+' returns $$TRUE on success or $$FALSE on fail
+'FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
+'	ret = GetPropA (hGB, &"WinXAutoSizerSeries")
+'	IFZ ret THEN RETURN		' fail
+'	RETURN $$TRUE		' success
+'END FUNCTION
 '
 ' ######################
 ' #####  WinXHide  #####
@@ -4558,15 +4568,7 @@ FUNCTION WinXIni_Delete (iniPath$, section$, key$)
 	' passing argument lpString set to zero causes the key deletion
 	SetLastError (0)
 	ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
-	IFZ ret THEN
-		' can't delete a key from INI file iniPath$
-		' [section$]
-		' key$=value$
-		msg$ = "WinXIni_Delete: Can't delete a key from INI file " + iniPath$
-		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
-		WinXTellApiError (msg$)
-		RETURN		' fail
-	ENDIF
+	IFZ ret THEN RETURN		' fail
 
 	RETURN $$TRUE		' success
 
@@ -4638,17 +4640,168 @@ FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 	key$ = WinXPath_Trim$ (key$)
 	IFZ key$ THEN RETURN		' fail
 
-	SetLastError (0)
 	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
-	IFZ ret THEN
-		' can't write into INI file iniPath$
-		' [section$]
-		' key$=value$
-		msg$ = "WinXIni_Write: Can't write into INI file " + iniPath$
-		msg$ = msg$ + "\n[" + section$ + "]" + $$CRLF$ + key$ + "=" + value$
-		WinXTellApiError (msg$)
-		RETURN		' fail
+	IFZ ret THEN RETURN		' fail
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' #####################################
+' #####  WinXIni_LoadSectionList  #####
+' #####################################
+'
+' load all section names
+'
+FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
+
+	DIM r_asSec$[]		' reset the returned array
+
+	' load the .INI file into array text$[]
+	bErr = XstLoadStringArray (iniPath$, @text$[])
+	IF bErr THEN RETURN		' fail
+
+	' count the sections
+	count = 0
+	upptext = UBOUND (text$[])
+	FOR itext = 0 TO upptext
+		trimmed$ = TRIM$ (text$[itext])
+		IF (LEFT$ (trimmed$) = "[") && (RIGHT$ (trimmed$) = "]") THEN INC count
+	NEXT itext
+	IFZ count THEN RETURN		' fail
+
+	' "peal" the brackets off the section names
+	DIM r_asSec$[count - 1]
+	iAdd = -1
+	upptext = UBOUND (text$[])
+	FOR itext = 0 TO upptext
+		trimmed$ = TRIM$ (text$[itext])
+		IF LEFT$ (trimmed$) <> "[" THEN DO NEXT ' not a section
+		IF RIGHT$ (trimmed$) <> "]" THEN DO NEXT ' not a section
+		'
+		INC iAdd
+		cCh = LEN (trimmed$) - 2
+		r_asSec$[iAdd] = MID$ (trimmed$, 2, cCh)
+	NEXT itext
+
+	RETURN $$TRUE		' OK!
+
+END FUNCTION
+'
+' #################################
+' #####  WinXIni_LoadKeyList  #####
+' #################################
+'
+' load all key names of a given section
+'
+FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
+
+	DIM r_asKey$[]		' reset the returned array
+
+	bracketed$ = "[" + TRIM$ (curSec$) + "]" '  [section]
+	IF bracketed$ = "[]" THEN RETURN		' fail
+	IFZ TRIM$ (iniPath$) THEN RETURN		' fail
+
+	' load the .INI file into array text$[]
+	bErr = XstLoadStringArray (iniPath$, @text$[])
+	IF bErr THEN RETURN		' error
+	IFZ text$[] THEN RETURN		' error
+
+	upptext = UBOUND (text$[])
+
+	' look for the 1st line of the section curSec$
+	lineFirst = -1
+	FOR itext = 0 TO upptext
+		trimmed$ = TRIM$ (text$[itext])
+		IFZ trimmed$ THEN DO NEXT ' skip an empty line
+		IF LEFT$ (trimmed$) <> "[" THEN DO NEXT ' not a section
+		IF RIGHT$ (trimmed$) <> "]" THEN DO NEXT ' not a section
+		'
+		' trying section trimmed$ == bracketed$
+		IF trimmed$ = bracketed$ THEN
+			' Yes! found section curSec$ at line number itext
+			'
+			' curSec$ found, its first line is just after
+			IF itext < upptext THEN lineFirst = itext + 1
+			EXIT FOR
+		ENDIF
+		'
+	NEXT itext
+	IF lineFirst = -1 THEN RETURN		' section not found or empty section
+
+	' Current section curSec$'s first key is at line lineFirst
+
+	' look for the last line of the section
+	lineLast = upptext
+	FOR itext = lineFirst TO upptext
+		trimmed$ = TRIM$ (text$[itext])
+		IFZ trimmed$ THEN DO NEXT ' skip an empty line
+		'
+		' is line trimmed$ (at line number itext) a section?
+		IF LEFT$ (trimmed$, 1) = "[" THEN
+			lineLast = itext - 1
+			EXIT FOR
+		ENDIF
+	NEXT itext
+
+	uppKey = lineLast - lineFirst ' assume only key lines
+	IF uppKey < 0 THEN RETURN		' empty section
+
+	DIM r_asKey$[uppKey]
+
+	' fill r_asKey$[] with the key names
+	iKeyAdd = -1
+	FOR itext = lineFirst TO lineLast
+		trimmed$ = TRIM$ (text$[itext])
+		'
+		IFZ trimmed$ THEN DO NEXT ' skip an empty line
+		IF LEFT$ (trimmed$) =";" THEN DO NEXT '  ' skip a comment
+		'
+		' Parsing key line trimmed$ at line itext
+		' e.g. key=value
+		pos = INSTR (trimmed$, "=", 1)
+		IFZ pos THEN DO NEXT
+		'
+		IF pos THEN
+			' add key to r_asKey$[]
+			key$ = TRIM$ (LEFT$ (trimmed$, pos - 1))
+			IF key$ THEN
+				INC iKeyAdd
+				r_asKey$[iKeyAdd] = key$
+			ENDIF
+		ENDIF
+		'
+	NEXT itext
+
+	IF iKeyAdd < 0 THEN
+		DIM r_asKey$[]
+	ELSE
+		IF iKeyAdd < uppKey THEN REDIM r_asKey$[iKeyAdd]
 	ENDIF
+
+	RETURN $$TRUE		' OK!
+
+END FUNCTION
+'
+' ###################################
+' #####  WinXIni_DeleteSection  #####
+' ###################################
+'
+' Description = delete an information from an .INI file
+' iniPath$    = the .INI file path
+' section$    = the passed section
+' key$        = the key to delete
+' Return      = $$FALSE = failure, $$TRUE = sucess
+' Examples    = bDeleted = WinXIni_DeleteSection (iniPath$, section$, key$)
+
+FUNCTION WinXIni_DeleteSection (iniPath$, section$)
+
+	IFZ TRIM$ (iniPath$) THEN RETURN		' fail
+	IFZ TRIM$ (section$) THEN RETURN		' fail
+
+	' passing key$=0 and value$=0 causes the section deletion
+	ret = WritePrivateProfileStringA (&section$, 0, 0, &iniPath$)
+	IFZ ret THEN RETURN		' fail
 
 	RETURN $$TRUE		' success
 
