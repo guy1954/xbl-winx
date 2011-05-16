@@ -265,9 +265,9 @@ TYPE TBBUTTONDATA
 END TYPE
 
 TYPE LOCK
-	XLONG .idc
-	XLONG .hwnd
-	XLONG .skipOnNotify
+	STRING *  5 .name
+	XLONG       .hwnd
+	XLONG       .skipOnNotify
 END TYPE
 '
 ' #######################
@@ -717,6 +717,7 @@ DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect_idCtr (idCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
 DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
+DECLARE FUNCTION LOCK_Find (find$)
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
@@ -1821,7 +1822,7 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 	exStyle = $$LVS_EX_FULLROWSELECT | $$LVS_EX_LABELTIP
 	SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
 
-	item.idc = idCtr
+	item.name = STRING$ (idCtr)
 	item.hwnd = hLV
 	item.skipOnNotify = $$FALSE ' NOT locked
 	LOCK_New (item)
@@ -2142,7 +2143,7 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 	WinXSetDefaultFont (hTV)
 	IF hImages THEN SendMessageA (hTV, $$TVM_SETIMAGELIST, $$TVSIL_NORMAL, hImages)
 
-	item.idc = idCtr
+	item.name = STRING$ (idCtr)
 	item.hwnd = hTV
 	item.skipOnNotify = $$FALSE ' NOT locked
 	LOCK_New (item)
@@ -5815,13 +5816,12 @@ FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$)
 		'
 		IFF bOK THEN DO NEXT
 		IFZ item$ THEN DO NEXT ' just in case!
-		IF item$ = pathNew$ THEN DO NEXT
+		IF LCASE$ (item$) = LCASE$ (pathNew$) THEN DO NEXT
 		bErr = XstFileExists (item$)
 		IF bErr THEN DO NEXT		' file not found
 		'
-		IF upp >= $$UPP_MRU THEN EXIT FOR
-		'
 		INC upp
+		IF upp > $$UPP_MRU THEN EXIT FOR
 		arr$[upp] = item$
 	NEXT id
 
@@ -9347,22 +9347,14 @@ END FUNCTION
 ' #########################################
 '
 FUNCTION LOCK_Get_skipOnSelect_idCtr (idCtr)
-	SHARED LOCK LOCK_array[]
-	SHARED LOCK_arrayUM[]
-	SHARED LOCK_idMax
+	SHARED LOCK item
 
 	IFZ idCtr THEN RETURN
-	IFZ LOCK_arrayUM[] THEN RETURN
-
-	upper_slot = LOCK_idMax - 1
-	FOR slot = 0 TO upper_slot
-		IF LOCK_arrayUM[slot] THEN
-			IF LOCK_array[slot].idc = idCtr THEN
-				IF LOCK_array[slot].skipOnNotify THEN RETURN $$TRUE
-				RETURN
-			ENDIF
-		ENDIF
-	NEXT slot
+	id = LOCK_Find(STRING$ (idCtr))
+	IF id THEN
+		LOCK_Get (id, @item)
+		RETURN item.skipOnNotify
+	ENDIF
 
 END FUNCTION
 '
@@ -10705,6 +10697,31 @@ FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos)
 	hSpinner = CreateUpDownControl (style, 0, 0, 0, 0, parent, idCtr, hInst, hBuddy, nUpper, nLower, nPos)
 	IFZ hSpinner THEN RETURN		' fail
 	RETURN hSpinner
+
+END FUNCTION
+'
+' #######################
+' #####  LOCK_Find  #####
+' #######################
+'
+FUNCTION LOCK_Find (find$)
+	SHARED LOCK LOCK_array[]
+	SHARED LOCK_arrayUM[]
+	SHARED LOCK_idMax
+
+	IFZ LOCK_arrayUM[] THEN RETURN
+
+	find$ = TRIM$ (find$)
+	IFZ find$ THEN RETURN
+
+	findLen = LEN (find$)
+	upper_slot = UBOUND (LOCK_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IFF LOCK_arrayUM[slot] THEN DO NEXT
+		name$ = RTRIM$ (LOCK_array[slot].name)
+		IF LEN (name$) <> findLen THEN DO NEXT
+		IF name$ = find$ THEN RETURN (slot + 1)
+	NEXT slot
 
 END FUNCTION
 '
