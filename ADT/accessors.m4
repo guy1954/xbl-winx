@@ -2,7 +2,8 @@ m4_define(`DeclareAccess', `DECLARE FUNCTION $1_Init ()
 DECLARE FUNCTION $1_New ($1 item)
 DECLARE FUNCTION $1_Get (id, $1 @item)
 DECLARE FUNCTION $1_Update (id, $1 item)
-DECLARE FUNCTION $1_Delete (id)')
+DECLARE FUNCTION $1_Delete (id)
+')
 
 m4_define(`DefineAccess', `FUNCTION $1_Init ()
 	SHARED $1 $1_array[]
@@ -59,7 +60,7 @@ FUNCTION $1_Get (id, $1 item)
 	IFZ $1_arrayUM[] THEN RETURN
 	IF (id < 1) || (id > $1_idMax) THEN RETURN
 
-	upper_slot = UBOUND ($1_arrayUM[])
+	upper_slot = $1_idMax - 1
 	slot = id - 1
 	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
@@ -76,7 +77,7 @@ FUNCTION $1_Update (id, $1 item)
 	IFZ $1_arrayUM[] THEN RETURN
 	IF (id < 1) || (id > $1_idMax) THEN RETURN
 
-	upper_slot = UBOUND ($1_arrayUM[])
+	upper_slot = $1_idMax - 1
 	slot = id - 1
 	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
@@ -93,8 +94,7 @@ FUNCTION $1_Delete (id)
 	IFZ $1_arrayUM[] THEN RETURN
 	IF (id < 1) || (id > $1_idMax) THEN RETURN
 
-	upper_slot = UBOUND ($1_arrayUM[])
-
+	upper_slot = $1_idMax - 1
 	slot = id - 1
 	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
