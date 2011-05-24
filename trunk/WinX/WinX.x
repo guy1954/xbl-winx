@@ -669,16 +669,9 @@ DECLARE FUNCTION WinXIni_LoadSectionList (iniPath$, @section$[]) ' load all sect
 DECLARE FUNCTION WinXIni_LoadKeyList (iniPath$, section$, @key$[]) ' load all key names of a given section
 DECLARE FUNCTION WinXIni_DeleteSection (iniPath$, section$) ' delete section from .INI file
 
-DECLARE FUNCTION WinXMRU_Init ()
-DECLARE FUNCTION WinXMRU_New (item$)
-DECLARE FUNCTION WinXMRU_Get (id, @item$)
-DECLARE FUNCTION WinXMRU_Update (id, item$)
-DECLARE FUNCTION WinXMRU_Delete (id)
-DECLARE FUNCTION WinXMRU_Find (find$)
-
-DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$) ' load the Most Recently Used project list from the .INI file
+DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' load the Most Recently Used file list from the .INI file
+DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the .INI file
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
-DECLARE FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$) ' Save the Most Recently Used project list
 
 DECLARE FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos) ' add spinner control
 
@@ -5629,244 +5622,6 @@ FUNCTION WinXListView_UseOnSelect (hLV)
 	RETURN LOCK_Set_skipOnSelect (id, $$FALSE)
 
 END FUNCTION
-
-FUNCTION WinXMRU_Delete (id)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > MRU_idMax) THEN RETURN
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-
-	slot = id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF MRU_arrayUM[slot] THEN RETURN
-
-	MRU_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE
-END FUNCTION
-
-' Usage: idFound = WinXMRU_Find (find$)
-FUNCTION WinXMRU_Find (find$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	find_lc$ = TRIM$ (find$)
-	IFZ find_lc$ THEN RETURN
-
-	IFZ MRU_arrayUM[] THEN RETURN ' not found
-
-	find_lc$ = LCASE$ (find_lc$)
-	findLen = LEN (find_lc$)
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-	FOR slot = 0 TO upper_slot
-		IFF MRU_arrayUM[slot] THEN DO NEXT
-		IF LEN (MRU_array$[slot]) <> findLen THEN DO NEXT
-		IF LCASE$ (MRU_array$[slot]) = find_lc$ THEN RETURN (slot + 1)
-	NEXT slot
-END FUNCTION
-
-' returns $$TRUE if found, $$FALSE otherwise
-FUNCTION WinXMRU_Get (id, @item$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	item$ = ""
-	IFZ MRU_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > MRU_idMax) THEN RETURN
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-	slot = id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF MRU_arrayUM[slot] THEN RETURN
-
-	item$ = MRU_array$[slot]
-	RETURN $$TRUE
-END FUNCTION
-
-FUNCTION WinXMRU_Init ()
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN
-		DIM MRU_array$[$$UPP_MRU]
-		DIM MRU_arrayUM[$$UPP_MRU]
-	ELSE
-		upper_slot = UBOUND (MRU_arrayUM[])
-		FOR i = 0 TO upper_slot
-			MRU_array$[i] = ""
-			MRU_arrayUM[i] = 0
-		NEXT i
-	ENDIF
-	MRU_idMax = 0
-END FUNCTION
-
-' load the Most Recently Used project list from the .INI file
-' Return      = $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$)
-
-	' reset the Most Recently Used project lists
-	WinXMRU_Init ()
-	IFZ iniPath$ THEN RETURN		' fail
-
-	' load the MRU projects list into MRU_array$[]
-	IF pathNew$ THEN
-		pathNew$ = WinXPath_Trim$ (pathNew$)
-		IF pathNew$ THEN WinXMRU_New (pathNew$)
-	ENDIF
-
-	' create ini file if it does not exist
-	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, "File 0", "")
-	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, "File 0", "-")
-
-	' load the MRU projects list
-	FOR id = 1 TO ($$UPP_MRU + 1)
-		key$ = WinXMRU_MakeKey$ (id)
-		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-		IFZ fpath$ THEN DO NEXT ' empty => skip it!
-		'
-		fpath$ = WinXPath_Trim$ (fpath$)
-		IFZ fpath$ THEN DO NEXT ' empty => skip it!
-		'
-		bErr = XstFileExists (fpath$)
-		IF bErr THEN DO NEXT		' file not found => skip it!
-		'
-		idFound = WinXMRU_Find (fpath$)
-		IF idFound THEN DO NEXT
-		'
-		WinXMRU_New (fpath$)
-		'
-	NEXT id
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
-
-FUNCTION WinXMRU_MakeKey$ (id)
-
-	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
-	RETURN "File " + id$
-
-END FUNCTION
-
-FUNCTION WinXMRU_New (item$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN WinXMRU_Init ()
-	upper_slot = UBOUND (MRU_arrayUM[])
-
-	slot = -1
-	IF MRU_idMax <= upper_slot THEN
-		FOR i = MRU_idMax TO upper_slot
-			IFF MRU_arrayUM[i] THEN
-				slot = i
-				EXIT FOR
-			ENDIF
-		NEXT i
-	ENDIF
-
-	IF slot = -1 THEN
-		upper_slot = ((upper_slot + 1) << 1) - 1
-		REDIM MRU_arrayUM[upper_slot]
-		REDIM MRU_array$[upper_slot]
-		slot = MRU_idMax
-		INC MRU_idMax
-	ELSE
-		MRU_idMax = slot + 1
-	ENDIF
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	MRU_array$[slot] = item$
-	MRU_arrayUM[slot] = $$TRUE
-	RETURN (slot + 1)
-END FUNCTION
-
-' Save the Most Recently Used project list
-' Return      = $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_SaveToIni (iniPath$, pathNew$)
-	' Add file to MRU file list. If file already exists in list then it is
-	' simply moved up to the top of the list and not added again. If list is
-	' full then the least recently used item is removed to make room.
-
-	' if pathNew$ is found, it becomes first in list
-	pathNew$ = TRIM$ (pathNew$)
-	IFZ pathNew$ THEN
-		bErr = XstFileExists (pathNew$)
-		IF bErr THEN pathNew$ = ""
-	ENDIF
-
-	DIM arr$[$$UPP_MRU]
-
-	upp = -1
-	IF pathNew$ THEN
-		INC upp
-		arr$[upp] = pathNew$
-	ENDIF
-
-	FOR id = 1 TO ($$UPP_MRU + 1)
-		bOK = WinXMRU_Get (id, @item$)
-		'
-		IFF bOK THEN DO NEXT
-		IFZ item$ THEN DO NEXT ' just in case!
-		IF LCASE$ (item$) = LCASE$ (pathNew$) THEN DO NEXT
-		bErr = XstFileExists (item$)
-		IF bErr THEN DO NEXT		' file not found
-		'
-		INC upp
-		IF upp > $$UPP_MRU THEN EXIT FOR
-		arr$[upp] = item$
-	NEXT id
-
-	' reset the Most Recently Used project lists
-	WinXMRU_Init ()
-
-	' save the Most Recently Used project list in the .INI file
-	FOR i = 0 TO upp
-		WinXMRU_New (arr$[i])
-		'
-		key$ = WinXMRU_MakeKey$ (i + 1)
-		WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, arr$[i])
-	NEXT i
-
-	' delete from .INI file extraneous MRU items
-	iInf = upp + 1
-	IF iInf <= $$UPP_MRU THEN
-		FOR i = iInf TO $$UPP_MRU
-			key$ = WinXMRU_MakeKey$ (i + 1)
-			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-			' delete an existing key
-			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
-		NEXT i
-	ENDIF
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
-
-FUNCTION WinXMRU_Update (id, item$)
-	SHARED MRU_array$[]
-	SHARED MRU_arrayUM[]
-	SHARED MRU_idMax
-
-	IFZ MRU_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > MRU_idMax) THEN RETURN
-
-	upper_slot = UBOUND (MRU_arrayUM[])
-	slot = id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF MRU_arrayUM[slot] THEN RETURN
-
-	MRU_array$[slot] = item$
-	RETURN $$TRUE
-END FUNCTION
 '
 ' ###############################
 ' #####  WinXMenu_Attach  #####
@@ -10722,6 +10477,166 @@ FUNCTION LOCK_Find (find$)
 		IF LEN (name$) <> findLen THEN DO NEXT
 		IF name$ = find$ THEN RETURN (slot + 1)
 	NEXT slot
+
+END FUNCTION
+'
+' #####################################
+' #####  WinXMRU_LoadListFromIni  #####
+' #####################################
+'
+' load the Most Recently Used file list from the .INI file
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
+
+	' reset the Most Recently Used file list
+	IF UBOUND (mruList$[]) <> $$UPP_MRU THEN
+		DIM mruList$[$$UPP_MRU]
+	ELSE
+		FOR i = 0 TO $$UPP_MRU
+			mruList$[i] = ""
+		NEXT i
+	ENDIF
+	idSup = $$UPP_MRU + 1
+
+	iniPath$ = TRIM$ (iniPath$)
+	IFZ iniPath$ THEN RETURN
+
+	XstDecomposePathname (iniPath$, "", "", "", "", @fExt$)
+	IF LCASE$ (fExt$) <> ".ini" THEN RETURN
+
+	' create ini file if it does not exist
+	key$ = WinXMRU_MakeKey$ (0) ' $$MRU_SECTION$ entry
+	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
+
+	' add real file pathNew$ to mruList$[0]
+	upp = -1
+	pathNew$ = TRIM$ (pathNew$)
+	IF pathNew$ THEN
+		bErr = XstFileExists (pathNew$)
+		IFF bErr THEN
+			XstTranslateChars (@pathNew$, "/", "\\")
+			upp = 0
+			mruList$[0] = pathNew$
+		ENDIF
+	ENDIF
+
+	' load the MRU projects list into mruList$[]
+	FOR id = 1 TO idSup
+		key$ = WinXMRU_MakeKey$ (id)
+		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+		fpath$ = TRIM$ (fpath$)
+		IFZ fpath$ THEN DO NEXT ' empty => skip it!
+		'
+		' don't add fpath$ if already in mruList$[]
+		bFound = $$FALSE
+		IF upp >= 0 THEN
+			find_lc$ = LCASE$ (fpath$)
+			findLen = LEN (find_lc$)
+			'
+			FOR i = 0 TO upp
+				IF LEN (mruList$[i]) <> findLen THEN DO NEXT
+				IF LCASE$ (mruList$[i]) = find_lc$ THEN
+					bFound = $$TRUE
+					EXIT FOR
+				ENDIF
+			NEXT i
+		ENDIF
+		IF bFound THEN DO NEXT ' already in mruList$[] => skip it!
+		'
+		bErr = XstFileExists (fpath$)
+		IF bErr THEN DO NEXT ' fpath$ does not exist => skip it!
+		'
+		IF upp >= $$UPP_MRU THEN EXIT FOR ' mruList$[] is full
+		'
+		XstTranslateChars (@fpath$, "/", "\\")
+		INC upp
+		mruList$[upp] = fpath$
+	NEXT id
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ###################################
+' #####  WinXMRU_SaveListToIni  #####
+' ###################################
+'
+' Save the Most Recently Used file list
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
+	' Add file pathNew$ to MRU file list. If file already exists in list then it is
+	' simply moved up to the top of the list and not added again. If list is
+	' full then the least recently used item is removed to make room.
+
+	IF UBOUND (mruList$[]) <> $$UPP_MRU THEN REDIM mruList$[$$UPP_MRU]
+	idSup = $$UPP_MRU + 1
+
+	DIM arr$[$$UPP_MRU]
+
+	upp = -1
+	pathNew_lc$ = ""
+	pathNewLen = 0
+
+	pathNew$ = TRIM$ (pathNew$)
+	IF pathNew$ THEN
+		' save pathNew$ as first in list
+		INC upp
+		arr$[upp] = pathNew$
+		pathNew_lc$ = LCASE$ (pathNew$)
+		pathNewLen = LEN (pathNew_lc$)
+	ENDIF
+
+	' copy the current Most Recently Used file list
+	FOR i = 0 TO $$UPP_MRU
+		fpath$ = TRIM$ (mruList$[i])
+		IFZ fpath$ THEN DO NEXT
+		IF pathNewLen THEN
+			IF LEN (fpath$) = pathNewLen THEN
+				IF LCASE$ (fpath$) = pathNew_lc$ THEN DO NEXT ' is already first in list
+			ENDIF
+		ENDIF
+		IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
+		'
+		INC upp
+		arr$[upp] = fpath$
+	NEXT i
+
+	' save the Most Recently Used project list in the .INI file
+	idAdd = 0
+	IF upp >= 0 THEN
+		FOR i = 0 TO upp
+			INC idAdd
+			key$ = WinXMRU_MakeKey$ (idAdd)
+			' replace an existing key
+			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+			IF value$ <> arr$[i] THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, arr$[i])
+		NEXT i
+	ENDIF
+
+	' delete from .INI file extraneous MRU items
+	idInf = idAdd + 1
+	IF idInf <= idSup THEN
+		FOR id = idInf TO idSup
+			' delete an existing key
+			key$ = WinXMRU_MakeKey$ (id)
+			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
+		NEXT id
+	ENDIF
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ##############################
+' #####  WinXMRU_MakeKey$  #####
+' ##############################
+'
+FUNCTION WinXMRU_MakeKey$ (id)
+
+	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
+	RETURN "File " + id$
 
 END FUNCTION
 '
