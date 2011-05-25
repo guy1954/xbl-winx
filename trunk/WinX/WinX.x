@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.13"
+VERSION "0.6.0.14"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -74,6 +74,8 @@ VERSION "0.6.0.13"
 '                      (shows the check box "Read Only" and checks it initially).
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
+' 0.6.0.13-Guy-04may11-added new functions.
+' 0.6.0.14-Guy-25may11-added Most Recently Used file list.
 '
 ' Win32API DLL headers
 '
@@ -146,6 +148,7 @@ TYPE BINDING
 	FUNCADDR .onCalendarSelect (XLONG, SYSTEMTIME)		' idcal, time
 	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, files
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
+	XLONG    .skipOnSelect
 END TYPE
 ' message handler data type
 TYPE MSGHANDLER
@@ -262,12 +265,6 @@ TYPE TBBUTTONDATA
 	XLONG .enabled
 	XLONG .optional
 	TBBUTTON .tbb
-END TYPE
-
-TYPE LOCK
-	STRING *  5 .name
-	XLONG       .hwnd
-	XLONG       .skipOnNotify
 END TYPE
 '
 ' #######################
@@ -649,6 +646,10 @@ DECLARE FUNCTION WinXListView_SetAllUnchecked (hLV)
 DECLARE FUNCTION WinXListView_FreezeOnSelect (hLV)
 DECLARE FUNCTION WinXListView_UseOnSelect (hLV)
 
+DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
+DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
+DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
+
 DECLARE FUNCTION WinXTreeView_FreezeOnSelect (hTV)
 DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
 
@@ -688,7 +689,6 @@ DECLARE FUNCTION BINDING_Ov_Delete (id)
 DeclareAccess(SPLITTERINFO)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
-DeclareAccess(LOCK)
 
 DECLARE FUNCTION VOID drawLine (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION VOID drawEllipse (hdc, AUTODRAWRECORD record, x0, y0)
@@ -705,12 +705,6 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION WinXDialog_TellError (parent, title$)		' display WinXDialog_'s run-time error message
-
-DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
-DECLARE FUNCTION LOCK_Get_skipOnSelect_idCtr (idCtr)
-DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
-DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
-DECLARE FUNCTION LOCK_Find (find$)
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
@@ -867,7 +861,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 	NM_LISTVIEW nmlv
 	NMSELCHANGE nmsc
 
-	IFZ hWnd THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
 
 	handled = $$FALSE		' message NOT handled
 	ret_value = 0		' WndProc return value
@@ -1039,9 +1033,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_SELCHANGED
 					IFZ binding.onSelect THEN EXIT SELECT
-					'
-					bSkipOnSelect = LOCK_Get_skipOnSelect_idCtr (nmhdr.idFrom)		' nmhdr.idFrom
-					IF bSkipOnSelect THEN EXIT SELECT
+					IF binding.skipOnSelect THEN EXIT SELECT
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
@@ -1050,9 +1042,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				CASE $$LVN_ITEMCHANGED
 					' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 					IFZ binding.onSelect THEN EXIT SELECT
-					'
-					bSkipOnSelect = LOCK_Get_skipOnSelect_idCtr (nmhdr.idFrom)		' nmhdr.idFrom
-					IF bSkipOnSelect THEN EXIT SELECT
+					IF binding.skipOnSelect THEN EXIT SELECT
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to a NM_LISTVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
@@ -1508,8 +1498,8 @@ END FUNCTION		' WndProc
 ' control, alt, shit = $$TRUE if the modifier is down, $$FALSE otherwise
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAddAccelerator (ACCEL accel[], cmd, key, control, alt, shift)
-	IFZ cmd THEN RETURN		' fail
-	IF key < 0 || key > 0xFE THEN RETURN		' fail
+	IFZ cmd THEN RETURN
+	IF key < 0 || key > 0xFE THEN RETURN
 
 	IFZ accel[] THEN
 		DIM accel[0]
@@ -1541,7 +1531,7 @@ FUNCTION WinXAddAcceleratorTable (ACCEL accel[])
 	cEntries = UBOUND (accel[]) + 1
 
 	hAccel = CreateAcceleratorTableA (&accel[0], cEntries)		' create the accelerator table
-	IFZ hAccel THEN RETURN		' fail
+	IFZ hAccel THEN RETURN
 
 	RETURN hAccel
 END FUNCTION
@@ -1560,7 +1550,7 @@ FUNCTION WinXAddAnimation (parent, STRING file, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hAni = CreateWindowExA (0, &"SysAnimate32", 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hAni THEN RETURN		' fail
+	IFZ hAni THEN RETURN
 
 	SendMessageA (hAni, $$ACM_OPENA, 0, &file)
 	RETURN hAni
@@ -1608,7 +1598,7 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hBtn = CreateWindowExA (0, &$$BUTTON, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hBtn THEN RETURN		' fail
+	IFZ hBtn THEN RETURN
 
 	WinXSetDefaultFont (hBtn)
 	IF hImage THEN
@@ -1636,7 +1626,7 @@ FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hCal = CreateWindowExA (0, &$$MONTHCAL_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
-	IFZ hCal THEN RETURN		' fail
+	IFZ hCal THEN RETURN
 
 	WinXSetDefaultFont (hCal)
 	SendMessageA (hCal, $$MCM_GETMINREQRECT, 0, &rect)
@@ -1663,7 +1653,7 @@ FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hCheck = CreateWindowExA (0, &$$BUTTON, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hCheck THEN RETURN		' fail
+	IFZ hCheck THEN RETURN
 
 	WinXSetDefaultFont (hCheck)
 	RETURN hCheck
@@ -1686,7 +1676,7 @@ FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hCombo = CreateWindowExA (0, &$$WC_COMBOBOXEX, 0, style, 0, 0, 0, listHeight + 22, parent, idCtr, hInst, 0)
-	IFZ hCombo THEN RETURN		' fail
+	IFZ hCombo THEN RETURN
 
 	IF images THEN SendMessageA (hCombo, $$CBEM_SETIMAGELIST, 0, images)
 	RETURN hCombo
@@ -1709,7 +1699,7 @@ FUNCTION WinXAddControl (parent, STRING class, STRING title, style, exStyle, idC
 
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (exStyle, &class, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hCtr THEN RETURN		' fail
+	IFZ hCtr THEN RETURN
 
 	RETURN hCtr
 END FUNCTION
@@ -1724,14 +1714,14 @@ END FUNCTION
 ' idCtr = the unique idCtr for this control
 ' returns a handle to the new edit control or 0 on fail
 FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
-	IFZ idCtr THEN RETURN		' fail
+	IFZ idCtr THEN RETURN
 
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
 	style = style | $$WS_TABSTOP | $$WS_GROUP | $$WS_BORDER
 
 	hInst = GetModuleHandleA (0)
 	hEdit = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$EDIT, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hEdit THEN RETURN		' fail
+	IFZ hEdit THEN RETURN
 
 	WinXSetDefaultFont (hEdit)
 	RETURN hEdit
@@ -1746,14 +1736,14 @@ END FUNCTION
 ' idCtr = the unique idCtr for this control
 ' returns the handle to the window or 0 on fail
 FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
-	IFZ idCtr THEN RETURN		' fail
+	IFZ idCtr THEN RETURN
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$BS_GROUPBOX
 
 	hInst = GetModuleHandleA (0)
 	hGroup = CreateWindowExA (0, &$$BUTTON, &label, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hGroup THEN RETURN		' fail
+	IFZ hGroup THEN RETURN
 
 	WinXSetDefaultFont (hGroup)
 
@@ -1781,7 +1771,7 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hListBox = CreateWindowExA (0, &$$LISTBOX, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hListBox THEN RETURN		' fail
+	IFZ hListBox THEN RETURN
 
 	WinXSetDefaultFont (hListBox)
 	RETURN hListBox
@@ -1794,7 +1784,6 @@ END FUNCTION
 ' editable enables/disables label editing.  view is a view constant
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
-	LOCK item
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP
@@ -1806,7 +1795,7 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 
 	hInst = GetModuleHandleA (0)
 	hLV = CreateWindowExA (0, &$$WC_LISTVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	IF hilLargeIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
 	IF hilSmallIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
@@ -1814,11 +1803,6 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 	' set the list view's extended style mask
 	exStyle = $$LVS_EX_FULLROWSELECT | $$LVS_EX_LABELTIP
 	SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
-
-	item.name = STRING$ (idCtr)
-	item.hwnd = hLV
-	item.skipOnNotify = $$FALSE ' NOT locked
-	LOCK_New (item)
 
 	RETURN hLV
 
@@ -1839,7 +1823,7 @@ FUNCTION WinXAddProgressBar (parent, smooth, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hProg = CreateWindowExA (0, &$$PROGRESS_CLASS, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hProg THEN RETURN		' fail
+	IFZ hProg THEN RETURN
 
 	SendMessageA (hProg, $$PBM_SETRANGE, 0, MAKELONG (0, 1000))
 	RETURN hProg
@@ -1864,7 +1848,7 @@ FUNCTION WinXAddRadioButton (parent, STRING title, isFirst, pushlike, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hRadio = CreateWindowExA (0, &$$BUTTON, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hRadio THEN RETURN		' fail
+	IFZ hRadio THEN RETURN
 
 	WinXSetDefaultFont (hRadio)
 	RETURN hRadio
@@ -1897,7 +1881,7 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hStatic = CreateWindowExA (0, &$$STATIC_CLASS, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hStatic THEN RETURN		' fail
+	IFZ hStatic THEN RETURN
 
 	WinXSetDefaultFont (hStatic)
 	IF hImage THEN
@@ -1921,7 +1905,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	RECT rect
 
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 
@@ -1932,7 +1916,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	' make the status bar
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, style, 0, 0, 0, 0, hWnd, idCtr, hInst, 0)
-	IFZ hCtr THEN RETURN		' fail
+	IFZ hCtr THEN RETURN
 
 	binding.hStatus = hCtr
 
@@ -2007,7 +1991,7 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hTabs = CreateWindowExA (0, &$$WC_TABCONTROL, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hTabs THEN RETURN		' fail
+	IFZ hTabs THEN RETURN
 
 	WinXSetDefaultFont (hTabs)
 	SetPropA (hTabs, &"WinXLeftSubSizer", &tabs_SizeContents ())
@@ -2030,7 +2014,7 @@ FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, 
 
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (0, &$$DATETIMEPICK_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
-	IFZ hCtr THEN RETURN		' fail
+	IFZ hCtr THEN RETURN
 
 	WinXSetDefaultFont (hCtr)
 	IF timeValid THEN
@@ -2052,15 +2036,15 @@ FUNCTION WinXAddTooltip (hCtr, tip$)
 	BINDING binding
 	TOOLINFO ti
 
-	IFZ hCtr THEN RETURN		' fail
-	IFZ tip$ THEN RETURN		' fail
+	IFZ hCtr THEN RETURN
+	IFZ tip$ THEN RETURN
 
 	parent = GetParent (hCtr)
-	IFZ parent THEN RETURN		' fail
+	IFZ parent THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (parent, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' is there any info on this control?
 	ti.cbSize = SIZE (TOOLINFO)
@@ -2105,7 +2089,7 @@ FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hTracker = CreateWindowExA (0, &$$TRACKBAR_CLASS, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hTracker THEN RETURN		' fail
+	IFZ hTracker THEN RETURN
 
 	WinXSetDefaultFont (hTracker)
 	RETURN hTracker
@@ -2121,7 +2105,6 @@ END FUNCTION
 ' idCtr = the unique idCtr constant for this control
 ' returns the handle to the tree view or 0 on fail
 FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
-	LOCK item
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TVS_HASBUTTONS | $$TVS_HASLINES | $$TVS_LINESATROOT
@@ -2131,15 +2114,10 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 
 	hInst = GetModuleHandleA (0)
 	hTV = CreateWindowExA (0, &$$WC_TREEVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	WinXSetDefaultFont (hTV)
 	IF hImages THEN SendMessageA (hTV, $$TVM_SETIMAGELIST, $$TVSIL_NORMAL, hImages)
-
-	item.name = STRING$ (idCtr)
-	item.hwnd = hTV
-	item.skipOnNotify = $$FALSE ' NOT locked
-	LOCK_New (item)
 
 	RETURN hTV
 
@@ -2156,7 +2134,7 @@ FUNCTION WinXAni_Play (hAni)
 	wTo = -1		' -1 means end with the last frame in the AVI clip
 	lParam = MAKELONG (wFrom, wTo)
 	ret = SendMessageA (hAni, $$ACM_PLAY, -1, lParam)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -2168,7 +2146,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAni_Stop (hAni)
 	ret = SendMessageA (hAni, $$ACM_STOP, 0, 0)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -2182,12 +2160,12 @@ END FUNCTION
 FUNCTION WinXAttachAccelerators (hWnd, hAccel)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ hAccel THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ hAccel THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.hAccelTable = hAccel
 	BINDING_Update (idBinding, binding)
@@ -2239,21 +2217,34 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 	IF series = -1 THEN
 		' get the parent window
 		parent = GetParent (hWnd)
-		IFZ parent THEN RETURN		' fail
+		IFZ parent THEN RETURN
 		' get the binding
 		idBinding = GetWindowLongA (parent, $$GWL_USERDATA)
-		IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+		IFF BINDING_Get (idBinding, @binding) THEN RETURN
 		series = binding.autoSizerInfo
 	ENDIF
 
 	' associate the info
 	autoSizerBlock.hwnd = hWnd
+
+	IF space < 1.0 THEN space = 1.0 ' Guy-25may11-set minimum space to 1.0
 	autoSizerBlock.space = space
+
+	IF size < 1.0 THEN size = 1.0 ' Guy-25may11-set minimum size to 1.0
 	autoSizerBlock.size = size
+
+	IF x < 0 THEN x = 0 ' Guy-25may11-correct negative x
 	autoSizerBlock.x = x
+
+	IF y < 0 THEN y = 0 ' Guy-25may11-correct negative y
 	autoSizerBlock.y = y
+
+	IF w < 0 THEN w = 0 ' Guy-25may11-correct negative w
 	autoSizerBlock.w = w
+
+	IF h < 0 THEN h = 0 ' Guy-25may11-correct negative h
 	autoSizerBlock.h = h
+
 	autoSizerBlock.flags = flags
 
 	' register the block
@@ -2265,8 +2256,9 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 	ELSE
 		' make a new block
 		idBlock = autoSizerInfo_AddGroup (series, autoSizerBlock) + 1
-		IFF idBlock THEN RETURN		' fail
-		IFZ SetPropA (hWnd, &"autoSizerInfoBlock", idBlock) THEN RETURN		' fail
+		IFF idBlock THEN RETURN
+		prop$ = "autoSizerInfoBlock"
+		IFZ SetPropA (hWnd, &prop$, idBlock) THEN RETURN
 
 		' make a splitter if we need one
 		IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
@@ -2280,10 +2272,11 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 			style = style | $$WS_CLIPSIBLINGS
 			lpParam = SPLITTERINFO_New (@splitterInfo)
 
+			class$ = "WinXSplitterClass"
+			hParent = GetParent (hWnd)
 			hInst = GetModuleHandleA (0)
-			ret = CreateWindowExA (0, &"WinXSplitterClass", 0, style, 0, 0, 0, 0, _
-			GetParent (hWnd), 0, hInst, lpParam)
-			IFZ ret THEN RETURN		' fail
+			ret = CreateWindowExA (0, &class$, 0, style, 0, 0, 0, 0, hParent, 0, hInst, lpParam)
+			IFZ ret THEN RETURN
 
 			autoSizerBlock.hSplitter = ret
 			AUTOSIZER_LinkedList_Update (series, idBlock - 1, autoSizerBlock)
@@ -2332,7 +2325,7 @@ END FUNCTION
 FUNCTION WinXButton_SetCheck (hButton, checked)
 	IFF checked THEN wParam = $$BST_UNCHECKED ELSE wParam = $$BST_CHECKED
 	ret = SendMessageA (hButton, $$BM_SETCHECK, wParam, 0)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -2346,7 +2339,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXCalendar_GetSelection (hCal, SYSTEMTIME time)
 	ret = SendMessageA (hCal, $$MCM_GETCURSEL, 0, &time)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -2360,7 +2353,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXCalendar_SetSelection (hCal, SYSTEMTIME time)
 	ret = SendMessageA (hCal, $$MCM_SETCURSEL, 0, &time)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -2416,14 +2409,14 @@ FUNCTION WinXClear (hWnd)
 	BINDING binding
 	RECT rect
 
-	IFZ hWnd THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	ret = GetClientRect (hWnd, &rect)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	winRight = rect.right + 2
 	winBottom = rect.bottom + 2
@@ -2441,17 +2434,17 @@ END FUNCTION
 FUNCTION WinXClip_GetImage ()
 	BITMAPINFOHEADER bmi
 
-	IFZ OpenClipboard (0) THEN RETURN		' fail
+	IFZ OpenClipboard (0) THEN RETURN
 	hClipData = GetClipboardData ($$CF_DIB)
 	IFZ hClipData THEN
 		CloseClipboard ()
-		RETURN		' fail
+		RETURN
 	ENDIF
 
 	pGobalMem = GlobalLock (hClipData)
 	IFZ pGobalMem THEN
 		CloseClipboard ()
-		RETURN		' fail
+		RETURN
 	ENDIF
 
 	RtlMoveMemory (&bmi, pGobalMem, ULONGAT (pGobalMem))
@@ -2549,12 +2542,12 @@ FUNCTION WinXClip_PutImage (hImage)
 	BITMAPINFOHEADER bmi
 	DIBSECTION ds
 
-	IFZ hImage THEN RETURN		' fail
-	IFZ GetObjectA (hImage, SIZE (DIBSECTION), &bmp) THEN RETURN		' fail
+	IFZ hImage THEN RETURN
+	IFZ GetObjectA (hImage, SIZE (DIBSECTION), &bmp) THEN RETURN
 
 	cbBits = ds.dsBm.height * ((ds.dsBm.width * ds.dsBm.bitsPixel + 31) \ 32)
 
-	IFZ OpenClipboard (0) THEN RETURN		' fail
+	IFZ OpenClipboard (0) THEN RETURN
 	EmptyClipboard ()
 
 	g_hClipMem = GlobalAlloc ($$GMEM_MOVEABLE | $$GMEM_ZEROINIT, SIZE (BITMAPINFOHEADER) + cbBits)
@@ -2579,17 +2572,17 @@ FUNCTION WinXClip_PutString (Stri$)
 	SHARED g_hClipMem		' to copy to the clipboard
 
 	' open the clipboard
-	IFZ OpenClipboard (0) THEN RETURN		' fail
+	IFZ OpenClipboard (0) THEN RETURN
 
 	StriLen = LEN (Stri$)
 
 	' allocate memory
 	g_hClipMem = GlobalAlloc ($$GMEM_MOVEABLE | $$GMEM_ZEROINIT, (StriLen + 1))
-	IFZ g_hClipMem THEN RETURN		' fail
+	IFZ g_hClipMem THEN RETURN
 
 	' lock the object into memory
 	pMem = GlobalLock (g_hClipMem)
-	IFZ pMem THEN RETURN		' fail
+	IFZ pMem THEN RETURN
 
 	' move the string into the memory we locked
 	RtlMoveMemory (pMem, &Stri$, StriLen)
@@ -2702,7 +2695,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXComboBox_SetEditText (hCombo, STRING text)
 	hEdit = SendMessageA (hCombo, $$CBEM_GETEDITCONTROL, 0, 0)
-	IFZ hEdit THEN RETURN		' fail
+	IFZ hEdit THEN RETURN
 	' Guy-08feb11-WinXSetText (hCombo, text)
 	WinXSetText (hEdit, text)
 	RETURN $$TRUE		' success
@@ -2716,11 +2709,11 @@ END FUNCTION
 ' index = the index of the item to select.  -1 to deselect everything
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXComboBox_SetSelection (hCombo, index)
-	IFZ hCombo THEN RETURN		' fail
+	IFZ hCombo THEN RETURN
 
 	' IF (SendMessageA (hCombo, $$CB_SETCURSEL, index, 0) = $$CB_ERR) && (index != -1) THEN RETURN $$FALSE ELSE RETURN $$TRUE ' fail
 	ret = SendMessageA (hCombo, $$CB_SETCURSEL, index, 0)
-	IF (ret = $$CB_ERR) && (index <> -1) THEN RETURN		' fail
+	IF (ret = $$CB_ERR) && (index <> -1) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -3169,7 +3162,7 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 			info$ = "MSINFO"
 			'
 			bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
-			IFF bOK THEN RETURN		' fail
+			IFF bOK THEN RETURN
 			'
 			exeDir$ = TRIM$ (exeDir$)
 			IF RIGHT$ (exeDir$) <> $$PathSlash$ THEN exeDir$ = exeDir$ + $$PathSlash$		' end directory path with \
@@ -3178,7 +3171,7 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 	ENDIF
 
 	bErr = XstFileExists (msInfo$)
-	IF bErr THEN RETURN		' fail
+	IF bErr THEN RETURN
 
 	' build the command line command$
 	IF INSTR (msInfo$, " ") THEN
@@ -3321,7 +3314,7 @@ FUNCTION WinXDir_Exists (dir$)
 
 	' trim the directory path
 	dirToFind$ = WinXPath_Trim$ (dir$)
-	IFZ dirToFind$ THEN RETURN		' fail, directory is empty
+	IFZ dirToFind$ THEN RETURN ' directory is empty
 
 	XstTranslateChars (@dirToFind$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
 	XstGetFileAttributes (@dirToFind$, @attrib)
@@ -3330,11 +3323,17 @@ FUNCTION WinXDir_Exists (dir$)
 	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE ' success directory exists
 
 END FUNCTION
+'
+' ################################
+' #####  WinXDir_GetXblDir$  #####
+' ################################
+'
+' Gets the complete path of xblite's directory
 ' returns "" on fail
-
+'
 ' Usage:
 ' xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
-FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
+FUNCTION WinXDir_GetXblDir$ ()
 	STATIC s_xblDir$
 
 	IF s_xblDir$ THEN RETURN s_xblDir$
@@ -3527,7 +3526,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3564,7 +3563,7 @@ FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3601,7 +3600,7 @@ FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3636,7 +3635,7 @@ FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	GetWindowRect (hWnd, &rect)
 	record.hUpdateRegion = CreateRectRgn (rect.left, rect.top, rect.right, rect.bottom)
@@ -3673,7 +3672,7 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -3710,7 +3709,7 @@ FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -3750,7 +3749,7 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (x - 1, y - 1, x + w + 2, y + h + 2)
 	record.image.x = x
@@ -3790,7 +3789,7 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3823,7 +3822,7 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -3864,7 +3863,7 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	hDC = CreateCompatibleDC (0)
 	SelectObject (hDC, hFont)
@@ -3903,10 +3902,10 @@ FUNCTION WinXDraw_CopyImage (hImage)
 	BITMAP bmpSrc
 	BITMAP bmpDst
 
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmpSrc) THEN RETURN		' fail
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmpSrc) THEN RETURN
 	hBmpRet = WinXDraw_CreateImage (bmpSrc.width, bmpSrc.height)
-	IFZ hBmpRet THEN RETURN		' fail
-	IFZ GetObjectA (hBmpRet, SIZE (BITMAP), &bmpDst) THEN RETURN		' fail
+	IFZ hBmpRet THEN RETURN
+	IFZ GetObjectA (hBmpRet, SIZE (BITMAP), &bmpDst) THEN RETURN
 
 	RtlMoveMemory (bmpDst.bits, bmpSrc.bits, (bmpDst.width * bmpDst.height) << 2)
 
@@ -3940,7 +3939,7 @@ END FUNCTION
 ' hImage = the image to delete
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXDraw_DeleteImage (hImage)
-	IFZ DeleteObject (hImage) THEN RETURN		' fail
+	IFZ DeleteObject (hImage) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -3999,7 +3998,7 @@ FUNCTION WinXDraw_GetFontDialog (parent, LOGFONT logFont, @color)
 	' (bold, italic, or regular), point size, effects (underline,
 	' strikeout, and text color), and a script (or character set)
 	ret = ChooseFontA (&chf)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	logFont.height = ABS (logFont.height)
 	color = chf.rgbColors
@@ -4036,8 +4035,8 @@ FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE data[])
 	BITMAP bmp
 	ULONG pixel
 
-	IF channel < 0 || channel > 3 THEN RETURN		' fail
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
+	IF channel < 0 || channel > 3 THEN RETURN
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	downshift = channel << 3
 
@@ -4061,7 +4060,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXDraw_GetImageInfo (hImage, @w, @h, @pBits)
 	BITMAP bmp
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	w = bmp.width
 	h = bmp.height
@@ -4080,8 +4079,8 @@ FUNCTION WINX_RGBA WinXDraw_GetImagePixel (hImage, x, y)
 	BITMAP bmp
 	WINX_RGBA ret
 
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
-	IF x < 0 || x >= bmp.width || y < 0 || y >= bmp.height THEN RETURN		' fail
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
+	IF x < 0 || x >= bmp.width || y < 0 || y >= bmp.height THEN RETURN
 	ULONGAT (&ret) = ULONGAT (bmp.bits, ((bmp.height - 1 - y) * bmp.width + x) << 2)
 	RETURN ret
 END FUNCTION
@@ -4139,7 +4138,7 @@ FUNCTION WinXDraw_LoadImage (STRING fileName, fileType)
 			RETURN hBmpRet
 	END SELECT
 
-	RETURN		' fail
+	RETURN
 END FUNCTION
 '
 ' ##################################
@@ -4191,7 +4190,7 @@ FUNCTION WinXDraw_PremultiplyImage (hImage)
 	BITMAP bmp
 	WINX_RGBA rgba
 
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	maxPixel = bmp.width * bmp.height - 1
 	FOR i = 0 TO maxPixel
@@ -4217,10 +4216,10 @@ FUNCTION WinXDraw_ResizeImage (hImage, w, h)
 	BITMAP bmpSrc
 	BITMAP bmpDst
 
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmpSrc) THEN RETURN		' fail
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmpSrc) THEN RETURN
 	hBmpRet = WinXDraw_CreateImage (w, h)
-	IFZ hBmpRet THEN RETURN		' fail
-	IFZ GetObjectA (hBmpRet, SIZE (BITMAP), &bmpDst) THEN RETURN		' fail
+	IFZ hBmpRet THEN RETURN
+	IFZ GetObjectA (hBmpRet, SIZE (BITMAP), &bmpDst) THEN RETURN
 
 	hdcDest = CreateCompatibleDC (0)
 	hdcSrc = CreateCompatibleDC (0)
@@ -4251,9 +4250,9 @@ FUNCTION WinXDraw_SaveImage (hImage, STRING fileName, fileType)
 
 	SELECT CASE fileType
 		CASE $$FILETYPE_WINBMP
-			IFZ GetObjectA (hImage, SIZE (bmp), &bmp) THEN RETURN		' fail
+			IFZ GetObjectA (hImage, SIZE (bmp), &bmp) THEN RETURN
 			file = OPEN (fileName, $$WRNEW)
-			IF file = -1 THEN RETURN		' fail
+			IF file = -1 THEN RETURN
 
 			bmfh.bfType = 0x4D42
 			bmfh.bfSize = SIZE (BITMAPFILEHEADER) + SIZE (BITMAPINFOHEADER) + (bmp.widthBytes * bmp.height)
@@ -4286,8 +4285,8 @@ FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 	BITMAP bmp
 	ULONG intAlpha
 
-	IF alpha < 0 || alpha > 1 THEN RETURN		' fail
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
+	IF alpha < 0 || alpha > 1 THEN RETURN
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	intAlpha = ULONG (alpha * 255.0) << 24
 
@@ -4310,14 +4309,14 @@ END FUNCTION
 FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE data[])
 	BITMAP bmp
 
-	IF channel < 0 || channel > 3 THEN RETURN		' fail
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
+	IF channel < 0 || channel > 3 THEN RETURN
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	upshift = channel << 3
 	mask = NOT (255 << upshift)
 
 	maxPixel = bmp.width * bmp.height - 1
-	IF maxPixel <> UBOUND (data[]) THEN RETURN		' fail
+	IF maxPixel <> UBOUND (data[]) THEN RETURN
 	FOR i = 0 TO maxPixel
 		ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) AND mask) | ULONG (data[i]) << upshift
 	NEXT i
@@ -4336,8 +4335,8 @@ END FUNCTION
 FUNCTION WinXDraw_SetImagePixel (hImage, x, y, color)
 	BITMAP bmp
 
-	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN		' fail
-	IF x < 0 || x >= bmp.width || y < 0 || y >= bmp.height THEN RETURN		' fail
+	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
+	IF x < 0 || x >= bmp.width || y < 0 || y >= bmp.height THEN RETURN
 	ULONGAT (bmp.bits, ((bmp.height - 1 - y) * bmp.width + x) << 2) = color
 
 	RETURN $$TRUE		' success
@@ -4356,7 +4355,7 @@ FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	hDC = CreateCompatibleDC (0)
 	hOld = SelectObject (hDC, hImage)
@@ -4379,7 +4378,7 @@ FUNCTION WinXEnableDialogInterface (hWnd, enable)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.useDialogInterface = enable
 	BINDING_Update (idBinding, binding)
@@ -4452,7 +4451,7 @@ FUNCTION WinXGetPlacement (hWnd, @minMax, RECT restored)
 	WINDOWPLACEMENT wp
 
 	wp.length = SIZE (WINDOWPLACEMENT)
-	IFZ GetWindowPlacement (hWnd, &wp) THEN RETURN		' fail
+	IFZ GetWindowPlacement (hWnd, &wp) THEN RETURN
 
 	restored = wp.rcNormalPosition
 	minMax = wp.showCmd
@@ -4488,7 +4487,7 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	GetClientRect (hWnd, &rect)
 	IF binding.hBar THEN
@@ -4511,7 +4510,7 @@ END FUNCTION
 ' hGB = the handle to the group box
 ' returns the series on success or 0 on fail
 FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
-	IFZ hGB THEN RETURN		' fail
+	IFZ hGB THEN RETURN
 	RETURN GetPropA (hGB, &"WinXAutoSizerSeries")
 END FUNCTION
 '
@@ -4519,7 +4518,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 'FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
 '	ret = GetPropA (hGB, &"WinXAutoSizerSeries")
-'	IFZ ret THEN RETURN		' fail
+'	IFZ ret THEN RETURN
 '	RETURN $$TRUE		' success
 'END FUNCTION
 '
@@ -4551,18 +4550,18 @@ END FUNCTION
 FUNCTION WinXIni_Delete (iniPath$, section$, key$)
 
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN		' fail
+	IFZ iniPath$ THEN RETURN
 
 	section$ = WinXPath_Trim$ (section$)
-	IFZ section$ THEN RETURN		' fail
+	IFZ section$ THEN RETURN
 
 	key$ = WinXPath_Trim$ (key$)
-	IFZ key$ THEN RETURN		' fail
+	IFZ key$ THEN RETURN
 
 	' passing argument lpString set to zero causes the key deletion
 	SetLastError (0)
 	ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	RETURN $$TRUE		' success
 
@@ -4626,16 +4625,16 @@ END FUNCTION
 FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN		' fail
+	IFZ iniPath$ THEN RETURN
 
 	section$ = WinXPath_Trim$ (section$)
-	IFZ section$ THEN RETURN		' fail
+	IFZ section$ THEN RETURN
 
 	key$ = WinXPath_Trim$ (key$)
-	IFZ key$ THEN RETURN		' fail
+	IFZ key$ THEN RETURN
 
 	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	RETURN $$TRUE		' success
 
@@ -4653,7 +4652,7 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 
 	' load the .INI file into array text$[]
 	bErr = XstLoadStringArray (iniPath$, @text$[])
-	IF bErr THEN RETURN		' fail
+	IF bErr THEN RETURN
 
 	' count the sections
 	count = 0
@@ -4662,7 +4661,7 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 		trimmed$ = TRIM$ (text$[itext])
 		IF (LEFT$ (trimmed$) = "[") && (RIGHT$ (trimmed$) = "]") THEN INC count
 	NEXT itext
-	IFZ count THEN RETURN		' fail
+	IFZ count THEN RETURN
 
 	' "peal" the brackets off the section names
 	DIM r_asSec$[count - 1]
@@ -4693,8 +4692,8 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 	DIM r_asKey$[]		' reset the returned array
 
 	bracketed$ = "[" + TRIM$ (curSec$) + "]" '  [section]
-	IF bracketed$ = "[]" THEN RETURN		' fail
-	IFZ TRIM$ (iniPath$) THEN RETURN		' fail
+	IF bracketed$ = "[]" THEN RETURN
+	IFZ TRIM$ (iniPath$) THEN RETURN
 
 	' load the .INI file into array text$[]
 	bErr = XstLoadStringArray (iniPath$, @text$[])
@@ -4790,12 +4789,12 @@ END FUNCTION
 
 FUNCTION WinXIni_DeleteSection (iniPath$, section$)
 
-	IFZ TRIM$ (iniPath$) THEN RETURN		' fail
-	IFZ TRIM$ (section$) THEN RETURN		' fail
+	IFZ TRIM$ (iniPath$) THEN RETURN
+	IFZ TRIM$ (section$) THEN RETURN
 
 	' passing key$=0 and value$=0 causes the section deletion
 	ret = WritePrivateProfileStringA (&section$, 0, 0, &iniPath$)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	RETURN $$TRUE		' success
 
@@ -4862,7 +4861,7 @@ END FUNCTION
 FUNCTION WinXListBox_EnableDragging (hListBox)
 	SHARED DLM_MESSAGE
 
-	IFZ hListBox THEN RETURN		' fail
+	IFZ hListBox THEN RETURN
 
 	IFZ MakeDragList (hListBox) RETURN $$FALSE
 	DLM_MESSAGE = RegisterWindowMessageA (&$$DRAGLISTMSGSTRING)
@@ -4913,7 +4912,7 @@ END FUNCTION
 FUNCTION WinXListBox_GetSelection (hListBox, index[])
 
 	' Guy-15apr09-prevent invalid handle
-	' IFZ hListBox THEN RETURN		' fail
+	' IFZ hListBox THEN RETURN
 	IFZ hListBox THEN
 		DIM index[]
 		RETURN 0
@@ -4922,7 +4921,7 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
 	IF style AND $$LBS_EXTENDEDSEL THEN
 		numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-		' Guy-15apr09-IF numItems = 0 THEN RETURN		' fail
+		' Guy-15apr09-IF numItems = 0 THEN RETURN
 		IF numItems < 1 THEN
 			DIM index[]
 			RETURN 0
@@ -4968,9 +4967,9 @@ END FUNCTION
 ' item = the item to move the caret to
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListBox_SetCaret (hListBox, item)
-	IFZ hListBox THEN RETURN		' fail
+	IFZ hListBox THEN RETURN
 
-	IF SendMessageA (hListBox, $$LB_SETCARETINDEX, item, $$FALSE) < 0 THEN RETURN		' fail
+	IF SendMessageA (hListBox, $$LB_SETCARETINDEX, item, $$FALSE) < 0 THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -4982,8 +4981,8 @@ END FUNCTION
 ' index[] = an array of item indexes to select
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListBox_SetSelection (hListBox, index[])
-	IFZ hListBox THEN RETURN		' fail
-	IFZ index[] THEN RETURN		' fail
+	IFZ hListBox THEN RETURN
+	IFZ index[] THEN RETURN
 
 	failed = $$FALSE
 	IF GetWindowLongA (hListBox, $$GWL_STYLE) AND $$LBS_EXTENDEDSEL THEN
@@ -4997,15 +4996,15 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 	ELSE
 		' Guy-17feb11-does not seem right :-(
 		' IFZ index[] THEN
-		' IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN		' fail
+		' IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN
 		' ELSE
-		' RETURN		' fail
+		' RETURN
 		' ENDIF
 		' index[0] = -1, deselect previous selection
 		IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] <> -1) THEN failed = $$TRUE
 	ENDIF
 
-	IF failed THEN RETURN		' fail
+	IF failed THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5019,7 +5018,7 @@ END FUNCTION
 '
 FUNCTION WinXListView_AddCheckBoxes (hLV)
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	' add the check boxes if they are missing
 	exStyle = SendMessageA (hLV, $$LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0)
@@ -5112,17 +5111,17 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_DeleteAllItems (hLV)
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	statusOld = LOCK_Get_skipOnSelect (id)
-	LOCK_Set_skipOnSelect (id, $$TRUE)
 
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
-	IFZ ret THEN RETURN
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
-	LOCK_Set_skipOnSelect (id, statusOld)
+	IFZ ret THEN RETURN
 
 	RETURN $$TRUE		' success
 
@@ -5135,9 +5134,9 @@ END FUNCTION
 ' iColumn = the zero-based index of the column to delete
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_DeleteColumn (hLV, iColumn)
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
-	IFZ SendMessageA (hLV, $$LVM_DELETECOLUMN, iColumn, 0) THEN RETURN		' fail
+	IFZ SendMessageA (hLV, $$LVM_DELETECOLUMN, iColumn, 0) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5147,9 +5146,9 @@ END FUNCTION
 ' Deletes an item from a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_DeleteItem (hLV, iItem)
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
-	IFZ SendMessageA (hLV, $$LVM_DELETEITEM, iItem, 0) THEN RETURN		' fail
+	IFZ SendMessageA (hLV, $$LVM_DELETEITEM, iItem, 0) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5157,11 +5156,13 @@ END FUNCTION
 ' #####  WinXListView_FreezeOnSelect  #####
 ' #########################################
 '
-'
-'
 FUNCTION WinXListView_FreezeOnSelect (hLV)
+
 	id = LOCK_Get_id_hCtr (hLV)
-	RETURN LOCK_Set_skipOnSelect (id, $$TRUE)
+	statusOld = LOCK_Get_skipOnSelect (id)
+	IF statusOld THEN RETURN $$TRUE ' already frozen
+
+	RETURN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 END FUNCTION
 
@@ -5170,7 +5171,7 @@ END FUNCTION
 ' iItem = the index of the item to get the check state for
 ' returns $$TRUE if the button is checked, $$FALSE otherwise
 FUNCTION WinXListView_GetCheckState (hLV, iItem)
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 	IF iItem < 0 THEN iItem = 0
 	ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_STATEIMAGEMASK)
 	IF (ret & 0x2000) = 0x2000 THEN RETURN $$TRUE ELSE RETURN $$FALSE		' button NOT checked
@@ -5183,7 +5184,7 @@ END FUNCTION
 FUNCTION WinXListView_GetHeaderHeight (hLV)
 	RECT rect
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 	hHeader = SendMessageA (hLV, $$LVM_GETHEADER, 0, 0)
 	IFZ hHeader THEN RETURN
 	GetWindowRect (hHeader, &rect)
@@ -5222,9 +5223,9 @@ END FUNCTION
 FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 	IF iItem < 0 THEN iItem = 0
-	IF cSubItems < 0 THEN RETURN		' fail
+	IF cSubItems < 0 THEN RETURN
 
 	DIM text$[cSubItems]
 	FOR i = 0 TO cSubItems
@@ -5235,7 +5236,7 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 		lvi.iItem = iItem
 		lvi.iSubItem = i
 
-		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN		' fail
+		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN
 		text$[i] = CSTRING$ (&buffer$)
 	NEXT i
 	RETURN $$TRUE		' success
@@ -5248,10 +5249,10 @@ END FUNCTION
 ' iItems[] = the array in which to store the indexes of selected items
 ' returns the number of selected items
 FUNCTION WinXListView_GetSelection (hLV, iItems[])
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	cSelItems = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-	IF cSelItems = 0 THEN RETURN		' fail
+	IF cSelItems = 0 THEN RETURN
 	DIM iItems[cSelItems - 1]
 	maxItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 
@@ -5278,7 +5279,7 @@ FUNCTION WinXListView_RemoveCheckBox (hLV, iItem)
 
 	LV_ITEM lvi		' list view item
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	lvi.state = 0		' no check box
 	lvi.mask = $$LVIF_STATE
@@ -5298,12 +5299,13 @@ END FUNCTION
 FUNCTION WinXListView_SetAllChecked (hLV)
 	LV_ITEM lvi		' list view item
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	statusOld = LOCK_Get_skipOnSelect (id)
-	LOCK_Set_skipOnSelect (id, $$TRUE)
+
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -5316,7 +5318,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	LOCK_Set_skipOnSelect (id, statusOld)
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
 	RETURN $$TRUE		' success
 
@@ -5331,7 +5333,7 @@ END FUNCTION
 FUNCTION WinXListView_SetAllSelected (hLV)
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 	lvi.mask = $$LVIF_STATE
 	lvi.stateMask = $$LVIS_SELECTED
 	lvi.state = $$LVIS_SELECTED
@@ -5351,12 +5353,13 @@ END FUNCTION
 FUNCTION WinXListView_SetAllUnchecked (hLV)
 	LV_ITEM lvi		' list view item
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	statusOld = LOCK_Get_skipOnSelect (id)
-	LOCK_Set_skipOnSelect (id, $$TRUE)
+
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 	IF uppItem >= 0 THEN
@@ -5369,7 +5372,7 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	LOCK_Set_skipOnSelect (id, statusOld)
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
 	RETURN $$TRUE		' success
 
@@ -5385,7 +5388,7 @@ END FUNCTION
 FUNCTION WinXListView_SetAllUnselected (hLV)
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 	lvi.mask = $$LVIF_STATE
 	lvi.stateMask = $$LVIS_SELECTED
 	lvi.state = 0
@@ -5406,8 +5409,8 @@ END FUNCTION
 FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
 	LV_ITEM lvi		' list view item
 
-	IFZ hLV THEN RETURN		' fail
-	IF iItem < 0 THEN RETURN		' fail
+	IFZ hLV THEN RETURN
+	IF iItem < 0 THEN RETURN
 
 	IF checked THEN
 		lvi.state = 0x2000 ' on
@@ -5433,11 +5436,11 @@ END FUNCTION
 FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF iItem >= count THEN RETURN		' fail
+	IF iItem >= count THEN RETURN
 
 	IF iSubItem < 0 THEN iSubItem = 0
 
@@ -5448,7 +5451,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 	lvi.stateMask = $$LVIS_FOCUSED | $$LVIS_SELECTED
 
 	ret = SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	' unselect all the items
 	lvi.mask = $$LVIF_STATE
@@ -5480,14 +5483,14 @@ END FUNCTION
 FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	lvi.mask = $$LVIF_TEXT
 	lvi.iItem = iItem
 	lvi.iSubItem = iSubItem
 	lvi.pszText = &newText
 
-	IFZ SendMessageA (hLV, $$LVM_SETITEMTEXT, iItem, &lvi) THEN RETURN		' fail
+	IFZ SendMessageA (hLV, $$LVM_SETITEMTEXT, iItem, &lvi) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5499,10 +5502,10 @@ END FUNCTION
 FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN		' fail
-	IFZ iItems[] THEN RETURN		' fail
+	IFZ hLV THEN RETURN
+	IFZ iItems[] THEN RETURN
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' fail
+	IF count < 1 THEN RETURN
 
 	' unselect all
 	lvi.state = NOT $$LVIS_SELECTED
@@ -5530,11 +5533,11 @@ END FUNCTION
 FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 	RECT rect
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF iItem >= count THEN RETURN		' fail
+	IF iItem >= count THEN RETURN
 
 	IF iSubItem < 0 THEN iSubItem = 0
 
@@ -5559,7 +5562,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetView (hLV, view)
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	style = GetWindowLongA (hLV, $$GWL_STYLE)
 	style = (style AND NOT ($$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT)) OR view
@@ -5576,11 +5579,11 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF iItem >= count THEN RETURN		' fail
+	IF iItem >= count THEN RETURN
 
 	IF iSubItem < 0 THEN iSubItem = 0
 
@@ -5601,12 +5604,12 @@ FUNCTION WinXListView_Sort (hLV, iCol, desc)
 	SHARED lvs_iCol
 	SHARED lvs_desc
 
-	IFZ hLV THEN RETURN		' fail
+	IFZ hLV THEN RETURN
 
 	lvs_iCol = iCol
 	lvs_desc = desc
 	ret = SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems ())
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5619,13 +5622,16 @@ END FUNCTION
 FUNCTION WinXListView_UseOnSelect (hLV)
 
 	id = LOCK_Get_id_hCtr (hLV)
-	RETURN LOCK_Set_skipOnSelect (id, $$FALSE)
+	statusOld = LOCK_Get_skipOnSelect (id)
+	IF statusOld THEN RETURN $$TRUE
+
+	RETURN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
 END FUNCTION
 '
-' ###############################
+' #############################
 ' #####  WinXMenu_Attach  #####
-' ###############################
+' #############################
 ' Attach a sub menu to another menu
 ' subMenu = the sub menu to attach
 ' newParent = the new parent menu
@@ -5634,15 +5640,15 @@ END FUNCTION
 FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
 	MENUITEMINFO mii
 
-	IFZ subMenu THEN RETURN		' fail
-	IFZ newParent THEN RETURN		' fail
-	IFZ idCtr THEN RETURN		' fail
+	IFZ subMenu THEN RETURN
+	IFZ newParent THEN RETURN
+	IFZ idCtr THEN RETURN
 
 	mii.cbSize = SIZE (MENUITEMINFO)
 	mii.fMask = $$MIIM_SUBMENU
 	mii.hSubMenu = subMenu
 
-	IFZ SetMenuItemInfoA (newParent, idCtr, $$FALSE, &mii) THEN RETURN		' fail
+	IFZ SetMenuItemInfoA (newParent, idCtr, $$FALSE, &mii) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5762,7 +5768,7 @@ END FUNCTION
 FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, rgbTrans, toolTips, customisable)
 	BITMAP bm
 
-	IFZ hBmpButtons THEN RETURN		' fail
+	IFZ hBmpButtons THEN RETURN
 
 	' bmpWidth = wButton*nButtons
 	GetObjectA (hBmpButtons, SIZE (bm), &bm)		' get the bitmap's sizes
@@ -5921,7 +5927,7 @@ FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisabl
 
 	hInst = GetModuleHandleA (0)
 	hToolbar = CreateWindowExA (0, &$$TOOLBARCLASSNAME, 0, style, 0, 0, 0, 0, 0, 0, hInst, 0)
-	IFZ hToolbar THEN RETURN		' fail
+	IFZ hToolbar THEN RETURN
 
 	WinXSetDefaultFont (hToolbar)		'give it a nice font
 
@@ -6095,7 +6101,7 @@ END FUNCTION
 FUNCTION WinXPrint_DevUnitsPerInch (hPrinter, @w, @h)
 	w = GetDeviceCaps (hPrinter, $$LOGPIXELSX)
 	h = GetDeviceCaps (hPrinter, $$LOGPIXELSY)
-	IF w < 1 RETURN		' fail
+	IF w < 1 RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -6140,7 +6146,7 @@ FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pag
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' get the clipping rect for the printer
 	rect.left = (GetDeviceCaps (hPrinter, $$LOGPIXELSX) * printInfo.marginLeft) \ 1000
@@ -6167,7 +6173,7 @@ FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pag
 	' play the auto draw info into the printer
 	StartPage (hPrinter)
 	autoDraw_draw (hPrinter, binding.autoDrawInfo, x, y)
-	IF EndPage (hPrinter) <= 0 THEN RETURN		' fail
+	IF EndPage (hPrinter) <= 0 THEN RETURN
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6280,7 +6286,7 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			ENDIF
 			hDC = printDlg.hdc
 		ELSE
-			RETURN		' fail
+			RETURN
 		ENDIF
 	ELSE
 		IFZ printInfo.hDevMode THEN
@@ -6305,7 +6311,7 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 		ENDIF
 		GlobalUnlock (printInfo.hDevMode)
 
-		IF hDC = 0 THEN RETURN		' fail
+		IF hDC = 0 THEN RETURN
 	ENDIF
 
 	' OK, we have a DC.  Now let's get the physical sizes
@@ -6378,12 +6384,12 @@ END FUNCTION
 FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnControlSizer THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnControlSizer THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' set the function
 	binding.onDimControls = FnControlSizer
@@ -6418,19 +6424,19 @@ FUNCTION WinXRegMessageHandler (hWnd, wMsg, FUNCADDR FnMsgHandler)
 	BINDING binding
 	MSGHANDLER handler
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnMsgHandler THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnMsgHandler THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' prepare the handler
 	handler.wMsg = wMsg
 	handler.handler = FnMsgHandler		' (hWnd, wMsg, wParam, lParam)
 
 	' and add it
-	IF handler_add (binding.msgHandlers, handler) = -1 THEN RETURN		' fail
+	IF handler_add (binding.msgHandlers, handler) = -1 THEN RETURN
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6445,12 +6451,12 @@ END FUNCTION
 FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnCalendarSelect THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnCalendarSelect THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onCalendarSelect = FnOnCalendarSelect
 	BINDING_Update (idBinding, binding)
@@ -6467,12 +6473,12 @@ END FUNCTION
 FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnChar THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnChar THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onChar = FnOnChar
 	BINDING_Update (idBinding, binding)
@@ -6489,12 +6495,12 @@ END FUNCTION
 FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR FnOnClipChange)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnClipChange THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnClipChange THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.hwndNextClipViewer = SetClipboardViewer (hWnd)
 
@@ -6510,12 +6516,12 @@ END FUNCTION
 FUNCTION WinXRegOnClose (hWnd, FUNCADDR FnOnClose)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnClose THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnClose THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onClose = FnOnClose
 	BINDING_Update (idBinding, binding)
@@ -6532,12 +6538,12 @@ END FUNCTION
 FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnColumnClick THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnColumnClick THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onColumnClick = FnOnColumnClick
 	BINDING_Update (idBinding, binding)
@@ -6554,12 +6560,12 @@ END FUNCTION
 FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnCommand THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnCommand THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onCommand = FnOnCommand
 	BINDING_Update (idBinding, binding)
@@ -6574,12 +6580,12 @@ END FUNCTION
 FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnDrag THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnDrag THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onDrag = FnOnDrag
 	BINDING_Update (idBinding, binding)
@@ -6596,12 +6602,12 @@ END FUNCTION
 FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnDropFiles THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnDropFiles THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	DragAcceptFiles (hWnd, 1)
 	binding.onDropFiles = FnOnDropFiles
@@ -6619,12 +6625,12 @@ END FUNCTION
 FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnEnterLeave THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnEnterLeave THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onEnterLeave = FnOnEnterLeave
 	BINDING_Update (idBinding, binding)
@@ -6641,12 +6647,12 @@ END FUNCTION
 FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnFocusChange THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnFocusChange THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onFocusChange = FnOnFocusChange
 	BINDING_Update (idBinding, binding)
@@ -6656,19 +6662,19 @@ END FUNCTION
 ' ###########################
 ' #####  WinXRegOnItem  #####
 ' ###########################
-' Registers the FnOnItem callback for a list view or a tree view control
+' Registers the onItem callback for a list view or a tree view control
 ' hWnd = the window to register the message for
 ' FnOnItem = the address of the callback function
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnItem THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnItem THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onItem = FnOnItem
 	BINDING_Update (idBinding, binding)
@@ -6685,12 +6691,12 @@ END FUNCTION
 FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnKeyDown THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnKeyDown THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onKeyDown = FnOnKeyDown
 	BINDING_Update (idBinding, binding)
@@ -6707,12 +6713,12 @@ END FUNCTION
 FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnKeyUp THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnKeyUp THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onKeyUp = FnOnKeyUp
 	BINDING_Update (idBinding, binding)
@@ -6726,12 +6732,12 @@ END FUNCTION
 FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnLabelEdit THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnLabelEdit THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onLabelEdit = FnOnLabelEdit
 	BINDING_Update (idBinding, binding)
@@ -6748,12 +6754,12 @@ END FUNCTION
 FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR FnOnMouseDown)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnMouseDown THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnMouseDown THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onMouseDown = FnOnMouseDown
 	BINDING_Update (idBinding, binding)
@@ -6770,12 +6776,12 @@ END FUNCTION
 FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR FnOnMouseMove)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnMouseMove THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnMouseMove THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onMouseMove = FnOnMouseMove
 	BINDING_Update (idBinding, binding)
@@ -6792,12 +6798,12 @@ END FUNCTION
 FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR FnOnMouseUp)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnMouseUp THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnMouseUp THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onMouseUp = FnOnMouseUp
 	BINDING_Update (idBinding, binding)
@@ -6814,12 +6820,12 @@ END FUNCTION
 FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR FnOnMouseWheel)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnMouseWheel THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnMouseWheel THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onMouseWheel = FnOnMouseWheel
 	BINDING_Update (idBinding, binding)
@@ -6846,12 +6852,12 @@ END FUNCTION
 FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnPaint THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnPaint THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' set the paint function
 	binding.onPaint = FnOnPaint
@@ -6870,12 +6876,12 @@ END FUNCTION
 FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnScroll THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnScroll THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onScroll = FnOnScroll
 	BINDING_Update (idBinding, binding)
@@ -6894,12 +6900,12 @@ END FUNCTION
 FUNCTION WinXRegOnSelect (hWnd, FUNCADDR FnOnSelect)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnSelect THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnSelect THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onSelect = FnOnSelect
 	BINDING_Update (idBinding, binding)
@@ -6916,12 +6922,12 @@ END FUNCTION
 FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
-	IFZ FnOnTrackerPos THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ FnOnTrackerPos THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.onTrackerPos = FnOnTrackerPos
 	BINDING_Update (idBinding, binding)
@@ -7193,7 +7199,7 @@ FUNCTION WinXScroll_Scroll (hWnd, direction, unitType, scrollingDirection)
 		CASE $$UNIT_END
 			IF scrollingDirection < 0 THEN wParam = $$SB_TOP ELSE wParam = $$SB_BOTTOM
 		CASE ELSE
-			RETURN		' fail
+			RETURN
 	END SELECT
 
 	i = ABS (scrollingDirection)
@@ -7208,7 +7214,7 @@ FUNCTION WinXScroll_Scroll (hWnd, direction, unitType, scrollingDirection)
 					SendMessageA (hWnd, $$WM_VSCROLL, wParam, 0)
 				NEXT i
 			CASE ELSE
-				RETURN		' fail
+				RETURN
 		END SELECT
 	ENDIF
 
@@ -7232,7 +7238,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	GetClientRect (hWnd, &rect)
 
@@ -7255,7 +7261,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 
 			si.nPage = (rect.bottom - rect.top) * mul + constant
 		CASE ELSE
-			RETURN		' fail
+			RETURN
 	END SELECT
 
 	BINDING_Update (idBinding, binding)
@@ -7305,7 +7311,7 @@ FUNCTION WinXScroll_SetRange (hWnd, direction, min, max)
 		CASE $$DIR_VERT
 			sb = $$SB_VERT
 		CASE ELSE
-			RETURN		' fail
+			RETURN
 	END SELECT
 
 	si.cbSize = SIZE (SCROLLINFO)
@@ -7366,7 +7372,7 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.hCursor = hCursor
 	BINDING_Update (idBinding, binding)
@@ -7416,7 +7422,7 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	rect.left = 0
 	rect.top = 0
@@ -7449,7 +7455,7 @@ FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 	RECT rect
 
 	wp.length = SIZE (WINDOWPLACEMENT)
-	IFZ GetWindowPlacement (hWnd, &wp) THEN RETURN		' fail
+	IFZ GetWindowPlacement (hWnd, &wp) THEN RETURN
 
 	IF wp.showCmd THEN wp.showCmd = minMax
 	IF (restored.left | restored.right | restored.top | restored.bottom) THEN wp.rcNormalPosition = restored
@@ -7514,7 +7520,7 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 			'
 			' if the control's style was not updated, report a failure
 			style = GetWindowLongA (hWnd, $$GWL_STYLE)
-			IF styleNew <> style THEN RETURN		' fail
+			IF styleNew <> style THEN RETURN
 		ENDIF
 		'
 	ENDIF
@@ -7542,7 +7548,7 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 			'
 			' if the control's extended style was not updated, report a failure
 			styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-			IF styleExNew <> styleEx THEN RETURN		' fail
+			IF styleExNew <> styleEx THEN RETURN
 		ENDIF
 		'
 	ENDIF
@@ -7557,8 +7563,8 @@ END FUNCTION
 ' text = the text to set
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetText (hWnd, STRING text)
-	IFZ hWnd THEN RETURN		' fail
-	IFZ SetWindowTextA (hWnd, &text) THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
+	IFZ SetWindowTextA (hWnd, &text) THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7574,7 +7580,7 @@ FUNCTION WinXSetWindowColour (hWnd, color)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	IF binding.backCol THEN DeleteObject (binding.backCol)
 	binding.backCol = CreateSolidBrush (color)
@@ -7592,11 +7598,11 @@ END FUNCTION
 FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 	BINDING binding
 
-	IFZ hToolbar THEN RETURN		' fail
+	IFZ hToolbar THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' set the toolbar parent
 	SetParent (hToolbar, hWnd)
@@ -7638,8 +7644,8 @@ FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 	SPLITTERINFO splitterInfo
 
-	IFF series >= 0 && series <= UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[series].inUse THEN RETURN		' fail
+	IFF series >= 0 && series <= UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[series].inUse THEN RETURN
 
 	' Walk the list untill we find the autodraw record we need
 	found = $$FALSE
@@ -7652,7 +7658,7 @@ FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
 		i = AUTOSIZERINFO_array[series, i].nextItem
 	LOOP
 
-	IFF found THEN RETURN		' fail
+	IFF found THEN RETURN
 
 	iSplitter = GetWindowLongA (AUTOSIZERINFO_array[series, i].hSplitter, $$GWL_USERDATA)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
@@ -7677,13 +7683,15 @@ END FUNCTION
 ' position = the new position for the splitter
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
+
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
+
 	SPLITTERINFO splitterInfo
 	RECT rect
 
-	IFF series >= 0 && series <= UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[series].inUse THEN RETURN		' fail
+	IFF series >= 0 && series <= UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[series].inUse THEN RETURN
 
 	' Walk the list untill we find the autosizer record we need
 	found = $$FALSE
@@ -7696,16 +7704,16 @@ FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 		i = AUTOSIZERINFO_array[series, i].nextItem
 	LOOP
 
-	IFF found THEN RETURN		' fail
+	IFF found THEN RETURN
 
 	iSplitter = GetWindowLongA (AUTOSIZERINFO_array[series, i].hSplitter, $$GWL_USERDATA)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
 
 	IF docked THEN
-		AUTOSIZERINFO_array[series, i].size = 8
+		AUTOSIZERINFO_array[series, i].size = 8.0
 		splitterInfo.docked = position
 	ELSE
-		AUTOSIZERINFO_array[series, i].size = position
+		AUTOSIZERINFO_array[series, i].size = DOUBLE (position)
 		splitterInfo.docked = 0
 	ENDIF
 
@@ -7732,9 +7740,9 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 	SPLITTERINFO splitterInfo
 
-	IFZ hCtr THEN RETURN		' fail
-	IFF series >= 0 && series <= UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[series].inUse THEN RETURN		' fail
+	IFZ hCtr THEN RETURN
+	IFF series >= 0 && series <= UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[series].inUse THEN RETURN
 
 	' Walk the list until we find the autodraw record we need
 	found = $$FALSE
@@ -7747,7 +7755,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 		i = AUTOSIZERINFO_array[series, i].nextItem
 	LOOP
 
-	IFF found THEN RETURN		' fail
+	IFF found THEN RETURN
 
 	iSplitter = GetWindowLongA (AUTOSIZERINFO_array[series, i].hSplitter, $$GWL_USERDATA)
 	SPLITTERINFO_Get (iSplitter, @splitterInfo)
@@ -7803,11 +7811,11 @@ END FUNCTION
 FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 	BINDING binding
 
-	IFZ hWnd THEN RETURN		' fail
+	IFZ hWnd THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' validate argument part (zero-based partition)
 	bOK = $$TRUE		' assume success
@@ -7868,7 +7876,7 @@ END FUNCTION
 FUNCTION WinXTabs_DeleteTab (hTabs, iTab)
 	' Guy-13jan11-RETURN SendMessageA (hTabs, $$TCM_DELETEITEM, iTab, 0)
 	ret = SendMessageA (hTabs, $$TCM_DELETEITEM, iTab, 0)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7908,9 +7916,9 @@ END FUNCTION
 ' iTab = the index of the new current tab
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
-	IFZ hTabs THEN RETURN		' fail
+	IFZ hTabs THEN RETURN
 	ret = SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8036,7 +8044,7 @@ FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 		ret = SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, $$GDT_NONE, 0)
 	ENDIF
 	' Guy-13jan11-added checking
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8064,7 +8072,7 @@ FUNCTION WinXToolbar_AddButton (hToolbar, commandId, iImage, STRING tooltipText,
 
 	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
 	ret = SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8110,7 +8118,7 @@ FUNCTION WinXToolbar_AddSeparator (hToolbar)
 
 	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
 	ret = SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8139,7 +8147,7 @@ FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, STRING toolti
 
 	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
 	ret = SendMessageA (hToolbar, $$TB_ADDBUTTONS, 1, &bt)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8152,12 +8160,12 @@ END FUNCTION
 ' enable = $$TRUE to enable the button, $$FALSE to disable
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_EnableButton (hToolbar, idButton, enable)
-	IFZ hToolbar THEN RETURN		' fail
+	IFZ hToolbar THEN RETURN
 
 	' Guy-13jan11-RETURN SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, enable)
 	IFZ enable THEN fEnable = 0 ELSE fEnable = 1		' enable
 	ret = SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, fEnable)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8174,7 +8182,7 @@ FUNCTION WinXToolbar_ToggleButton (hToolbar, idButton, on)
 	IF on THEN state = state | $$TBSTATE_CHECKED ELSE state = state AND NOT ($$TBSTATE_CHECKED)
 	' Guy-13jan11-SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
 	ret = SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8284,7 +8292,7 @@ END FUNCTION
 '
 FUNCTION WinXTreeView_AddCheckBoxes (hTV)
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	' add the check boxes if they are missing
 	style = GetWindowLongA (hTV, $$GWL_STYLE)
@@ -8311,7 +8319,7 @@ END FUNCTION
 FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect, STRING item)
 	TV_INSERTSTRUCT tvis
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	tvis.hParent = hParent
 	tvis.hInsertAfter = hInsertAfter
@@ -8335,7 +8343,7 @@ END FUNCTION
 ' hItem = the handle to the item to collapse, 0 for the root node
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTreeView_CollapseItem (hTV, hItem)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
 	SendMessageA (hTV, $$TVM_EXPAND, $$TVE_COLLAPSE, hItem)
 	RETURN $$TRUE		' success
@@ -8354,7 +8362,7 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 	TV_ITEM tvi
 	TV_INSERTSTRUCT tvis
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	tvi.mask = $$TVIF_CHILDREN | $$TVIF_HANDLE | $$TVIF_IMAGE | $$TVIF_PARAM | $$TVIF_SELECTEDIMAGE | $$TVIF_STATE | $$TVIF_TEXT
 	tvi.hItem = hItem
@@ -8363,7 +8371,7 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 	tvi.cchTextMax = $$MAX_PATH
 	tvi.stateMask = 0xFFFFFFFF
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	tvis.hParent = hParentItem
 	tvis.hInsertAfter = hItemInsertAfter
 	tvis.item = tvi
@@ -8394,7 +8402,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE
 FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
 	IFZ count THEN RETURN $$TRUE		' success
@@ -8402,13 +8410,12 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	statusOld = LOCK_Get_skipOnSelect (id)
-	LOCK_Set_skipOnSelect (id, $$TRUE)
 
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
+	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
-	LOCK_Set_skipOnSelect (id, statusOld)
-
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 
 	RETURN $$TRUE		' success
 
@@ -8423,10 +8430,10 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE
 FUNCTION WinXTreeView_DeleteItem (hTV, hItem)
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, hItem)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8438,11 +8445,11 @@ END FUNCTION
 ' hItem = the handle to the item to expand, 0 for the root node
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTreeView_ExpandItem (hTV, hItem)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
 	ret = SendMessageA (hTV, $$TVM_EXPAND, $$TVE_EXPAND, hItem)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8457,10 +8464,10 @@ FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)
 
 	TV_ITEM tvi
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN		' fail
+	IFZ find$ THEN RETURN
 
 	hItemFound = 0
 	IFZ hItem THEN
@@ -8506,10 +8513,10 @@ END FUNCTION
 ' returns the node handle, 0 if error
 FUNCTION WinXTreeView_FindItemLabel (hTV, find$)
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN		' fail
+	IFZ find$ THEN RETURN
 
 	hItemFound = WinXTreeView_FindItem (hTV, 0, find$)
 	RETURN hItemFound
@@ -8523,8 +8530,12 @@ END FUNCTION
 '
 '
 FUNCTION WinXTreeView_FreezeOnSelect (hTV)
+
 	id = LOCK_Get_id_hCtr (hTV)
-	RETURN LOCK_Set_skipOnSelect (id, $$TRUE)
+	statusOld = LOCK_Get_skipOnSelect (id)
+	IF statusOld THEN RETURN $$TRUE
+
+	RETURN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 END FUNCTION
 '
@@ -8539,14 +8550,14 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 
 	TVITEM tvi		' tree view item
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	tvi.hItem = hItem		' the selected item
 	tvi.mask = $$TVIF_STATE		' item state attribute
 	tvi.stateMask = $$TVIS_STATEIMAGEMASK
 	' Guy-03mar09-SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	IF (tvi.state & 0x2000) = 0x2000 THEN RETURN $$TRUE ELSE RETURN $$FALSE		' *not* checked
 END FUNCTION
 '
@@ -8558,7 +8569,7 @@ END FUNCTION
 ' hItem = the item to get the first child from
 ' returns the handle to the child item or 0 on error
 FUNCTION WinXTreeView_GetChildItem (hTV, hItem)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CHILD, hItem)
 END FUNCTION
@@ -8573,7 +8584,7 @@ END FUNCTION
 FUNCTION WinXTreeView_GetItemFromPoint (hTV, x, y)
 	TV_HITTESTINFO tvHit
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	tvHit.pt.x = x
 	tvHit.pt.y = y
@@ -8616,7 +8627,7 @@ END FUNCTION
 ' hItem = the handle to the item to start from
 ' returns the handle of the next item or 0 on error
 FUNCTION WinXTreeView_GetNextItem (hTV, hItem)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_NEXT, hItem)
 END FUNCTION
 '
@@ -8628,7 +8639,7 @@ END FUNCTION
 ' hItem = the item to get the parent of
 ' returns the handle to the parent, or $$TVI_ROOT if hItem has no parent.
 FUNCTION WinXTreeView_GetParentItem (hTV, hItem)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_PARENT, hItem)
 END FUNCTION
 '
@@ -8639,7 +8650,7 @@ END FUNCTION
 ' hTV = the handle to the tree view
 ' returns the handle to the previous item or 0 on error
 FUNCTION WinXTreeView_GetPreviousItem (hTV, hItem)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_PREVIOUS, hItem)
 END FUNCTION
 '
@@ -8651,7 +8662,7 @@ END FUNCTION
 ' hItem = the handle to the item to expand, 0 for the root node
 ' returns root's handle on success or 0 on fail
 FUNCTION WinXTreeView_GetRootItem (hTV)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
 END FUNCTION
 '
@@ -8662,7 +8673,7 @@ END FUNCTION
 ' hTV = the tree view control
 ' returns the handle of the selected item, 0 on fail
 FUNCTION WinXTreeView_GetSelection (hTV)
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CARET, 0)
 END FUNCTION
 '
@@ -8677,7 +8688,7 @@ FUNCTION WinXTreeView_RemoveCheckBox (hTV, hItem)
 
 	TVITEM tvi		' tree view item
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	tvi.state = 0		' removes the check box
 	tvi.hItem = hItem
@@ -8700,7 +8711,7 @@ FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked)
 
 	TVITEM tvi		' tree view item
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 
 	IF checked THEN tvi.state = 0x2000 ELSE tvi.state = 0x1000		' unchecked
 	tvi.hItem = hItem
@@ -8740,12 +8751,12 @@ END FUNCTION
 FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 	' Guy-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
 
-	IFZ hTV THEN RETURN		' fail
+	IFZ hTV THEN RETURN
 	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
-	IFZ hItem THEN RETURN		' fail
+	IFZ hItem THEN RETURN
 
 	ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
-	IFZ ret THEN RETURN		' fail
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8758,7 +8769,10 @@ END FUNCTION
 FUNCTION WinXTreeView_UseOnSelect (hTV)
 
 	id = LOCK_Get_id_hCtr (hTV)
-	RETURN LOCK_Set_skipOnSelect (id, $$FALSE)
+	statusOld = LOCK_Get_skipOnSelect (id)
+	IF statusOld THEN RETURN $$TRUE
+
+	RETURN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
 END FUNCTION
 '
@@ -8775,7 +8789,7 @@ FUNCTION WinXUndo (hWnd, idCtr)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' LINKEDLIST_Get (binding.autoDrawInfo, @autoDraw)
 	' LinkedList_GetItem (autoDraw, idCtr, @iData)
@@ -8811,7 +8825,7 @@ FUNCTION WinXUpdate (hWnd)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' PRINT binding.hUpdateRegion
 	InvalidateRgn (hWnd, binding.hUpdateRegion, 1) ' erase
@@ -8898,10 +8912,10 @@ FUNCTION AUTOSIZER_LinkedList_Get (id, idCtr, AUTOSIZERINFO item)
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 
-	IF id < 0 || id > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[id].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
-	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
+	IF id < 0 || id > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[id].inUse THEN RETURN
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN
+	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN
 
 	item = AUTOSIZERINFO_array[id, idCtr]
 	RETURN $$TRUE		' success
@@ -8918,10 +8932,10 @@ FUNCTION AUTOSIZER_LinkedList_Update (group, idCtr, AUTOSIZERINFO item)
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 
-	IF group < 0 || group > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[group].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[group,]) THEN RETURN		' fail
-	IFZ AUTOSIZERINFO_array[group, idCtr].hwnd THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[group].inUse THEN RETURN
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[group,]) THEN RETURN
+	IFZ AUTOSIZERINFO_array[group, idCtr].hwnd THEN RETURN
 
 	AUTOSIZERINFO_array[group, idCtr] = item
 	RETURN $$TRUE		' success
@@ -8999,7 +9013,7 @@ FUNCTION BINDING_Ov_Delete (id)
 	bOK = BINDING_Get (id, @item)
 	IFF bOK THEN RETURN
 
-	IFZ item.hwnd THEN RETURN		' fail
+	IFZ item.hwnd THEN RETURN
 
 	' delete the auto draw info
 	autoDraw_clear (item.autoDrawInfo)
@@ -9067,20 +9081,14 @@ END FUNCTION
 ' ##############################
 '
 FUNCTION LOCK_Get_id_hCtr (hCtr)
-	SHARED LOCK LOCK_array[]
-	SHARED LOCK_arrayUM[]
-	SHARED LOCK_idMax
 
-	IFZ hCtr THEN RETURN 0
-	IFZ LOCK_arrayUM[] THEN RETURN 0
+	IFZ hCtr THEN RETURN
 
-	upper_slot = LOCK_idMax - 1
-	FOR slot = 0 TO upper_slot
-		IF LOCK_arrayUM[slot] THEN
-			IF LOCK_array[slot].hwnd = hCtr THEN RETURN (slot + 1)
-		ENDIF
-	NEXT slot
-	RETURN 0
+	hWnd = GetParent (hCtr)
+
+	' get the binding
+	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+	RETURN idBinding
 
 END FUNCTION
 '
@@ -9089,27 +9097,16 @@ END FUNCTION
 ' ###################################
 '
 FUNCTION LOCK_Get_skipOnSelect (id)
-	LOCK item
+	BINDING binding
 
-	bOK = LOCK_Get (id, @item)
+	bOK = BINDING_Get (id, @binding)
 	IFF bOK THEN RETURN
-	RETURN item.skipOnNotify
 
-END FUNCTION
-'
-' #########################################
-' #####  LOCK_Get_skipOnSelect_idCtr  #####
-' #########################################
-'
-FUNCTION LOCK_Get_skipOnSelect_idCtr (idCtr)
-	SHARED LOCK item
+	IFZ binding.onSelect THEN RETURN $$FALSE ' no need to skip
 
-	IFZ idCtr THEN RETURN
-	id = LOCK_Find(STRING$ (idCtr))
-	IF id THEN
-		LOCK_Get (id, @item)
-		RETURN item.skipOnNotify
-	ENDIF
+	bSkip = binding.skipOnSelect
+	IF bSkip THEN bSkip = $$TRUE ' true value of TRUE
+	RETURN bSkip
 
 END FUNCTION
 '
@@ -9118,18 +9115,16 @@ END FUNCTION
 ' ###################################
 '
 FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
-	SHARED LOCK LOCK_array[]
-	SHARED LOCK_arrayUM[]
-	SHARED LOCK_idMax
+	BINDING binding
 
-	IFZ LOCK_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > LOCK_idMax) THEN RETURN
-
-	slot = id - 1
-	IFF LOCK_arrayUM[slot] THEN RETURN
+	bOK = BINDING_Get (id, @binding)
+	IFF bOK THEN RETURN
 
 	IF bSkip THEN bSkip = $$TRUE ' true value of TRUE
-	LOCK_array[slot].skipOnNotify = bSkip
+	binding.skipOnSelect = bSkip
+
+	' update the binding
+	BINDING_Update (id, binding)
 
 	RETURN $$TRUE
 
@@ -9202,7 +9197,7 @@ FUNCTION autoDraw_clear (group)
 	LINKEDLIST list
 	AUTODRAWRECORD record
 
-	IFF LINKEDLIST_Get (group, @list) THEN RETURN		' fail
+	IFF LINKEDLIST_Get (group, @list) THEN RETURN
 	hWalk = LinkedList_StartWalk (list)
 	DO WHILE LinkedList_Walk (hWalk, @iData)
 		AUTODRAWRECORD_Get (iData, @record)
@@ -9233,7 +9228,7 @@ FUNCTION autoDraw_draw (hdc, group, x0, y0)
 	hBrush = 0
 	hFont = 0
 
-	IFF LINKEDLIST_Get (group, @autoDraw) THEN RETURN		' fail
+	IFF LINKEDLIST_Get (group, @autoDraw) THEN RETURN
 	hWalk = LinkedList_StartWalk (autoDraw)
 	DO WHILE LinkedList_Walk (hWalk, @iData)
 		AUTODRAWRECORD_Get (iData, @record)
@@ -9278,14 +9273,30 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 	' first, the x, y, w and h of the box
 	SELECT CASE direction AND 0x00000003
 		CASE $$DIR_VERT
-			IF autoSizerBlock.space <= 1 THEN autoSizerBlock.space = autoSizerBlock.space * nh
+			IF autoSizerBlock.space <= 1.0 THEN autoSizerBlock.space = autoSizerBlock.space * nh
 
 			IF autoSizerBlock.flags AND $$SIZER_SIZERELREST THEN
-				IF direction AND $$DIR_REVERSE THEN rest = currPos ELSE rest = nh - currPos
-				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
+				IF direction AND $$DIR_REVERSE THEN
+					rest = currPos
+				ELSE
+					rest = nh - currPos
+				ENDIF
+				IF autoSizerBlock.size <= 1.0 THEN
+					autoSizerBlock.size = autoSizerBlock.size * rest
+					corr# = autoSizerBlock.space ' Guy-25may11-margin
+					IF corr# < 1.0 THEN corr# = 1.0
+					autoSizerBlock.size = autoSizerBlock.size - corr#
+				ELSE
+					autoSizerBlock.size = rest - autoSizerBlock.size
+				ENDIF
 				autoSizerBlock.size = autoSizerBlock.size - autoSizerBlock.space
 			ELSE
-				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * nh
+				IF autoSizerBlock.size <= 1.0 THEN
+					autoSizerBlock.size = autoSizerBlock.size * nh
+					corr# = autoSizerBlock.space ' Guy-25may11-margin
+					IF corr# < 1.0 THEN corr# = 1.0
+					autoSizerBlock.size = autoSizerBlock.size - corr#
+				ENDIF
 			ENDIF
 
 			IF autoSizerBlock.x <= 1 THEN autoSizerBlock.x = autoSizerBlock.x * nw
@@ -9308,20 +9319,43 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTERINFO_Get (iSplitter, @splitterInfo)
-				IF direction AND $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nh - currPos - autoSizerBlock.space
+				IF direction AND $$DIR_REVERSE THEN
+					splitterInfo.maxSize = currPos - autoSizerBlock.space
+				ELSE
+					splitterInfo.maxSize = nh - currPos - autoSizerBlock.space
+				ENDIF
 				SPLITTERINFO_Update (iSplitter, splitterInfo)
 			ENDIF
 
 			IF direction AND $$DIR_REVERSE THEN boxY = boxY - boxH
+
 		CASE $$DIR_HORIZ
-			IF autoSizerBlock.space <= 1 THEN autoSizerBlock.space = autoSizerBlock.space * nw
+			IF autoSizerBlock.space <= 1.0 THEN autoSizerBlock.space = autoSizerBlock.space * nw
 
 			IF autoSizerBlock.flags AND $$SIZER_SIZERELREST THEN
-				IF direction AND $$DIR_REVERSE THEN rest = currPos ELSE rest = nw - currPos
-				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
+				'IF direction AND $$DIR_REVERSE THEN rest = currPos ELSE rest = nw - currPos
+				'IF autoSizerBlock.size <= 1.0 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
+				IF direction AND $$DIR_REVERSE THEN
+					rest = currPos
+				ELSE
+					rest = nw - currPos
+				ENDIF
+				IF autoSizerBlock.size <= 1.0 THEN
+					autoSizerBlock.size = autoSizerBlock.size * rest
+					corr# = autoSizerBlock.space ' Guy-25may11-margin
+					IF corr# < 1.0 THEN corr# = 1.0
+					autoSizerBlock.size = autoSizerBlock.size - corr#
+				ELSE
+					autoSizerBlock.size = rest - autoSizerBlock.size
+				ENDIF
 				autoSizerBlock.size = autoSizerBlock.size - autoSizerBlock.space
 			ELSE
-				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * nw
+				IF autoSizerBlock.size <= 1.0 THEN
+					autoSizerBlock.size = autoSizerBlock.size * nw
+					corr# = autoSizerBlock.space ' Guy-25may11-margin
+					IF corr# < 1.0 THEN corr# = 1.0
+					autoSizerBlock.size = autoSizerBlock.size - corr#
+				ENDIF
 			ENDIF
 
 			IF autoSizerBlock.x <= 1 THEN autoSizerBlock.x = autoSizerBlock.x * autoSizerBlock.size
@@ -9407,10 +9441,10 @@ FUNCTION autoSizerBlock_Delete (id, idCtr)
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 
-	IF id < 0 || id > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[id].inUse THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN		' fail
-	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN		' fail
+	IF id < 0 || id > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[id].inUse THEN RETURN
+	IF idCtr < 0 || idCtr > UBOUND (AUTOSIZERINFO_array[id,]) THEN RETURN
+	IFZ AUTOSIZERINFO_array[id, idCtr].hwnd THEN RETURN
 
 	AUTOSIZERINFO_array[id, idCtr].hwnd = 0
 
@@ -9494,8 +9528,8 @@ FUNCTION autoSizerInfo_showGroup (group, visible)
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 
-	IF group < 0 || group > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[group].inUse THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[group].inUse THEN RETURN
 
 	IF visible THEN command = $$SW_SHOWNA ELSE command = $$SW_HIDE
 
@@ -9523,8 +9557,8 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 	SHARED AUTOSIZERINFO AUTOSIZERINFO_array[]		'info for the autosizer
 	SHARED AUTOSIZER_LINKEDLIST AUTOSIZER_LinkedList[]
 
-	IF group < 0 || group > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN		' fail
-	IFF AUTOSIZER_LinkedList[group].inUse THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (AUTOSIZER_LinkedList[]) THEN RETURN
+	IFF AUTOSIZER_LinkedList[group].inUse THEN RETURN
 
 	' Guy-13jan11-#hWinPosInfo = BeginDeferWindowPos (cItem)
 	cItem = 0
@@ -9533,7 +9567,7 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 		IF AUTOSIZERINFO_array[group, i].hwnd THEN INC cItem
 		i = AUTOSIZERINFO_array[group, i].nextItem
 	LOOP
-	IF cItem < 1 THEN RETURN		' fail
+	IF cItem < 1 THEN RETURN
 
 	IF AUTOSIZER_LinkedList[group].direction AND $$DIR_REVERSE THEN
 		SELECT CASE AUTOSIZER_LinkedList[group].direction AND 0x00000003
@@ -9823,7 +9857,7 @@ FUNCTION handler_call (group, ret, hWnd, wMsg, wParam, lParam)
 	' first, find the handler
 	index = handler_find (group, wMsg)
 
-	IF index < 0 THEN RETURN		' fail
+	IF index < 0 THEN RETURN
 
 	' then call it
 	retCode = @g_handlers[group, index].handler (hWnd, wMsg, wParam, lParam)
@@ -9841,9 +9875,9 @@ END FUNCTION
 FUNCTION handler_delete (group, idCtr)
 	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN		' fail
-	IF g_handlers[group, idCtr].wMsg = 0 THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
+	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN
+	IF g_handlers[group, idCtr].wMsg = 0 THEN RETURN
 
 	g_handlers[group, idCtr].wMsg = 0
 	RETURN $$TRUE		' success
@@ -9860,7 +9894,7 @@ FUNCTION handler_deleteGroup (group)
 	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
 	MSGHANDLER group[]		'a local version of the group
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
 	IF UBOUND (g_handlers[group,]) = -1 THEN RETURN $$TRUE		' success
 
 	g_handlersUM[group] = 0
@@ -9911,9 +9945,9 @@ END FUNCTION
 FUNCTION handler_get (group, idCtr, MSGHANDLER handler)
 	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN		' fail
-	IFZ g_handlers[group, idCtr].wMsg THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
+	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN
+	IFZ g_handlers[group, idCtr].wMsg THEN RETURN
 
 	handler = g_handlers[group, idCtr]
 	RETURN $$TRUE		' success
@@ -9929,9 +9963,9 @@ END FUNCTION
 FUNCTION handler_update (group, idCtr, MSGHANDLER handler)
 	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN		' fail
-	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN		' fail
-	IFZ g_handlers[group, idCtr].wMsg THEN RETURN		' fail
+	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
+	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN
+	IFZ g_handlers[group, idCtr].wMsg THEN RETURN
 
 	g_handlers[group, idCtr] = handler
 	RETURN $$TRUE		' success
@@ -9992,7 +10026,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' now handle the bar
 	IF w > maxX THEN
@@ -10267,7 +10301,7 @@ FUNCTION splitterProc (hWnd, wMsg, wParam, lParam)
 						delta = newMousePos.y - mousePos.y
 				END SELECT
 
-				IFZ delta THEN RETURN		' fail
+				IFZ delta THEN RETURN
 				IF splitterInfo.direction AND $$DIR_REVERSE THEN
 					autoSizerBlock.size = autoSizerBlock.size - delta
 					IF splitterInfo.min && autoSizerBlock.size < splitterInfo.min THEN
@@ -10450,33 +10484,8 @@ FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos)
 	style = $$WS_CHILD | $$WS_VISIBLE | $$UDS_ALIGNRIGHT | $$UDS_SETBUDDYINT | $$UDS_ARROWKEYS | $$UDS_NOTHOUSANDS
 	hInst = GetModuleHandleA (0)
 	hSpinner = CreateUpDownControl (style, 0, 0, 0, 0, parent, idCtr, hInst, hBuddy, nUpper, nLower, nPos)
-	IFZ hSpinner THEN RETURN		' fail
+	IFZ hSpinner THEN RETURN
 	RETURN hSpinner
-
-END FUNCTION
-'
-' #######################
-' #####  LOCK_Find  #####
-' #######################
-'
-FUNCTION LOCK_Find (find$)
-	SHARED LOCK LOCK_array[]
-	SHARED LOCK_arrayUM[]
-	SHARED LOCK_idMax
-
-	IFZ LOCK_arrayUM[] THEN RETURN
-
-	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN
-
-	findLen = LEN (find$)
-	upper_slot = UBOUND (LOCK_arrayUM[])
-	FOR slot = 0 TO upper_slot
-		IFF LOCK_arrayUM[slot] THEN DO NEXT
-		name$ = RTRIM$ (LOCK_array[slot].name)
-		IF LEN (name$) <> findLen THEN DO NEXT
-		IF name$ = find$ THEN RETURN (slot + 1)
-	NEXT slot
 
 END FUNCTION
 '
@@ -10652,6 +10661,5 @@ DefineAccess(BINDING)
 DefineAccess(SPLITTERINFO)
 DefineAccess(LINKEDLIST)
 DefineAccess(AUTODRAWRECORD)
-DefineAccess(LOCK)
 
 END PROGRAM
