@@ -10517,27 +10517,18 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 	DIM arr$[$$UPP_MRU]
 
 	upp = -1
-	pathNew_lc$ = ""
-	pathNewLen = 0
 
 	pathNew$ = TRIM$ (pathNew$)
 	IF pathNew$ THEN
 		' save pathNew$ as first in list
 		INC upp
 		arr$[upp] = pathNew$
-		pathNew_lc$ = LCASE$ (pathNew$)
-		pathNewLen = LEN (pathNew_lc$)
 	ENDIF
 
 	' copy the current Most Recently Used file list
 	FOR i = 0 TO $$UPP_MRU
 		fpath$ = TRIM$ (mruList$[i])
 		IFZ fpath$ THEN DO NEXT
-		IF pathNewLen THEN
-			IF LEN (fpath$) = pathNewLen THEN
-				IF LCASE$ (fpath$) = pathNew_lc$ THEN DO NEXT ' is already first in list
-			ENDIF
-		ENDIF
 		IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
 		'
 		' don't add fpath$ if already in arr$[]
