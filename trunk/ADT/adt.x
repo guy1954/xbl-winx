@@ -123,7 +123,12 @@ DECLARE FUNCTION AssocArray_Init (ASSOCARRAY @array)
 DECLARE FUNCTION IntCompare (a, b)
 DECLARE FUNCTION StringCompare (a, b)
 DECLARE FUNCTION IStringCompare (a, b)
-DeclareAccess(STRING)
+
+DECLARE FUNCTION STRING_Init ()
+DECLARE FUNCTION STRING_New (item$)
+DECLARE FUNCTION STRING_Get (id, @item$)
+DECLARE FUNCTION STRING_Update (id, item$)
+DECLARE FUNCTION STRING_Delete (id)
 END EXPORT
 
 DECLARE FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
@@ -1324,10 +1329,107 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 	NEXT
 
 	iNode = iThis
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 
-DefineAccess(STRING)
+FUNCTION STRING_Init ()
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	DIM STRING_array$[7]
+	DIM STRING_arrayUM[7]
+	STRING_idMax = 0
+END FUNCTION
+
+' usage id = STRING_New (item$)
+FUNCTION STRING_New (item$)
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	IFZ STRING_arrayUM[] THEN STRING_Init ()
+	upper_slot = UBOUND (STRING_arrayUM[])
+
+	' look for a free spot after MRU_idMax - 1
+	slot = -1
+	IF STRING_idMax <= upper_slot THEN
+		FOR i = STRING_idMax TO upper_slot
+			IFF STRING_arrayUM[i] THEN
+				slot = i
+				STRING_idMax = i + 1
+				EXIT FOR
+			ENDIF
+		NEXT i
+	ENDIF
+
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM STRING_arrayUM[upper_slot]
+		REDIM STRING_array$[upper_slot]
+		slot = STRING_idMax
+		INC STRING_idMax
+	ENDIF
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	STRING_array$[slot] = item$
+	STRING_arrayUM[slot] = $$TRUE
+	RETURN (slot + 1)
+END FUNCTION
+
+' usage bOK = STRING_Get (id, @item$)
+FUNCTION STRING_Get (id, @item$)
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	item$ = ""
+	IFZ STRING_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > STRING_idMax) THEN RETURN
+
+	upper_slot = UBOUND (STRING_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF STRING_arrayUM[slot] THEN RETURN
+
+	item$ = STRING_array$[slot]
+	RETURN $$TRUE ' success
+END FUNCTION
+
+FUNCTION STRING_Update (id, item$)
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	IFZ STRING_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > STRING_idMax) THEN RETURN
+
+	upper_slot = UBOUND (STRING_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF STRING_arrayUM[slot] THEN RETURN
+
+	STRING_array$[slot] = item$
+	RETURN $$TRUE ' success
+END FUNCTION
+
+FUNCTION STRING_Delete (id)
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	IFZ STRING_arrayUM[] THEN RETURN
+	IF (id < 1) || (id > STRING_idMax) THEN RETURN
+
+	upper_slot = UBOUND (STRING_arrayUM[])
+	slot = id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF STRING_arrayUM[slot] THEN RETURN
+
+	STRING_arrayUM[slot] = $$FALSE
+	RETURN $$TRUE ' success
+END FUNCTION
+
 DefineAccess(LINKEDNODE)
 DefineAccess(LINKEDWALK)
 DefineAccess(BINNODE)

@@ -28,6 +28,7 @@ FUNCTION $1_New ($1 item)
 		FOR i = $1_idMax TO upper_slot
 			IFF $1_arrayUM[i] THEN
 				slot = i
+				$1_idMax = i + 1
 				EXIT FOR
 			ENDIF
 		NEXT i
@@ -39,8 +40,6 @@ FUNCTION $1_New ($1 item)
 		REDIM $1_array[upper_slot]
 		slot = $1_idMax
 		INC $1_idMax
-	ELSE
-		$1_idMax = slot + 1
 	ENDIF
 
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
@@ -60,7 +59,7 @@ FUNCTION $1_Get (id, $1 item)
 	IFZ $1_arrayUM[] THEN RETURN
 	IF (id < 1) || (id > $1_idMax) THEN RETURN
 
-	upper_slot = $1_idMax - 1
+	upper_slot = UBOUND ($1_arrayUM[])
 	slot = id - 1
 	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
@@ -77,7 +76,7 @@ FUNCTION $1_Update (id, $1 item)
 	IFZ $1_arrayUM[] THEN RETURN
 	IF (id < 1) || (id > $1_idMax) THEN RETURN
 
-	upper_slot = $1_idMax - 1
+	upper_slot = UBOUND ($1_arrayUM[])
 	slot = id - 1
 	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
@@ -94,7 +93,7 @@ FUNCTION $1_Delete (id)
 	IFZ $1_arrayUM[] THEN RETURN
 	IF (id < 1) || (id > $1_idMax) THEN RETURN
 
-	upper_slot = $1_idMax - 1
+	upper_slot = UBOUND ($1_arrayUM[])
 	slot = id - 1
 	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
