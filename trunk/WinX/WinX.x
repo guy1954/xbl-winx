@@ -10540,6 +10540,22 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 		ENDIF
 		IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
 		'
+		' don't add fpath$ if already in arr$[]
+		bFound = $$FALSE
+		IF upp >= 0 THEN
+			find_lc$ = LCASE$ (fpath$)
+			findLen = LEN (find_lc$)
+			'
+			FOR z = 0 TO upp
+				IF LEN (arr$[z]) <> findLen THEN DO NEXT
+				IF LCASE$ (arr$[z]) = find_lc$ THEN
+					bFound = $$TRUE
+					EXIT FOR
+				ENDIF
+			NEXT z
+		ENDIF
+		IF bFound THEN DO NEXT ' already in arr$[] => skip it!
+		'
 		INC upp
 		arr$[upp] = fpath$
 	NEXT i
