@@ -10431,12 +10431,12 @@ END FUNCTION
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 
 	' reset the Most Recently Used file list
-	IF UBOUND (mruList$[]) <> $$UPP_MRU THEN
-		DIM mruList$[$$UPP_MRU]
-	ELSE
+	IF UBOUND (mruList$[]) = $$UPP_MRU THEN
 		FOR i = 0 TO $$UPP_MRU
 			mruList$[i] = ""
 		NEXT i
+	ELSE
+		DIM mruList$[$$UPP_MRU]
 	ENDIF
 	idSup = $$UPP_MRU + 1
 
@@ -10567,11 +10567,19 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 	idInf = idAdd + 1
 	IF idInf <= idSup THEN
 		FOR id = idInf TO idSup
-			' delete an existing key
 			key$ = WinXMRU_MakeKey$ (id)
-			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
+			WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
 		NEXT id
+	ENDIF
+
+	' reset the Most Recently Used project lists
+	FOR i = 0 TO upp
+		mruList$[i] = arr$[i]
+	NEXT i
+	IF upp < $$UPP_MRU THEN
+		FOR i = upp + 1 TO $$UPP_MRU
+			mruList$[i] = ""
+		NEXT i
 	ENDIF
 
 	RETURN $$TRUE		' success
