@@ -10427,18 +10427,10 @@ END FUNCTION
 ' #####################################
 '
 ' load the Most Recently Used file list from the .INI file
-' Return      = $$FALSE = failure, $$TRUE = success
+' Returns $$FALSE = failure, $$TRUE = success
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 
-	' reset the Most Recently Used file list
-	IF UBOUND (mruList$[]) = $$UPP_MRU THEN
-		FOR i = 0 TO $$UPP_MRU
-			mruList$[i] = ""
-		NEXT i
-	ELSE
-		DIM mruList$[$$UPP_MRU]
-	ENDIF
-	idSup = $$UPP_MRU + 1
+	DIM arr$[$$UPP_MRU]
 
 	iniPath$ = TRIM$ (iniPath$)
 	IFZ iniPath$ THEN RETURN
@@ -10451,85 +10443,28 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
 	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
 
-	' add real file pathNew$ to mruList$[0]
 	upp = -1
+
+	' add real file pathNew$ to arr$[0]
 	pathNew$ = TRIM$ (pathNew$)
 	IF pathNew$ THEN
+		XstTranslateChars (@pathNew$, "/", "\\")
 		bErr = XstFileExists (pathNew$)
 		IFF bErr THEN
-			XstTranslateChars (@pathNew$, "/", "\\")
 			upp = 0
-			mruList$[0] = pathNew$
+			arr$[0] = pathNew$
 		ENDIF
 	ENDIF
 
-	' load the MRU projects list into mruList$[]
-	FOR id = 1 TO idSup
+	' load the MRU projects list into arr$[]
+	FOR id = 1 TO $$UPP_MRU + 1
 		key$ = WinXMRU_MakeKey$ (id)
 		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-		fpath$ = TRIM$ (fpath$)
 		IFZ fpath$ THEN DO NEXT ' empty => skip it!
 		'
-		' don't add fpath$ if already in mruList$[]
-		bFound = $$FALSE
-		IF upp >= 0 THEN
-			find_lc$ = LCASE$ (fpath$)
-			findLen = LEN (find_lc$)
-			'
-			FOR i = 0 TO upp
-				IF LEN (mruList$[i]) <> findLen THEN DO NEXT
-				IF LCASE$ (mruList$[i]) = find_lc$ THEN
-					bFound = $$TRUE
-					EXIT FOR
-				ENDIF
-			NEXT i
-		ENDIF
-		IF bFound THEN DO NEXT ' already in mruList$[] => skip it!
-		'
+		XstTranslateChars (@fpath$, "/", "\\")
 		bErr = XstFileExists (fpath$)
 		IF bErr THEN DO NEXT ' fpath$ does not exist => skip it!
-		'
-		IF upp >= $$UPP_MRU THEN EXIT FOR ' mruList$[] is full
-		'
-		XstTranslateChars (@fpath$, "/", "\\")
-		INC upp
-		mruList$[upp] = fpath$
-	NEXT id
-
-	RETURN $$TRUE		' success
-
-END FUNCTION
-'
-' ###################################
-' #####  WinXMRU_SaveListToIni  #####
-' ###################################
-'
-' Save the Most Recently Used file list
-' Return      = $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
-	' Add file pathNew$ to MRU file list. If file already exists in list then it is
-	' simply moved up to the top of the list and not added again. If list is
-	' full then the least recently used item is removed to make room.
-
-	IF UBOUND (mruList$[]) <> $$UPP_MRU THEN REDIM mruList$[$$UPP_MRU]
-	idSup = $$UPP_MRU + 1
-
-	DIM arr$[$$UPP_MRU]
-
-	upp = -1
-
-	pathNew$ = TRIM$ (pathNew$)
-	IF pathNew$ THEN
-		' save pathNew$ as first in list
-		INC upp
-		arr$[upp] = pathNew$
-	ENDIF
-
-	' copy the current Most Recently Used file list
-	FOR i = 0 TO $$UPP_MRU
-		fpath$ = TRIM$ (mruList$[i])
-		IFZ fpath$ THEN DO NEXT
-		IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
 		'
 		' don't add fpath$ if already in arr$[]
 		bFound = $$FALSE
@@ -10547,9 +10482,86 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 		ENDIF
 		IF bFound THEN DO NEXT ' already in arr$[] => skip it!
 		'
+		IF upp >= $$UPP_MRU THEN EXIT FOR ' arr$[] is full
+		'
 		INC upp
 		arr$[upp] = fpath$
-	NEXT i
+	NEXT id
+
+	IF upp < 0 THEN
+		DIM arr$[]
+	ELSE
+		IF UBOUND (arr$[]) <> upp THEN REDIM arr$[upp]
+	ENDIF
+	SWAP arr$[], mruList$[]
+
+	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' ###################################
+' #####  WinXMRU_SaveListToIni  #####
+' ###################################
+'
+' Save the Most Recently Used file list
+' Return      = $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
+	' Add file pathNew$ to MRU file list. If file already exists in list then it is
+	' simply moved up to the top of the list and not added again. If list is
+	' full then the least recently used item is removed to make room.
+
+	DIM arr$[$$UPP_MRU]
+
+	upp = -1
+
+	' add real file pathNew$ to arr$[0]
+	pathNew$ = TRIM$ (pathNew$)
+	IF pathNew$ THEN
+		XstTranslateChars (@pathNew$, "/", "\\")
+		bErr = XstFileExists (pathNew$)
+		IFF bErr THEN
+			upp = 0
+			arr$[0] = pathNew$
+		ENDIF
+	ENDIF
+
+	' copy the current Most Recently Used file list
+	IF mruList$[] THEN
+		uppmru = UBOUND (mruList$[])
+		FOR imru = 0 TO uppmru
+			fpath$ = TRIM$ (mruList$[imru])
+			IFZ fpath$ THEN DO NEXT
+			'
+			XstTranslateChars (@fpath$, "/", "\\")
+			bErr = XstFileExists (fpath$)
+			IF bErr THEN DO NEXT
+			'
+			' don't add fpath$ if already in arr$[]
+			bFound = $$FALSE
+			IF upp >= 0 THEN
+				find_lc$ = LCASE$ (fpath$)
+				findLen = LEN (find_lc$)
+				'
+				FOR z = 0 TO upp
+					IF LEN (arr$[z]) <> findLen THEN DO NEXT
+					IF LCASE$ (arr$[z]) = find_lc$ THEN
+						bFound = $$TRUE
+						EXIT FOR
+					ENDIF
+				NEXT z
+			ENDIF
+			IF bFound THEN DO NEXT ' already in arr$[] => skip it!
+			'
+			IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
+			INC upp
+			arr$[upp] = fpath$
+		NEXT imru
+	ENDIF
+	IF upp < 0 THEN
+		DIM arr$[]
+	ELSE
+		IF UBOUND (arr$[]) <> upp THEN REDIM arr$[upp]
+	ENDIF
 
 	' save the Most Recently Used project list in the .INI file
 	idAdd = 0
@@ -10565,6 +10577,7 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 
 	' delete from .INI file extraneous MRU items
 	idInf = idAdd + 1
+	idSup = $$UPP_MRU + 1
 	IF idInf <= idSup THEN
 		FOR id = idInf TO idSup
 			key$ = WinXMRU_MakeKey$ (id)
@@ -10573,14 +10586,7 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 	ENDIF
 
 	' reset the Most Recently Used project lists
-	FOR i = 0 TO upp
-		mruList$[i] = arr$[i]
-	NEXT i
-	IF upp < $$UPP_MRU THEN
-		FOR i = upp + 1 TO $$UPP_MRU
-			mruList$[i] = ""
-		NEXT i
-	ENDIF
+	SWAP arr$[], mruList$[]
 
 	RETURN $$TRUE		' success
 
