@@ -57,11 +57,11 @@ FUNCTION $1_Get (id, $1 item)
 
 	item = item_null
 	IFZ $1_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > $1_idMax) THEN RETURN
+	IF id > $1_idMax THEN RETURN
 
 	upper_slot = UBOUND ($1_arrayUM[])
 	slot = id - 1
-	IF slot > upper_slot THEN RETURN
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
 
 	item = $1_array[slot]
@@ -74,11 +74,11 @@ FUNCTION $1_Update (id, $1 item)
 	SHARED $1_idMax
 
 	IFZ $1_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > $1_idMax) THEN RETURN
+	IF id > $1_idMax THEN RETURN
 
 	upper_slot = UBOUND ($1_arrayUM[])
 	slot = id - 1
-	IF slot > upper_slot THEN RETURN
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
 
 	$1_array[slot] = item
@@ -91,11 +91,11 @@ FUNCTION $1_Delete (id)
 	SHARED $1_idMax
 
 	IFZ $1_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > $1_idMax) THEN RETURN
+	IF id > $1_idMax THEN RETURN
 
 	upper_slot = UBOUND ($1_arrayUM[])
 	slot = id - 1
-	IF slot > upper_slot THEN RETURN
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
 
 	$1_arrayUM[slot] = $$FALSE
