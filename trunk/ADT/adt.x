@@ -1385,11 +1385,11 @@ FUNCTION STRING_Get (id, @item$)
 
 	item$ = ""
 	IFZ STRING_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > STRING_idMax) THEN RETURN
+	IF id > STRING_idMax THEN RETURN
 
 	upper_slot = UBOUND (STRING_arrayUM[])
 	slot = id - 1
-	IF slot > upper_slot THEN RETURN
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	item$ = STRING_array$[slot]
@@ -1402,11 +1402,11 @@ FUNCTION STRING_Update (id, item$)
 	SHARED STRING_idMax
 
 	IFZ STRING_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > STRING_idMax) THEN RETURN
+	IF id > STRING_idMax THEN RETURN
 
 	upper_slot = UBOUND (STRING_arrayUM[])
 	slot = id - 1
-	IF slot > upper_slot THEN RETURN
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_array$[slot] = item$
@@ -1419,11 +1419,11 @@ FUNCTION STRING_Delete (id)
 	SHARED STRING_idMax
 
 	IFZ STRING_arrayUM[] THEN RETURN
-	IF (id < 1) || (id > STRING_idMax) THEN RETURN
+	IF id > STRING_idMax THEN RETURN
 
 	upper_slot = UBOUND (STRING_arrayUM[])
 	slot = id - 1
-	IF slot > upper_slot THEN RETURN
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_arrayUM[slot] = $$FALSE
