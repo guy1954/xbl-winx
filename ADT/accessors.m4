@@ -3,7 +3,7 @@ DECLARE FUNCTION $1_New ($1 item)
 DECLARE FUNCTION $1_Get (id, $1 @item)
 DECLARE FUNCTION $1_Update (id, $1 item)
 DECLARE FUNCTION $1_Delete (id)
-')
+DECLARE FUNCTION $1_Get_idMax ()')
 
 m4_define(`DefineAccess', `FUNCTION $1_Init ()
 	SHARED $1 $1_array[]
@@ -100,5 +100,10 @@ FUNCTION $1_Delete (id)
 
 	$1_arrayUM[slot] = $$FALSE
 	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION $1_Get_idMax ()
+	SHARED $1_idMax
+	RETURN $1_idMax
 END FUNCTION
 ')

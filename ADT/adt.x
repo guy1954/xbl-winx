@@ -129,6 +129,10 @@ DECLARE FUNCTION STRING_New (item$)
 DECLARE FUNCTION STRING_Get (id, @item$)
 DECLARE FUNCTION STRING_Update (id, item$)
 DECLARE FUNCTION STRING_Delete (id)
+DECLARE FUNCTION STRING_Find (find$)
+DECLARE FUNCTION STRING_InsFind (find$) ' find insensitive case
+DECLARE FUNCTION STRING_Get_idMax ()
+
 END EXPORT
 
 DECLARE FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
@@ -1333,25 +1337,23 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 END FUNCTION
 
 FUNCTION STRING_Init ()
-	SHARED STRING_array$[]
+	SHARED STRING STRING_array[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	DIM STRING_array$[7]
+	DIM STRING_array[7]
 	DIM STRING_arrayUM[7]
 	STRING_idMax = 0
 END FUNCTION
 
-' usage id = STRING_New (item$)
 FUNCTION STRING_New (item$)
-	SHARED STRING_array$[]
+	SHARED STRING STRING_array[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
 	IFZ STRING_arrayUM[] THEN STRING_Init ()
 	upper_slot = UBOUND (STRING_arrayUM[])
 
-	' look for a free spot after MRU_idMax - 1
 	slot = -1
 	IF STRING_idMax <= upper_slot THEN
 		FOR i = STRING_idMax TO upper_slot
@@ -1366,20 +1368,19 @@ FUNCTION STRING_New (item$)
 	IF slot = -1 THEN
 		upper_slot = ((upper_slot + 1) << 1) - 1
 		REDIM STRING_arrayUM[upper_slot]
-		REDIM STRING_array$[upper_slot]
+		REDIM STRING_array[upper_slot]
 		slot = STRING_idMax
 		INC STRING_idMax
 	ENDIF
 
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	STRING_array$[slot] = item$
+	STRING_array[slot] = item$
 	STRING_arrayUM[slot] = $$TRUE
 	RETURN (slot + 1)
 END FUNCTION
 
-' usage bOK = STRING_Get (id, @item$)
 FUNCTION STRING_Get (id, @item$)
-	SHARED STRING_array$[]
+	SHARED STRING STRING_array[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
@@ -1392,12 +1393,12 @@ FUNCTION STRING_Get (id, @item$)
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
-	item$ = STRING_array$[slot]
-	RETURN $$TRUE ' success
+	item$ = STRING_array[slot]
+	RETURN $$TRUE
 END FUNCTION
 
 FUNCTION STRING_Update (id, item$)
-	SHARED STRING_array$[]
+	SHARED STRING STRING_array[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
@@ -1409,12 +1410,12 @@ FUNCTION STRING_Update (id, item$)
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
-	STRING_array$[slot] = item$
-	RETURN $$TRUE ' success
+	STRING_array[slot] = item$
+	RETURN $$TRUE
 END FUNCTION
 
 FUNCTION STRING_Delete (id)
-	SHARED STRING_array$[]
+	SHARED STRING STRING_array[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
@@ -1427,7 +1428,58 @@ FUNCTION STRING_Delete (id)
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE ' success
+	RETURN $$TRUE
+END FUNCTION
+
+FUNCTION STRING_Find (find$)
+	SHARED STRING STRING_array[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	find$ = TRIM$ (find$)
+	IFZ find$ THEN RETURN
+
+	findLen = LEN (find$)
+	upper_slot = STRING_idMax - 1
+	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
+	IF upper_slot < 0 THEN RETURN
+
+	FOR slot = 0 TO upper_slot
+		IFF STRING_arrayUM[slot] THEN DO NEXT
+		st$ = TRIM$ (STRING_array[slot])
+		IFZ st$ THEN DO NEXT
+		IF LEN (st$) <> findLen THEN DO NEXT
+		IF st$ = find$ THEN RETURN (slot + 1)
+	NEXT slot
+END FUNCTION
+
+FUNCTION STRING_Get_idMax ()
+	SHARED STRING_idMax
+	RETURN STRING_idMax
+END FUNCTION
+
+FUNCTION STRING_InsFind (find$)
+	SHARED STRING STRING_array[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	find$ = TRIM$ (find$)
+	IFZ find$ THEN RETURN
+
+	find$ = LCASE$ (find$)
+	findLen = LEN (find$)
+	upper_slot = STRING_idMax - 1
+	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
+	IF upper_slot < 0 THEN RETURN
+
+	FOR slot = 0 TO upper_slot
+		IFF STRING_arrayUM[slot] THEN DO NEXT
+		st$ = TRIM$ (STRING_array[slot])
+		IFZ st$ THEN DO NEXT
+		st$ = LCASE$ (st$)
+		IF LEN (st$) <> findLen THEN DO NEXT
+		IF st$ = find$ THEN RETURN (slot + 1)
+	NEXT slot
 END FUNCTION
 
 DefineAccess(LINKEDNODE)
@@ -1435,4 +1487,5 @@ DefineAccess(LINKEDWALK)
 DefineAccess(BINNODE)
 DefineAccess(BINWALK)
 DefineAccess(STACK)
+
 END PROGRAM
