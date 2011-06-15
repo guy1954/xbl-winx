@@ -125,12 +125,12 @@ DECLARE FUNCTION StringCompare (a, b)
 DECLARE FUNCTION IStringCompare (a, b)
 
 DECLARE FUNCTION STRING_Init ()
-DECLARE FUNCTION STRING_New (item$)
-DECLARE FUNCTION STRING_Get (id, @item$)
-DECLARE FUNCTION STRING_Update (id, item$)
+DECLARE FUNCTION STRING_New (STRING_item$)
+DECLARE FUNCTION STRING_Get (id, @STRING_item$)
+DECLARE FUNCTION STRING_Update (id, STRING_item$)
 DECLARE FUNCTION STRING_Delete (id)
 DECLARE FUNCTION STRING_Find (find$)
-DECLARE FUNCTION STRING_InsFind (find$) ' find insensitive case
+DECLARE FUNCTION STRING_InsFind (find$)
 DECLARE FUNCTION STRING_Get_idMax ()
 
 END EXPORT
@@ -1337,23 +1337,23 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 END FUNCTION
 
 FUNCTION STRING_Init ()
-	SHARED STRING STRING_array[]
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	DIM STRING_array[7]
+	DIM STRING_array$[7]
 	DIM STRING_arrayUM[7]
 	STRING_idMax = 0
 END FUNCTION
 
-FUNCTION STRING_New (item$)
-	SHARED STRING STRING_array[]
+FUNCTION STRING_New (STRING_item$)
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	IFZ STRING_arrayUM[] THEN STRING_Init ()
-	upper_slot = UBOUND (STRING_arrayUM[])
+	IFZ STRING_array$[] THEN STRING_Init ()
 
+	upper_slot = UBOUND (STRING_array$[])
 	slot = -1
 	IF STRING_idMax <= upper_slot THEN
 		FOR i = STRING_idMax TO upper_slot
@@ -1367,62 +1367,62 @@ FUNCTION STRING_New (item$)
 
 	IF slot = -1 THEN
 		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM STRING_array$[upper_slot]
 		REDIM STRING_arrayUM[upper_slot]
-		REDIM STRING_array[upper_slot]
 		slot = STRING_idMax
 		INC STRING_idMax
 	ENDIF
 
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	STRING_array[slot] = item$
+	STRING_array$[slot] = STRING_item$
 	STRING_arrayUM[slot] = $$TRUE
 	RETURN (slot + 1)
 END FUNCTION
 
-FUNCTION STRING_Get (id, @item$)
-	SHARED STRING STRING_array[]
+FUNCTION STRING_Get (id, @STRING_item$)
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	item$ = ""
-	IFZ STRING_arrayUM[] THEN RETURN
+	STRING_item$ = ""
+	IFZ STRING_array$[] THEN RETURN
 	IF id > STRING_idMax THEN RETURN
 
-	upper_slot = UBOUND (STRING_arrayUM[])
+	upper_slot = UBOUND (STRING_array$[])
 	slot = id - 1
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
-	item$ = STRING_array[slot]
+	STRING_item$ = STRING_array$[slot]
 	RETURN $$TRUE
 END FUNCTION
 
-FUNCTION STRING_Update (id, item$)
-	SHARED STRING STRING_array[]
+FUNCTION STRING_Update (id, STRING_item$)
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	IFZ STRING_arrayUM[] THEN RETURN
+	IFZ STRING_array$[] THEN RETURN
 	IF id > STRING_idMax THEN RETURN
 
-	upper_slot = UBOUND (STRING_arrayUM[])
+	upper_slot = UBOUND (STRING_array$[])
 	slot = id - 1
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
-	STRING_array[slot] = item$
+	STRING_array$[slot] = STRING_item$
 	RETURN $$TRUE
 END FUNCTION
 
 FUNCTION STRING_Delete (id)
-	SHARED STRING STRING_array[]
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	IFZ STRING_arrayUM[] THEN RETURN
+	IFZ STRING_array$[] THEN RETURN
 	IF id > STRING_idMax THEN RETURN
 
-	upper_slot = UBOUND (STRING_arrayUM[])
+	upper_slot = UBOUND (STRING_array$[])
 	slot = id - 1
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
@@ -1432,7 +1432,7 @@ FUNCTION STRING_Delete (id)
 END FUNCTION
 
 FUNCTION STRING_Find (find$)
-	SHARED STRING STRING_array[]
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
@@ -1441,45 +1441,42 @@ FUNCTION STRING_Find (find$)
 
 	findLen = LEN (find$)
 	upper_slot = STRING_idMax - 1
-	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
+	IF upper_slot > UBOUND (STRING_array$[]) THEN upper_slot = UBOUND (STRING_array$[])
 	IF upper_slot < 0 THEN RETURN
 
 	FOR slot = 0 TO upper_slot
 		IFF STRING_arrayUM[slot] THEN DO NEXT
-		st$ = TRIM$ (STRING_array[slot])
-		IFZ st$ THEN DO NEXT
-		IF LEN (st$) <> findLen THEN DO NEXT
-		IF st$ = find$ THEN RETURN (slot + 1)
+		STRING_item$ = TRIM$ (STRING_array$[slot])
+		IF LEN (STRING_item$) <> findLen THEN DO NEXT
+		IF STRING_item$ = find$ THEN RETURN (slot + 1)
+	NEXT slot
+END FUNCTION
+
+FUNCTION STRING_InsFind (find$)
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
+
+	find$ = TRIM$ (find$)
+	IFZ find$ THEN RETURN
+
+	findLen = LEN (find$)
+	upper_slot = STRING_idMax - 1
+	IF upper_slot > UBOUND (STRING_array$[]) THEN upper_slot = UBOUND (STRING_array$[])
+	IF upper_slot < 0 THEN RETURN
+
+	find_lc$ = LCASE$ (find$)
+	FOR slot = 0 TO upper_slot
+		IFF STRING_arrayUM[slot] THEN DO NEXT
+		STRING_item$ = TRIM$ (STRING_array$[slot])
+		IF LEN (STRING_item$) <> findLen THEN DO NEXT
+		IF LCASE$ (STRING_item$) = find_lc$ THEN RETURN (slot + 1)
 	NEXT slot
 END FUNCTION
 
 FUNCTION STRING_Get_idMax ()
 	SHARED STRING_idMax
 	RETURN STRING_idMax
-END FUNCTION
-
-FUNCTION STRING_InsFind (find$)
-	SHARED STRING STRING_array[]
-	SHARED STRING_arrayUM[]
-	SHARED STRING_idMax
-
-	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN
-
-	find$ = LCASE$ (find$)
-	findLen = LEN (find$)
-	upper_slot = STRING_idMax - 1
-	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
-	IF upper_slot < 0 THEN RETURN
-
-	FOR slot = 0 TO upper_slot
-		IFF STRING_arrayUM[slot] THEN DO NEXT
-		st$ = TRIM$ (STRING_array[slot])
-		IFZ st$ THEN DO NEXT
-		st$ = LCASE$ (st$)
-		IF LEN (st$) <> findLen THEN DO NEXT
-		IF st$ = find$ THEN RETURN (slot + 1)
-	NEXT slot
 END FUNCTION
 
 DefineAccess(LINKEDNODE)
