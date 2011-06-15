@@ -341,6 +341,7 @@ $$MRU_SECTION$     = "Recent files"
 $$UPP_MRU          = 19
 
 $$WINX_CLASS$ = "WinXMainClass"
+$$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 
 DECLARE FUNCTION WinX ()
 END EXPORT
@@ -815,7 +816,7 @@ FUNCTION WinX ()
 	wc.hIcon = 0
 	wc.hCursor = 0
 	wc.hbrBackground = $$COLOR_BTNFACE + 1
-	wc.lpszClassName = &"WinXSplitterClass"
+	wc.lpszClassName = &$$WINX_SPLITTER_CLASS$
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE		' fail
@@ -2208,8 +2209,6 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 	BINDING binding
 	AUTOSIZERINFO autoSizerBlock
 	SPLITTERINFO splitterInfo
-	RECT parentRect
-	RECT minRect
 	RECT rect
 
 	IFZ hWnd THEN RETURN ' fail
@@ -2235,7 +2234,8 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 	autoSizerBlock.flags = flags
 
 	' register the block
-	idBlock = GetPropA (hWnd, &"autoSizerInfoBlock")
+	prop$ = "autoSizerInfoBlock"
+	idBlock = GetPropA (hWnd, &prop$)
 
 	IF idBlock THEN
 		' update the old one
@@ -2244,7 +2244,7 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 		' make a new block
 		idBlock = autoSizerInfo_AddGroup (series, autoSizerBlock) + 1
 		IFF idBlock THEN RETURN		' fail
-		IFZ SetPropA (hWnd, &"autoSizerInfoBlock", idBlock) THEN RETURN		' fail
+		IFZ SetPropA (hWnd, &prop$, idBlock) THEN RETURN		' fail
 
 		' make a splitter if we need one
 		IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
@@ -2255,12 +2255,12 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 			AUTOSIZER_LinkedList_Get (series, idBlock - 1, @autoSizerBlock)
 
 			style = $$WS_CHILD | $$WS_VISIBLE
-			style = style | $$WS_CLIPSIBLINGS
-			lpParam = SPLITTERINFO_New (@splitterInfo)
+			' Guy-14jun11-style = style | $$WS_CLIPSIBLINGS
+			lpParam = SPLITTERINFO_New (splitterInfo)
 
 			hInst = GetModuleHandleA (0)
-			ret = CreateWindowExA (0, &"WinXSplitterClass", 0, style, 0, 0, 0, 0, _
-			GetParent (hWnd), 0, hInst, lpParam)
+			parent = GetParent (hWnd)
+			ret = CreateWindowExA (0, &$$WINX_SPLITTER_CLASS$, 0, style, 0, 0, 0, 0, parent, 0, hInst, lpParam)
 			IFZ ret THEN RETURN		' fail
 
 			autoSizerBlock.hSplitter = ret
@@ -2373,7 +2373,7 @@ FUNCTION WinXCleanUp ()		' optional cleanup
 	ENDIF
 
 	' unregister WinX splitter class
-	className$ = "WinXSplitterClass"
+	className$ = $$WINX_SPLITTER_CLASS$
 	hInst = GetModuleHandleA (0)
 	UnregisterClassA (&className$, hInst)		' unregister the window class
 
@@ -5232,19 +5232,23 @@ END FUNCTION
 FUNCTION WinXListView_GetSelection (hLV, iItems[])
 	IFZ hLV THEN RETURN		' fail
 
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN		' empty
+
 	cSelItems = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-	IF cSelItems = 0 THEN RETURN		' fail
+	IF cSelItems = 0 THEN RETURN
 	DIM iItems[cSelItems - 1]
-	maxItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
 
 	slot = -1
 	' now iterate over all the items to locate the selected ones
-	FOR i = 0 TO maxItem
-		IF SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED) THEN
+	uppItem = count - 1
+	FOR iItem = 0 TO uppItem
+		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
+		IF ret THEN
 			INC slot
-			iItems[slot] = i
+			IF slot < cSelItems THEN iItems[slot] = iItem
 		ENDIF
-	NEXT i
+	NEXT iItem
 
 	RETURN cSelItems
 END FUNCTION
@@ -5282,12 +5286,15 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 
 	IFZ hLV THEN RETURN		' fail
 
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN		' empty
+
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	statusOld = LOCK_Get_skipOnSelect (id)
 	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
-	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
+	uppItem = count - 1
 	IF uppItem >= 0 THEN
 		FOR iItem = 0 TO uppItem
 			lvi.mask = $$LVIF_STATE
@@ -5335,21 +5342,22 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 
 	IFZ hLV THEN RETURN		' fail
 
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN		' empty
+
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	statusOld = LOCK_Get_skipOnSelect (id)
 	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
-	uppItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
-	IF uppItem >= 0 THEN
-		FOR iItem = 0 TO uppItem
-			lvi.mask = $$LVIF_STATE
-			lvi.state = 0x1000
-			lvi.stateMask = $$LVIS_STATEIMAGEMASK
-			'
-			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-		NEXT iItem
-	ENDIF
+	uppItem = count - 1
+	FOR iItem = 0 TO uppItem
+		lvi.mask = $$LVIF_STATE
+		lvi.state = 0x1000
+		lvi.stateMask = $$LVIS_STATEIMAGEMASK
+		'
+		SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+	NEXT iItem
 
 	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
@@ -5417,8 +5425,10 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN		' fail
 
-	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN		' empty
+
+	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN		' fail
 
 	IF iSubItem < 0 THEN iSubItem = 0
@@ -5482,9 +5492,11 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN		' fail
-	IFZ iItems[] THEN RETURN		' fail
+
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' fail
+	IFZ count THEN RETURN		' empty
+
+	IFZ iItems[] THEN RETURN		' fail
 
 	' unselect all
 	lvi.state = NOT $$LVIS_SELECTED
@@ -5493,9 +5505,12 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 
 	upp = UBOUND (iItems[])
 	FOR i = 0 TO upp
-		lvi.state = $$LVIS_SELECTED
-		lvi.stateMask = $$LVIS_SELECTED
-		SendMessageA (hLV, $$LVM_SETITEMSTATE, iItems[i], &lvi)
+		iItem = iItems[i]
+		IF iItem >= 0 && iItem < count THEN
+			lvi.state = $$LVIS_SELECTED
+			lvi.stateMask = $$LVIS_SELECTED
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+		ENDIF
 	NEXT i
 
 	RETURN $$TRUE		' success
@@ -5514,8 +5529,10 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN		' fail
 
-	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN		' empty
+
+	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN		' fail
 
 	IF iSubItem < 0 THEN iSubItem = 0
@@ -5558,10 +5575,13 @@ END FUNCTION
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
+
 	IFZ hLV THEN RETURN		' fail
 
-	IF iItem < 0 THEN iItem = 0
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN		' empty
+
+	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN		' fail
 
 	IF iSubItem < 0 THEN iSubItem = 0
