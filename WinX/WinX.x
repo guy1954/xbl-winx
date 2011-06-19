@@ -709,6 +709,8 @@ DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 '
 ' for API FormatMessageA, GdipCreateStringFormat
 $$LANG_NEUTRAL              = 0
+$$LeftSubSizer$             = "WinXLeftSubSizer"
+$$RightSubSizer$            = "WinXRightSubSizer" ' Guy-16mar11-unused???
 '
 '
 ' #####################
@@ -1748,7 +1750,7 @@ FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
 
 	WinXSetDefaultFont (hGroup)
 
-	SetPropA (hGroup, &"WinXLeftSubSizer", &groupBox_SizeContents ())
+	SetPropA (hGroup, &$$LeftSubSizer$, &groupBox_SizeContents ())
 	SetPropA (hGroup, &"WinXAutoSizerSeries", AUTOSIZER_LinkedList_New ($$DIR_VERT))
 	RETURN hGroup
 END FUNCTION
@@ -1995,7 +1997,7 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 	IFZ hTabs THEN RETURN		' fail
 
 	WinXSetDefaultFont (hTabs)
-	SetPropA (hTabs, &"WinXLeftSubSizer", &tabs_SizeContents ())
+	SetPropA (hTabs, &$$LeftSubSizer$, &tabs_SizeContents ())
 	RETURN hTabs
 END FUNCTION
 '
@@ -4627,7 +4629,13 @@ END FUNCTION
 '
 FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 
-	DIM r_asSec$[]		' reset the returned array
+	' reset the returned array
+	IF r_asSec$[] THEN
+		upp = UBOUND (r_asSec$[])
+		FOR i = 0 TO upp
+			r_asSec$[i] = ""
+		NEXT i
+	ENDIF
 
 	' load the .INI file into array text$[]
 	bErr = XstLoadStringArray (iniPath$, @text$[])
@@ -4640,10 +4648,10 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 		trimmed$ = TRIM$ (text$[itext])
 		IF (LEFT$ (trimmed$) = "[") && (RIGHT$ (trimmed$) = "]") THEN INC count
 	NEXT itext
-	IFZ count THEN RETURN		' fail
+	IF count < 1 THEN RETURN		' fail
 
 	' "peal" the brackets off the section names
-	DIM r_asSec$[count - 1]
+	DIM arr$[count - 1]
 	iAdd = -1
 	upptext = UBOUND (text$[])
 	FOR itext = 0 TO upptext
@@ -4653,8 +4661,16 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 		'
 		INC iAdd
 		cCh = LEN (trimmed$) - 2
-		r_asSec$[iAdd] = MID$ (trimmed$, 2, cCh)
+		arr$[iAdd] = MID$ (trimmed$, 2, cCh)
 	NEXT itext
+
+	IF iAdd < 0 THEN
+		DIM arr$[]
+	ELSE
+		IF iAdd < count - 1 THEN REDIM arr$[iAdd]
+	ENDIF
+
+	SWAP arr$[], r_asSec$[]
 
 	RETURN $$TRUE		' OK!
 
@@ -4821,7 +4837,7 @@ END FUNCTION
 ' item$ = the string to add to the list
 ' returns the index of the string in the list or -1 on fail
 FUNCTION WinXListBox_AddItem (hListBox, index, item$)
-	IFZ hListBox THEN RETURN -1		' fail
+	IFZ hListBox THEN RETURN $$LB_ERR		' fail
 
 	IF GetWindowLongA (hListBox, $$GWL_STYLE) AND $$LBS_SORT THEN
 		RETURN SendMessageA (hListBox, $$LB_ADDSTRING, 0, &item$)
@@ -4859,10 +4875,24 @@ FUNCTION WinXListBox_GetIndex (hListBox, item$)
 	IFZ item$ THEN RETURN $$LB_ERR		' fail
 
 	' get count of items in listbox
-	lbcount = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
-	IFZ lbcount THEN RETURN $$LB_ERR		' fail
+	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
+	IF count < 1 THEN RETURN $$LB_ERR		' empty listbox
 
-	RETURN SendMessageA (hListBox, $$LB_FINDSTRINGEXACT, -1, &item$)
+	' Guy-17jun11-RETURN SendMessageA (hListBox, $$LB_FINDSTRINGEXACT, -1, &item$) ' find case INSENSITIVE
+
+	item_length = LEN (item$)
+	idxFound = -1
+	DO
+		indexStart = idxFound
+		idxFound = SendMessageA (hListBox, $$LB_FINDSTRING, indexStart, &item$)
+		IF idxFound < 0 THEN RETURN $$LB_ERR
+		IF idxFound = indexStart THEN RETURN $$LB_ERR
+		'
+		found$ = WinXListBox_GetItem$ (hListBox, idxFound)
+		'
+		IF LEFT$ (found$, item_length) = item$ THEN RETURN idxFound		' found!
+	LOOP
+	RETURN $$LB_ERR		' fail
 
 END FUNCTION
 '
@@ -4876,9 +4906,10 @@ END FUNCTION
 FUNCTION WinXListBox_GetItem$ (hListBox, index)
 	IFZ hListBox THEN RETURN ""		' fail
 
-	buffer$ = NULL$ (SendMessageA (hListBox, $$LB_GETTEXTLEN, index, 0) + 2)
-	SendMessageA (hListBox, $$LB_GETTEXT, index, &buffer$)
-	RETURN CSTRING$ (&buffer$)
+	sizeBuf = SendMessageA (hListBox, $$LB_GETTEXTLEN, index, 0) + 2 ' note bump 2!
+	szBuf$ = NULL$ (sizeBuf)
+	SendMessageA (hListBox, $$LB_GETTEXT, index, &szBuf$)
+	RETURN CSTRING$ (&szBuf$)
 END FUNCTION
 '
 ' ######################################
@@ -4932,9 +4963,13 @@ END FUNCTION
 ' index = the index of the item to remove, -1 to remove the last item
 ' returns the number of strings remaining in the list or -1 if index is out of range
 FUNCTION WinXListBox_RemoveItem (hListBox, index)
-	IFZ hListBox THEN RETURN -1		' fail
+	IFZ hListBox THEN RETURN $$LB_ERR		' fail
 
-	IF index = -1 THEN index = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0) - 1
+	' get count of items in listbox
+	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
+	IF count < 1 THEN RETURN $$LB_ERR		' empty listbox
+
+	IF index < 0 THEN index = count - 1
 	RETURN SendMessageA (hListBox, $$LB_DELETESTRING, index, 0)
 END FUNCTION
 '
@@ -4963,27 +4998,22 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 	IFZ hListBox THEN RETURN		' fail
 	IFZ index[] THEN RETURN		' fail
 
-	failed = $$FALSE
-	IF GetWindowLongA (hListBox, $$GWL_STYLE) AND $$LBS_EXTENDEDSEL THEN
+	style = GetWindowLongA (hListBox, $$GWL_STYLE)
+	IF (style AND $$LBS_EXTENDEDSEL) = $$LBS_EXTENDEDSEL THEN
 		' first, deselect everything
 		SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
 		'
 		upp = UBOUND (index[])
 		FOR i = 0 TO upp
-			IF SendMessageA (hListBox, $$LB_SETSEL, 1, index[i]) < 0 THEN failed = $$TRUE
+			ret = SendMessageA (hListBox, $$LB_SETSEL, 1, index[i])
+			IF ret < 0 THEN RETURN		' fail
 		NEXT i
 	ELSE
-		' Guy-17feb11-does not seem right :-(
-		' IFZ index[] THEN
-		' IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] != -1) THEN RETURN		' fail
-		' ELSE
-		' RETURN		' fail
-		' ENDIF
-		' index[0] = -1, deselect previous selection
-		IF (SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0) < 0) && (index[0] <> -1) THEN failed = $$TRUE
+		ret = SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0)
+		' index[0] == -1 means "deselect previous selection"
+		IF (ret < 0) && (index[0] <> -1) THEN RETURN		' fail
 	ENDIF
 
-	IF failed THEN RETURN		' fail
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5233,7 +5263,7 @@ FUNCTION WinXListView_GetSelection (hLV, iItems[])
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	cSelItems = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
 	IF cSelItems = 0 THEN RETURN
@@ -5287,7 +5317,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
@@ -5343,7 +5373,7 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
@@ -5426,7 +5456,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN		' fail
@@ -5494,7 +5524,7 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	IFZ iItems[] THEN RETURN		' fail
 
@@ -5530,7 +5560,7 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN		' fail
@@ -5579,7 +5609,7 @@ FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 	IFZ hLV THEN RETURN		' fail
 
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IF count < 1 THEN RETURN		' empty
 
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN		' fail
@@ -5644,7 +5674,7 @@ FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
 	mii.fMask = $$MIIM_SUBMENU
 	mii.hSubMenu = subMenu
 
-	IFZ SetMenuItemInfoA (newParent, idCtr, $$FALSE, &mii) THEN RETURN		' fail
+	IFZ SetMenuItemInfoA (newParent, idCtr, 0, &mii) THEN RETURN		' fail
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7853,7 +7883,7 @@ FUNCTION WinXTabs_AddTab (hTabs, STRING label, index)
 	tci.cchTextMax = LEN (label)
 	tci.lParam = AUTOSIZER_LinkedList_New ($$DIR_VERT)
 
-	IF index = -1 THEN index = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
+	IF index < 0 THEN index = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
 
 	indexAdd = SendMessageA (hTabs, $$TCM_INSERTITEM, index, &tci)
 	IF indexAdd < 0 THEN RETURN -1		' fail
@@ -8399,7 +8429,7 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	IFZ hTV THEN RETURN		' fail
 
 	count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
-	IFZ count THEN RETURN $$TRUE		' success
+	IF count < 1 THEN RETURN $$TRUE		' success
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
@@ -9261,6 +9291,9 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 	FUNCADDR FnRightInfo (XLONG, XLONG)		' Guy-16mar11-unused???
 	' if there is an info block, here, resize the window
 
+	hCtr = autoSizerBlock.hwnd
+	IFZ hCtr THEN RETURN
+
 	' calculate the SIZE
 	' first, the x, y, w and h of the box
 	SELECT CASE direction AND 0x00000003
@@ -9290,7 +9323,7 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 				autoSizerBlock.h = autoSizerBlock.h - 8
 
 				IF direction AND $$DIR_REVERSE THEN h = boxY - boxH - 8 ELSE h = boxY + boxH
-				MoveWindow (autoSizerBlock.hSplitter, boxX, h, boxW, 8, $$FALSE)
+				MoveWindow (autoSizerBlock.hSplitter, boxX, h, boxW, 8, 0)
 				InvalidateRect (autoSizerBlock.hSplitter, 0, 1) ' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
@@ -9325,7 +9358,7 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 				autoSizerBlock.w = autoSizerBlock.w - 8
 
 				IF direction AND $$DIR_REVERSE THEN h = boxX - boxW - 8 ELSE h = boxX + boxW
-				MoveWindow (autoSizerBlock.hSplitter, h, boxY, 8, boxH, $$FALSE)
+				MoveWindow (autoSizerBlock.hSplitter, h, boxY, 8, boxH, 0)
 				InvalidateRect (autoSizerBlock.hSplitter, 0, 1) ' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
@@ -9354,24 +9387,24 @@ FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, nw, nh, cur
 	ENDIF
 
 	IF autoSizerBlock.flags AND $$SIZER_SERIES THEN
-		autoSizerInfo_sizeGroup (autoSizerBlock.hwnd, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h)
+		autoSizerInfo_sizeGroup (hCtr, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h)
 	ELSE
 		' Actually size the control
 		IF (autoSizerBlock.w < 1) || (autoSizerBlock.h < 1) THEN
-			ShowWindow (autoSizerBlock.hwnd, $$SW_HIDE)
+			ShowWindow (hCtr, $$SW_HIDE)
 		ELSE
-			ShowWindow (autoSizerBlock.hwnd, $$SW_SHOW)
-			MoveWindow (autoSizerBlock.hwnd, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h, 1) ' repaint
+			ShowWindow (hCtr, $$SW_SHOW)
+			MoveWindow (hCtr, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h, 1) ' repaint
 		ENDIF
 
-		FnLeftInfo = GetPropA (autoSizerBlock.hwnd, &"WinXLeftSubSizer")
-		FnRightInfo = GetPropA (autoSizerBlock.hwnd, &"WinXRightSubSizer")
+		FnLeftInfo = GetPropA (hCtr, &$$LeftSubSizer$)
+		FnRightInfo = GetPropA (hCtr, &$$RightSubSizer$)
 		IF FnLeftInfo THEN
-			series = @FnLeftInfo (autoSizerBlock.hwnd, &rect)
+			series = @FnLeftInfo (hCtr, &rect)
 			autoSizerInfo_sizeGroup (series, autoSizerBlock.x + boxX + rect.left, autoSizerBlock.y + boxY + rect.top, (rect.right - rect.left), (rect.bottom - rect.top))
 		ENDIF
 		IF FnRightInfo THEN
-			series = @FnRightInfo (autoSizerBlock.hwnd, &rect)
+			series = @FnRightInfo (hCtr, &rect)
 			autoSizerInfo_sizeGroup (series, autoSizerBlock.x + boxX + rect.left, _
 			autoSizerBlock.y + boxY + rect.top, (rect.right - rect.left), (rect.bottom - rect.top))
 		ENDIF
@@ -10450,19 +10483,18 @@ END FUNCTION
 ' Returns $$FALSE = failure, $$TRUE = success
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 
-	DIM arr$[$$UPP_MRU]
-
 	iniPath$ = TRIM$ (iniPath$)
-	IFZ iniPath$ THEN RETURN
+	IFZ iniPath$ THEN GOSUB ReturnError
 
 	XstDecomposePathname (iniPath$, "", "", "", "", @fExt$)
-	IF LCASE$ (fExt$) <> ".ini" THEN RETURN
+	IF LCASE$ (fExt$) <> ".ini" THEN GOSUB ReturnError
 
 	' create ini file if it does not exist
 	key$ = WinXMRU_MakeKey$ (0) ' $$MRU_SECTION$ entry
 	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
 	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
 
+	DIM arr$[$$UPP_MRU]
 	upp = -1
 
 	' add real file pathNew$ to arr$[0]
@@ -10516,6 +10548,12 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 	SWAP arr$[], mruList$[]
 
 	RETURN $$TRUE		' success
+
+SUB ReturnError
+	DIM arr$[]
+	SWAP arr$[], mruList$[]
+	RETURN
+END SUB
 
 END FUNCTION
 '
