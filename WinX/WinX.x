@@ -5009,9 +5009,13 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 			IF ret < 0 THEN RETURN		' fail
 		NEXT i
 	ELSE
+		' single selection
 		ret = SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0)
 		' index[0] == -1 means "deselect previous selection"
 		IF (ret < 0) && (index[0] <> -1) THEN RETURN		' fail
+		'
+		' Guy-21jun11-the list box is scrolled, if necessary, to bring the selected item into view
+		SendMessageA (hListBox, $$LB_SETTOPINDEX, index[0], 0)
 	ENDIF
 
 	RETURN $$TRUE		' success
