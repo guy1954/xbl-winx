@@ -1609,6 +1609,7 @@ FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 		ret = SendMessageA (hBtn, $$BM_SETIMAGE, imageType, hImage)
 		IFZ ret THEN WinXSetText (hBtn, "err " + title)		' fail
 	ENDIF
+
 	' and we're done!
 	RETURN hBtn
 END FUNCTION
