@@ -5799,6 +5799,7 @@ END FUNCTION
 FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, rgbTrans, toolTips, customisable)
 	BITMAP bm
 
+	' ignore null button images handle
 	IFZ hBmpButtons THEN RETURN		' fail
 
 	' bmpWidth = wButton*nButtons
@@ -7511,6 +7512,8 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
+
+	IFZ hWnd THEN RETURN ' ignore null window handle
 
 	' ----------------------------------------------------
 	' Guy-03sep10-not that simple!
