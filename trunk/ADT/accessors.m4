@@ -3,7 +3,8 @@ DECLARE FUNCTION $1_New ($1 $1_item)
 DECLARE FUNCTION $1_Get (id, $1 @$1_item)
 DECLARE FUNCTION $1_Update (id, $1 $1_item)
 DECLARE FUNCTION $1_Delete (id)
-DECLARE FUNCTION $1_Get_idMax ()')
+DECLARE FUNCTION $1_Get_idMax ()
+DECLARE FUNCTION $1_GetCount ()')
 
 m4_define(`DefineAccess', `FUNCTION $1_Init ()
 	SHARED $1 $1_array[]
@@ -105,5 +106,16 @@ END FUNCTION
 FUNCTION $1_Get_idMax ()
 	SHARED $1_idMax
 	RETURN $1_idMax
+END FUNCTION
+
+FUNCTION $1_GetCount ()
+	SHARED $1_arrayUM[]
+
+	IFZ $1_arrayUM[] THEN RETURN 0
+	count = 0
+	FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+		IF $1_arrayUM[slot] THEN INC count
+	NEXT slot
+	RETURN count
 END FUNCTION
 ')

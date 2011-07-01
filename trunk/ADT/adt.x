@@ -676,7 +676,7 @@ FUNCTION LinkedList_DeleteItem (LINKEDLIST list, index)
 	IFF LINKEDLIST_GetNode (list, index - 1, @iPrevious) THEN RETURN
 	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN
 
-	' Update the tail pointer if necassary
+	' Update the tail pointer if necessary
 	IF previous.iNext = list.iTail THEN list.iTail = iPrevious
 
 	' Now get the node we want to delete
