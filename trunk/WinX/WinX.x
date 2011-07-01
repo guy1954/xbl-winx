@@ -125,6 +125,9 @@ TYPE BINDING
 	XLONG .isMouseInWindow
 	XLONG .hUpdateRegion
 	XLONG .hAccelTable		' Guy-21jan09-handle to the window's accelerator table
+	XLONG .skipOnSelect		' Guy-25may11-skip/use .onSelect
+	XLONG .hwndMDIParent	' parent window of an MDI child
+
 	FUNCADDR .onPaint (XLONG, XLONG)		'hWnd, hdc : paint the window
 	FUNCADDR .onDimControls (XLONG, XLONG, XLONG)		'hWnd, w, h : dimension the controls
 	FUNCADDR .onCommand (XLONG, XLONG, XLONG)		'idCtr, notifyCode, lParam
@@ -148,7 +151,6 @@ TYPE BINDING
 	FUNCADDR .onCalendarSelect (XLONG, SYSTEMTIME)		' idcal, time
 	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, files
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
-	XLONG    .skipOnSelect ' Guy-25may11-freeze/use .onSelect
 END TYPE
 ' message handler data type
 TYPE MSGHANDLER
@@ -702,6 +704,7 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION WinXDialog_TellError (parent, title$)		' display WinXDialog_'s run-time error message
+DECLARE FUNCTION WinXCreateMdiChild (hClient, title$, style)
 
 DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
@@ -1036,7 +1039,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_SELCHANGED
 					IFZ binding.onSelect THEN EXIT SELECT
-					IF binding.skipOnSelect THEN EXIT SELECT
+					IF binding.skipOnSelect THEN RETURN
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to a NM_TREEVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
@@ -1045,7 +1048,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				CASE $$LVN_ITEMCHANGED
 					' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 					IFZ binding.onSelect THEN EXIT SELECT
-					IF binding.skipOnSelect THEN EXIT SELECT
+					IF binding.skipOnSelect THEN RETURN
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to a NM_LISTVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
@@ -1449,7 +1452,13 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 	END SELECT
 
 	IF handled THEN RETURN ret_value
-	RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
+
+	IF kk THEN
+		' Pass the message to the default MDI procedure
+		RETURN DefMDIChildProcA (hWnd, wMsg, wParam, lParam)
+	ELSE
+		RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
+	ENDIF
 
 SUB dragTreeViewItem
 	IFZ tvDragging THEN EXIT SUB
@@ -5998,25 +6007,26 @@ END FUNCTION
 ' - $$XWSS_NOBORDER: A window with no border, useful for full screen apps
 ' See Also    =
 ' Examples    = 'Make a simple window
-' WinXNewWindow ("My window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+' WinXNewWindow (0, "My window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 '
 FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, icon, menu)
 	BINDING binding
 	RECT rect
 	LINKEDLIST autoDraw
 
-	hInst = GetModuleHandleA (0)
+	hWnd = 0
+	IF hOwner THEN hWnd = WinXCreateMdiChild (hOwner, title$, style)
 	rect.right = w
 	rect.bottom = h
 
-	style = XWSStoWS (simpleStyle)
+	dwExStyle = XWSStoWS (simpleStyle)
 	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
-	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
+	AdjustWindowRectEx (&rect, dwExStyle, fMenu, exStyle)
 
-	IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
+	IF (dwExStyle & $$WS_VSCROLL) = $$WS_VSCROLL THEN
 		rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
 	ENDIF
-	IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
+	IF (dwExStyle & $$WS_HSCROLL) = $$WS_HSCROLL THEN
 		rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
 	ENDIF
 
@@ -6034,8 +6044,11 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 		y = (screenHeight - height) >> 1
 	ENDIF
 
-	hInst = GetModuleHandleA (0)
-	hWnd = CreateWindowExA (exStyle, &$$WINX_CLASS$, &title, style, x, y, width, height, hOwner, menu, hInst, 0)
+	IFZ hWnd THEN
+		IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
+		hInst = GetModuleHandleA (0)
+		hWnd = CreateWindowExA (exStyle, &$$WINX_CLASS$, lpWindowName, dwExStyle, x, y, width, height, hOwner, menu, hInst, 0)
+	ENDIF
 
 	' now add the icon
 	IF icon THEN
@@ -6045,9 +6058,14 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 
 	' make a binding
 	binding.hwnd = hWnd
+	binding.hwndMDIParent = hOwner
+
+	lpWindowName = 0
+	dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
 	hInst = GetModuleHandleA (0)
-	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, 0, $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP, _
-	$$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
+
+	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
+
 	binding.msgHandlers = handler_addGroup ()
 	LinkedList_Init (@autoDraw)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDraw)
@@ -10666,6 +10684,36 @@ FUNCTION WinXMRU_MakeKey$ (id)
 
 	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
 	RETURN "File " + id$
+
+END FUNCTION
+
+FUNCTION WinXCreateMdiChild (hClient, title$, style)
+	MDICREATESTRUCT mdi
+
+	IFZ hClient THEN RETURN ' fail
+
+	IFZ title$ THEN lpWindowName = 0 ELSE lpWindowName = &title$
+	hInst = GetModuleHandleA (0)
+
+	XstGetOSVersion (@major, 0, 0, "", "")
+	IF major < 4 THEN
+		mdi.szClass = &$$WINX_CLASS$
+		mdi.szTitle = lpWindowName
+		mdi.hOwner = hInst		' GetWindowLongA (hClient, $$GWL_HINSTANCE)
+		mdi.x = $$CW_USEDEFAULT
+		mdi.y = $$CW_USEDEFAULT
+		mdi.cx = $$CW_USEDEFAULT
+		mdi.cy = $$CW_USEDEFAULT
+		mdi.style = dwStyle
+		hWnd = SendMessageA (hClient, $$WM_MDICREATE, 0, &mdi)
+	ELSE
+		dwExStyle = $$WS_EX_MDICHILD OR $$WS_EX_CLIENTEDGE
+		dwStyle = style
+		hMdiActive = SendMessageA (hClient, $$WM_MDIGETACTIVE, 0, 0)
+		IF IsZoomed (hMdiActive) THEN dwStyle = dwStyle OR $$WS_MAXIMIZE
+		hWnd = CreateWindowExA (dwExStyle, &$$WINX_CLASS$, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
+	ENDIF
+	RETURN hWnd
 
 END FUNCTION
 '
