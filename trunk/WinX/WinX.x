@@ -4473,14 +4473,17 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 
 	IFZ hLV THEN RETURN -1		' fail
 
+	st$ = TRIM$ (item) + "|"
+
 	' replace all embedded NULL characters by separator "|"
-	FOR i = SIZE (item) - 1 TO 0 STEP -1
-		IF item{i} = '\0' THEN item{i} = '|'
+	upp = LEN (st$) - 1
+	FOR i = 0 TO upp
+		IF st${i} = '\0' THEN st${i} = '|'
 	NEXT i
 
 	' parse the string item
-	XstParseStringToStringArray (item, "|", @s$[])
-	IFZ s$[] THEN RETURN -1		' fail
+	XstParseStringToStringArray (st$, "|", @s$[])
+	IFZ s$[] THEN RETURN -1		' fail (unlikely!)
 
 	' set the item
 	lvi.mask = $$LVIF_TEXT
