@@ -252,7 +252,7 @@ FUNCTION BinTree_Add (BINTREE tree, iKey, iData)
 		newNode.iRight = 0
 		newNode.iData = iData
 		tree.iHead = BINNODE_New (newNode)
-		RETURN $$TRUE
+		RETURN $$TRUE ' success
 	END IF
 
 	RETURN BinTree_RealAdd (tree.comparator, tree.iHead, iKey, iData)
@@ -303,7 +303,7 @@ FUNCTION BinTree_Init (BINTREE tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDele
 	tree.comparator = FnCompareNodeKeys
 	tree.keyDeleter = FnDeleteTreeNode
 	tree.iHead = 0
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ############################
@@ -457,7 +457,7 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 	LOOP
 
 	STACK_Update (traverse, traverseStack)
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 
 SUB GetLeftmostNode
 	DO WHILE TOS.node.iLeft
@@ -522,7 +522,7 @@ FUNCTION BinTree_Uninit (BINTREE tree)
 		tree.iHead = 0
 		RETURN BinTree_RealUninit (tree.iHead, tree.keyDeleter)
 	END IF
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ############################
@@ -624,7 +624,7 @@ FUNCTION LinkedList_Append (LINKEDLIST list, iData)
 	list.iTail = tail.iNext
 	INC list.cItems
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ##################################
@@ -655,7 +655,7 @@ FUNCTION LinkedList_DeleteAll (LINKEDLIST list)
 
 	list.iTail = list.iHead
 	list.cItems = 0
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###################################
@@ -689,7 +689,7 @@ FUNCTION LinkedList_DeleteItem (LINKEDLIST list, index)
 	IFF LINKEDNODE_Delete (iCurrNode) THEN RETURN
 
 	DEC list.cItems
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###################################
@@ -717,7 +717,7 @@ FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST list)
 	IFF LINKEDNODE_Delete (walk.iCurrentNode) THEN RETURN
 	DEC list.cItems
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ################################
@@ -745,7 +745,7 @@ FUNCTION LinkedList_GetItem (LINKEDLIST list, index, @iData)
 	IFF LINKEDNODE_Get (iNode, @node) THEN RETURN
 
 	iData = node.iData
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #############################
@@ -763,7 +763,7 @@ FUNCTION LinkedList_Init (LINKEDLIST list)
 	list.iHead = LINKEDNODE_New (head)
 	list.iTail = list.iHead
 	list.cItems = 0
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###############################
@@ -793,7 +793,7 @@ FUNCTION LinkedList_Insert (LINKEDLIST list, index, iData)
 	IFF LINKEDNODE_Update (iPrevious, previous) THEN RETURN
 
 	INC list.cItems
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###################################
@@ -836,7 +836,7 @@ FUNCTION LinkedList_Jump (hWalk, iItem)
 	walk.iNext = currNode.iNext
 	IFF LINKEDWALK_Update (hWalk, @walk) THEN RETURN
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ############################
@@ -863,11 +863,11 @@ FUNCTION LinkedList_Map (LINKEDLIST list, FUNCADDR callBack, @result)
 		IFF LINKEDNODE_Get (iCurrNode, @currNode) THEN RETURN
 
 		' Process this node
-		IFF @func (i, currNode.iData, @result) THEN RETURN $$TRUE
+		IFF @func (i, currNode.iData, @result) THEN RETURN $$TRUE ' success
 		INC i
 	LOOP
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ##################################
@@ -919,7 +919,7 @@ FUNCTION LinkedList_Uninit (LINKEDLIST list)
 	IFF LINKEDNODE_Delete (list.iHead) THEN RETURN
 	list.iHead = 0
 	list.iTail = 0
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #############################
@@ -944,7 +944,7 @@ FUNCTION LinkedList_Walk (hWalk, @iData)
 	walk.iNext = currNode.iNext
 	IFF LINKEDWALK_Update (hWalk, @walk) THEN RETURN
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###########################
@@ -1035,7 +1035,7 @@ FUNCTION Stack_Peek (STACK stack, @iData)
 	IFF LINKEDNODE_Get (stack.list.iTail, @node) THEN RETURN
 
 	iData = node.iData
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' #######################
@@ -1055,7 +1055,7 @@ FUNCTION Stack_Pop (STACK stack, @iData)
 	IFF LinkedList_DeleteItem (@stack.list, stack.list.cItems - 1) THEN RETURN
 
 	iData = node.iData
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ########################
@@ -1311,7 +1311,7 @@ FUNCTION BinTree_RealUninit (iNode, FUNCADDR FnDeleteTreeNode)
 
 	BINNODE_Delete (iNode)
 
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ################################
@@ -1335,10 +1335,15 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 	iNode = iThis
 	RETURN $$TRUE ' success
 END FUNCTION
-
+'
+' ##############################
+' #####  ADT STRING_class  #####
+' ##############################
+'
+' STRING_Init () ' initialize STRING_class
 FUNCTION STRING_Init ()
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	DIM STRING_array$[7]
@@ -1346,18 +1351,25 @@ FUNCTION STRING_Init ()
 	STRING_idMax = 0
 END FUNCTION
 
+' returns id on success or 0 on fail
+' id = STRING_New (STRING_item$)
+' IFZ id THEN ' fail
 FUNCTION STRING_New (STRING_item$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	IFZ STRING_array$[] THEN STRING_Init ()
 
 	upper_slot = UBOUND (STRING_array$[])
-	slot = -1
+
+	' since STRING_array$[] is oversized, look for a spot
+	' after STRING_idMax
+	slot = -1 ' spot not found
 	IF STRING_idMax <= upper_slot THEN
 		FOR i = STRING_idMax TO upper_slot
 			IFF STRING_arrayUM[i] THEN
+				' spot found!
 				slot = i
 				STRING_idMax = i + 1
 				EXIT FOR
@@ -1366,6 +1378,7 @@ FUNCTION STRING_New (STRING_item$)
 	ENDIF
 
 	IF slot = -1 THEN
+		' spot not found: expand STRING_array$[]
 		upper_slot = ((upper_slot + 1) << 1) - 1
 		REDIM STRING_array$[upper_slot]
 		REDIM STRING_arrayUM[upper_slot]
@@ -1376,12 +1389,17 @@ FUNCTION STRING_New (STRING_item$)
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
 	STRING_array$[slot] = STRING_item$
 	STRING_arrayUM[slot] = $$TRUE
-	RETURN (slot + 1)
+	RETURN (slot + 1) ' return id
 END FUNCTION
 
+' returns $$TRUE on success or $$FALSE on fail
+' bOK = STRING_Get (id, @STRING_item$)
+'	IFF bOK THEN ' fail
+' or
+'	IFZ STRING_item$ THEN ' fail
 FUNCTION STRING_Get (id, @STRING_item$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	STRING_item$ = ""
@@ -1394,12 +1412,15 @@ FUNCTION STRING_Get (id, @STRING_item$)
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_item$ = STRING_array$[slot]
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 
+' returns $$TRUE on success or $$FALSE on fail
+' bOK = STRING_Update (id, STRING_item$)
+'	IFF bOK THEN ' fail
 FUNCTION STRING_Update (id, STRING_item$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	IFZ STRING_array$[] THEN RETURN
@@ -1411,12 +1432,15 @@ FUNCTION STRING_Update (id, STRING_item$)
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_array$[slot] = STRING_item$
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 
+' returns $$TRUE on success or $$FALSE on fail
+' bOK = STRING_Delete (id)
+'	IFF bOK THEN ' fail
 FUNCTION STRING_Delete (id)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	IFZ STRING_array$[] THEN RETURN
@@ -1428,12 +1452,15 @@ FUNCTION STRING_Delete (id)
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE
+	RETURN $$TRUE ' success
 END FUNCTION
 
+' returns id on success or 0 on fail
+' id = STRING_Find (find$)
+'	IFZ id THEN ' not found
 FUNCTION STRING_Find (find$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	find$ = TRIM$ (find$)
@@ -1448,13 +1475,16 @@ FUNCTION STRING_Find (find$)
 		IFF STRING_arrayUM[slot] THEN DO NEXT
 		STRING_item$ = TRIM$ (STRING_array$[slot])
 		IF LEN (STRING_item$) <> findLen THEN DO NEXT
-		IF STRING_item$ = find$ THEN RETURN (slot + 1)
+		IF STRING_item$ = find$ THEN RETURN (slot + 1) ' return id
 	NEXT slot
 END FUNCTION
 
+' returns id on success or 0 on fail
+' id = STRING_Find (find$) ' find case insensitive
+'	IFZ id THEN ' not found
 FUNCTION STRING_InsFind (find$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]
+	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
 	find$ = TRIM$ (find$)
@@ -1470,10 +1500,18 @@ FUNCTION STRING_InsFind (find$)
 		IFF STRING_arrayUM[slot] THEN DO NEXT
 		STRING_item$ = TRIM$ (STRING_array$[slot])
 		IF LEN (STRING_item$) <> findLen THEN DO NEXT
-		IF LCASE$ (STRING_item$) = find_lc$ THEN RETURN (slot + 1)
+		' find case insensitive
+		IF LCASE$ (STRING_item$) = find_lc$ THEN RETURN (slot + 1) ' return id
 	NEXT slot
 END FUNCTION
 
+' returns STRING_idMax
+' wald thru STRING_items
+' idMax = STRING_Get_idMax ()
+' FOR id = 1 TO idMax
+'		STRING_Get (id, @STRING_item$)
+'		IFZ STRING_item$ THEN DO NEXT ' deleted
+' NEXT id
 FUNCTION STRING_Get_idMax ()
 	SHARED STRING_idMax
 	RETURN STRING_idMax
