@@ -5661,12 +5661,8 @@ END FUNCTION
 FUNCTION WinXPath_Trim$ (path$)
 
 ' the direct way----------------------------------------------------
-' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
 '	pathNew$ = TRIM$ (path$)
-'	IF pathNew$ THEN
-'		XstReplace (@pathNew$, "/", $$PathSlash$, 0) ' make sure there are only Windows PathSlashes
-'	ENDIF
-'	RETURN pathNew$
+' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
 ' ------------------------------------------------------------------
 
 	IFZ path$ THEN RETURN "" ' empty
@@ -5675,7 +5671,7 @@ FUNCTION WinXPath_Trim$ (path$)
 	' search the last non-space character, its index is iLast
 	iLast = -1
 	FOR i = upp TO 0 STEP -1
-		IF path${i} <> ' ' THEN ' non-space character
+		IF (path${i} >= 33) && (path${i} <= 90) THEN
 			iLast = i
 			EXIT FOR
 		ENDIF
@@ -5684,29 +5680,21 @@ FUNCTION WinXPath_Trim$ (path$)
 
 	' search the 1st non-space character, its index is iFirst
 	FOR i = 0 TO iLast
-		IF path${i} <> ' ' THEN ' non-space character
+		IF (path${i} >= 33) && (path${i} <= 90) THEN
 			iFirst = i
 			EXIT FOR
 		ENDIF
 	NEXT i
 
-	newLen = iLast - iFirst + 1
-	IF newLen < 1 THEN RETURN "" ' empty
-
-	' allocate a new string
-	pathNew$ = NULL$ (newLen)
+	length = iLast - iFirst + 1
+	IF length < 1 THEN RETURN "" ' empty
 
 	' trim off leading and trailing spaces
-	inew = 0
-	FOR i = iFirst TO iLast
-		IF path${i} = '/' THEN
-			' make sure there are only Windows PathSlashes
-			pathNew${inew} = '\\'
-		ELSE
-			pathNew${inew} = path${i}
-		ENDIF
-		INC inew
-	NEXT i
+	pathNew$ = MID$ (path$, iFirst + 1, length)
+
+	' make sure there are only Windows PathSlashes
+	IF INSTR (pathNew$, "/") THEN XstTranslateChars (@pathNew$, "/", $$PathSlash$)
+
 	RETURN pathNew$
 
 END FUNCTION
