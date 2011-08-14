@@ -5671,7 +5671,7 @@ FUNCTION WinXPath_Trim$ (path$)
 	' search the last non-space character, its index is iLast
 	iLast = -1
 	FOR i = upp TO 0 STEP -1
-		IF (path${i} >= 33) && (path${i} <= 90) THEN
+		IF (path${i} >= 33) && (path${i} <= 92) THEN
 			iLast = i
 			EXIT FOR
 		ENDIF
@@ -5680,7 +5680,7 @@ FUNCTION WinXPath_Trim$ (path$)
 
 	' search the 1st non-space character, its index is iFirst
 	FOR i = 0 TO iLast
-		IF (path${i} >= 33) && (path${i} <= 90) THEN
+		IF (path${i} >= 33) && (path${i} <= 92) THEN
 			iFirst = i
 			EXIT FOR
 		ENDIF
