@@ -3923,10 +3923,10 @@ FUNCTION WinXIni_Delete (iniPath$, section$, key$)
 	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN		' fail
 
-	section$ = WinXPath_Trim$ (section$)
+	section$ = TRIM$ (section$)
 	IFZ section$ THEN RETURN		' fail
 
-	key$ = WinXPath_Trim$ (key$)
+	key$ = TRIM$ (key$)
 	IFZ key$ THEN RETURN		' fail
 
 	' passing argument lpString set to zero causes the key deletion
@@ -4135,7 +4135,7 @@ FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 	bErr = XstFileExists (iniPath$)
 	IF bErr THEN RETURN defVal$ ' file NOT found
 
-	section$ = WinXPath_Trim$ (section$)
+	section$ = TRIM$ (section$)
 	IFZ section$ THEN RETURN defVal$
 
 	' read from the INI file
@@ -4172,10 +4172,10 @@ FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN		' fail
 
-	section$ = WinXPath_Trim$ (section$)
+	section$ = TRIM$ (section$)
 	IFZ section$ THEN RETURN		' fail
 
-	key$ = WinXPath_Trim$ (key$)
+	key$ = TRIM$ (key$)
 	IFZ key$ THEN RETURN		' fail
 
 	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
@@ -5671,7 +5671,7 @@ FUNCTION WinXPath_Trim$ (path$)
 	' search the last non-space character, its index is iLast
 	iLast = -1
 	FOR i = upp TO 0 STEP -1
-		IF (path${i} >= 33) && (path${i} <= 92) THEN
+		IF (path${i} >= 33) && (path${i} <= 253) THEN
 			iLast = i
 			EXIT FOR
 		ENDIF
@@ -5680,7 +5680,7 @@ FUNCTION WinXPath_Trim$ (path$)
 
 	' search the 1st non-space character, its index is iFirst
 	FOR i = 0 TO iLast
-		IF (path${i} >= 33) && (path${i} <= 92) THEN
+		IF (path${i} >= 33) && (path${i} <= 253) THEN
 			iFirst = i
 			EXIT FOR
 		ENDIF
