@@ -5619,17 +5619,16 @@ END FUNCTION
 ' #####  WinXPath_Trim$  #####
 ' ############################
 '
-' [WinXPath_Trim$]
-' Description = trim a path, directory or file
-' Function    = WinXPath_Trim$ (path$)
-' ArgCount    = 1
-' Return      = the trimmed path
-' Examples    = pathNew$ = WinXPath_Trim$ (path$)
-'
+' Trims a path, directory or file
+' Usage
+'	dir$ = "  c:/Lonné  "
+' dir$ = WinXPath_Trim$ (dir$)
+' result: "  c:/Lonné  " --> "c:\\Lonné"
 FUNCTION WinXPath_Trim$ (path$)
 
 ' the direct way----------------------------------------------------
-'	pathNew$ = TRIM$ (path$)
+'	dir$ = "  c:/Lonné  "
+'	dir$ = TRIM$ (dir$)
 ' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
 ' ------------------------------------------------------------------
 
