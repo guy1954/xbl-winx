@@ -1019,8 +1019,9 @@ END FUNCTION
 FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP
+	' $$CBS_DROPDOWN     : Editable Drop Down List
+	' $$CBS_DROPDOWNLIST : Non-editable Drop Down List
 	IF canEdit THEN style = style | $$CBS_DROPDOWN ELSE style = style | $$CBS_DROPDOWNLIST
-	' style = style|$$CBS_SIMPLE
 
 	hInst = GetModuleHandleA (0)
 	hCombo = CreateWindowExA (0, &$$WC_COMBOBOXEX, 0, style, 0, 0, 0, listHeight + 22, parent, idCtr, hInst, 0)
@@ -1066,6 +1067,9 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
 	style = style | $$WS_TABSTOP | $$WS_GROUP | $$WS_BORDER
+	IF (style & $$ES_MULTILINE) = $$ES_MULTILINE THEN ' multiline edit box
+		style = style | $$WS_VSCROLL | $$ES_AUTOHSCROLL | $$WS_HSCROLL
+	ENDIF
 
 	hInst = GetModuleHandleA (0)
 	hEdit = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$EDIT, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1112,8 +1116,12 @@ END FUNCTION
 FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP
+
+	' $$LBS_STANDARD         : enables $$WM_COMMAND's notification code ($$LBN_SELCHANGE)
+	' $$LBS_NOINTEGRALHEIGHT : Predefined size
 	style = style | $$WS_VSCROLL | $$WS_HSCROLL | $$LBS_HASSTRINGS | $$LBS_NOINTEGRALHEIGHT
-	style = style | $$LBS_NOTIFY		' Guy-20apr09-$$LBS_NOTIFY enables $$WM_COMMAND's notification code = $$LBN_SELCHANGE
+	style = style | $$LBS_NOTIFY
+
 	IF sort THEN style = style | $$LBS_SORT
 	IF multiSelect THEN style = style | $$LBS_EXTENDEDSEL
 
@@ -1213,7 +1221,13 @@ FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos)
 		nUpper = nLower
 		nLower = temp
 	ENDIF
-	style = $$WS_CHILD | $$WS_VISIBLE | $$UDS_ALIGNRIGHT | $$UDS_SETBUDDYINT | $$UDS_ARROWKEYS | $$UDS_NOTHOUSANDS
+	style = $$WS_CHILD | $$WS_VISIBLE
+	' $$UDS_NOTHOUSANDS : no thousand separator
+	' $$UDS_ARROWKEYS   : Arrow keys
+	' $$UDS_ALIGNRIGHT  : Align right
+	' $$UDS_SETBUDDYINT : Set buddy
+	style = style | $$UDS_ALIGNRIGHT | $$UDS_SETBUDDYINT | $$UDS_ARROWKEYS | $$UDS_NOTHOUSANDS
+
 	hInst = GetModuleHandleA (0)
 	hSpinner = CreateUpDownControl (style, 0, 0, 0, 0, parent, idCtr, hInst, hBuddy, nUpper, nLower, nPos)
 	IFZ hSpinner THEN RETURN
@@ -1344,6 +1358,8 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
 
 	' both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style
+	' $$WS_CLIPSIBLINGS : Clip Sibling Area
+	' $$TCS_HOTTRACK    : Hot track
 	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK | $$WS_CLIPSIBLINGS
 	IF multiline THEN style = style | $$TCS_MULTILINE
 
@@ -1377,7 +1393,11 @@ END FUNCTION
 FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$WS_GROUP
-	IF format THEN style = style | format
+
+	SELECT CASE format
+		CASE $$DTS_LONGDATEFORMAT, $$DTS_SHORTDATEFORMAT, $$DTS_TIMEFORMAT
+			style = style | format
+	END SELECT
 
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (0, &$$DATETIMEPICK_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
@@ -1474,6 +1494,9 @@ END FUNCTION
 FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 
 	style = $$WS_CHILD | $$WS_VISIBLE
+	' $$TVS_LINESATROOT : Lines at root
+	' $$TVS_HASLINES    : |--lines
+	' $$TVS_HASBUTTONS  : [-]/[+]
 	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TVS_HASBUTTONS | $$TVS_HASLINES | $$TVS_LINESATROOT
 
 	IFF draggable THEN style = style | $$TVS_DISABLEDRAGDROP
@@ -5533,14 +5556,14 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	rect.right = w
 	rect.bottom = h
 
-	dwExStyle = XWSStoWS (simpleStyle)
+	style = XWSStoWS (simpleStyle)
 	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
-	AdjustWindowRectEx (&rect, dwExStyle, fMenu, exStyle)
+	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
 
-	IF (dwExStyle & $$WS_VSCROLL) = $$WS_VSCROLL THEN
+	IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
 		rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
 	ENDIF
-	IF (dwExStyle & $$WS_HSCROLL) = $$WS_HSCROLL THEN
+	IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
 		rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
 	ENDIF
 
@@ -5561,7 +5584,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	IFZ hWnd THEN
 		IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
 		hInst = GetModuleHandleA (0)
-		hWnd = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, dwExStyle, x, y, width, height, hOwner, menu, hInst, 0)
+		hWnd = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, style, x, y, width, height, hOwner, menu, hInst, 0)
 	ENDIF
 
 	' now add the icon
