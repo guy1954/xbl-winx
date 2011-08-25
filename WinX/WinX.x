@@ -2193,9 +2193,7 @@ FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows di
 	IFZ ret THEN RETURN ""		' fail
 
 	directory$ = CSTRING$ (&buf$)
-
-	' append a \ to indicate a directory vs a file
-	IF RIGHT$ (directory$) <> $$PathSlash$ THEN directory$ = directory$ + $$PathSlash$		' end directory path with \
+	WinXDir_AppendSlash (@directory$) ' append a \ to indicate a directory vs a file
 
 	RETURN directory$
 
@@ -2499,12 +2497,13 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
-' bOK = WinXDialog_SysInfo (@msInfo$) ' run Microsoft program "System Information"
-' IFF bOK THEN ' fail
-' msg$ = "Can't run Microsoft program \"System Information\""
-' msg$ = msg$ + "\nExecution path: " + msInfo$
-' WinXDialog_Error (msg$, "System Information", 2) ' 2 = error
-' ENDIF
+'	' run Microsoft program "System Information"
+'	bOK = WinXDialog_SysInfo (@msInfo$)
+'	IFF bOK THEN
+'		msg$ = "Can't run Microsoft program \"System Information\""
+'		msg$ = msg$ + $$CRLF$ + "Execution path: " + msInfo$
+'		XstAlert (msg$)
+'	ENDIF
 '
 FUNCTION WinXDialog_SysInfo (@msInfo$)
 	SECURITY_ATTRIBUTES sa		' not used
@@ -2515,9 +2514,9 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 		msInfo$ = ""
 	ELSE
 		msInfo$ = CSTRING$ (&buf$)
-		msInfo$ = TRIM$ (msInfo$)
+		msInfo$ = WinXPath_Trim$ (msInfo$)
 		IF msInfo$ THEN
-			IF RIGHT$ (msInfo$) <> $$PathSlash$ THEN msInfo$ = msInfo$ + $$PathSlash$
+			WinXDir_AppendSlash (@msInfo$)		' end directory path with \
 			msInfo$ = msInfo$ + "system32" + $$PathSlash$ + "msinfo32.exe"
 			'
 			bErr = XstFileExists (msInfo$)
@@ -2530,10 +2529,9 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 		subKey$ = "SOFTWARE\\Microsoft\\Shared Tools\\MSINFO"
 		info$ = "PATH"
 
-		' createOnOpenFail = $$FALSE => don't create if missing
-		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
-		IF bOK THEN		' OK!
-			msInfo$ = TRIM$ (exeDir$)
+		bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$) ' $$FALSE: don't create if missing
+		IF bOK THEN
+			msInfo$ = WinXPath_Trim$ (exeDir$)
 		ELSE
 			subKey$ = "SOFTWARE\\Microsoft\\Shared Tools Location"
 			info$ = "MSINFO"
@@ -2541,8 +2539,7 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 			bOK = WinXRegistry_ReadString ($$HKEY_LOCAL_MACHINE, subKey$, info$, $$FALSE, sa, @exeDir$)
 			IFF bOK THEN RETURN
 			'
-			exeDir$ = TRIM$ (exeDir$)
-			IF RIGHT$ (exeDir$) <> $$PathSlash$ THEN exeDir$ = exeDir$ + $$PathSlash$		' end directory path with \
+			WinXDir_AppendSlash (@exeDir$)		' end directory path with \
 			msInfo$ = exeDir$ + "msinfo32.exe"
 		ENDIF
 	ENDIF
@@ -2558,72 +2555,22 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 		command$ = msInfo$
 	ENDIF
 
-	' launch command command$
-	SHELL (command$)		' launch command command$
+	SHELL (command$)		' launch command$
 
 	RETURN $$TRUE		' success
 
 END FUNCTION
 
-' OUT			: dir$ - directory path
-
+' Ends a directory path with \
 ' Usage:
-' dir$ = "  c:/my dir   "
+' dir$ = "  c:/Lonné  "
 ' WinXDir_AppendSlash (@dir$) ' end directory path with \
-' ' => dir$ == "c:\\my dir\\"
-FUNCTION WinXDir_AppendSlash (@dir$)		' end a directory path with \
+' ' result: "  c:/Lonné  " --> "c:\\Lonné\\"
+FUNCTION WinXDir_AppendSlash (@dir$)
 
-	upp = LEN (dir$) - 1
-	IF upp < 0 THEN RETURN		' empty
-
-	' search the last non-space character, its index is iLast
-	iLast = -1
-	FOR i = upp TO 0 STEP -1
-		IF dir${i} <> ' ' THEN
-			' non-space character
-			iLast = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-	IF iLast = -1 THEN		' only spaces => empty directory path
-		dir$ = ""		' return a null string
-		RETURN
-	ENDIF
-
-	' search the 1st non-space character, its index is iFirst
-	FOR i = 0 TO iLast
-		IF dir${i} <> ' ' THEN
-			' non-space character
-			iFirst = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	' make sure there are only Windows PathSlashes
-	pos = INSTR (dir$, "/")		' Unix PathSlash
-	IF pos THEN		' Unix PathSlash
-		FOR i = pos - 1 TO iLast
-			IF dir${i} = '/' THEN dir${i} = '\\'		' Windows PathSlash
-		NEXT i
-	ENDIF
-
-	' allocate a new string
-	newLen = iLast - iFirst + 1
-	IF dir${iLast} <> '\\' THEN INC newLen		' no trailing slash: add 1 slot for the added trailing slash
-	oDir$ = NULL$ (newLen)
-
-	' trim off leading and trailing spaces
-	ioDir = 0
-	FOR i = iFirst TO iLast
-		oDir${ioDir} = dir${i}
-		INC ioDir
-	NEXT i
-
-	IF dir${iLast} <> '\\' THEN		' no trailing slash
-		oDir${ioDir} = '\\'		' add the trailing slash
-	ENDIF
-
-	dir$ = oDir$		' replace the directory path
+	dir$ = WinXPath_Trim$ (dir$)
+	IFZ dir$ THEN RETURN		' empty
+	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$
 
 END FUNCTION
 
@@ -2646,8 +2593,8 @@ FUNCTION WinXDir_Create (dir$)		' Creates a directory making sure that the direc
 
 	dir$ = TRIM$ (dir$)
 	IFZ dir$ THEN RETURN $$TRUE		' dir$ is empty
+
 	XstPathToAbsolutePath (dir$, @dir$)		' Get the complete path
-	XstTranslateChars (@dir$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
 
 	WinXDir_AppendSlash (@dir$)		' end directory path with \
 	' create all the parent folders before creating the directory
@@ -2750,8 +2697,8 @@ END FUNCTION
 ' xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get xblite's program dir
 FUNCTION WinXDir_GetXblProgramDir$ ()		' Gets the complete path of xblite's programs' directory
 
-	pgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
-	RETURN pgmDir$
+	xblPgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
+	RETURN xblPgmDir$
 
 END FUNCTION
 '
@@ -3786,9 +3733,7 @@ FUNCTION WinXFolder_GetDir$ (parent, nFolder)		' get the path for a Windows spec
 			XstGetCurrentDirectory (@directory$)
 		ENDIF
 	ENDIF
-
-	directory$ = TRIM$ (directory$)
-	IF RIGHT$ (directory$) <> $$PathSlash$ THEN directory$ = directory$ + $$PathSlash$		' end directory path with \
+	WinXDir_AppendSlash (@directory$) ' append a \ to indicate a directory vs a file
 
 	RETURN directory$
 
