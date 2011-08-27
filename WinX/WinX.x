@@ -893,7 +893,7 @@ END FUNCTION
 ' returns the handle to the control or 0 on fail
 FUNCTION WinXAddAnimation (parent, STRING file, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$ACS_CENTER | $$WS_GROUP | $$WS_TABSTOP
+	style = style | $$ACS_CENTER
 
 	hInst = GetModuleHandleA (0)
 	hAni = CreateWindowExA (0, &"SysAnimate32", 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -970,7 +970,7 @@ FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
 	RECT rect
 
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP
+	style = style | $$WS_TABSTOP
 
 	hInst = GetModuleHandleA (0)
 	hCal = CreateWindowExA (0, &$$MONTHCAL_CLASS, 0, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
@@ -996,6 +996,7 @@ END FUNCTION
 FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
 	style = style | $$WS_TABSTOP | $$BS_AUTOCHECKBOX
+
 	IF isFirst THEN style = style | $$WS_GROUP
 	IF pushlike THEN style = style | $$BS_PUSHLIKE
 
@@ -1018,7 +1019,7 @@ END FUNCTION
 ' returns the handle to the extended combo box, or 0 on fail
 FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP
+	style = style | $$WS_TABSTOP
 	' $$CBS_DROPDOWN     : Editable Drop Down List
 	' $$CBS_DROPDOWNLIST : Non-editable Drop Down List
 	IF canEdit THEN style = style | $$CBS_DROPDOWN ELSE style = style | $$CBS_DROPDOWNLIST
@@ -1044,7 +1045,7 @@ END FUNCTION
 ' returns the handle of the control, or 0 on fail
 FUNCTION WinXAddControl (parent, STRING class, STRING title, style, exStyle, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
-	style = style | $$WS_TABSTOP | $$WS_GROUP
+	style = style | $$WS_TABSTOP
 
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (exStyle, &class, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1066,7 +1067,7 @@ FUNCTION WinXAddEdit (parent, STRING title, style, idCtr)
 	IFZ idCtr THEN RETURN
 
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
-	style = style | $$WS_TABSTOP | $$WS_GROUP | $$WS_BORDER
+	style = style | $$WS_TABSTOP | $$WS_BORDER
 	IF (style & $$ES_MULTILINE) = $$ES_MULTILINE THEN ' multiline edit box
 		style = style | $$WS_VSCROLL | $$ES_AUTOHSCROLL | $$WS_HSCROLL
 	ENDIF
@@ -1115,7 +1116,7 @@ END FUNCTION
 ' returns the handle of the list box
 FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP
+	style = style | $$WS_TABSTOP
 
 	' $$LBS_STANDARD         : enables $$WM_COMMAND's notification code ($$LBN_SELCHANGE)
 	' $$LBS_NOINTEGRALHEIGHT : Predefined size
@@ -1142,7 +1143,7 @@ END FUNCTION
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
 
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP
+	style = style | $$WS_TABSTOP
 	IF editable THEN style = style | $$LVS_EDITLABELS
 
 	' Guy-21sep10-don't keep a zero view, since it make the list view go berserk
@@ -1174,7 +1175,6 @@ END FUNCTION
 ' returns the handle to the progress bar or $$FALSE on fail
 FUNCTION WinXAddProgressBar (parent, smooth, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP
 	IF smooth THEN style = style | $$PBS_SMOOTH
 
 	hInst = GetModuleHandleA (0)
@@ -1258,7 +1258,6 @@ FUNCTION WinXAddStatic (parent, STRING title, hImage, style, idCtr)
 				imageType = $$IMAGE_BITMAP
 		END SELECT
 	ENDIF
-	' Guy-23nov10-removed $$WS_TABSTOP style flag to static's style mask
 
 	hInst = GetModuleHandleA (0)
 	hStatic = CreateWindowExA (0, &$$STATIC_CLASS, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1360,7 +1359,7 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 	' both the tab and parent controls must have the $$WS_CLIPSIBLINGS window style
 	' $$WS_CLIPSIBLINGS : Clip Sibling Area
 	' $$TCS_HOTTRACK    : Hot track
-	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TCS_HOTTRACK | $$WS_CLIPSIBLINGS
+	style = style | $$WS_TABSTOP | $$TCS_HOTTRACK | $$WS_CLIPSIBLINGS
 	IF multiline THEN style = style | $$TCS_MULTILINE
 
 	' add $$WS_CLIPSIBLINGS style to the parent control if missing
@@ -1392,7 +1391,7 @@ END FUNCTION
 ' returns the handle to the control or 0 on fail
 FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP
+	style = style | $$WS_TABSTOP
 
 	SELECT CASE format
 		CASE $$DTS_LONGDATEFORMAT, $$DTS_SHORTDATEFORMAT, $$DTS_TIMEFORMAT
@@ -1469,7 +1468,7 @@ END FUNCTION
 ' returns the handle to the trackbar or 0 on fail
 FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TBS_AUTOTICKS
+	style = style | $$WS_TABSTOP | $$TBS_AUTOTICKS
 
 	IF enableSelection THEN style = style | $$TBS_ENABLESELRANGE
 	IF posToolTip THEN style = style | $$TBS_TOOLTIPS
@@ -1497,7 +1496,7 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 	' $$TVS_LINESATROOT : Lines at root
 	' $$TVS_HASLINES    : |--lines
 	' $$TVS_HASBUTTONS  : [-]/[+]
-	style = style | $$WS_TABSTOP | $$WS_GROUP | $$TVS_HASBUTTONS | $$TVS_HASLINES | $$TVS_LINESATROOT
+	style = style | $$WS_TABSTOP | $$TVS_HASBUTTONS | $$TVS_HASLINES | $$TVS_LINESATROOT
 
 	IFF draggable THEN style = style | $$TVS_DISABLEDRAGDROP
 	IF editable THEN style = style | $$TVS_EDITLABELS
@@ -2674,6 +2673,7 @@ END FUNCTION
 
 ' Usage:
 ' xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
+' eg. C:\xblite\
 FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 	STATIC s_xblDir$
 
