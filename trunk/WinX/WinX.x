@@ -76,6 +76,7 @@ VERSION "0.6.0.14"
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
+'          Guy-28aug11-corrected WinXListBox_GetSelection.
 '
 ' Win32API DLL headers
 '
@@ -4279,37 +4280,38 @@ END FUNCTION
 ' returns the number of selected items
 FUNCTION WinXListBox_GetSelection (hListBox, index[])
 
-	' Guy-15apr09-prevent invalid handle
-	' IFZ hListBox THEN RETURN
 	IFZ hListBox THEN
-		DIM index[]
-		RETURN 0
+		DIM arr[]
+		numItems = 0
+	ELSE
+		style = GetWindowLongA (hListBox, $$GWL_STYLE)
+		SELECT CASE style AND $$LBS_EXTENDEDSEL
+			CASE $$LBS_EXTENDEDSEL		' multi-selections
+				numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
+				IF numItems < 1 THEN
+					DIM arr[]
+					numItems = 0
+				ELSE
+					DIM arr[numItems - 1]
+					SendMessageA (hListBox, $$LB_GETSELITEMS, numItems, &arr[0])
+				ENDIF
+				'
+			CASE ELSE		' mono-selection
+				selItem = SendMessageA (hListBox, $$LB_GETCURSEL, 0, 0)
+				IF selItem < 0 THEN
+					DIM arr[]
+					numItems = 0
+				ELSE
+					numItems = 1
+					DIM arr[0]
+					arr[0] = selItem
+				ENDIF
+				'
+		END SELECT
 	ENDIF
 
-	style = GetWindowLongA (hListBox, $$GWL_STYLE)
-	IF style AND $$LBS_EXTENDEDSEL THEN
-		numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-		' Guy-15apr09-IF numItems = 0 THEN RETURN
-		IF numItems < 1 THEN
-			DIM index[]
-			RETURN 0
-		ENDIF
-		'
-		DIM index[numItems - 1]
-		' Guy-12nov08-wMsg would remain zero
-		' SendMessageA (hListBox, wMsg, numItems, &index[0])
-		SendMessageA (hListBox, $$LB_GETSELITEMS, numItems, &index[0])
-	ELSE
-		selItem = SendMessageA (hListBox, $$LB_GETCURSEL, 0, 0)
-		IF selItem < 0 THEN
-			DIM index[]
-			RETURN 0
-		ENDIF
-		'
-		numItems = 1
-		DIM index[0]
-		index[0] = selItem
-	ENDIF
+	SWAP arr[], index[]
+
 	RETURN numItems
 END FUNCTION
 '
