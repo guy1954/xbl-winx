@@ -76,7 +76,7 @@ VERSION "0.6.0.14"
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
-'          Guy-28aug11-corrected WinXListBox_GetSelection.
+'          Guy-28aug11-corrected return of array argument in WinXListBox_GetSelection.
 '
 ' Win32API DLL headers
 '
@@ -5031,10 +5031,11 @@ END FUNCTION
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 
 	iniPath$ = TRIM$ (iniPath$)
-	IFZ iniPath$ THEN GOSUB ReturnError
-
-	XstDecomposePathname (iniPath$, "", "", "", "", @fExt$)
-	IF LCASE$ (fExt$) <> ".ini" THEN GOSUB ReturnError
+	IFZ iniPath$ THEN
+		DIM arr$[]
+		SWAP arr$[], mruList$[]
+		RETURN
+	ENDIF
 
 	' create ini file if it does not exist
 	key$ = WinXMRU_MakeKey$ (0) ' $$MRU_SECTION$ entry
@@ -5047,7 +5048,7 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 	' add real file pathNew$ to arr$[0]
 	pathNew$ = TRIM$ (pathNew$)
 	IF pathNew$ THEN
-		XstTranslateChars (@pathNew$, "/", "\\")
+		XstTranslateChars (@pathNew$, "/", $$PathSlash$)
 		bErr = XstFileExists (pathNew$)
 		IFF bErr THEN
 			upp = 0
@@ -5061,7 +5062,7 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
 		IFZ fpath$ THEN DO NEXT ' empty => skip it!
 		'
-		XstTranslateChars (@fpath$, "/", "\\")
+		XstTranslateChars (@fpath$, "/", $$PathSlash$)
 		bErr = XstFileExists (fpath$)
 		IF bErr THEN DO NEXT ' fpath$ does not exist => skip it!
 		'
@@ -5096,12 +5097,6 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 
 	RETURN $$TRUE		' success
 
-SUB ReturnError
-	DIM arr$[]
-	SWAP arr$[], mruList$[]
-	RETURN
-END SUB
-
 END FUNCTION
 '
 ' ##############################
@@ -5110,8 +5105,8 @@ END FUNCTION
 '
 FUNCTION WinXMRU_MakeKey$ (id)
 
-	IF id < 1 THEN id$ = "0" ELSE id$ = STRING$ (id)
-	RETURN "File " + id$
+	IF id < 1 THEN id$ = " 0" ELSE id$ = STR$ (id)
+	RETURN "File" + id$
 
 END FUNCTION
 '
@@ -5133,7 +5128,7 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 	' add real file pathNew$ to arr$[0]
 	pathNew$ = TRIM$ (pathNew$)
 	IF pathNew$ THEN
-		XstTranslateChars (@pathNew$, "/", "\\")
+		XstTranslateChars (@pathNew$, "/", $$PathSlash$)
 		bErr = XstFileExists (pathNew$)
 		IFF bErr THEN
 			upp = 0
@@ -5148,7 +5143,7 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 			fpath$ = TRIM$ (mruList$[imru])
 			IFZ fpath$ THEN DO NEXT
 			'
-			XstTranslateChars (@fpath$, "/", "\\")
+			XstTranslateChars (@fpath$, "/", $$PathSlash$)
 			bErr = XstFileExists (fpath$)
 			IF bErr THEN DO NEXT
 			'
@@ -7929,7 +7924,7 @@ END FUNCTION
 ' #####  WinXTreeView_MoveItem  #####
 ' ###################################
 ' Move an item and it's children
-' hTV = the hanlde to the tree vire control
+' hTV = the handle to the tree view control
 ' hParentItem = The parent of the item to move this item to
 ' hItemInsertAfter = The item that will come before this item
 ' hItem = the item to move
