@@ -206,7 +206,9 @@ FUNCTION onCommand (id, code, hWnd)
 	mouseDown = $$FALSE
 	SELECT CASE id
 		CASE $$ID_HELP
-			WinXDialog_Message (#winMain, "Drag the mouse in the client area to draw lines\nUse the menu or toolbar to change the pen and clear the drawing area", "Help", 0, 0)
+			'WinXDialog_Message (#winMain, "Drag the mouse in the client area to draw lines\nUse the menu or toolbar to change the pen and clear the drawing area", "Help", 0, 0)
+			text$ = "Drag the mouse in the client area to draw lines\nUse the menu or toolbar to change the pen and clear the drawing area"
+			WinXDialog_Message (#winMain, text$, "Help", "", 0)
 		CASE $$ID_REDPEN
 			currentPen = redPen
 			WinXStatus_SetText (#winMain, 1, "Red Pen Selected")
