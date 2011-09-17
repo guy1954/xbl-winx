@@ -86,7 +86,6 @@ FUNCTION Entry ()
 	WinXToolbar_AddToggleButton (#tbrMain, $$ID_REDPEN, 0, "Select red pen", $$TRUE, $$FALSE, $$FALSE)
 	WinXToolbar_AddToggleButton (#tbrMain, $$ID_GREENPEN, 1, "Select green pen", $$TRUE, $$FALSE, $$FALSE)
 	WinXToolbar_AddToggleButton (#tbrMain, $$ID_BLUEPEN, 2, "Select blue pen", $$TRUE, $$FALSE, $$FALSE)
-	WinXToolbar_AddSeparator (#tbrMain)
 	WinXToolbar_AddButton (#tbrMain, $$ID_CLEAR, 3, "Clear the drawing area", $$FALSE, $$FALSE)
 	WinXToolbar_AddButton (#tbrMain, $$ID_HELP, 4, "Click here for help", $$FALSE, $$FALSE)
 
