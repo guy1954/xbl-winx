@@ -3149,9 +3149,11 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 	ENDIF
 	BINDING_Update (idBinding, binding)
 
-	ret = AUTODRAWRECORD_New (record)
-	autoDraw_add (binding.autoDrawInfo, ret)
-	RETURN ret
+	idNew = AUTODRAWRECORD_New (record)
+	IF idNew > 0 THEN
+		autoDraw_add (binding.autoDrawInfo, idNew)
+	ENDIF
+	RETURN idNew
 END FUNCTION
 '
 ' ##########################
@@ -8810,6 +8812,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 
 	IFZ hWnd THEN RETURN
 
+	bMDIChild = $$FALSE		' assume hWnd is NOT an MDI child
 	handled = $$FALSE		' message NOT handled
 	ret_value = 0		' WndProc return value
 
@@ -9009,9 +9012,10 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				handled = $$TRUE
 				SendMessageA (binding.hwndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
 			ENDIF
-			IFZ binding.onClipChange THEN EXIT SELECT
-			handled = $$TRUE
-			ret_value = @binding.onClipChange ()
+			IF binding.onClipChange THEN
+				ret_value = @binding.onClipChange ()
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_CHANGECBCHAIN
 			IF wParam = binding.hwndNextClipViewer THEN
@@ -9048,13 +9052,13 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			handled = $$TRUE
 
 		CASE $$WM_ERASEBKGND
-			IFZ binding.backCol THEN EXIT SELECT
-			GetClientRect (hWnd, &rect)
-			FillRect (wParam, &rect, binding.backCol)
-			handled = $$TRUE
+			IF binding.backCol THEN
+				GetClientRect (hWnd, &rect)
+				FillRect (wParam, &rect, binding.backCol)
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_PAINT
-			IFZ binding.onPaint THEN EXIT SELECT
 			hDC = BeginPaint (hWnd, &ps)
 
 			' use auto draw
@@ -9069,7 +9073,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			' ENDIF
 			autoDraw_draw (hDC, binding.autoDrawInfo, xOff, yOff)
 
-			ret_value = @binding.onPaint (hWnd, hDC)
+			IF binding.onPaint THEN ret_value = @binding.onPaint (hWnd, hDC)
 
 			EndPaint (hWnd, &ps)
 
@@ -9142,29 +9146,34 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			' IF wParam = GetFocus () THEN RETURN $$MA_NOACTIVATE
 
 		CASE $$WM_KEYDOWN
-			IFZ binding.onKeyDown THEN EXIT SELECT
-			ret_value = @binding.onKeyDown (hWnd, wParam)
-			handled = $$TRUE
+			IF binding.onKeyDown THEN
+				ret_value = @binding.onKeyDown (hWnd, wParam)
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_KEYUP
-			IFZ binding.onKeyUp THEN EXIT SELECT
-			ret_value = @binding.onKeyUp (hWnd, wParam)
-			handled = $$TRUE
+			IF binding.onKeyUp THEN
+				ret_value = @binding.onKeyUp (hWnd, wParam)
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_CHAR
-			IFZ binding.onChar THEN EXIT SELECT
-			ret_value = @binding.onChar (hWnd, wParam)
-			handled = $$TRUE
+			IF binding.onChar THEN
+				ret_value = @binding.onChar (hWnd, wParam)
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_SETFOCUS
-			IFZ binding.onFocusChange THEN EXIT SELECT
-			ret_value = @binding.onFocusChange (hWnd, $$TRUE)
-			handled = $$TRUE
+			IF binding.onFocusChange THEN
+				ret_value = @binding.onFocusChange (hWnd, $$TRUE)
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_KILLFOCUS
-			IFZ binding.onFocusChange THEN EXIT SELECT
-			ret_value = @binding.onFocusChange (hWnd, $$FALSE)
-			handled = $$TRUE
+			IF binding.onFocusChange THEN
+				ret_value = @binding.onFocusChange (hWnd, $$FALSE)
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_SETCURSOR
 			IF binding.hCursor && LOWORD (lParam) = $$HTCLIENT THEN
@@ -9206,87 +9215,101 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			handled = $$TRUE
 
 		CASE $$WM_LBUTTONDOWN
-			IFZ binding.onMouseDown THEN EXIT SELECT
-			mouseXY.x = LOWORD (lParam)
-			mouseXY.y = HIWORD (lParam)
-			ret_value = @binding.onMouseDown (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
-			handled = $$TRUE
+			IF binding.onMouseDown THEN
+				mouseXY.x = LOWORD (lParam)
+				mouseXY.y = HIWORD (lParam)
+				ret_value = @binding.onMouseDown (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_MBUTTONDOWN
-			IFZ binding.onMouseDown THEN EXIT SELECT
-			mouseXY.x = LOWORD (lParam)
-			mouseXY.y = HIWORD (lParam)
-			ret_value = @binding.onMouseDown (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
-			handled = $$TRUE
+			IF binding.onMouseDown THEN
+				mouseXY.x = LOWORD (lParam)
+				mouseXY.y = HIWORD (lParam)
+				ret_value = @binding.onMouseDown (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_RBUTTONDOWN
-			IFZ binding.onMouseDown THEN EXIT SELECT
-			mouseXY.x = LOWORD (lParam)
-			mouseXY.y = HIWORD (lParam)
-			ret_value = @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
-			handled = $$TRUE
+			IF binding.onMouseDown THEN
+				mouseXY.x = LOWORD (lParam)
+				mouseXY.y = HIWORD (lParam)
+				ret_value = @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_LBUTTONUP
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 			IF tvDragButton = $$MBT_LEFT THEN
-				IFZ binding.onDrag THEN EXIT SELECT
-				GOSUB dragTreeViewItem
-				@binding.onDrag (GetDlgCtrlID (tvDragging), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
-				GOSUB endDragTreeViewItem
-				ret_value = 0
+				IF binding.onDrag THEN
+					GOSUB dragTreeViewItem
+					@binding.onDrag (GetDlgCtrlID (tvDragging), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
+					GOSUB endDragTreeViewItem
+					ret_value = 0
+					handled = $$TRUE
+				ENDIF
 			ELSE
-				IFZ binding.onMouseUp THEN EXIT SELECT
-				ret_value = @binding.onMouseUp (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
+				IF binding.onMouseUp THEN
+					ret_value = @binding.onMouseUp (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
+					handled = $$TRUE
+				ENDIF
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_MBUTTONUP
-			IFZ binding.onMouseUp THEN EXIT SELECT
-			mouseXY.x = LOWORD (lParam)
-			mouseXY.y = HIWORD (lParam)
-			ret_value = @binding.onMouseUp (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
-			handled = $$TRUE
+			IF binding.onMouseUp THEN
+				mouseXY.x = LOWORD (lParam)
+				mouseXY.y = HIWORD (lParam)
+				ret_value = @binding.onMouseUp (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
+				handled = $$TRUE
+			ENDIF
 
 		CASE $$WM_RBUTTONUP
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 			IF tvDragButton = $$MBT_LEFT THEN
-				IFZ binding.onDrag THEN EXIT SELECT
-				GOSUB dragTreeViewItem
-				@binding.onDrag (GetDlgCtrlID (tvDragging), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
-				GOSUB endDragTreeViewItem
-				ret_value = 0
+				IF binding.onDrag THEN
+					GOSUB dragTreeViewItem
+					@binding.onDrag (GetDlgCtrlID (tvDragging), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
+					GOSUB endDragTreeViewItem
+					ret_value = 0
+					handled = $$TRUE
+				ENDIF
 			ELSE
-				IFZ binding.onMouseUp THEN EXIT SELECT
-				ret_value = @binding.onMouseUp (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
+				IF binding.onMouseUp THEN
+					ret_value = @binding.onMouseUp (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
+					handled = $$TRUE
+				ENDIF
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_MOUSEWHEEL
-			IFZ binding.onMouseWheel THEN EXIT SELECT
 			' This message is broken.  It gets passed to active window rather than the window under the mouse
-
-			' mouseXY.x = LOWORD(lParam)
-			' mouseXY.y = HIWORD(lParam)
-
-			' ? "-";hWnd
-			' hChild = WindowFromPoint (mouseXY.x, mouseXY.y)
-			' ? hChild
-			' ScreenToClient (hChild, &mouseXY)
-			' hChild = ChildWindowFromPointEx (hChild, mouseXY.x, mouseXY.y, $$CWP_ALL)
-			' ? hChild
-
-			' idInnerBinding = GetWindowLongA (hChild, $$GWL_USERDATA)
-			' IFF BINDING_Get (idInnerBinding, @innerBinding) THEN
-			ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
-			' ELSE
-			' IF innerBinding.onMouseWheel THEN
-			' RETURN @innerBinding.onMouseWheel(hChild, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
-			' ELSE
-			' ret_value = @binding.onMouseWheel(hWnd, HIWORD(wParam), LOWORD(lParam), HIWORD(lParam))
-			' ENDIF
-			' ENDIF
+			'
+			'mouseXY.x = LOWORD (lParam)
+			'mouseXY.y = HIWORD (lParam)
+			'
+			'? "-"; hWnd
+			'hChild = WindowFromPoint (mouseXY.x, mouseXY.y)
+			'? hChild
+			'ScreenToClient (hChild, &mouseXY)
+			'hChild = ChildWindowFromPointEx (hChild, mouseXY.x, mouseXY.y, $$CWP_ALL)
+			'? hChild
+			'
+			'idInnerBinding = GetWindowLongA (hChild, $$GWL_USERDATA)
+			'IFF BINDING_Get (idInnerBinding, @innerBinding) THEN
+			'	ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+			'ELSE
+			'	IF innerBinding.onMouseWheel THEN
+			'		RETURN @innerBinding.onMouseWheel (hChild, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+			'	ELSE
+			'		ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+			'	ENDIF
+			'ENDIF
+			'
+			IF binding.onMouseWheel THEN
+				ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+				handled = $$TRUE
+			ENDIF
 
 		CASE DLM_MESSAGE
 			IF DLM_MESSAGE <> 0 THEN
@@ -9402,7 +9425,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 
 	IF handled THEN RETURN ret_value
 
-	IF kk THEN
+	IF bMDIChild THEN
 		' Pass the message to the default MDI procedure
 		RETURN DefMDIChildProcA (hWnd, wMsg, wParam, lParam)
 	ELSE
