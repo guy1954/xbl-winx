@@ -13,7 +13,8 @@ VERSION "0.2"
 '     Callum Lowcay (original version)
 '     Guy Lonne (evolutions)
 '
-' 0.2-25mar11-Guy-small changes in accessors.m4.
+' 0.2-Guy-25mar11-small changes in accessors.m4.
+'     Guy-04nov11-prevented adt.dll re-entry with SHARED variable #bReentry.
 '
 '
 	IMPORT "xst"        ' xblite Standard Library
@@ -154,8 +155,8 @@ DeclareAccess(STACK)
 ' Initialises the ADT library
 ' returns $$TRUE on error otherwise $$FALSE
 FUNCTION ADT ()
-	STATIC init
-	IF init THEN RETURN
+
+	IF #bReentry THEN RETURN
 
 	' in prevision of a static build
 	Xst ()		' initialize Xblite Standard Library
@@ -167,7 +168,7 @@ FUNCTION ADT ()
 	BINWALK_Init ()
 	STACK_Init ()
 
-	init = $$TRUE
+	#bReentry = $$TRUE
 
 END FUNCTION
 '
