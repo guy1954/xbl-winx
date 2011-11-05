@@ -77,6 +77,7 @@ VERSION "0.6.0.14"
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
 '          Guy-28aug11-corrected return of array argument in WinXListBox_GetSelection.
+'          Guy-04nov11-prevented winx.dll re-entry with SHARED variable #bReentry.
 '
 ' Win32API DLL headers
 '
@@ -741,8 +742,7 @@ FUNCTION WinX ()
 	INITCOMMONCONTROLSEX iccex
 	WNDCLASS wc
 
-	STATIC init
-	IF init THEN RETURN		' success: already initialized!
+	IF #bReentry THEN RETURN		' success: already initialized!
 
 	' in prevision of a static build
 	Xst ()		' initialize Xblite Standard Library
@@ -770,12 +770,12 @@ FUNCTION WinX ()
 	' $$ICC_WIN95_CLASSES      : everything else
 
 	iccex.dwICC = $$ICC_ANIMATE_CLASS | $$ICC_BAR_CLASSES | $$ICC_COOL_CLASSES | $$ICC_DATE_CLASSES | _
-	$$ICC_HOTKEY_CLASS | $$ICC_INTERNET_CLASSES | $$ICC_LISTVIEW_CLASSES | $$ICC_NATIVEFNTCTL_CLASS | _
-	$$ICC_PAGESCROLLER_CLASS | $$ICC_PROGRESS_CLASS | $$ICC_TAB_CLASSES | $$ICC_TREEVIEW_CLASSES | _
-	$$ICC_UPDOWN_CLASS | $$ICC_USEREX_CLASSES | $$ICC_WIN95_CLASSES
+	  $$ICC_HOTKEY_CLASS | $$ICC_INTERNET_CLASSES | $$ICC_LISTVIEW_CLASSES | $$ICC_NATIVEFNTCTL_CLASS | _
+	  $$ICC_PAGESCROLLER_CLASS | $$ICC_PROGRESS_CLASS | $$ICC_TAB_CLASSES | $$ICC_TREEVIEW_CLASSES | _
+	  $$ICC_UPDOWN_CLASS | $$ICC_USEREX_CLASSES | $$ICC_WIN95_CLASSES
 
 	' Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE ' fail
-	InitCommonControlsEx (&iccex)
+	InitCommonControlsEx (&iccex) ' Guy-04mar09-don't care!
 
 	BINDING_Init ()
 
@@ -832,7 +832,7 @@ FUNCTION WinX ()
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE		' fail
 
-	init = $$TRUE		' protect for reentry
+	#bReentry = $$TRUE		' protect for reentry
 
 END FUNCTION
 '
