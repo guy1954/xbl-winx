@@ -1,8 +1,8 @@
 PROGRAM "adt"
 VERSION "0.2"
 '
-' ADT - Abstract data types for XBlite
-' (C) Callum Lowcay 2008 - Liscensed under the GNU LGPL
+' ADT - Abstract Data Types library for XBlite
+' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
 '
 ' Requires m4 macro processing to compile.
 ' Also requires the accessors.m4 file.  I sugest that you copy this to your XBlite include folder and set the
@@ -301,6 +301,8 @@ END FUNCTION
 ' FnDeleteTreeNode = User delete function: FnDeleteTreeNode(indexDelete)
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION BinTree_Init (BINTREE tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
+	IFF #bReentry THEN ADT () ' Guy-07nov11-initialize Abstract Data Types library
+
 	tree.comparator = FnCompareNodeKeys
 	tree.keyDeleter = FnDeleteTreeNode
 	tree.iHead = 0
@@ -758,6 +760,8 @@ END FUNCTION
 FUNCTION LinkedList_Init (LINKEDLIST list)
 	LINKEDNODE head
 
+	IFF #bReentry THEN ADT () ' Guy-07nov11-initialize Abstract Data Types library
+
 	head.iData = 0
 	head.iNext = 0
 
@@ -1017,6 +1021,7 @@ END FUNCTION
 ' stack = the stack to initialise
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION Stack_Init (STACK stack)
+	IFF #bReentry THEN ADT () ' Guy-07nov11-initialize Abstract Data Types library
 	RETURN LinkedList_Init (@stack.list)
 END FUNCTION
 '
