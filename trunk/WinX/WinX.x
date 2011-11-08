@@ -5550,6 +5550,8 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	RECT rect
 	LINKEDLIST autoDraw
 
+	IFF #bReentry THEN WinX () ' Guy-07nov11-initialize WinX library
+
 	hWnd = 0
 	IF hOwner THEN hWnd = WinXCreateMdiChild (hOwner, title$, style)
 	rect.right = w
