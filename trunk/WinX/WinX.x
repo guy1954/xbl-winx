@@ -85,7 +85,6 @@ VERSION "0.6.0.14"
 	IMPORT "gdi32"      ' Graphic Device Interface
 	IMPORT "shell32"    ' interface to the operating system
 	IMPORT "user32"     ' Windows management
-	IMPORT "ole32"      ' for CoTaskMemFree
 	IMPORT "advapi32"   ' advanced API: security, services, registry ...
 	IMPORT "comctl32"   ' common controls; ==> initialize w/ InitCommonControlsEx ()
 	IMPORT "comdlg32"   ' standard dialog boxes (opening and saving files ...)
@@ -625,7 +624,7 @@ DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem)		' expand the tree view it
 DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem)		' collapse the tree view item
 ' new in 0.6.0.4
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows directory picker dialog
-DECLARE FUNCTION WinXFolder_GetDir$ (parent, nFolder)		' get the path for a Windows special folder
+DECLARE FUNCTION WinXFolder_GetDir$ (nFolder)		' get the path for a Windows special folder
 DECLARE FUNCTION WinXVersion$ ()		' get WinX's current version
 
 ' new in 0.6.0.5
@@ -657,10 +656,10 @@ DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
 DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
 DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
 
-DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path with \
-DECLARE FUNCTION WinXDir_Create (dir$) ' create the directory
-DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if a directory exists
-DECLARE FUNCTION WinXPath_Trim$ (path$) ' trim a path
+DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path dir$ with $$PathSlash$
+DECLARE FUNCTION WinXDir_Create (dir$) ' create directory dir$
+DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if directory dir$ exists
+DECLARE FUNCTION WinXPath_Trim$ (path$) ' trim file path path$
 DECLARE FUNCTION WinXDir_GetXblDir$ () ' get xblite's dir
 DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
 
@@ -2154,6 +2153,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage: WinXDialog_Message (#dlgAUD, "Not wanted", "Wanted?", "0", hInst)
+'	--> SHARED hInst ' is needed by WinXDialog_Message for the icon "0"
 '
 FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
 	MSGBOXPARAMS mb
@@ -2194,7 +2194,7 @@ FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows di
 	IF initDirIDL < $$CSIDL_DESKTOP || initDirIDL > $$CSIDL_ADMINTOOLS THEN initDirIDL = $$CSIDL_DESKTOP
 
 	' if no title, get the path for a Windows special folder
-	IFZ TRIM$ (title$) THEN title$ = WinXFolder_GetDir$ (parent, initDirIDL)
+	IFZ TRIM$ (title$) THEN title$ = WinXFolder_GetDir$ (initDirIDL)
 
 	bi.hWndOwner = parent
 	bi.pIDLRoot = initDirIDL
@@ -2211,8 +2211,6 @@ FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows di
 	' get the chosen directory path
 	buf$ = NULL$ ($$MAX_PATH)
 	ret = SHGetPathFromIDListA (pidl, &buf$)
-	CoTaskMemFree (&pidl)		' free the memory block
-
 	IFZ ret THEN RETURN ""		' fail
 
 	directory$ = CSTRING$ (&buf$)
@@ -2227,30 +2225,25 @@ END FUNCTION
 ' ##################################
 '
 ' Displays an OpenFile dialog box
-' parent = the handle to the window to own this dialog
-' title$ = the title for the dialog
-' extensions$ = a string containing the file extensions the dialog supports
+' parent       = the handle to the window to own this dialog
+' title$       = the title for the dialog
+' extensions$  = a string containing the file extensions the dialog supports
 ' initialName$ = the filename to initialise the dialog with
-' multiSelect = $$TRUE to enable selection of multiple file names,
-' $$FALSE for single file name selection
-' readOnly = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
-' (shows the check box "Read Only" and checks it initially)
+' multiSelect  = $$TRUE to enable selection of multiple file names,
+' .              $$FALSE for single file name selection
+' readOnly     = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
+' .              (shows the check box "Read Only" and checks it initially)
 ' returns the opened files or "" on cancel or error
 FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly)
 
 	OPENFILENAME ofn
 
-	' set initial directory initDir$
+	' set initial file parts
 	initDir$ = ""
 	initFN$ = ""
 	initExt$ = ""
 
-	IF initialName$ THEN
-		' in case of a drive, i.e. initialName$ = "c:" -> "c:\\"
-		IF RIGHT$ (RTRIM$ (initialName$)) = ":" THEN initialName$ = RTRIM$ (initialName$) + $$PathSlash$
-	ENDIF
-
-	initDir$ = ""
+	initialName$ = WinXPath_Trim$ (initialName$)
 	SELECT CASE TRUE
 		CASE LEN (initialName$) = 0
 			XstGetCurrentDirectory (@initDir$)
@@ -2258,19 +2251,21 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 		CASE RIGHT$ (initialName$) = $$PathSlash$		' Guy-15dec08-initialName$ is a directory
 			initDir$ = initialName$
 			'
+		CASE RIGHT$ (initialName$) = ":"		' Guy-14nov11-initialName$ is a drive
+			initDir$ = initialName$
+			'
 		CASE ELSE
-			IFZ initDir$ THEN
-				XstDecomposePathname (initialName$, @initDir$, "", @initFN$, "", @initExt$)
-			ENDIF
+			XstDecomposePathname (initialName$, @initDir$, "", @initFN$, "", @initExt$)
 			'
 	END SELECT
 
 	IF initDir$ THEN
-		IF RIGHT$ (initDir$) = $$PathSlash$ THEN initDir$ = RCLIP$ (initDir$)		' clip off the final \
+		' clip off a final $$PathSlash$
+		IF RIGHT$ (initDir$) = $$PathSlash$ THEN initDir$ = RCLIP$ (initDir$)
 		ofn.lpstrInitialDir = &initDir$
 	ENDIF
 
-	' set file filter fileFilter$ with argument extensions$
+	' SET file filter fileFilter$ WITH ARGUMENT extensions$
 	' ==============================================================================
 	' i.e.: extensions$ = "Text Files|*.TXT|Image Files|*.bmp;*.jpg)|
 	'
@@ -2304,7 +2299,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	ofn.nFilterIndex = 1
 
 	' initialize the return file name buffer buf$
-	initFN$ = TRIM$ (initFN$)
+	initFN$ = WinXPath_Trim$ (initFN$)
 	length = LEN (initFN$)
 	SELECT CASE length
 		CASE 0 : buf$ = NULL$ ($$MAX_PATH)
@@ -2523,7 +2518,7 @@ END FUNCTION
 '	' run Microsoft program "System Information"
 '	bOK = WinXDialog_SysInfo (@msInfo$)
 '	IFF bOK THEN
-'		msg$ = "Can't run Microsoft program \"System Information\""
+'		msg$ = "WinXDialog_SysInfo: Can't run Microsoft program \"System Information\""
 '		msg$ = msg$ + $$CRLF$ + "Execution path: " + msInfo$
 '		XstAlert (msg$)
 '	ENDIF
@@ -3732,35 +3727,31 @@ END FUNCTION
 ' ################################
 ' #####  WinXFolder_GetDir$  #####
 ' ################################
-' Gets the path for a Windows special folder
+' Gets the qualified path for a Windows special folder
 ' nFolder = the Windows' special folder
-' returns the directory path or "" on error
+' returns the qualified path, or "" on error
 '
 ' Usage:
-' dir$ = WinXFolder_GetDir$ (parent, $$CSIDL_PERSONAL) ' My Documents' folder
+'' get the qualified path of folder "My Documents"
+' dir$ = WinXFolder_GetDir$ ($$CSIDL_PERSONAL)
 '
-FUNCTION WinXFolder_GetDir$ (parent, nFolder)		' get the path for a Windows special folder
+FUNCTION WinXFolder_GetDir$ (nFolder)		' get the path for a Windows special folder
 
 	ITEMIDLIST idl
 
 	IF nFolder < $$CSIDL_DESKTOP || nFolder > $$CSIDL_ADMINTOOLS THEN nFolder = $$CSIDL_DESKTOP
 
 	' Fill the item idCtr list with the pointer of each folder item, returns 0 on success
-	rc = SHGetSpecialFolderLocation (parent, nFolder, &idl)
-	IF rc THEN		' fail (0 is for OK!)
-		XstGetCurrentDirectory (@directory$)
-	ELSE
-		' Get the path from the item idCtr list pointer
-		buf$ = NULL$ ($$MAX_PATH)
-		ret = SHGetPathFromIDListA (idl.mkid.cb, &buf$)
-		IF ret THEN
-			directory$ = CSTRING$ (&buf$)
-		ELSE
-			XstGetCurrentDirectory (@directory$)
-		ENDIF
-	ENDIF
-	WinXDir_AppendSlash (@directory$) ' append a \ to indicate a directory vs a file
+	rc = SHGetSpecialFolderLocation (0, nFolder, &idl)
+	IF rc THEN RETURN ""		' fail (0 is for OK!)
 
+	' Get the path from the item idCtr list pointer
+	buf$ = NULL$ ($$MAX_PATH)
+	ret = SHGetPathFromIDListA (idl.mkid.cb, &buf$)
+	IFZ ret THEN RETURN ""		' fail
+
+	directory$ = CSTRING$ (&buf$)
+	WinXDir_AppendSlash (@directory$) ' append a \ to indicate a directory vs a file
 	RETURN directory$
 
 END FUNCTION
@@ -4631,6 +4622,7 @@ END FUNCTION
 FUNCTION WinXListView_GetSelection (hLV, iItems[])
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
@@ -4685,6 +4677,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
@@ -4741,6 +4734,7 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
@@ -4824,6 +4818,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
@@ -4892,6 +4887,7 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
@@ -4928,6 +4924,7 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
@@ -4977,6 +4974,7 @@ FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN
 
+	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
