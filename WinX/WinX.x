@@ -76,8 +76,11 @@ VERSION "0.6.0.14"
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
-'          Guy-28aug11-corrected return of array argument in WinXListBox_GetSelection.
+'          Guy-28aug11-corrected return of array argument in WinXListBox_GetSelection
+'                      used SWAP to set and return the passed array.
 '          Guy-04nov11-prevented winx.dll re-entry with SHARED variable #bReentry.
+'          Guy-15dec11-corrected return of array argument in WinXListView_GetItemText
+'                      used SWAP to set and return the passed array.
 '
 ' Win32API DLL headers
 '
@@ -1742,7 +1745,7 @@ FUNCTION WinXCleanUp ()		' optional cleanup
 
 	IF g_hClipMem THEN
 		GlobalFree (g_hClipMem)
-		g_hClipMem = 0		' prevents from being freed twice g_hClipMem
+		g_hClipMem = 0 ' don't free twice
 	ENDIF
 
 	IF BINDING_array[] THEN
@@ -1922,6 +1925,13 @@ FUNCTION WinXClip_PutImage (hImage)
 	IFZ OpenClipboard (0) THEN RETURN
 	EmptyClipboard ()
 
+	' Guy-07dec11-avoid memory leak
+	IF g_hClipMem THEN
+		GlobalFree (g_hClipMem)
+		g_hClipMem = 0 ' don't free twice
+	ENDIF
+
+	' allocate memory
 	g_hClipMem = GlobalAlloc ($$GMEM_MOVEABLE | $$GMEM_ZEROINIT, SIZE (BITMAPINFOHEADER) + cbBits)
 	pGobalMem = GlobalLock (g_hClipMem)
 	RtlMoveMemory (pGobalMem, &ds.dsBmih, SIZE (BITMAPINFOHEADER))
@@ -1947,6 +1957,12 @@ FUNCTION WinXClip_PutString (Stri$)
 	IFZ OpenClipboard (0) THEN RETURN
 
 	StriLen = LEN (Stri$)
+
+	' Guy-07dec11-avoid memory leak
+	IF g_hClipMem THEN
+		GlobalFree (g_hClipMem)
+		g_hClipMem = 0 ' don't free twice
+	ENDIF
 
 	' allocate memory
 	g_hClipMem = GlobalAlloc ($$GMEM_MOVEABLE | $$GMEM_ZEROINIT, (StriLen + 1))
@@ -3932,88 +3948,79 @@ END FUNCTION
 '
 FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 
-	DIM r_asKey$[]		' reset the returned array
+	' reset the returned array
+	DIM reset$[]
+	SWAP reset$[], r_asKey$[]
 
 	bracketed$ = "[" + TRIM$ (curSec$) + "]" '  [section]
-	IF bracketed$ = "[]" THEN RETURN
-	IFZ TRIM$ (iniPath$) THEN RETURN
+	IF bracketed$ = "[]" THEN RETURN		' fail
+	IFZ TRIM$ (iniPath$) THEN RETURN		' fail
 
-	' load the .INI file into array text$[]
-	bErr = XstLoadStringArray (iniPath$, @text$[])
-	IF bErr THEN RETURN		' error
-	IFZ text$[] THEN RETURN		' error
+	' open read the .INI file
+	iniFile = OPEN (iniPath$, $$RD)
+	IF iniFile < 3 THEN RETURN ' error
 
-	upptext = UBOUND (text$[])
-
-	' look for the 1st line of the section curSec$
-	lineFirst = -1
-	FOR itext = 0 TO upptext
-		trimmed$ = TRIM$ (text$[itext])
-		IFZ trimmed$ THEN DO NEXT ' skip an empty line
-		IF LEFT$ (trimmed$) <> "[" THEN DO NEXT ' not a section
-		IF RIGHT$ (trimmed$) <> "]" THEN DO NEXT ' not a section
-		'
-		' trying section trimmed$ == bracketed$
-		IF trimmed$ = bracketed$ THEN
-			' Yes! found section curSec$ at line number itext
+	' look for the section curSec$
+	bSecFound = $$FALSE ' assume section curSec$ not found
+	IFF EOF (iniFile) THEN
+		DO
+			line$ = INFILE$ (iniFile)
+			IF EOF (iniFile) THEN EXIT DO		' end of file
 			'
-			' curSec$ found, its first line is just after
-			IF itext < upptext THEN lineFirst = itext + 1
-			EXIT FOR
-		ENDIF
-		'
-	NEXT itext
-	IF lineFirst = -1 THEN RETURN		' section not found or empty section
-
-	' Current section curSec$'s first key is at line lineFirst
-
-	' look for the last line of the section
-	lineLast = upptext
-	FOR itext = lineFirst TO upptext
-		trimmed$ = TRIM$ (text$[itext])
-		IFZ trimmed$ THEN DO NEXT ' skip an empty line
-		'
-		' is line trimmed$ (at line number itext) a section?
-		IF LEFT$ (trimmed$, 1) = "[" THEN
-			lineLast = itext - 1
-			EXIT FOR
-		ENDIF
-	NEXT itext
-
-	uppKey = lineLast - lineFirst ' assume only key lines
-	IF uppKey < 0 THEN RETURN		' empty section
-
-	DIM r_asKey$[uppKey]
-
-	' fill r_asKey$[] with the key names
-	iKeyAdd = -1
-	FOR itext = lineFirst TO lineLast
-		trimmed$ = TRIM$ (text$[itext])
-		'
-		IFZ trimmed$ THEN DO NEXT ' skip an empty line
-		IF LEFT$ (trimmed$) =";" THEN DO NEXT '  ' skip a comment
-		'
-		' Parsing key line trimmed$ at line itext
-		' e.g. key=value
-		pos = INSTR (trimmed$, "=", 1)
-		IFZ pos THEN DO NEXT
-		'
-		IF pos THEN
-			' add key to r_asKey$[]
-			key$ = TRIM$ (LEFT$ (trimmed$, pos - 1))
-			IF key$ THEN
-				INC iKeyAdd
-				r_asKey$[iKeyAdd] = key$
+			line$ = TRIM$ (line$)
+			IFZ line$ THEN DO DO ' skip an empty line
+			'
+			IF LEFT$ (line$) <> "[" THEN DO DO ' not a section
+			IF RIGHT$ (line$) <> "]" THEN DO DO ' not a section
+			'
+			' trying section line$ == bracketed$
+			IF line$ = bracketed$ THEN
+				bSecFound = $$TRUE ' section curSec$ found
+				EXIT DO
 			ENDIF
-		ENDIF
-		'
-	NEXT itext
-
-	IF iKeyAdd < 0 THEN
-		DIM r_asKey$[]
-	ELSE
-		IF iKeyAdd < uppKey THEN REDIM r_asKey$[iKeyAdd]
+			'
+		LOOP
 	ENDIF
+	IFF bSecFound THEN RETURN $$TRUE ' section curSec$ not found
+
+	DIM arr$[7]
+	upper_slot = 7
+	slot = -1
+	DO
+		line$ = INFILE$ (iniFile)
+		IF EOF (iniFile) THEN EXIT DO		' end of file
+		'
+		line$ = TRIM$ (line$)
+		IFZ line$ THEN DO DO ' skip an empty line
+		IF LEFT$ (line$) =";" THEN DO DO '  ' skip a comment
+		'
+		IF LEFT$ (line$) = "[" THEN EXIT DO ' end of section curSec$
+		'
+		' Parsing key line line$, e.g. key=value
+		pos = INSTR (line$, "=", 1)
+		IFZ pos THEN DO DO
+		'
+		key$ = TRIM$ (LEFT$ (line$, pos - 1))
+		IFZ key$ THEN DO DO
+		'
+		' add key to arr$[]
+		INC slot
+		IF slot > upper_slot THEN
+			' expand arr$[]
+			upper_slot = ((upper_slot + 1) << 1) - 1
+			REDIM arr$[upper_slot]
+		ENDIF
+		arr$[slot] = key$
+		'
+	LOOP
+	IF slot < 0 THEN
+		DIM arr$[]
+	ELSE
+		IF slot < upper_slot THEN REDIM arr$[slot]
+	ENDIF
+
+	' set the returned array
+	SWAP arr$[], r_asKey$[]
 
 	RETURN $$TRUE		' OK!
 
@@ -4028,49 +4035,53 @@ END FUNCTION
 FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 
 	' reset the returned array
-	IF r_asSec$[] THEN
-		upp = UBOUND (r_asSec$[])
-		FOR i = 0 TO upp
-			r_asSec$[i] = ""
-		NEXT i
+	DIM reset$[]
+	SWAP reset$[], r_asSec$[]
+
+	' open read the .INI file
+	iniFile = OPEN (iniPath$, $$RD)
+	IF iniFile < 3 THEN RETURN ' fail
+
+	DIM arr$[7]
+	upper_slot = 7
+	slot = -1
+
+	IFF EOF (iniFile) THEN
+		DO
+			line$ = INFILE$ (iniFile)
+			IF EOF (iniFile) THEN EXIT DO		' end of file
+			'
+			line$ = TRIM$ (line$)
+			IFZ line$ THEN DO DO ' skip an empty line
+			'
+			IF LEFT$ (line$) <> "[" THEN DO DO ' not a section
+			IF RIGHT$ (line$) <> "]" THEN DO DO ' not a section
+			'
+			' add section to arr$[]
+			INC slot
+			IF slot > upper_slot THEN
+				' expand arr$[]
+				upper_slot = ((upper_slot + 1) << 1) - 1
+				REDIM arr$[upper_slot]
+			ENDIF
+			'
+			' trim off the brackets
+			cCh = LEN (line$) - 2
+			arr$[slot] = MID$ (line$, 2, cCh)
+			'
+		LOOP
 	ENDIF
 
-	' load the .INI file into array text$[]
-	bErr = XstLoadStringArray (iniPath$, @text$[])
-	IF bErr THEN RETURN
-
-	' count the sections
-	count = 0
-	upptext = UBOUND (text$[])
-	FOR itext = 0 TO upptext
-		trimmed$ = TRIM$ (text$[itext])
-		IF (LEFT$ (trimmed$) = "[") && (RIGHT$ (trimmed$) = "]") THEN INC count
-	NEXT itext
-	IF count < 1 THEN RETURN
-
-	' "peal" the brackets off the section names
-	DIM arr$[count - 1]
-	iAdd = -1
-	upptext = UBOUND (text$[])
-	FOR itext = 0 TO upptext
-		trimmed$ = TRIM$ (text$[itext])
-		IF LEFT$ (trimmed$) <> "[" THEN DO NEXT ' not a section
-		IF RIGHT$ (trimmed$) <> "]" THEN DO NEXT ' not a section
-		'
-		INC iAdd
-		cCh = LEN (trimmed$) - 2
-		arr$[iAdd] = MID$ (trimmed$, 2, cCh)
-	NEXT itext
-
-	IF iAdd < 0 THEN
+	IF slot < 0 THEN
 		DIM arr$[]
 	ELSE
-		IF iAdd < count - 1 THEN REDIM arr$[iAdd]
+		IF slot < upper_slot THEN REDIM arr$[slot]
 	ENDIF
 
+	' set the returned array
 	SWAP arr$[], r_asSec$[]
 
-	RETURN $$TRUE		' OK!
+	RETURN $$TRUE		' success
 
 END FUNCTION
 '
@@ -4591,14 +4602,25 @@ END FUNCTION
 ' cSubItems = the number of sub items to get
 ' text$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
+
+' Usage
+'	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+'	IF count > 0 THEN
+'		iItem = count - 1 ' last item
+'		WinXListView_GetItemText (hLV, iItem, 1, @text$[]) ' retrieve the first 2 columns
+'	ENDIF
 FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 	LVITEM lvi
+
+	' reset the returned array
+	DIM reset$[]
+	SWAP reset$[], text$[]
 
 	IFZ hLV THEN RETURN
 	IF iItem < 0 THEN iItem = 0
 	IF cSubItems < 0 THEN RETURN
 
-	DIM text$[cSubItems]
+	DIM arr$[cSubItems]
 	FOR i = 0 TO cSubItems
 		buffer$ = NULL$ (4096)
 		lvi.mask = $$LVIF_TEXT
@@ -4607,9 +4629,13 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 		lvi.iItem = iItem
 		lvi.iSubItem = i
 
-		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN
-		text$[i] = CSTRING$ (&buffer$)
+		' gl-15dec11-IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN
+		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN EXIT FOR
+		arr$[i] = CSTRING$ (&buffer$)
 	NEXT i
+
+	' set the returned array
+	SWAP arr$[], text$[]
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5032,8 +5058,8 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 
 	iniPath$ = TRIM$ (iniPath$)
 	IFZ iniPath$ THEN
-		DIM arr$[]
-		SWAP arr$[], mruList$[]
+		DIM reset$[]
+		SWAP reset$[], mruList$[]
 		RETURN
 	ENDIF
 
@@ -8846,10 +8872,14 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			'
 			SELECT CASE nmhdr.code
 				CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
-					IF binding.onItem THEN ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+					IF binding.onItem THEN
+						handled = $$TRUE
+						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+					ENDIF
 					'
 				CASE $$NM_KEYDOWN
 					IF binding.onItem THEN
+						handled = $$TRUE
 						pNmkey = &nmkey
 						XLONGAT (&&nmkey) = lParam
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
@@ -8858,6 +8888,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$MCN_SELECT
 					IF binding.onCalendarSelect THEN
+						handled = $$TRUE
 						pNmsc = &nmsc
 						XLONGAT (&&nmsc) = lParam
 						ret_value = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
@@ -8868,12 +8899,14 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					IFZ binding.onSelect THEN EXIT SELECT
 					IF binding.skipOnSelect THEN RETURN
 					'
+					handled = $$TRUE
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_TREEVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
 					IFZ ret_value THEN ret_value = 1		' don't return a null value
 					'
 				CASE $$TVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmtvdi = &nmtvdi
 						XLONGAT (&&nmtvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
@@ -8882,6 +8915,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmtvdi = &nmtvdi
 						XLONGAT (&&nmtvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$ (nmtvdi.item.pszText))
@@ -8890,6 +8924,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_BEGINDRAG, $$TVN_BEGINRDRAG
 					IFZ binding.onDrag THEN EXIT SELECT
+					handled = $$TRUE
 					pNmtv = &nmtv
 					XLONGAT (&&nmtv) = lParam
 					'
@@ -8945,6 +8980,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					' nmhdr.hwndFrom is the tabstrip's handle
 					IFZ nmhdr.hwndFrom THEN EXIT SELECT
 					'
+					handled = $$TRUE
 					maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0) - 1
 					IF maxTab < 0 THEN EXIT SELECT
 					'
@@ -8974,6 +9010,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_COLUMNCLICK
 					IF binding.onColumnClick THEN
+						handled = $$TRUE
 						pNmlv = &nmlv
 						XLONGAT (&&nmlv) = lParam
 						ret_value = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
@@ -8982,6 +9019,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
@@ -8990,6 +9028,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
@@ -9001,6 +9040,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					IFZ binding.onSelect THEN EXIT SELECT
 					IF binding.skipOnSelect THEN RETURN
 					'
+					handled = $$TRUE
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_LISTVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
 					IFZ ret_value THEN ret_value = 1		' don't return a null value
@@ -9028,7 +9068,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 		CASE $$WM_DESTROYCLIPBOARD
 			IF g_hClipMem THEN
 				GlobalFree (g_hClipMem)
-				g_hClipMem = 0		' Guy-18dec08-prevents from freeing twice g_hClipMem
+				g_hClipMem = 0 ' don't free twice
 			ENDIF
 			handled = $$TRUE
 
