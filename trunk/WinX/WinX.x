@@ -797,11 +797,13 @@ FUNCTION WinX ()
 	initPrintInfo ()
 
 	' set hIcon with WinX's application icon
-	hLib = LoadLibraryA (&"WinX.dll")
+	st$ = "WinX.dll"
+	hLib = LoadLibraryA (&st$)
 	IFZ hLib THEN
 		hWinXIcon = 0
 	ELSE
-		hWinXIcon = LoadIconA (hLib, &"WinXIcon")
+		st$ = "WinXIcon"
+		hWinXIcon = LoadIconA (hLib, &st$)
 		FreeLibrary (hLib)
 	ENDIF
 
