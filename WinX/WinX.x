@@ -81,6 +81,11 @@ VERSION "0.6.0.14"
 '          Guy-04nov11-prevented winx.dll re-entry with SHARED variable #bReentry.
 '          Guy-15dec11-corrected return of array argument in WinXListView_GetItemText
 '                      used SWAP to set and return the passed array.
+'          Guy-30jan12-added WinXNewFont and WinXKillFont.
+'          Guy-01feb12-corrected return of array argument in WinXAddAccelerator
+'                      used SWAP to set and return the passed array r_accel[].
+'          Guy-02feb12-corrected return of array argument in WinXDraw_GetImageChannel
+'                      used SWAP to set and return the passed array r_data[].
 '
 ' Win32API DLL headers
 '
@@ -681,6 +686,9 @@ DECLARE FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos) ' 
 DECLARE FUNCTION WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stamp
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 
+DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
+DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
+
 END EXPORT
 '
 ' #######################
@@ -844,31 +852,36 @@ END FUNCTION
 ' #####  WinXAddAccelerator  #####
 ' ################################
 ' Adds an accelerator to an accelerator array
-' accel[] = an array of accelerators
+' r_accel[] = an array of accelerators
 ' cmd = the command the accelerator sends to WM_COMMAND
 ' key = the VK key code
 ' control, alt, shit = $$TRUE if the modifier is down, $$FALSE otherwise
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXAddAccelerator (ACCEL accel[], cmd, key, control, alt, shift)
+FUNCTION WinXAddAccelerator (ACCEL r_accel[], cmd, key, control, alt, shift)
+	ACCEL ACCEL_array[]
+
 	IFZ cmd THEN RETURN
 	IF key < 0 || key > 0xFE THEN RETURN
 
-	IFZ accel[] THEN
-		DIM accel[0]
+	IFZ r_accel[] THEN
+		DIM ACCEL_array[0]
+		upp = 0
 	ELSE
-		i = UBOUND (accel[])
-		REDIM accel[i + 1]
+		upp = UBOUND (r_accel[]) + 1
+		DIM ACCEL_array[upp]
+		bytes = SIZE (r_accel[])
+		XstCopyMemory (&r_accel[0], &ACCEL_array[0], bytes)
 	ENDIF
-	i = UBOUND (accel[])
 
-	accel[i].fVirt = $$FVIRTKEY
-	IF alt THEN accel[i].fVirt = accel[i].fVirt | $$FALT
-	IF control THEN accel[i].fVirt = accel[i].fVirt | $$FCONTROL
-	IF shift THEN accel[i].fVirt = accel[i].fVirt | $$FSHIFT
+	ACCEL_array[upp].fVirt = $$FVIRTKEY
+	IF alt     THEN ACCEL_array[upp].fVirt = ACCEL_array[upp].fVirt | $$FALT
+	IF control THEN ACCEL_array[upp].fVirt = ACCEL_array[upp].fVirt | $$FCONTROL
+	IF shift   THEN ACCEL_array[upp].fVirt = ACCEL_array[upp].fVirt | $$FSHIFT
 
-	accel[i].key = key
-	accel[i].cmd = cmd
+	ACCEL_array[upp].key = key
+	ACCEL_array[upp].cmd = cmd
 
+	SWAP ACCEL_array[], r_accel[]
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -2115,19 +2128,24 @@ FUNCTION WinXDate_GetCurrentTimeStamp$ ()
 
 	stamp$ = STRING$ (year) ' 4 digits
 
-	IF month < 10 THEN st$ = "0" + STRING$ (month) ELSE st$ = STRING$ (month)
+	st$ = STRING$ (month)
+	IF month < 10 THEN st$ = "0" + st$
 	stamp$ = stamp$ + "_" + st$
 
-	IF day < 10 THEN st$ = "0" + STRING$ (day) ELSE st$ = STRING$ (day)
+	st$ = STRING$ (day)
+	IF day < 10 THEN st$ = "0" + st$
 	stamp$ = stamp$ + "_" + st$
 
-	IF hour < 10 THEN st$ = "0" + STRING$ (hour) ELSE st$ = STRING$ (hour)
+	st$ = STRING$ (hour)
+	IF hour < 10 THEN st$ = "0" + st$
 	stamp$ = stamp$ + "_" + st$
 
-	IF minute < 10 THEN st$ = "0" + STRING$ (minute) ELSE st$ = STRING$ (minute)
+	st$ = STRING$ (minute)
+	IF minute < 10 THEN st$ = "0" + st$
 	stamp$ = stamp$ + "_" + st$
 
-	IF second < 10 THEN st$ = "0" + STRING$ (second) ELSE st$ = STRING$ (second)
+	st$ = STRING$ (second)
+	IF second < 10 THEN st$ = "0" + st$
 	stamp$ = stamp$ + "_" + st$
 
 	RETURN stamp$
@@ -3386,23 +3404,31 @@ END FUNCTION
 ' Retrieves on of the channels of a WinX image
 ' hImage =  the handle of the image
 ' channel = the channel if, 0 for blue, 1 for green, 2 for red, 3 for alpha
-' data[] =  the UBYTE array to store the channel data
-' returns $$TRUE on success or $$FALSE on fail, dimensions data[] appropriately
-FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE data[])
+' r_data[] =  the UBYTE array to store the channel data
+' returns $$TRUE on success or $$FALSE on fail, dimensions r_data[] appropriately
+FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE r_data[])
 	BITMAP bmp
 	ULONG pixel
 
+	' reset the returned array
+	DIM reset@@[]
+	SWAP reset@@[], r_data[]
+
+	IFZ hImage THEN RETURN
 	IF channel < 0 || channel > 3 THEN RETURN
 	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	downshift = channel << 3
 
 	maxPixel = bmp.width * bmp.height - 1
-	DIM data[maxPixel]
+	DIM arr@@[maxPixel]
 	FOR i = 0 TO maxPixel
 		pixel = ULONGAT (bmp.bits, i << 2)
-		data[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
+		arr@@[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
 	NEXT i
+
+	' set the returned array
+	SWAP arr@@[], r_data[]
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -4282,33 +4308,33 @@ END FUNCTION
 ' ######################################
 ' Gets the selected items in a list box
 ' hListBox = the list box to get the items from
-' index[] = the array to place the items into
+' r_index[] = the array to place the items into
 ' returns the number of selected items
-FUNCTION WinXListBox_GetSelection (hListBox, index[])
+FUNCTION WinXListBox_GetSelection (hListBox, r_index[])
 
 	IFZ hListBox THEN
 		DIM arr[]
-		numItems = 0
+		cItem = 0
 	ELSE
 		style = GetWindowLongA (hListBox, $$GWL_STYLE)
 		SELECT CASE style AND $$LBS_EXTENDEDSEL
 			CASE $$LBS_EXTENDEDSEL		' multi-selections
-				numItems = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-				IF numItems < 1 THEN
+				cItem = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
+				IF cItem < 1 THEN
 					DIM arr[]
-					numItems = 0
+					cItem = 0
 				ELSE
-					DIM arr[numItems - 1]
-					SendMessageA (hListBox, $$LB_GETSELITEMS, numItems, &arr[0])
+					DIM arr[cItem - 1]
+					SendMessageA (hListBox, $$LB_GETSELITEMS, cItem, &arr[0])
 				ENDIF
 				'
 			CASE ELSE		' mono-selection
 				selItem = SendMessageA (hListBox, $$LB_GETCURSEL, 0, 0)
 				IF selItem < 0 THEN
 					DIM arr[]
-					numItems = 0
+					cItem = 0
 				ELSE
-					numItems = 1
+					cItem = 1
 					DIM arr[0]
 					arr[0] = selItem
 				ENDIF
@@ -4316,9 +4342,9 @@ FUNCTION WinXListBox_GetSelection (hListBox, index[])
 		END SELECT
 	ENDIF
 
-	SWAP arr[], index[]
+	SWAP arr[], r_index[]
 
-	RETURN numItems
+	RETURN cItem
 END FUNCTION
 '
 ' ####################################
@@ -4602,7 +4628,7 @@ END FUNCTION
 ' hLV = the handle to the list view
 ' iItem = the zero-based index of the item
 ' cSubItems = the number of sub items to get
-' text$[] = the array to store the result
+' r_text$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage
@@ -4611,12 +4637,12 @@ END FUNCTION
 '		iItem = count - 1 ' last item
 '		WinXListView_GetItemText (hLV, iItem, 1, @text$[]) ' retrieve the first 2 columns
 '	ENDIF
-FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
+FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @r_text$[])
 	LVITEM lvi
 
 	' reset the returned array
 	DIM reset$[]
-	SWAP reset$[], text$[]
+	SWAP reset$[], r_text$[]
 
 	IFZ hLV THEN RETURN
 	IF iItem < 0 THEN iItem = 0
@@ -4637,7 +4663,7 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 	NEXT i
 
 	' set the returned array
-	SWAP arr$[], text$[]
+	SWAP arr$[], r_text$[]
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -4645,18 +4671,22 @@ END FUNCTION
 ' #####  WinXListView_GetSelection  #####
 ' #######################################
 ' Gets the current selection
-' iItems[] = the array in which to store the indexes of selected items
+' r_iItems[] = the array in which to store the indexes of selected items
 ' returns the number of selected items
-FUNCTION WinXListView_GetSelection (hLV, iItems[])
-	IFZ hLV THEN RETURN
+FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
+	' reset the returned array
+	DIM reset[]
+	SWAP reset[], r_iItems[]
+
+	IFZ hLV THEN RETURN
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
-	cSelItems = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-	IF cSelItems = 0 THEN RETURN
-	DIM iItems[cSelItems - 1]
+	cSelItem = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
+	IF cSelItem = 0 THEN RETURN
+	DIM arr[cSelItem - 1]
 
 	slot = -1
 	' now iterate over all the items to locate the selected ones
@@ -4665,11 +4695,14 @@ FUNCTION WinXListView_GetSelection (hLV, iItems[])
 		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
 		IF ret THEN
 			INC slot
-			IF slot < cSelItems THEN iItems[slot] = iItem
+			IF slot < cSelItem THEN arr[slot] = iItem
 		ENDIF
 	NEXT iItem
 
-	RETURN cSelItems
+	' set the returned array
+	SWAP arr[], r_iItems[]
+
+	RETURN cSelItem
 END FUNCTION
 '
 ' #########################################
@@ -5056,14 +5089,14 @@ END FUNCTION
 '
 ' load the Most Recently Used file list from the .INI file
 ' Returns $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
+FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
+
+	' reset the returned array
+	DIM reset$[]
+	SWAP reset$[], r_mruList$[]
 
 	iniPath$ = TRIM$ (iniPath$)
-	IFZ iniPath$ THEN
-		DIM reset$[]
-		SWAP reset$[], mruList$[]
-		RETURN
-	ENDIF
+	IFZ iniPath$ THEN RETURN
 
 	' create ini file if it does not exist
 	key$ = WinXMRU_MakeKey$ (0) ' $$MRU_SECTION$ entry
@@ -5121,7 +5154,9 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[])
 	ELSE
 		IF UBOUND (arr$[]) <> upp THEN REDIM arr$[upp]
 	ENDIF
-	SWAP arr$[], mruList$[]
+
+	' set the returned array
+	SWAP arr$[], r_mruList$[]
 
 	RETURN $$TRUE		' success
 
@@ -5143,8 +5178,8 @@ END FUNCTION
 ' ###################################
 '
 ' Save the Most Recently Used file list
-' Return      = $$FALSE = failure, $$TRUE = success
-FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
+' Returns $$FALSE = failure, $$TRUE = success
+FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
 	' Add file pathNew$ to MRU file list. If file already exists in list then it is
 	' simply moved up to the top of the list and not added again. If list is
 	' full then the least recently used item is removed to make room.
@@ -5165,10 +5200,10 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 	ENDIF
 
 	' copy the current Most Recently Used file list
-	IF mruList$[] THEN
-		uppmru = UBOUND (mruList$[])
+	IF r_mruList$[] THEN
+		uppmru = UBOUND (r_mruList$[])
 		FOR imru = 0 TO uppmru
-			fpath$ = TRIM$ (mruList$[imru])
+			fpath$ = TRIM$ (r_mruList$[imru])
 			IFZ fpath$ THEN DO NEXT
 			'
 			XstTranslateChars (@fpath$, "/", $$PathSlash$)
@@ -5189,11 +5224,12 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 					ENDIF
 				NEXT z
 			ENDIF
-			IF bFound THEN DO NEXT ' already in arr$[] => skip it!
 			'
-			IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
-			INC upp
-			arr$[upp] = fpath$
+			IFF bFound THEN
+				IF upp >= $$UPP_MRU THEN EXIT FOR ' MRU list is full
+				INC upp
+				arr$[upp] = fpath$
+			ENDIF
 		NEXT imru
 	ENDIF
 	IF upp < 0 THEN
@@ -5225,7 +5261,7 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[])
 	ENDIF
 
 	' reset the Most Recently Used project lists
-	SWAP arr$[], mruList$[]
+	SWAP arr$[], r_mruList$[]
 
 	RETURN $$TRUE		' success
 
@@ -5541,6 +5577,88 @@ FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisabl
 	SendMessageA (hToolbar, $$TB_BUTTONSTRUCTSIZE, SIZE (TBBUTTON), 0)
 
 	RETURN hToolbar
+END FUNCTION
+'
+' ##########################
+' #####  WinXKillFont  #####
+' ##########################
+'
+' release a font created by WinXNewFont
+' hFont = the handle of the logical font
+' Returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXKillFont (@hFont)
+
+	IFZ hFont THEN RETURN ' fail
+
+	ret = DeleteObject (hFont) ' release the font
+	hFont = 0
+	RETURN $$TRUE ' success
+
+END FUNCTION
+'
+' #########################
+' #####  WinXNewFont  #####
+' #########################
+'
+' create a new logical font
+' fontName$ = the name of the font
+' pointSize = the size of the font in points
+' weight    = the weight of the font as $$FW_THIN,...
+' italic    = $$TRUE for italic characters
+' underline = $$TRUE for underlined characters
+' strikeOut = $$TRUE for striken-out characters
+' fontName$ = the name of the font
+' Returns the font handle if success, 0 = fail
+FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut)
+
+	LOGFONT oLogFont
+
+	' check fontName$ not empty
+	fontName$ = TRIM$ (fontName$)
+	IFZ fontName$ THEN RETURN ' fail
+
+	hfontToClone = GetStockObject ($$DEFAULT_GUI_FONT) ' get a font to clone
+	' hfontToClone provides with a well-formed font structure
+	bytes = GetObjectA (hfontToClone, SIZE (oLogFont), &oLogFont) ' allocate structure font
+	' release the cloned font
+	DeleteObject (hfontToClone)
+	hfontToClone = 0
+
+	' set the cloned font structure with the passed parameters
+	oLogFont.faceName = fontName$
+
+	IFZ pointSize THEN
+		oLogFont.height = 0
+	ELSE
+		' character height is specified (in points)
+		IF pointSize > 0 THEN
+			pointH = pointSize
+		ELSE
+			pointH = -pointSize ' make it positive
+		ENDIF
+		'
+		' convert pointSize to pixels
+		hdc = GetDC ($$HWND_DESKTOP) ' get the desktop context's handle
+		' Windows expects the font height to be in pixels and negative
+		oLogFont.height = MulDiv (pointH, GetDeviceCaps (hdc, $$LOGPIXELSY), -72)
+		ReleaseDC ($$HWND_DESKTOP, hdc) ' release the handle of the desktop context
+	ENDIF
+
+	SELECT CASE weight
+		CASE $$FW_THIN, $$FW_EXTRALIGHT, $$FW_LIGHT, $$FW_NORMAL, $$FW_MEDIUM, _
+		     $$FW_SEMIBOLD, $$FW_BOLD, $$FW_EXTRABOLD, $$FW_HEAVY, $$FW_DONTCARE
+			oLogFont.weight = weight
+			'
+		CASE ELSE : oLogFont.weight = $$FW_NORMAL
+	END SELECT
+
+	IF italic    THEN oLogFont.italic    = 1 ELSE oLogFont.italic    = 0
+	IF underline THEN oLogFont.underline = 1 ELSE oLogFont.underline = 0
+	IF strikeOut THEN oLogFont.strikeOut = 1 ELSE oLogFont.strikeOut = 0
+
+	hFont = CreateFontIndirectA (&oLogFont) ' create logical font hFont
+	RETURN hFont
+
 END FUNCTION
 '
 ' ###########################
@@ -8861,12 +8979,16 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 	SELECT CASE wMsg
 		CASE $$WM_COMMAND
 			' Guy-15apr09-ret_value = @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
-			IFZ binding.onCommand THEN RETURN
+			handled = $$TRUE
+			ret_value = 0
+			IFZ binding.onCommand THEN EXIT SELECT
 			idCtr = LOWORD (wParam)
 			notifyCode = HIWORD (wParam)
-			RETURN @binding.onCommand (idCtr, notifyCode, lParam)
+			ret_value = @binding.onCommand (idCtr, notifyCode, lParam)
 
 		CASE $$WM_NOTIFY
+			handled = $$TRUE
+			ret_value = 0
 			IFZ lParam THEN EXIT SELECT
 			' get event that has occurred in a control
 			' RtlMoveMemory (&nmhdr, lParam, SIZE (nmhdr))
@@ -8875,13 +8997,11 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			SELECT CASE nmhdr.code
 				CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
 					IF binding.onItem THEN
-						handled = $$TRUE
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
 					ENDIF
 					'
 				CASE $$NM_KEYDOWN
 					IF binding.onItem THEN
-						handled = $$TRUE
 						pNmkey = &nmkey
 						XLONGAT (&&nmkey) = lParam
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
@@ -8890,7 +9010,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$MCN_SELECT
 					IF binding.onCalendarSelect THEN
-						handled = $$TRUE
 						pNmsc = &nmsc
 						XLONGAT (&&nmsc) = lParam
 						ret_value = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
@@ -8899,16 +9018,14 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_SELCHANGED
 					IFZ binding.onSelect THEN EXIT SELECT
-					IF binding.skipOnSelect THEN RETURN
+					IF binding.skipOnSelect THEN EXIT SELECT
 					'
-					handled = $$TRUE
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_TREEVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
 					IFZ ret_value THEN ret_value = 1		' don't return a null value
 					'
 				CASE $$TVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmtvdi = &nmtvdi
 						XLONGAT (&&nmtvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
@@ -8917,7 +9034,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmtvdi = &nmtvdi
 						XLONGAT (&&nmtvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$ (nmtvdi.item.pszText))
@@ -8926,7 +9042,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_BEGINDRAG, $$TVN_BEGINRDRAG
 					IFZ binding.onDrag THEN EXIT SELECT
-					handled = $$TRUE
 					pNmtv = &nmtv
 					XLONGAT (&&nmtv) = lParam
 					'
@@ -8982,7 +9097,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					' nmhdr.hwndFrom is the tabstrip's handle
 					IFZ nmhdr.hwndFrom THEN EXIT SELECT
 					'
-					handled = $$TRUE
 					maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0) - 1
 					IF maxTab < 0 THEN EXIT SELECT
 					'
@@ -9012,7 +9126,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_COLUMNCLICK
 					IF binding.onColumnClick THEN
-						handled = $$TRUE
 						pNmlv = &nmlv
 						XLONGAT (&&nmlv) = lParam
 						ret_value = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
@@ -9021,7 +9134,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
@@ -9030,7 +9142,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
@@ -9040,14 +9151,13 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				CASE $$LVN_ITEMCHANGED
 					' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 					IFZ binding.onSelect THEN EXIT SELECT
-					IF binding.skipOnSelect THEN RETURN
+					IF binding.skipOnSelect THEN EXIT SELECT
 					'
-					handled = $$TRUE
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_LISTVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
 					IFZ ret_value THEN ret_value = 1		' don't return a null value
 					'
-			END SELECT
+			END SELECT 'nmhdr.code
 			'
 		CASE $$WM_DRAWCLIPBOARD
 			IF binding.hwndNextClipViewer THEN
