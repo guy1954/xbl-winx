@@ -86,6 +86,7 @@ VERSION "0.6.0.14"
 '                      used SWAP to set and return the passed array r_accel[].
 '          Guy-02feb12-corrected return of array argument in WinXDraw_GetImageChannel
 '                      used SWAP to set and return the passed array r_data[].
+  '          Guy-06feb12-added new function WinXGetMinSize
 '
 ' Win32API DLL headers
 '
@@ -413,6 +414,7 @@ DECLARE FUNCTION WinXAddStatic (parent, title$, hImage, style, idCtr)
 DECLARE FUNCTION WinXAddEdit (parent, title$, style, idCtr)
 DECLARE FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, flags)
 DECLARE FUNCTION WinXSetMinSize (hWnd, w, h)
+DECLARE FUNCTION WinXGetMinSize (hWnd, @w, @h)
 DECLARE FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 
 DECLARE FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
@@ -7139,6 +7141,7 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 	BINDING binding
 	RECT rect
 
+	IFZ hWnd THEN RETURN
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
@@ -7159,6 +7162,29 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 	binding.minH = rect.bottom - rect.top
 	BINDING_Update (idBinding, binding)
 
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ############################
+' #####  WinXGetMinSize  #####
+' ############################
+' Gets the minimum size for a window
+' hWnd = the window handle
+' w and h = the minimum width and height of the client area
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXGetMinSize (hWnd, @w, @h)
+	BINDING binding
+
+	w = 0
+	h = 0
+	IFZ hWnd THEN RETURN
+
+	' get the binding
+	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+
+	w = binding.minW
+	h = binding.minH
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7205,28 +7231,27 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 	' ----------------------------------------------------
 	' Guy-03sep10-not that simple!
 	'
-	' style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	' styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+	'style = GetWindowLongA (hWnd, $$GWL_STYLE)
+	'styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 	'
-	' style = style|add
-	' styleEx = styleEx|addEx
+	'style = style OR add
+	'styleEx = styleEx OR addEx
 	'
-	' style = style AND NOT(sub)
-	' styleEx = styleEx AND NOT(subEx)
+	'style = style AND NOT(sub)
+	'styleEx = styleEx AND NOT(subEx)
 	'
-	' SetWindowLongA (hWnd, $$GWL_STYLE, style)
-	' SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleEx)
+	'ret = SetWindowLongA (hWnd, $$GWL_STYLE, style)
+	'ret = SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleEx)
 	' ----------------------------------------------------
 
+	bOK = $$TRUE		' success
 	IF add <> sub THEN
 		'
 		style = GetWindowLongA (hWnd, $$GWL_STYLE)
 		styleNew = style
 		'
-		' add before subtracting
-		' ======================
 		IF add THEN
-			' add add to styleNew
+			' add before subtracting
 			IF (styleNew & add) <> add THEN styleNew = styleNew | add
 		ENDIF
 		'
@@ -7237,11 +7262,8 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		'
 		' update the control only for a style change
 		IF styleNew <> style THEN
-			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
-			'
-			' if the control's style was not updated, report a failure
-			style = GetWindowLongA (hWnd, $$GWL_STYLE)
-			IF styleNew <> style THEN RETURN
+			ret = SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
+			IFZ ret THEN bOK = $$FALSE		' fail
 		ENDIF
 		'
 	ENDIF
@@ -7251,10 +7273,8 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 		styleExNew = styleEx
 		'
-		' add before subtracting
-		' ======================
 		IF addEx THEN
-			' addEx addEx to styleExNew
+			' add before subtracting
 			IF (styleExNew & addEx) <> addEx THEN styleExNew = styleExNew | addEx
 		ENDIF
 		'
@@ -7265,15 +7285,12 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		'
 		' update the control only for a style change
 		IF styleExNew <> styleEx THEN
-			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
-			'
-			' if the control's extended style was not updated, report a failure
-			styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-			IF styleExNew <> styleEx THEN RETURN
+			ret = SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
+			IFZ ret THEN bOK = $$FALSE		' fail
 		ENDIF
 		'
 	ENDIF
-	RETURN $$TRUE		' success
+	RETURN bOK
 END FUNCTION
 '
 ' #########################
