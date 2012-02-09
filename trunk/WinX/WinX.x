@@ -86,7 +86,7 @@ VERSION "0.6.0.14"
 '                      used SWAP to set and return the passed array r_accel[].
 '          Guy-02feb12-corrected return of array argument in WinXDraw_GetImageChannel
 '                      used SWAP to set and return the passed array r_data[].
-  '          Guy-06feb12-added new function WinXGetMinSize
+  '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw
 '
 ' Win32API DLL headers
 '
@@ -352,7 +352,7 @@ $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
 $$MRU_SECTION$     = "Recent files"
 $$UPP_MRU          = 19
 
-$$WINX_CLASS$ = "WinXMainClass"
+$$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 
 DECLARE FUNCTION WinX ()
@@ -610,6 +610,7 @@ DECLARE FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, tim
 DECLARE FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 DECLARE FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid)
 DECLARE FUNCTION WinXSetFont (hCtr, hFont)
+DECLARE FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
 DECLARE FUNCTION WinXClip_IsImage ()
 DECLARE FUNCTION WinXClip_GetImage ()
 DECLARE FUNCTION WinXClip_PutImage (hImage)
@@ -826,8 +827,10 @@ FUNCTION WinX ()
 	wc.hCursor = LoadCursorA (0, $$IDC_ARROW)
 	wc.hbrBackground = $$COLOR_BTNFACE + 1
 
+	' gl-09feb12-generate WinX's main window class
 	stamp$ = WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stamp
-	#WinXclass$ = $$WINX_CLASS$ + "_" + stamp$
+	XstStripChars (@stamp$, "_", 0) ' strip all underscores from time stamp
+	#WinXclass$ = $$WINX_CLASS$ + stamp$
 	wc.lpszClassName = &#WinXclass$
 
 	ret = RegisterClassA (&wc)
@@ -1754,11 +1757,17 @@ END FUNCTION
 ' #####  WinXCleanUp  #####
 ' #########################
 '
-' this is the place where all allocated memory is freed
+' cleanup of any resources that need to be deallocated (allocated memory is freed, ...)
 '
 FUNCTION WinXCleanUp ()		' optional cleanup
 	SHARED BINDING BINDING_array[]		'a simple array of bindings
 	SHARED g_hClipMem		' to copy to the clipboard
+	STATIC s_entry
+	WNDCLASS wc		' objet de la Structure WNDCLASS
+
+	IF s_entry = 1 THEN RETURN
+
+	hInst = GetModuleHandleA (0)
 
 	IF g_hClipMem THEN
 		GlobalFree (g_hClipMem)
@@ -1767,27 +1776,29 @@ FUNCTION WinXCleanUp ()		' optional cleanup
 
 	IF BINDING_array[] THEN
 		FOR i = UBOUND (BINDING_array[]) TO 0 STEP -1
-			IF BINDING_array[i].hAccelTable THEN
-				DestroyAcceleratorTable (BINDING_array[i].hAccelTable)		' destroy the accelerator table
+			hWnd = BINDING_array[i].hwnd
+			IF hWnd THEN
+				ret = ShowWindow (hWnd, $$SW_HIDE)	' Guy-01feb10-prevent from crashing
+				IF ret THEN DestroyWindow (hWnd)		' destroy the window
 			ENDIF
-			BINDING_array[i].hAccelTable = 0
-			'
-			IF BINDING_array[i].hwnd THEN
-				ret = ShowWindow (BINDING_array[i].hwnd, $$SW_HIDE)		' Guy-01feb10-prevent from crashing
-				IF ret THEN DestroyWindow (BINDING_array[i].hwnd)		' destroy the window
-			ENDIF
-			BINDING_array[i].hwnd = 0
 		NEXT i
 	ENDIF
 
-	' unregister WinX splitter class
-	className$ = $$WINX_SPLITTER_CLASS$
-	hInst = GetModuleHandleA (0)
-	UnregisterClassA (&className$, hInst)		' unregister the window class
-
 	' unregister WinX main window class
-	hInst = GetModuleHandleA (0)
+	' 1. destroy any window that would still use this obsolete window class
+	DO
+		hWnd = FindWindowA (&#WinXclass$, 0)
+		IFZ hWnd THEN EXIT DO
+		'
+		ShowWindow (hWnd, $$SW_HIDE)
+		ret = DestroyWindow (hWnd)
+		IFZ ret THEN EXIT DO		' prevent forever looping
+	LOOP
+
+	' 2. unregister it!
 	UnregisterClassA (&#WinXclass$, hInst)		' unregister the window class
+
+	s_entry = 1
 
 END FUNCTION
 '
@@ -2805,36 +2816,30 @@ FUNCTION WinXDoEvents ()
 	' - an error occurred (RETURN $$TRUE ' fail)
 
 	DO		' the event loop
-		' retrieve next message from queue
-		ret = GetMessageA (&wMsg, 0, 0, 0)
+		ret = GetMessageA (&wMsg, 0, 0, 0) ' retrieve next event from queue
 		SELECT CASE ret
-			CASE 0 : RETURN $$FALSE		' received a quit message
+			CASE 0  : RETURN $$FALSE	' received a quit message
 			CASE -1 : RETURN $$TRUE		' fail
 			CASE ELSE
 				' deal with window messages
 				hWnd = GetActiveWindow ()
 				'
-				' BINDING_Get (GetWindowLongA (hWnd, $$GWL_USERDATA), @binding)
 				idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 				bOK = BINDING_Get (idBinding, @binding)
-				IF bOK THEN		' window
-					hAccel = binding.hAccelTable		' get its associated accelerator table
-				ELSE
-					hAccel = 0
+				ret = 0
+				IF bOK THEN
+					' process accelerator keys for menu commands
+					IF binding.hAccelTable THEN ret = TranslateAcceleratorA (hWnd, binding.hAccelTable, &wMsg)
 				ENDIF
-				'
-				' Process accelerator keys for menu commands
-				IFZ TranslateAcceleratorA (hWnd, hAccel, &wMsg) THEN
+				IFZ ret THEN
 					IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &wMsg)) THEN
 						' send only non-dialog messages
 						' translate virtual-key messages into character messages
 						' ex.: SHIFT + a is translated as "A"
 						TranslateMessage (&wMsg)
-						'
-						' send message to window callback function
-						DispatchMessageA (&wMsg)
+						DispatchMessageA (&wMsg) ' send message to window callback function
 					ENDIF
-				ENDIF		' accelerator key
+				ENDIF
 		END SELECT
 	LOOP		' forever
 
@@ -3802,6 +3807,31 @@ FUNCTION WinXFolder_GetDir$ (nFolder)		' get the path for a Windows special fold
 
 END FUNCTION
 '
+' ############################
+' #####  WinXGetMinSize  #####
+' ############################
+' Gets the minimum size for a window
+' hWnd = the window handle
+' w and h = the minimum width and height of the client area
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXGetMinSize (hWnd, @w, @h)
+	BINDING binding
+
+	w = 0
+	h = 0
+	IFZ hWnd THEN RETURN
+
+	' get the binding
+	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+
+	w = binding.minW
+	IF w < 130 THEN w = 130
+	h = binding.minH
+	IF h < 30 THEN h = 30
+	RETURN $$TRUE		' success
+END FUNCTION
+'
 ' #############################
 ' #####  WinXGetMousePos  #####
 ' #############################
@@ -4219,6 +4249,23 @@ FUNCTION WinXIsMousePressed (button)
 	END SELECT
 
 	IFZ GetAsyncKeyState (vk) THEN RETURN $$FALSE ELSE RETURN $$TRUE		' button pressed
+END FUNCTION
+'
+' ##########################
+' #####  WinXKillFont  #####
+' ##########################
+'
+' release a font created by WinXNewFont
+' hFont = the handle of the logical font
+' Returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXKillFont (@hFont)
+
+	IFZ hFont THEN RETURN ' fail
+
+	ret = DeleteObject (hFont) ' release the font
+	hFont = 0
+	RETURN $$TRUE ' success
+
 END FUNCTION
 '
 ' #################################
@@ -5358,6 +5405,71 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 END FUNCTION
 '
 ' #########################
+' #####  WinXNewFont  #####
+' #########################
+'
+' create a new logical font
+' fontName$ = the name of the font
+' pointSize = the size of the font in points
+' weight    = the weight of the font as $$FW_THIN,...
+' italic    = $$TRUE for italic characters
+' underline = $$TRUE for underlined characters
+' strikeOut = $$TRUE for striken-out characters
+' fontName$ = the name of the font
+' Returns the font handle if success, 0 = fail
+FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut)
+
+	LOGFONT oLogFont
+
+	' check fontName$ not empty
+	fontName$ = TRIM$ (fontName$)
+	IFZ fontName$ THEN RETURN ' fail
+
+	hfontToClone = GetStockObject ($$DEFAULT_GUI_FONT) ' get a font to clone
+	' hfontToClone provides with a well-formed font structure
+	bytes = GetObjectA (hfontToClone, SIZE (oLogFont), &oLogFont) ' allocate structure font
+	' release the cloned font
+	DeleteObject (hfontToClone)
+	hfontToClone = 0
+
+	' set the cloned font structure with the passed parameters
+	oLogFont.faceName = fontName$
+
+	IFZ pointSize THEN
+		oLogFont.height = 0
+	ELSE
+		' character height is specified (in points)
+		IF pointSize > 0 THEN
+			pointH = pointSize
+		ELSE
+			pointH = -pointSize ' make it positive
+		ENDIF
+		'
+		' convert pointSize to pixels
+		hdc = GetDC ($$HWND_DESKTOP) ' get the desktop context's handle
+		' Windows expects the font height to be in pixels and negative
+		oLogFont.height = MulDiv (pointH, GetDeviceCaps (hdc, $$LOGPIXELSY), -72)
+		ReleaseDC ($$HWND_DESKTOP, hdc) ' release the handle of the desktop context
+	ENDIF
+
+	SELECT CASE weight
+		CASE $$FW_THIN, $$FW_EXTRALIGHT, $$FW_LIGHT, $$FW_NORMAL, $$FW_MEDIUM, _
+		     $$FW_SEMIBOLD, $$FW_BOLD, $$FW_EXTRABOLD, $$FW_HEAVY, $$FW_DONTCARE
+			oLogFont.weight = weight
+			'
+		CASE ELSE : oLogFont.weight = $$FW_NORMAL
+	END SELECT
+
+	IF italic    THEN oLogFont.italic    = 1 ELSE oLogFont.italic    = 0
+	IF underline THEN oLogFont.underline = 1 ELSE oLogFont.underline = 0
+	IF strikeOut THEN oLogFont.strikeOut = 1 ELSE oLogFont.strikeOut = 0
+
+	hFont = CreateFontIndirectA (&oLogFont) ' create logical font hFont
+	RETURN hFont
+
+END FUNCTION
+'
+' #########################
 ' #####  WinXNewMenu  #####
 ' #########################
 ' Generates a new menu
@@ -5579,88 +5691,6 @@ FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisabl
 	SendMessageA (hToolbar, $$TB_BUTTONSTRUCTSIZE, SIZE (TBBUTTON), 0)
 
 	RETURN hToolbar
-END FUNCTION
-'
-' ##########################
-' #####  WinXKillFont  #####
-' ##########################
-'
-' release a font created by WinXNewFont
-' hFont = the handle of the logical font
-' Returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXKillFont (@hFont)
-
-	IFZ hFont THEN RETURN ' fail
-
-	ret = DeleteObject (hFont) ' release the font
-	hFont = 0
-	RETURN $$TRUE ' success
-
-END FUNCTION
-'
-' #########################
-' #####  WinXNewFont  #####
-' #########################
-'
-' create a new logical font
-' fontName$ = the name of the font
-' pointSize = the size of the font in points
-' weight    = the weight of the font as $$FW_THIN,...
-' italic    = $$TRUE for italic characters
-' underline = $$TRUE for underlined characters
-' strikeOut = $$TRUE for striken-out characters
-' fontName$ = the name of the font
-' Returns the font handle if success, 0 = fail
-FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut)
-
-	LOGFONT oLogFont
-
-	' check fontName$ not empty
-	fontName$ = TRIM$ (fontName$)
-	IFZ fontName$ THEN RETURN ' fail
-
-	hfontToClone = GetStockObject ($$DEFAULT_GUI_FONT) ' get a font to clone
-	' hfontToClone provides with a well-formed font structure
-	bytes = GetObjectA (hfontToClone, SIZE (oLogFont), &oLogFont) ' allocate structure font
-	' release the cloned font
-	DeleteObject (hfontToClone)
-	hfontToClone = 0
-
-	' set the cloned font structure with the passed parameters
-	oLogFont.faceName = fontName$
-
-	IFZ pointSize THEN
-		oLogFont.height = 0
-	ELSE
-		' character height is specified (in points)
-		IF pointSize > 0 THEN
-			pointH = pointSize
-		ELSE
-			pointH = -pointSize ' make it positive
-		ENDIF
-		'
-		' convert pointSize to pixels
-		hdc = GetDC ($$HWND_DESKTOP) ' get the desktop context's handle
-		' Windows expects the font height to be in pixels and negative
-		oLogFont.height = MulDiv (pointH, GetDeviceCaps (hdc, $$LOGPIXELSY), -72)
-		ReleaseDC ($$HWND_DESKTOP, hdc) ' release the handle of the desktop context
-	ENDIF
-
-	SELECT CASE weight
-		CASE $$FW_THIN, $$FW_EXTRALIGHT, $$FW_LIGHT, $$FW_NORMAL, $$FW_MEDIUM, _
-		     $$FW_SEMIBOLD, $$FW_BOLD, $$FW_EXTRABOLD, $$FW_HEAVY, $$FW_DONTCARE
-			oLogFont.weight = weight
-			'
-		CASE ELSE : oLogFont.weight = $$FW_NORMAL
-	END SELECT
-
-	IF italic    THEN oLogFont.italic    = 1 ELSE oLogFont.italic    = 0
-	IF underline THEN oLogFont.underline = 1 ELSE oLogFont.underline = 0
-	IF strikeOut THEN oLogFont.strikeOut = 1 ELSE oLogFont.strikeOut = 0
-
-	hFont = CreateFontIndirectA (&oLogFont) ' create logical font hFont
-	RETURN hFont
-
 END FUNCTION
 '
 ' ###########################
@@ -7126,6 +7156,20 @@ END FUNCTION
 FUNCTION WinXSetFont (hCtr, hFont)
 	IFZ hCtr THEN RETURN		' ignore a null handle
 	IFZ hFont THEN RETURN		' ignore a null handle
+	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ##################################
+' #####  WinXSetFontAndRedraw  #####
+' ##################################
+' Sets the font for a control
+' hCtr = the handle to the control
+' hFont = the handle to the font
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
+	IFZ hCtr THEN RETURN		' ignore a null handle
+	IFZ hFont THEN RETURN		' ignore a null handle
 	SendMessageA (hCtr, $$WM_SETFONT, hFont, 1)		' redraw
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -7162,29 +7206,6 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 	binding.minH = rect.bottom - rect.top
 	BINDING_Update (idBinding, binding)
 
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ############################
-' #####  WinXGetMinSize  #####
-' ############################
-' Gets the minimum size for a window
-' hWnd = the window handle
-' w and h = the minimum width and height of the client area
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXGetMinSize (hWnd, @w, @h)
-	BINDING binding
-
-	w = 0
-	h = 0
-	IFZ hWnd THEN RETURN
-
-	' get the binding
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
-
-	w = binding.minW
-	h = binding.minH
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8996,29 +9017,32 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 	SELECT CASE wMsg
 		CASE $$WM_COMMAND
 			' Guy-15apr09-ret_value = @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
+			IFZ binding.onCommand THEN EXIT SELECT
 			handled = $$TRUE
 			ret_value = 0
-			IFZ binding.onCommand THEN EXIT SELECT
 			idCtr = LOWORD (wParam)
 			notifyCode = HIWORD (wParam)
 			ret_value = @binding.onCommand (idCtr, notifyCode, lParam)
 
 		CASE $$WM_NOTIFY
-			handled = $$TRUE
-			ret_value = 0
-			IFZ lParam THEN EXIT SELECT
-			' get event that has occurred in a control
-			' RtlMoveMemory (&nmhdr, lParam, SIZE (nmhdr))
-			XLONGAT (&&nmhdr) = lParam
+			IF lParam THEN
+				handled = $$TRUE
+				ret_value = 0
+				' get event that has occurred in a control
+				'XLONGAT (&&nmhdr) = lParam
+				RtlMoveMemory (&nmhdr, lParam, SIZE (nmhdr))
+			ENDIF
 			'
 			SELECT CASE nmhdr.code
 				CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
 					IF binding.onItem THEN
+						handled = $$TRUE
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
 					ENDIF
 					'
 				CASE $$NM_KEYDOWN
 					IF binding.onItem THEN
+						handled = $$TRUE
 						pNmkey = &nmkey
 						XLONGAT (&&nmkey) = lParam
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
@@ -9027,6 +9051,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$MCN_SELECT
 					IF binding.onCalendarSelect THEN
+						handled = $$TRUE
 						pNmsc = &nmsc
 						XLONGAT (&&nmsc) = lParam
 						ret_value = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
@@ -9036,6 +9061,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				CASE $$TVN_SELCHANGED
 					IFZ binding.onSelect THEN EXIT SELECT
 					IF binding.skipOnSelect THEN EXIT SELECT
+					handled = $$TRUE
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_TREEVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
@@ -9043,33 +9069,49 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$TVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmtvdi = &nmtvdi
-						XLONGAT (&&nmtvdi) = lParam
+						' get event that has occurred in a control
+						'XLONGAT (&&nmtvdi) = lParam
+						RtlMoveMemory (&nmtvdi, lParam, SIZE (nmtvdi))
 						ret_value = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
-						XLONGAT (&&nmtvdi) = pNmtvdi
+						'
+						'XLONGAT (&&nmtvdi) = pNmtvdi
+						RtlMoveMemory (&nmtvdi, pNmtvdi, SIZE (nmtvdi))
 					ENDIF
 					'
 				CASE $$TVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmtvdi = &nmtvdi
-						XLONGAT (&&nmtvdi) = lParam
+						' get event that has occurred in a control
+						'XLONGAT (&&nmtvdi) = lParam
+						RtlMoveMemory (&nmtvdi, lParam, SIZE (nmtvdi))
 						ret_value = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$ (nmtvdi.item.pszText))
-						XLONGAT (&&nmtvdi) = pNmtvdi
+						'
+						'XLONGAT (&&nmtvdi) = pNmtvdi
+						RtlMoveMemory (&nmtvdi, pNmtvdi, SIZE (nmtvdi))
 					ENDIF
 					'
 				CASE $$TVN_BEGINDRAG, $$TVN_BEGINRDRAG
 					IFZ binding.onDrag THEN EXIT SELECT
+					'
+					' lParam = address of the notification structure (NM_TREEVIEW)
+					IFZ lParam THEN EXIT SELECT
+					handled = $$TRUE
 					pNmtv = &nmtv
-					XLONGAT (&&nmtv) = lParam
+					' get notification structure
+					'XLONGAT (&&nmtv) = lParam
+					RtlMoveMemory (&nmtv, lParam, SIZE (nmtv))
 					'
-					ret = 0
-					IF nmtv.itemNew.hItem THEN
-						' Do nothing if the User is attempting to drag a top-level item.
-						ret = SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETNEXTITEM, $$TVGN_PARENT, nmtv.itemNew.hItem)
-					ENDIF
+					IFZ nmtv.hdr.hwndFrom THEN EXIT SELECT
+					IFZ nmtv.itemNew.hItem THEN EXIT SELECT
 					'
+					' do nothing if the User is attempting to drag a top-level item
+					ret = SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETNEXTITEM, $$TVGN_PARENT, nmtv.itemNew.hItem)
 					IFZ ret THEN
-						XLONGAT (&&nmtv) = pNmtv
+						'XLONGAT (&&nmtv) = pNmtv
+						RtlMoveMemory (&nmtv, pNmtv, SIZE (nmtv))
 						EXIT SELECT
 					ENDIF
 					'
@@ -9113,6 +9155,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				CASE $$TCN_SELCHANGE
 					' nmhdr.hwndFrom is the tabstrip's handle
 					IFZ nmhdr.hwndFrom THEN EXIT SELECT
+					handled = $$TRUE
 					'
 					maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0) - 1
 					IF maxTab < 0 THEN EXIT SELECT
@@ -9143,6 +9186,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_COLUMNCLICK
 					IF binding.onColumnClick THEN
+						handled = $$TRUE
 						pNmlv = &nmlv
 						XLONGAT (&&nmlv) = lParam
 						ret_value = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
@@ -9151,6 +9195,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
@@ -9159,6 +9204,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 				CASE $$LVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
+						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
@@ -9169,6 +9215,7 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
 					IFZ binding.onSelect THEN EXIT SELECT
 					IF binding.skipOnSelect THEN EXIT SELECT
+					handled = $$TRUE
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_LISTVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
@@ -9182,27 +9229,28 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				SendMessageA (binding.hwndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
 			ENDIF
 			IF binding.onClipChange THEN
-				ret_value = @binding.onClipChange ()
 				handled = $$TRUE
+				ret_value = @binding.onClipChange ()
 			ENDIF
 
 		CASE $$WM_CHANGECBCHAIN
+			handled = $$TRUE
 			IF wParam = binding.hwndNextClipViewer THEN
 				binding.hwndNextClipViewer = lParam
 			ELSE
 				IF binding.hwndNextClipViewer THEN SendMessageA (binding.hwndNextClipViewer, $$WM_CHANGECBCHAIN, wParam, lParam)
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_DESTROYCLIPBOARD
+			handled = $$TRUE
 			IF g_hClipMem THEN
 				GlobalFree (g_hClipMem)
 				g_hClipMem = 0 ' don't free twice
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_DROPFILES
 			IFZ binding.onDropFiles THEN EXIT SELECT
+			handled = $$TRUE
 			DragQueryPoint (wParam, &pt)
 			cFiles = DragQueryFileA (wParam, -1, 0, 0)
 			IF cFiles THEN
@@ -9218,16 +9266,16 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				ret_value = @binding.onDropFiles (hWnd, pt.x, pt.y, @files$[])
 			ENDIF
 			DragFinish (wParam)
-			handled = $$TRUE
 
 		CASE $$WM_ERASEBKGND
 			IF binding.backCol THEN
+				handled = $$TRUE
 				GetClientRect (hWnd, &rect)
 				FillRect (wParam, &rect, binding.backCol)
-				handled = $$TRUE
 			ENDIF
 
 		CASE $$WM_PAINT
+			handled = $$TRUE
 			hDC = BeginPaint (hWnd, &ps)
 
 			' use auto draw
@@ -9246,15 +9294,14 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 
 			EndPaint (hWnd, &ps)
 
-			handled = $$TRUE
-
 		CASE $$WM_SIZE
+			handled = $$TRUE
 			w = LOWORD (lParam)
 			h = HIWORD (lParam)
 			sizeWindow (hWnd, w, h)
-			handled = $$TRUE
 
 		CASE $$WM_HSCROLL, $$WM_VSCROLL
+			handled = $$TRUE
 			buffer$ = NULL$ (LEN ($$TRACKBAR_CLASS) + 1)
 			GetClassNameA (lParam, &buffer$, LEN (buffer$))
 			buffer$ = TRIM$ (CSTRING$ (&buffer$))
@@ -9296,7 +9343,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 
 			SetScrollInfo (hWnd, sb, &si, $$TRUE)
 			IF binding.onPaint THEN ret_value = @binding.onScroll (si.nPos, hWnd, dir)
-			handled = $$TRUE
 
 			' This allows for mouse activation of child windows, for some reason WM_ACTIVATE doesn't work
 			' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
@@ -9316,42 +9362,43 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 
 		CASE $$WM_KEYDOWN
 			IF binding.onKeyDown THEN
-				ret_value = @binding.onKeyDown (hWnd, wParam)
 				handled = $$TRUE
+				ret_value = @binding.onKeyDown (hWnd, wParam)
 			ENDIF
 
 		CASE $$WM_KEYUP
 			IF binding.onKeyUp THEN
-				ret_value = @binding.onKeyUp (hWnd, wParam)
 				handled = $$TRUE
+				ret_value = @binding.onKeyUp (hWnd, wParam)
 			ENDIF
 
 		CASE $$WM_CHAR
 			IF binding.onChar THEN
-				ret_value = @binding.onChar (hWnd, wParam)
 				handled = $$TRUE
+				ret_value = @binding.onChar (hWnd, wParam)
 			ENDIF
 
 		CASE $$WM_SETFOCUS
 			IF binding.onFocusChange THEN
-				ret_value = @binding.onFocusChange (hWnd, $$TRUE)
 				handled = $$TRUE
+				ret_value = @binding.onFocusChange (hWnd, $$TRUE)
 			ENDIF
 
 		CASE $$WM_KILLFOCUS
 			IF binding.onFocusChange THEN
-				ret_value = @binding.onFocusChange (hWnd, $$FALSE)
 				handled = $$TRUE
+				ret_value = @binding.onFocusChange (hWnd, $$FALSE)
 			ENDIF
 
 		CASE $$WM_SETCURSOR
 			IF binding.hCursor && LOWORD (lParam) = $$HTCLIENT THEN
-				SetCursor (binding.hCursor)
 				ret_value = $$TRUE
+				SetCursor (binding.hCursor)
 			ENDIF
 			handled = $$TRUE
 
 		CASE $$WM_MOUSEMOVE
+			handled = $$TRUE
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 
@@ -9373,41 +9420,41 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			ELSE
 				ret_value = @binding.onMouseMove (hWnd, LOWORD (lParam), HIWORD (lParam))
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_MOUSELEAVE
+			handled = $$TRUE
 			binding.isMouseInWindow = $$FALSE
 			BINDING_Update (idBinding, binding)
 
 			@binding.onEnterLeave (hWnd, $$FALSE)
 			ret_value = 0
-			handled = $$TRUE
 
 		CASE $$WM_LBUTTONDOWN
 			IF binding.onMouseDown THEN
+				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseDown (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
-				handled = $$TRUE
 			ENDIF
 
 		CASE $$WM_MBUTTONDOWN
 			IF binding.onMouseDown THEN
+				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseDown (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
-				handled = $$TRUE
 			ENDIF
 
 		CASE $$WM_RBUTTONDOWN
 			IF binding.onMouseDown THEN
+				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
-				handled = $$TRUE
 			ENDIF
 
 		CASE $$WM_LBUTTONUP
+			handled = $$TRUE
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 			IF tvDragButton = $$MBT_LEFT THEN
@@ -9416,24 +9463,23 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					@binding.onDrag (GetDlgCtrlID (tvDragging), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
 					GOSUB endDragTreeViewItem
 					ret_value = 0
-					handled = $$TRUE
 				ENDIF
 			ELSE
 				IF binding.onMouseUp THEN
 					ret_value = @binding.onMouseUp (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
-					handled = $$TRUE
 				ENDIF
 			ENDIF
 
 		CASE $$WM_MBUTTONUP
 			IF binding.onMouseUp THEN
+				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseUp (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
-				handled = $$TRUE
 			ENDIF
 
 		CASE $$WM_RBUTTONUP
+			handled = $$TRUE
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 			IF tvDragButton = $$MBT_LEFT THEN
@@ -9442,12 +9488,10 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					@binding.onDrag (GetDlgCtrlID (tvDragging), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
 					GOSUB endDragTreeViewItem
 					ret_value = 0
-					handled = $$TRUE
 				ENDIF
 			ELSE
 				IF binding.onMouseUp THEN
 					ret_value = @binding.onMouseUp (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
-					handled = $$TRUE
 				ENDIF
 			ENDIF
 
@@ -9476,12 +9520,13 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			'ENDIF
 			'
 			IF binding.onMouseWheel THEN
-				ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
 				handled = $$TRUE
+				ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
 			ENDIF
 
 		CASE DLM_MESSAGE
 			IF DLM_MESSAGE <> 0 THEN
+				handled = $$TRUE
 				RtlMoveMemory (&dli, lParam, SIZE (DRAGLISTINFO))
 				SELECT CASE dli.uNotification
 					CASE $$DL_BEGINDRAG
@@ -9544,25 +9589,25 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 						WinXListBox_RemoveItem (dli.hWnd, -1)
 				END SELECT
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_GETMINMAXINFO
+			handled = $$TRUE
 			pStruc = &mmi
 			XLONGAT (&&mmi) = lParam
 			mmi.ptMinTrackSize.x = binding.minW
 			mmi.ptMinTrackSize.y = binding.minH
 			XLONGAT (&&mmi) = pStruc
-			handled = $$TRUE
 
 		CASE $$WM_PARENTNOTIFY
+			handled = $$TRUE
 			SELECT CASE LOWORD (wParam)
 				CASE $$WM_DESTROY
 					' free the auto sizer block if there is one
 					autoSizerBlock_Delete (binding.autoSizerInfo, GetPropA (lParam, &"autoSizerInfoBlock") - 1)
-					handled = $$TRUE
 			END SELECT
 
 		CASE $$WM_TIMER
+			handled = $$TRUE
 			SELECT CASE wParam
 				CASE -1
 					IF lastDragItem = dragItem THEN
@@ -9572,23 +9617,22 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					ENDIF
 					KillTimer (hWnd, -1)
 					ret_value = 0
-					handled = $$TRUE
 			END SELECT
 
 		CASE $$WM_CLOSE
+			handled = $$TRUE
 			IFZ binding.onClose THEN
 				DestroyWindow (hWnd)
 				PostQuitMessage (0)
 			ELSE
 				ret_value = @binding.onClose (hWnd)
 			ENDIF
-			handled = $$TRUE
 
 		CASE $$WM_DESTROY
+			handled = $$TRUE
 			ChangeClipboardChain (hWnd, binding.hwndNextClipViewer)
 			' clear the binding
 			BINDING_Ov_Delete (idBinding)
-			handled = $$TRUE
 
 	END SELECT
 
