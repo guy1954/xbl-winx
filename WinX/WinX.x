@@ -356,49 +356,6 @@ $$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 
 DECLARE FUNCTION WinX ()
-END EXPORT
-
-
-DECLARE FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
-DECLARE FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDest, hdcSrc, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc, BLENDFUNCTION blendFunction)
-
-DECLARE FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
-DECLARE FUNCTION splitterProc (hWnd, wMsg, wParam, lParam)
-DECLARE FUNCTION sizeWindow (hWnd, w, h)
-DECLARE FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, w, h, currPos)
-DECLARE FUNCTION XWSStoWS (xwss)
-
-' callbacks for internal dialogs
-DECLARE FUNCTION cancelDlgOnClose (hWnd)
-DECLARE FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
-DECLARE FUNCTION printAbortProc (hdc, nCode)
-
-DECLARE FUNCTION handler_addGroup ()
-DECLARE FUNCTION handler_add (group, MSGHANDLER handler)
-DECLARE FUNCTION handler_get (group, idCtr, MSGHANDLER @handler)
-DECLARE FUNCTION handler_update (group, idCtr, MSGHANDLER handler)
-DECLARE FUNCTION handler_find (group, wMsg)
-DECLARE FUNCTION handler_call (group, @ret, hWnd, wMsg, wParam, lParam)
-DECLARE FUNCTION handler_delete (group, idCtr)
-DECLARE FUNCTION handler_deleteGroup (group)
-
-DECLARE FUNCTION AUTOSIZER_LinkedList_Init ()
-DECLARE FUNCTION AUTOSIZER_LinkedList_New (direction)
-DECLARE FUNCTION AUTOSIZER_LinkedList_Get (group, idCtr, AUTOSIZERINFO @autoSizerBlock)
-DECLARE FUNCTION AUTOSIZER_LinkedList_Update (group, idCtr, AUTOSIZERINFO autoSizerBlock)
-DECLARE FUNCTION AUTOSIZER_LinkedList_Delete (group)
-
-DECLARE FUNCTION autoSizerInfo_AddGroup (group, AUTOSIZERINFO autoSizerBlock)
-DECLARE FUNCTION autoSizerBlock_Delete (group, idCtr)
-DECLARE FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
-DECLARE FUNCTION autoSizerInfo_showGroup (group, visible)
-DECLARE FUNCTION autoDraw_clear (group)
-DECLARE FUNCTION autoDraw_draw (hdc, group, x0, y0)
-DECLARE FUNCTION autoDraw_add (iList, iRecord)
-DECLARE FUNCTION initPrintInfo ()
-
-
-EXPORT
 DECLARE FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
 DECLARE FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 DECLARE FUNCTION WinXDisplay (hWnd)
@@ -693,18 +650,45 @@ DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
 DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
 
 END EXPORT
-'
-' #######################
-' #####  M4 macros  #####
-' #######################
-'
-' These functions abstract away access to the arrays
-DeclareAccess(BINDING)
-DECLARE FUNCTION BINDING_Ov_Delete (id)
 
-DeclareAccess(SPLITTERINFO)
-DeclareAccess(LINKEDLIST)
-DeclareAccess(AUTODRAWRECORD)
+
+DECLARE FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
+DECLARE FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDest, hdcSrc, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc, BLENDFUNCTION blendFunction)
+
+DECLARE FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
+DECLARE FUNCTION splitterProc (hWnd, wMsg, wParam, lParam)
+DECLARE FUNCTION sizeWindow (hWnd, w, h)
+DECLARE FUNCTION autoSizer (AUTOSIZERINFO autoSizerBlock, direction, x0, y0, w, h, currPos)
+DECLARE FUNCTION XWSStoWS (xwss)
+
+' callbacks for internal dialogs
+DECLARE FUNCTION cancelDlgOnClose (hWnd)
+DECLARE FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
+DECLARE FUNCTION printAbortProc (hdc, nCode)
+
+DECLARE FUNCTION handler_addGroup ()
+DECLARE FUNCTION handler_add (group, MSGHANDLER handler)
+DECLARE FUNCTION handler_get (group, idCtr, MSGHANDLER @handler)
+DECLARE FUNCTION handler_update (group, idCtr, MSGHANDLER handler)
+DECLARE FUNCTION handler_find (group, wMsg)
+DECLARE FUNCTION handler_call (group, @ret, hWnd, wMsg, wParam, lParam)
+DECLARE FUNCTION handler_delete (group, idCtr)
+DECLARE FUNCTION handler_deleteGroup (group)
+
+DECLARE FUNCTION AUTOSIZER_LinkedList_Init ()
+DECLARE FUNCTION AUTOSIZER_LinkedList_New (direction)
+DECLARE FUNCTION AUTOSIZER_LinkedList_Get (group, idCtr, AUTOSIZERINFO @autoSizerBlock)
+DECLARE FUNCTION AUTOSIZER_LinkedList_Update (group, idCtr, AUTOSIZERINFO autoSizerBlock)
+DECLARE FUNCTION AUTOSIZER_LinkedList_Delete (group)
+
+DECLARE FUNCTION autoSizerInfo_AddGroup (group, AUTOSIZERINFO autoSizerBlock)
+DECLARE FUNCTION autoSizerBlock_Delete (group, idCtr)
+DECLARE FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
+DECLARE FUNCTION autoSizerInfo_showGroup (group, visible)
+DECLARE FUNCTION autoDraw_clear (group)
+DECLARE FUNCTION autoDraw_draw (hdc, group, x0, y0)
+DECLARE FUNCTION autoDraw_add (iList, iRecord)
+DECLARE FUNCTION initPrintInfo ()
 
 DECLARE FUNCTION VOID drawLine (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION VOID drawEllipse (hdc, AUTODRAWRECORD record, x0, y0)
@@ -720,17 +704,27 @@ DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
 DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
-DECLARE FUNCTION WinXDialog_TellError (parent, title$)		' display WinXDialog_'s run-time error message
-DECLARE FUNCTION WinXCreateMdiChild (hClient, title$, style)
+DECLARE FUNCTION TellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
+DECLARE FUNCTION CreateMdiChild (hClient, title$)
+'
+' #######################
+' #####  M4 macros  #####
+' #######################
+'
+' These functions abstract away access to the arrays
+DeclareAccess(BINDING)
+DECLARE FUNCTION BINDING_Ov_Delete (id)
+
+DeclareAccess(SPLITTERINFO)
+DeclareAccess(LINKEDLIST)
+DeclareAccess(AUTODRAWRECORD)
 
 DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
 DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 '
-' for API FormatMessageA, GdipCreateStringFormat
-$$LANG_NEUTRAL              = 0
-$$LeftSubSizer$             = "WinXLeftSubSizer"
-$$RightSubSizer$            = "WinXRightSubSizer" ' Guy-16mar11-unused???
+$$LeftSubSizer$  = "WinXLeftSubSizer"
+$$RightSubSizer$ = "WinXRightSubSizer"
 '
 '
 ' #####################
@@ -828,8 +822,28 @@ FUNCTION WinX ()
 	wc.hbrBackground = $$COLOR_BTNFACE + 1
 
 	' gl-09feb12-generate WinX's main window class
-	stamp$ = WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stamp
-	XstStripChars (@stamp$, "_", 0) ' strip all underscores from time stamp
+	XstGetLocalDateAndTime (@year, @month, @day, @weekDay, @hour, @minute, @second, @nanos) ' get today's date
+
+	st$ = STRING$ (month)
+	IF month < 10 THEN st$ = "0" + st$
+	stamp$ = st$
+
+	st$ = STRING$ (day)
+	IF day < 10 THEN st$ = "0" + st$
+	stamp$ = stamp$ + st$
+
+	st$ = STRING$ (hour)
+	IF hour < 10 THEN st$ = "0" + st$
+	stamp$ = stamp$ + st$
+
+	st$ = STRING$ (minute)
+	IF minute < 10 THEN st$ = "0" + st$
+	stamp$ = stamp$ + st$
+
+	st$ = STRING$ (second)
+	IF second < 10 THEN st$ = "0" + st$
+	stamp$ = stamp$ + st$
+
 	#WinXclass$ = $$WINX_CLASS$ + stamp$
 	wc.lpszClassName = &#WinXclass$
 
@@ -2388,7 +2402,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	ret = GetOpenFileNameA (&ofn)		' fire off dialog
 	' ==================================================
 	IFZ ret THEN		' fail
-		WinXDialog_TellError (parent, title$)
+		TellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -2546,7 +2560,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 	' IFZ GetSaveFileNameA (&ofn) THEN RETURN ""
 	ret = GetSaveFileNameA (&ofn)
 	IFZ ret THEN
-		WinXDialog_TellError (parent, title$)
+		TellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -5698,8 +5712,8 @@ END FUNCTION
 ' ###########################
 '
 ' [WinXNewWindow]
-' Description = Initialise the WinX library
-' Function    = hWnd = WinXNewWindow (STRING title, x, y, w, h, simpleStyle, exStyle, icon, menu)
+' Description = create a new window
+' Function    = hWnd = WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
 ' ArgCount    = 9
 ' Arg1				= STRING title : The title for the new window
 ' Arg2				= x : the x position for the new window, -1 for centre
@@ -5728,57 +5742,73 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 
 	IFF #bReentry THEN WinX () ' Guy-07nov11-initialize WinX library
 
-	hWnd = 0
-	IF hOwner THEN hWnd = WinXCreateMdiChild (hOwner, title$, style)
-	rect.right = w
-	rect.bottom = h
-
+	hWindow = 0
 	style = XWSStoWS (simpleStyle)
-	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
-	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
 
-	IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
-		rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
-	ENDIF
-	IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
-		rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
-	ENDIF
-
-	width = rect.right - rect.left
-	IF width < 0 THEN width = 0
-	IF x = -1 THEN
-		screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
-		x = (screenWidth - width) >> 1
-	ENDIF
-
-	height = rect.bottom - rect.top
-	IF height < 0 THEN height = 0
-	IF y = -1 THEN
-		screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
-		y = (screenHeight - height) >> 1
+	IF hOwner THEN
+		' get the binding
+		idBinding = GetWindowLongA (hOwner, $$GWL_USERDATA)
+		IF BINDING_Get (idBinding, @binding) THEN
+			' Guy-12feb12-does not work for some reason (maybe the window class?)
+			hWindow = CreateMdiChild (hOwner, title)
+			IF hWindow THEN
+				' Guy-11feb12-position the child window
+				' position and dimensions are relative to the upper-left corner of the parent window's client area
+				WinXGetUseableRect (hOwner, @rect)
+				width = rect.right - rect.left
+				height = rect.bottom - rect.top
+				MoveWindow (hWindow, rect.left, rect.top, width, height, 0)
+			ENDIF
+		ENDIF
 	ENDIF
 
-	IFZ hWnd THEN
+	IFZ hWindow THEN
+		rect.right = w
+		rect.bottom = h
+		IFZ menu THEN fMenu = 0 ELSE fMenu = 1
+		AdjustWindowRectEx (&rect, style, fMenu, exStyle)
+		'
+		IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
+			rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
+		ENDIF
+		IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
+			rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
+		ENDIF
+		'
+		width = rect.right - rect.left
+		IF width < 0 THEN width = 0
+		IF x = -1 THEN
+			screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
+			x = (screenWidth - width) >> 1
+		ENDIF
+		'
+		height = rect.bottom - rect.top
+		IF height < 0 THEN height = 0
+		IF y = -1 THEN
+			screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
+			y = (screenHeight - height) >> 1
+		ENDIF
+		'
 		IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
 		hInst = GetModuleHandleA (0)
-		hWnd = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, style, x, y, width, height, hOwner, menu, hInst, 0)
+		hWindow = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, style, x, y, width, height, hOwner, menu, hInst, 0)
 	ENDIF
 
 	' now add the icon
 	IF icon THEN
-		SendMessageA (hWnd, $$WM_SETICON, $$ICON_BIG, icon)
-		SendMessageA (hWnd, $$WM_SETICON, $$ICON_SMALL, icon)
+		SendMessageA (hWindow, $$WM_SETICON, $$ICON_BIG, icon)
+		SendMessageA (hWindow, $$WM_SETICON, $$ICON_SMALL, icon)
 	ENDIF
 
 	' make a binding
-	binding.hwnd = hWnd
+	binding.hwnd = hWindow
 	binding.hwndMDIParent = hOwner
 
 	lpWindowName = 0
 	dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
 	hInst = GetModuleHandleA (0)
 
-	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
+	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWindow, 0, hInst, 0)
 
 	binding.msgHandlers = handler_addGroup ()
 	LinkedList_Init (@autoDraw)
@@ -5786,10 +5816,10 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 
 	binding.autoSizerInfo = AUTOSIZER_LinkedList_New ($$DIR_VERT)
 
-	SetWindowLongA (hWnd, $$GWL_USERDATA, BINDING_New (binding))
+	SetWindowLongA (hWindow, $$GWL_USERDATA, BINDING_New (binding))
 
 	' and we're done
-	RETURN hWnd
+	RETURN hWindow
 END FUNCTION
 '
 ' ############################
@@ -7713,7 +7743,7 @@ FUNCTION WinXTellApiError (msg$)		' display an API fail message
 	lpBuffer = &buf$
 
 	' format a message string
-	ret = FormatMessageA (dwFlags, 0, errNum, $$LANG_NEUTRAL, lpBuffer, bufLen, 0)
+	ret = FormatMessageA (dwFlags, 0, errNum, 0, lpBuffer, bufLen, 0)
 	IFZ ret THEN
 		fmtMsg$ = fmtMsg$ + "(unknown)"
 	ELSE
@@ -8898,37 +8928,38 @@ FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 
 END FUNCTION
 
-FUNCTION WinXCreateMdiChild (hClient, title$, style)
+FUNCTION CreateMdiChild (hClient, STRING title)
 	MDICREATESTRUCT mdi
 
 	IFZ hClient THEN RETURN
 
-	IFZ title$ THEN lpWindowName = 0 ELSE lpWindowName = &title$
-	hInst = GetModuleHandleA (0)
+	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
+	IFZ hInst THEN hInst = GetModuleHandleA (0)
+	lpClassName = &#WinXclass$
+	IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
 
 	XstGetOSVersion (@major, 0, 0, "", "")
 	IF major < 4 THEN
-		mdi.szClass = &#WinXclass$
+		mdi.szClass = lpClassName
 		mdi.szTitle = lpWindowName
-		mdi.hOwner = hInst		' GetWindowLongA (hClient, $$GWL_HINSTANCE)
+		mdi.hOwner = hInst
 		mdi.x = $$CW_USEDEFAULT
 		mdi.y = $$CW_USEDEFAULT
 		mdi.cx = $$CW_USEDEFAULT
 		mdi.cy = $$CW_USEDEFAULT
-		mdi.style = dwStyle
-		hWnd = SendMessageA (hClient, $$WM_MDICREATE, 0, &mdi)
+		mdi.style = $$WS_MAXIMIZE
+		hWindow = SendMessageA (hClient, $$WM_MDICREATE, 0, &mdi)
 	ELSE
-		dwExStyle = $$WS_EX_MDICHILD OR $$WS_EX_CLIENTEDGE
-		dwStyle = style
-		hMdiActive = SendMessageA (hClient, $$WM_MDIGETACTIVE, 0, 0)
-		IF IsZoomed (hMdiActive) THEN dwStyle = dwStyle OR $$WS_MAXIMIZE
-		hWnd = CreateWindowExA (dwExStyle, &#WinXclass$, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
+		' Windows NT 4.0 or later
+		' Guy-12feb12-does not work for some reason (maybe the window class?)
+		hWindow = CreateWindowExA ($$WS_EX_MDICHILD,lpClassName, lpWindowName, $$WS_MAXIMIZE, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
 	ENDIF
-	RETURN hWnd
+
+	RETURN hWindow
 
 END FUNCTION
 
-FUNCTION WinXDialog_TellError (parent, title$)		' display WinXDialog_'s run-time error message
+FUNCTION TellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 
 	' call CommDlgExtendedError to get error code
 	extErr = CommDlgExtendedError ()
