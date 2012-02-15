@@ -1360,14 +1360,14 @@ END FUNCTION
 ' returns id on success or 0 on fail
 ' id = STRING_New (STRING_item$)
 ' IFZ id THEN ' fail
-FUNCTION STRING_New (STRING_item$)
+FUNCTION STRING_New (v_STRING_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	IFZ STRING_array$[] THEN STRING_Init ()
+	IFZ STRING_arrayUM[] THEN STRING_Init ()
 
-	upper_slot = UBOUND (STRING_array$[])
+	upper_slot = UBOUND (STRING_arrayUM[])
 
 	' since STRING_array$[] is oversized, look for a spot
 	' after STRING_idMax
@@ -1384,7 +1384,7 @@ FUNCTION STRING_New (STRING_item$)
 	ENDIF
 
 	IF slot = -1 THEN
-		' spot not found: expand STRING_array$[]
+		' spot not found => expand STRING_array$[]
 		upper_slot = ((upper_slot + 1) << 1) - 1
 		REDIM STRING_array$[upper_slot]
 		REDIM STRING_arrayUM[upper_slot]
@@ -1393,7 +1393,7 @@ FUNCTION STRING_New (STRING_item$)
 	ENDIF
 
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	STRING_array$[slot] = STRING_item$
+	STRING_array$[slot] = v_STRING_item$
 	STRING_arrayUM[slot] = $$TRUE
 	RETURN (slot + 1) ' return id
 END FUNCTION
@@ -1403,58 +1403,58 @@ END FUNCTION
 '	IFF bOK THEN ' fail
 ' or
 '	IFZ STRING_item$ THEN ' fail
-FUNCTION STRING_Get (id, @STRING_item$)
+FUNCTION STRING_Get (v_id, @r_STRING_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	STRING_item$ = ""
-	IFZ STRING_array$[] THEN RETURN
-	IF id > STRING_idMax THEN RETURN
+	r_STRING_item$ = ""
+	IFZ STRING_arrayUM[] THEN RETURN
+	IF v_id < 1 || v_id > STRING_idMax THEN RETURN
 
-	upper_slot = UBOUND (STRING_array$[])
-	slot = id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	upper_slot = UBOUND (STRING_arrayUM[])
+	slot = v_id - 1
+	IF slot > upper_slot THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
-	STRING_item$ = STRING_array$[slot]
+	r_STRING_item$ = STRING_array$[slot]
 	RETURN $$TRUE ' success
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
 ' bOK = STRING_Update (id, STRING_item$)
 '	IFF bOK THEN ' fail
-FUNCTION STRING_Update (id, STRING_item$)
+FUNCTION STRING_Update (v_id, v_STRING_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	IFZ STRING_array$[] THEN RETURN
-	IF id > STRING_idMax THEN RETURN
+	IFZ STRING_arrayUM[] THEN RETURN
+	IF v_id < 1 || v_id > STRING_idMax THEN RETURN
 
-	upper_slot = UBOUND (STRING_array$[])
-	slot = id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	upper_slot = UBOUND (STRING_arrayUM[])
+	slot = v_id - 1
+	IF slot > upper_slot THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
-	STRING_array$[slot] = STRING_item$
+	STRING_array$[slot] = v_STRING_item$
 	RETURN $$TRUE ' success
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
 ' bOK = STRING_Delete (id)
 '	IFF bOK THEN ' fail
-FUNCTION STRING_Delete (id)
+FUNCTION STRING_Delete (v_id)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	IFZ STRING_array$[] THEN RETURN
-	IF id > STRING_idMax THEN RETURN
+	IFZ STRING_arrayUM[] THEN RETURN
+	IF v_id < 1 || v_id > STRING_idMax THEN RETURN
 
-	upper_slot = UBOUND (STRING_array$[])
-	slot = id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	upper_slot = UBOUND (STRING_arrayUM[])
+	slot = v_id - 1
+	IF slot > upper_slot THEN RETURN
 	IFF STRING_arrayUM[slot] THEN RETURN
 
 	STRING_arrayUM[slot] = $$FALSE
@@ -1464,44 +1464,44 @@ END FUNCTION
 ' returns id on success or 0 on fail
 ' id = STRING_Find (find$)
 '	IFZ id THEN ' not found
-FUNCTION STRING_Find (find$)
+FUNCTION STRING_Find (v_find$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN
+	v_find$ = TRIM$ (v_find$)
+	IFZ v_find$ THEN RETURN
 
-	findLen = LEN (find$)
+	findLen = LEN (v_find$)
 	upper_slot = STRING_idMax - 1
-	IF upper_slot > UBOUND (STRING_array$[]) THEN upper_slot = UBOUND (STRING_array$[])
+	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
 	IF upper_slot < 0 THEN RETURN
 
 	FOR slot = 0 TO upper_slot
 		IFF STRING_arrayUM[slot] THEN DO NEXT
 		STRING_item$ = TRIM$ (STRING_array$[slot])
 		IF LEN (STRING_item$) <> findLen THEN DO NEXT
-		IF STRING_item$ = find$ THEN RETURN (slot + 1) ' return id
+		IF STRING_item$ = v_find$ THEN RETURN (slot + 1) ' return id
 	NEXT slot
 END FUNCTION
 
 ' returns id on success or 0 on fail
-' id = STRING_Find (find$) ' find case insensitive
+' id = STRING_Find (v_find$) ' find case insensitive
 '	IFZ id THEN ' not found
-FUNCTION STRING_InsFind (find$)
+FUNCTION STRING_InsFind (v_find$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN
+	v_find$ = TRIM$ (v_find$)
+	IFZ v_find$ THEN RETURN
 
-	findLen = LEN (find$)
+	findLen = LEN (v_find$)
 	upper_slot = STRING_idMax - 1
-	IF upper_slot > UBOUND (STRING_array$[]) THEN upper_slot = UBOUND (STRING_array$[])
+	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
 	IF upper_slot < 0 THEN RETURN
 
-	find_lc$ = LCASE$ (find$)
+	find_lc$ = LCASE$ (v_find$)
 	FOR slot = 0 TO upper_slot
 		IFF STRING_arrayUM[slot] THEN DO NEXT
 		STRING_item$ = TRIM$ (STRING_array$[slot])
