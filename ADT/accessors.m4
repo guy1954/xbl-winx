@@ -16,14 +16,14 @@ m4_define(`DefineAccess', `FUNCTION $1_Init ()
 	$1_idMax = 0
 END FUNCTION
 
-FUNCTION $1_New ($1 $1_item)
+FUNCTION $1_New ($1 v_$1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
-	IFZ $1_array[] THEN $1_Init ()
+	IFZ $1_arrayUM[] THEN $1_Init ()
 
-	upper_slot = UBOUND ($1_array[])
+	upper_slot = UBOUND ($1_arrayUM[])
 	slot = -1
 	IF $1_idMax <= upper_slot THEN
 		FOR i = $1_idMax TO upper_slot
@@ -44,59 +44,60 @@ FUNCTION $1_New ($1 $1_item)
 	ENDIF
 
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	$1_array[slot] = $1_item
+	$1_array[slot] = v_$1_item
 	$1_arrayUM[slot] = $$TRUE
-	RETURN (slot + 1)
+	r_id = slot + 1
+	RETURN r_id
 END FUNCTION
 
-FUNCTION $1_Get (id, $1 $1_item)
+FUNCTION $1_Get (v_id, $1 r_$1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
 	$1 $1_item_null
 
-	$1_item = $1_item_null
-	IFZ $1_array[] THEN RETURN
-	IF id > $1_idMax THEN RETURN
+	r_$1_item = $1_item_null
+	IFZ $1_arrayUM[] THEN RETURN
+	IF v_id < 1 || v_id > $1_idMax THEN RETURN
 
-	upper_slot = UBOUND ($1_array[])
-	slot = id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	upper_slot = UBOUND ($1_arrayUM[])
+	slot = v_id - 1
+	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
 
-	$1_item = $1_array[slot]
+	r_$1_item = $1_array[slot]
 	RETURN $$TRUE
 END FUNCTION
 
-FUNCTION $1_Update (id, $1 $1_item)
+FUNCTION $1_Update (v_id, $1 v_$1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
-	IFZ $1_array[] THEN RETURN
-	IF id > $1_idMax THEN RETURN
+	IFZ $1_arrayUM[] THEN RETURN
+	IF v_id < 1 || v_id > $1_idMax THEN RETURN
 
-	upper_slot = UBOUND ($1_array[])
-	slot = id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	upper_slot = UBOUND ($1_arrayUM[])
+	slot = v_id - 1
+	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
 
-	$1_array[slot] = $1_item
+	$1_array[slot] = v_$1_item
 	RETURN $$TRUE
 END FUNCTION
 
-FUNCTION $1_Delete (id)
+FUNCTION $1_Delete (v_id)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
-	IFZ $1_array[] THEN RETURN
-	IF id > $1_idMax THEN RETURN
+	IFZ $1_arrayUM[] THEN RETURN
+	IF v_id < 1 || v_id > $1_idMax THEN RETURN
 
-	upper_slot = UBOUND ($1_array[])
-	slot = id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	upper_slot = UBOUND ($1_arrayUM[])
+	slot = v_id - 1
+	IF slot > upper_slot THEN RETURN
 	IFF $1_arrayUM[slot] THEN RETURN
 
 	$1_arrayUM[slot] = $$FALSE
