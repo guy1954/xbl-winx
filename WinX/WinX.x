@@ -86,7 +86,7 @@ VERSION "0.6.0.14"
 '                      used SWAP to set and return the passed array r_accel[].
 '          Guy-02feb12-corrected return of array argument in WinXDraw_GetImageChannel
 '                      used SWAP to set and return the passed array r_data[].
-  '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw
+'          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw, WinXGetWindowEffRect
 '
 ' Win32API DLL headers
 '
@@ -163,8 +163,8 @@ TYPE BINDING
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
 END TYPE
 ' message handler data type
-TYPE MSGHANDLER
-	XLONG .wMsg		'when 0, this record is not in use
+TYPE HANDLER
+	XLONG .code		'when 0, this record is not in use
 	FUNCADDR .handler (XLONG, XLONG, XLONG, XLONG)		' hWnd, wMsg, wParam, lParam
 END TYPE
 
@@ -648,6 +648,7 @@ DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the Use
 
 DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
 DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
+DECLARE FUNCTION WinXGetWindowEffRect (hWnd, RECT @rect) ' get the window's effective rectangle
 
 END EXPORT
 
@@ -666,14 +667,20 @@ DECLARE FUNCTION cancelDlgOnClose (hWnd)
 DECLARE FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
 DECLARE FUNCTION printAbortProc (hdc, nCode)
 
-DECLARE FUNCTION handler_addGroup ()
-DECLARE FUNCTION handler_add (group, MSGHANDLER handler)
-DECLARE FUNCTION handler_get (group, idCtr, MSGHANDLER @handler)
-DECLARE FUNCTION handler_update (group, idCtr, MSGHANDLER handler)
-DECLARE FUNCTION handler_find (group, wMsg)
-DECLARE FUNCTION handler_call (group, @ret, hWnd, wMsg, wParam, lParam)
-DECLARE FUNCTION handler_delete (group, idCtr)
-DECLARE FUNCTION handler_deleteGroup (group)
+DECLARE FUNCTION HANDLER_Init ()
+DECLARE FUNCTION HANDLER_New ()
+DECLARE FUNCTION HANDLER_Delete (group)
+DECLARE FUNCTION HANDLER_Get_idMax ()
+DECLARE FUNCTION HANDLER_GetCount ()
+
+DECLARE FUNCTION HANDLER_AddItem (group, HANDLER handler)
+DECLARE FUNCTION HANDLER_GetItem (group, index, HANDLER @handler)
+DECLARE FUNCTION HANDLER_UpdateItem (group, HANDLER handler)
+DECLARE FUNCTION HANDLER_DeleteItem (group, HANDLER @handler)
+DECLARE FUNCTION HANDLER_FindItemCode (group, find)
+DECLARE FUNCTION HANDLER_GetItemCount (group)
+
+DECLARE FUNCTION HANDLER_CallItem (group, @ret, hWnd, wMsg, wParam, lParam)
 
 DECLARE FUNCTION AUTOSIZER_LinkedList_Init ()
 DECLARE FUNCTION AUTOSIZER_LinkedList_New (direction)
@@ -722,6 +729,8 @@ DeclareAccess(AUTODRAWRECORD)
 DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
 DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
+
+DECLARE FUNCTION FnDefaultHandler (hWnd, wMsg, wParam, lParam)
 '
 $$LeftSubSizer$  = "WinXLeftSubSizer"
 $$RightSubSizer$ = "WinXRightSubSizer"
@@ -740,9 +749,6 @@ $$RightSubSizer$ = "WinXRightSubSizer"
 ' Examples    = IFF WinX () THEN QUIT(0)
 '
 FUNCTION WinX ()
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
-	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
-
 	SHARED TBBUTTONDATA g_tbbd[]		' info for toolbar customisation
 	SHARED g_tbbdUM[]
 
@@ -785,9 +791,7 @@ FUNCTION WinX ()
 	InitCommonControlsEx (&iccex) ' Guy-04mar09-don't care!
 
 	BINDING_Init ()
-
-	DIM g_handlers[0, 0]
-	DIM g_handlersUM[0]
+	HANDLER_Init ()
 
 	AUTOSIZER_LinkedList_Init ()
 
@@ -824,27 +828,20 @@ FUNCTION WinX ()
 	' gl-09feb12-generate WinX's main window class
 	XstGetLocalDateAndTime (@year, @month, @day, @weekDay, @hour, @minute, @second, @nanos) ' get today's date
 
-	st$ = STRING$ (month)
-	IF month < 10 THEN st$ = "0" + st$
-	stamp$ = st$
+	DIM arr[4]
+	arr[0] = second
+	arr[1] = minute
+	arr[2] = hour
+	arr[3] = day
+	arr[4] = month
 
-	st$ = STRING$ (day)
-	IF day < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + st$
+	stamp$ = $$WINX_CLASS$
+	FOR i = 0 TO 4
+		IF arr[i] < 10 THEN stamp$ = stamp$ + "0"
+		stamp$ = stamp$ + STRING$ (arr[i])
+	NEXT i
 
-	st$ = STRING$ (hour)
-	IF hour < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + st$
-
-	st$ = STRING$ (minute)
-	IF minute < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + st$
-
-	st$ = STRING$ (second)
-	IF second < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + st$
-
-	#WinXclass$ = $$WINX_CLASS$ + stamp$
+	#WinXclass$ = stamp$
 	wc.lpszClassName = &#WinXclass$
 
 	ret = RegisterClassA (&wc)
@@ -3926,6 +3923,39 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rect)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
+' ##################################
+' #####  WinXGetWindowEffRect  #####
+' ##################################
+' hWnd = the handle to the window
+' rect = the effective rectangle
+FUNCTION WinXGetWindowEffRect (hWnd, RECT rect) ' get the window's effective rectangle
+
+	rect.left = 0
+	rect.top = 0
+	rect.right = 0
+	rect.bottom = 0
+	IFZ hWnd THEN RETURN
+
+	ret = GetWindowRect (hWnd, &rect)
+	IFZ ret THEN RETURN
+
+	style = GetWindowLongA (hWnd, $$GWL_STYLE)
+	menu = GetMenu (hWnd)
+	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
+	exStyle = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
+
+	IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
+		rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)	' width vertical scroll bar
+	ENDIF
+	IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
+		rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)	' width horizontal scroll bar
+	ENDIF
+
+	RETURN $$TRUE ' success
+
+END FUNCTION
+'
 ' #############################################
 ' #####  WinXGroupBox_GetAutosizerSeries  #####
 ' #############################################
@@ -5407,7 +5437,7 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	style = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
 	hInst = GetModuleHandleA (0)
 	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, 0, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
-	binding.msgHandlers = handler_addGroup ()
+	binding.msgHandlers = HANDLER_New ()
 	LinkedList_Init (@autoDraw)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDraw)
 	binding.autoSizerInfo = AUTOSIZER_LinkedList_New ($$DIR_VERT)
@@ -5754,7 +5784,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 			IF hWindow THEN
 				' Guy-11feb12-position the child window
 				' position and dimensions are relative to the upper-left corner of the parent window's client area
-				WinXGetUseableRect (hOwner, @rect)
+				WinXGetWindowEffRect (hOwner, @rect)
 				width = rect.right - rect.left
 				height = rect.bottom - rect.top
 				MoveWindow (hWindow, rect.left, rect.top, width, height, 0)
@@ -5810,7 +5840,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 
 	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWindow, 0, hInst, 0)
 
-	binding.msgHandlers = handler_addGroup ()
+	binding.msgHandlers = HANDLER_New ()
 	LinkedList_Init (@autoDraw)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDraw)
 
@@ -6203,21 +6233,25 @@ END FUNCTION
 '
 FUNCTION WinXRegMessageHandler (hWnd, wMsg, FUNCADDR FnMsgHandler)
 	BINDING binding
-	MSGHANDLER handler
+	HANDLER handler
 
 	IFZ hWnd THEN RETURN
+	IFZ wMsg THEN RETURN
 	IFZ FnMsgHandler THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	bOK = BINDING_Get (idBinding, @binding)
+	IFF bOK THEN RETURN
+	IFZ binding.msgHandlers THEN RETURN
 
 	' prepare the handler
-	handler.wMsg = wMsg
+	handler.code = wMsg
 	handler.handler = FnMsgHandler		' (hWnd, wMsg, wParam, lParam)
 
 	' and add it
-	IF handler_add (binding.msgHandlers, handler) = -1 THEN RETURN
+	index = HANDLER_AddItem (binding.msgHandlers, handler)
+	IF index < 0 THEN RETURN
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -7216,21 +7250,23 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 	RECT rect
 
 	IFZ hWnd THEN RETURN
-	' get the binding
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IF w < 0 THEN w = 0
+	IF h < 0 THEN h = 0
 
 	rect.left = 0
 	rect.top = 0
 	rect.right = w
 	rect.bottom = h
 
-	' Guy-19apr11-AdjustWindowRectEx (&rect, GetWindowLongA (hWnd, $$GWL_STYLE), GetMenu (hWnd), GetWindowLongA (hWnd, $$GWL_EXSTYLE))
 	style = GetWindowLongA (hWnd, $$GWL_STYLE)
 	menu = GetMenu (hWnd)
 	IFZ menu THEN fMenu = 0 ELSE fMenu = 1
 	exStyle = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
+
+	' get the binding
+	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	binding.minW = rect.right - rect.left
 	binding.minH = rect.bottom - rect.top
@@ -8820,7 +8856,7 @@ FUNCTION BINDING_Ov_Delete (id)
 	LINKEDLIST_Delete (item.autoDrawInfo)
 
 	' delete the message handlers
-	handler_deleteGroup (item.msgHandlers)
+	HANDLER_Delete (item.msgHandlers)
 
 	' delete the auto sizer info
 	AUTOSIZER_LinkedList_Delete (item.autoSizerInfo)
@@ -8872,6 +8908,37 @@ FUNCTION CompareLVItems (item1, item2, hLV)
 	ENDIF
 
 	IF lvs_desc THEN RETURN (-ret) ELSE RETURN ret
+END FUNCTION
+
+FUNCTION CreateMdiChild (hClient, STRING title)
+	MDICREATESTRUCT mdi
+
+	IFZ hClient THEN RETURN
+
+	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
+	IFZ hInst THEN hInst = GetModuleHandleA (0)
+	lpClassName = &#WinXclass$
+	IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
+
+	XstGetOSVersion (@major, 0, 0, "", "")
+	IF major < 4 THEN
+		mdi.szClass = lpClassName
+		mdi.szTitle = lpWindowName
+		mdi.hOwner = hInst
+		mdi.x = $$CW_USEDEFAULT
+		mdi.y = $$CW_USEDEFAULT
+		mdi.cx = $$CW_USEDEFAULT
+		mdi.cy = $$CW_USEDEFAULT
+		mdi.style = $$WS_MAXIMIZE
+		hWindow = SendMessageA (hClient, $$WM_MDICREATE, 0, &mdi)
+	ELSE
+		' Windows NT 4.0 or later
+		' Guy-12feb12-does not work for some reason (maybe the window class?)
+		hWindow = CreateWindowExA ($$WS_EX_MDICHILD,lpClassName, lpWindowName, $$WS_MAXIMIZE, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
+	ENDIF
+
+	RETURN hWindow
+
 END FUNCTION
 '
 ' ##############################
@@ -8925,37 +8992,6 @@ FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 	binding.skipOnSelect = bSkip
 	bOK = BINDING_Update (id, binding)
 	RETURN bOK
-
-END FUNCTION
-
-FUNCTION CreateMdiChild (hClient, STRING title)
-	MDICREATESTRUCT mdi
-
-	IFZ hClient THEN RETURN
-
-	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
-	IFZ hInst THEN hInst = GetModuleHandleA (0)
-	lpClassName = &#WinXclass$
-	IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
-
-	XstGetOSVersion (@major, 0, 0, "", "")
-	IF major < 4 THEN
-		mdi.szClass = lpClassName
-		mdi.szTitle = lpWindowName
-		mdi.hOwner = hInst
-		mdi.x = $$CW_USEDEFAULT
-		mdi.y = $$CW_USEDEFAULT
-		mdi.cx = $$CW_USEDEFAULT
-		mdi.cy = $$CW_USEDEFAULT
-		mdi.style = $$WS_MAXIMIZE
-		hWindow = SendMessageA (hClient, $$WM_MDICREATE, 0, &mdi)
-	ELSE
-		' Windows NT 4.0 or later
-		' Guy-12feb12-does not work for some reason (maybe the window class?)
-		hWindow = CreateWindowExA ($$WS_EX_MDICHILD,lpClassName, lpWindowName, $$WS_MAXIMIZE, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
-	ENDIF
-
-	RETURN hWindow
 
 END FUNCTION
 
@@ -9028,7 +9064,6 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 	IFZ hWnd THEN RETURN
 
 	bMDIChild = $$FALSE		' assume hWnd is NOT an MDI child
-	handled = $$FALSE		' message NOT handled
 	ret_value = 0		' WndProc return value
 
 	' get the binding
@@ -9037,70 +9072,70 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 	IFF bOK THEN RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
 
 	' call any associated message handler
-	ret = handler_call (binding.msgHandlers, @ret_value, hWnd, wMsg, wParam, lParam)
-	' Guy-26apr11-IF ret THEN handled = $$TRUE
-	IF ret THEN
-		ret_value = ret
-		handled = $$TRUE
+	ret = 0
+	bOK = HANDLER_CallItem (binding.msgHandlers, @ret, hWnd, wMsg, wParam, lParam)
+	IF bOK THEN
+		' WndProc expects FUNCTION msgHandler.handler (hWnd, wMsg, wParam, lParam)
+		' to return a non-zero value if it handled the message wMsg
+		IF ret THEN ret_value = ret
 	ENDIF
 
 	' and handle the message
 	SELECT CASE wMsg
 		CASE $$WM_COMMAND
 			' Guy-15apr09-ret_value = @binding.onCommand(LOWORD(wParam), HIWORD(wParam), lParam)
-			IFZ binding.onCommand THEN EXIT SELECT
-			handled = $$TRUE
+			IFZ binding.onCommand THEN RETURN
 			ret_value = 0
 			idCtr = LOWORD (wParam)
 			notifyCode = HIWORD (wParam)
 			ret_value = @binding.onCommand (idCtr, notifyCode, lParam)
+			RETURN
 
 		CASE $$WM_NOTIFY
 			IF lParam THEN
-				handled = $$TRUE
 				ret_value = 0
 				' get event that has occurred in a control
 				'XLONGAT (&&nmhdr) = lParam
 				RtlMoveMemory (&nmhdr, lParam, SIZE (nmhdr))
+				RETURN
 			ENDIF
 			'
 			SELECT CASE nmhdr.code
 				CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
 					IF binding.onItem THEN
-						handled = $$TRUE
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+						RETURN
 					ENDIF
 					'
 				CASE $$NM_KEYDOWN
 					IF binding.onItem THEN
-						handled = $$TRUE
 						pNmkey = &nmkey
 						XLONGAT (&&nmkey) = lParam
 						ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
 						XLONGAT (&&nmkey) = pNmkey
+						RETURN
 					ENDIF
 					'
 				CASE $$MCN_SELECT
 					IF binding.onCalendarSelect THEN
-						handled = $$TRUE
 						pNmsc = &nmsc
 						XLONGAT (&&nmsc) = lParam
 						ret_value = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
 						XLONGAT (&&nmsc) = pNmsc
+						RETURN
 					ENDIF
 					'
 				CASE $$TVN_SELCHANGED
-					IFZ binding.onSelect THEN EXIT SELECT
-					IF binding.skipOnSelect THEN EXIT SELECT
-					handled = $$TRUE
+					IFZ binding.onSelect THEN RETURN
+					IF binding.skipOnSelect THEN RETURN
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_TREEVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
 					IFZ ret_value THEN ret_value = 1		' don't return a null value
+					RETURN
 					'
 				CASE $$TVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmtvdi = &nmtvdi
 						' get event that has occurred in a control
 						'XLONGAT (&&nmtvdi) = lParam
@@ -9109,11 +9144,11 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 						'
 						'XLONGAT (&&nmtvdi) = pNmtvdi
 						RtlMoveMemory (&nmtvdi, pNmtvdi, SIZE (nmtvdi))
+						RETURN
 					ENDIF
 					'
 				CASE $$TVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmtvdi = &nmtvdi
 						' get event that has occurred in a control
 						'XLONGAT (&&nmtvdi) = lParam
@@ -9122,28 +9157,28 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 						'
 						'XLONGAT (&&nmtvdi) = pNmtvdi
 						RtlMoveMemory (&nmtvdi, pNmtvdi, SIZE (nmtvdi))
+						RETURN
 					ENDIF
 					'
 				CASE $$TVN_BEGINDRAG, $$TVN_BEGINRDRAG
-					IFZ binding.onDrag THEN EXIT SELECT
+					IFZ binding.onDrag THEN RETURN
 					'
 					' lParam = address of the notification structure (NM_TREEVIEW)
-					IFZ lParam THEN EXIT SELECT
-					handled = $$TRUE
+					IFZ lParam THEN RETURN
 					pNmtv = &nmtv
 					' get notification structure
 					'XLONGAT (&&nmtv) = lParam
 					RtlMoveMemory (&nmtv, lParam, SIZE (nmtv))
 					'
-					IFZ nmtv.hdr.hwndFrom THEN EXIT SELECT
-					IFZ nmtv.itemNew.hItem THEN EXIT SELECT
+					IFZ nmtv.hdr.hwndFrom THEN RETURN
+					IFZ nmtv.itemNew.hItem THEN RETURN
 					'
 					' do nothing if the User is attempting to drag a top-level item
 					ret = SendMessageA (nmtv.hdr.hwndFrom, $$TVM_GETNEXTITEM, $$TVGN_PARENT, nmtv.itemNew.hItem)
 					IFZ ret THEN
 						'XLONGAT (&&nmtv) = pNmtv
 						RtlMoveMemory (&nmtv, pNmtv, SIZE (nmtv))
-						EXIT SELECT
+						RETURN
 					ENDIF
 					'
 					tvDragging = nmtv.hdr.hwndFrom
@@ -9182,14 +9217,14 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 						SetCapture (hWnd)		' capture the mouse
 					END IF
 					XLONGAT (&&nmtv) = pNmtv
+					RETURN
 					'
 				CASE $$TCN_SELCHANGE
 					' nmhdr.hwndFrom is the tabstrip's handle
-					IFZ nmhdr.hwndFrom THEN EXIT SELECT
-					handled = $$TRUE
+					IFZ nmhdr.hwndFrom THEN RETURN
 					'
 					maxTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETITEMCOUNT, 0, 0) - 1
-					IF maxTab < 0 THEN EXIT SELECT
+					IF maxTab < 0 THEN RETURN
 					'
 					' get current tab
 					currTab = SendMessageA (nmhdr.hwndFrom, $$TCM_GETCURSEL, 0, 0)
@@ -9214,74 +9249,74 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					'
 					' Guy-19apr11-relay to window.OnItem (nmhdr.idFrom, nmhdr.code, currTab) to process $$WM_NOTIFY wMsg
 					IF binding.onItem THEN ret_value = @binding.onItem (nmhdr.idFrom, nmhdr.code, currTab)
+					RETURN
 					'
 				CASE $$LVN_COLUMNCLICK
 					IF binding.onColumnClick THEN
-						handled = $$TRUE
 						pNmlv = &nmlv
 						XLONGAT (&&nmlv) = lParam
 						ret_value = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
 						XLONGAT (&&nmlv) = pNmlv
+						RETURN
 					ENDIF
 					'
 				CASE $$LVN_BEGINLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
 						XLONGAT (&&nmlvdi) = pNmlvdi
+						RETURN
 					ENDIF
 					'
 				CASE $$LVN_ENDLABELEDIT
 					IF binding.onLabelEdit THEN
-						handled = $$TRUE
 						pNmlvdi = &nmlvdi
 						XLONGAT (&&nmlvdi) = lParam
 						ret_value = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
 						XLONGAT (&&nmlvdi) = pNmlvdi
+						RETURN
 					ENDIF
 					'
 				CASE $$LVN_ITEMCHANGED
 					' Guy-26jan09-added $$LVN_ITEMCHANGED (list view selection changed)
-					IFZ binding.onSelect THEN EXIT SELECT
-					IF binding.skipOnSelect THEN EXIT SELECT
-					handled = $$TRUE
+					IFZ binding.onSelect THEN RETURN
+					IF binding.skipOnSelect THEN RETURN
 					'
 					' Guy-26jan09-pass the lParam, which is a pointer to an NM_LISTVIEW structure
 					ret_value = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
 					IFZ ret_value THEN ret_value = 1		' don't return a null value
+					RETURN
 					'
 			END SELECT 'nmhdr.code
 			'
 		CASE $$WM_DRAWCLIPBOARD
 			IF binding.hwndNextClipViewer THEN
-				handled = $$TRUE
 				SendMessageA (binding.hwndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
+				RETURN
 			ENDIF
 			IF binding.onClipChange THEN
-				handled = $$TRUE
 				ret_value = @binding.onClipChange ()
+				RETURN
 			ENDIF
 
 		CASE $$WM_CHANGECBCHAIN
-			handled = $$TRUE
 			IF wParam = binding.hwndNextClipViewer THEN
 				binding.hwndNextClipViewer = lParam
 			ELSE
 				IF binding.hwndNextClipViewer THEN SendMessageA (binding.hwndNextClipViewer, $$WM_CHANGECBCHAIN, wParam, lParam)
 			ENDIF
-
+			RETURN
+			'
 		CASE $$WM_DESTROYCLIPBOARD
-			handled = $$TRUE
 			IF g_hClipMem THEN
 				GlobalFree (g_hClipMem)
 				g_hClipMem = 0 ' don't free twice
 			ENDIF
-
+			RETURN
+			'
 		CASE $$WM_DROPFILES
-			IFZ binding.onDropFiles THEN EXIT SELECT
-			handled = $$TRUE
+			IFZ binding.onDropFiles THEN RETURN
 			DragQueryPoint (wParam, &pt)
 			cFiles = DragQueryFileA (wParam, -1, 0, 0)
 			IF cFiles THEN
@@ -9297,21 +9332,21 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				ret_value = @binding.onDropFiles (hWnd, pt.x, pt.y, @files$[])
 			ENDIF
 			DragFinish (wParam)
-
+			RETURN
+			'
 		CASE $$WM_ERASEBKGND
 			IF binding.backCol THEN
-				handled = $$TRUE
 				GetClientRect (hWnd, &rect)
 				FillRect (wParam, &rect, binding.backCol)
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_PAINT
-			handled = $$TRUE
 			hDC = BeginPaint (hWnd, &ps)
-
+			'
 			' use auto draw
 			WinXGetUseableRect (hWnd, @rect)
-
+			'
 			' Auto scroll?
 			' IF binding.hScrollPageM THEN
 			' GetScrollInfo (hWnd, $$SB_HORZ, &si)
@@ -9320,24 +9355,24 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			' yOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
 			' ENDIF
 			autoDraw_draw (hDC, binding.autoDrawInfo, xOff, yOff)
-
+			'
 			IF binding.onPaint THEN ret_value = @binding.onPaint (hWnd, hDC)
-
+			'
 			EndPaint (hWnd, &ps)
-
+			RETURN
+			'
 		CASE $$WM_SIZE
-			handled = $$TRUE
 			w = LOWORD (lParam)
 			h = HIWORD (lParam)
 			sizeWindow (hWnd, w, h)
-
+			RETURN
+			'
 		CASE $$WM_HSCROLL, $$WM_VSCROLL
-			handled = $$TRUE
 			buffer$ = NULL$ (LEN ($$TRACKBAR_CLASS) + 1)
 			GetClassNameA (lParam, &buffer$, LEN (buffer$))
 			buffer$ = TRIM$ (CSTRING$ (&buffer$))
 			IF buffer$ = $$TRACKBAR_CLASS THEN ret_value = @binding.onTrackerPos (GetDlgCtrlID (lParam), SendMessageA (lParam, $$TBM_GETPOS, 0, 0))
-
+			'
 			sbval = LOWORD (wParam)
 			IF wMsg = $$WM_HSCROLL THEN
 				sb = $$SB_HORZ
@@ -9348,11 +9383,11 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				dir = $$DIR_VERT
 				scrollUnit = binding.vScrollUnit
 			ENDIF
-
+			'
 			si.cbSize = SIZE (SCROLLINFO)
 			si.fMask = $$SIF_ALL | $$SIF_DISABLENOSCROLL
 			GetScrollInfo (hWnd, sb, &si)
-
+			'
 			IF si.nPage <= (si.nMax - si.nMin) THEN
 				SELECT CASE sbval
 					CASE $$SB_TOP
@@ -9371,10 +9406,10 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 						si.nPos = si.nTrackPos
 				END SELECT
 			ENDIF
-
+			'
 			SetScrollInfo (hWnd, sb, &si, $$TRUE)
 			IF binding.onPaint THEN ret_value = @binding.onScroll (si.nPos, hWnd, dir)
-
+			'
 			' This allows for mouse activation of child windows, for some reason WM_ACTIVATE doesn't work
 			' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
 			' CASE $$WM_MOUSEACTIVATE
@@ -9390,49 +9425,49 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			' hChild = ChildWindowFromPoint (wParam, x, y)
 			' LOOP
 			' IF wParam = GetFocus () THEN RETURN $$MA_NOACTIVATE
-
+			RETURN
+			'
 		CASE $$WM_KEYDOWN
 			IF binding.onKeyDown THEN
-				handled = $$TRUE
 				ret_value = @binding.onKeyDown (hWnd, wParam)
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_KEYUP
 			IF binding.onKeyUp THEN
-				handled = $$TRUE
 				ret_value = @binding.onKeyUp (hWnd, wParam)
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_CHAR
 			IF binding.onChar THEN
-				handled = $$TRUE
 				ret_value = @binding.onChar (hWnd, wParam)
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_SETFOCUS
 			IF binding.onFocusChange THEN
-				handled = $$TRUE
 				ret_value = @binding.onFocusChange (hWnd, $$TRUE)
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_KILLFOCUS
 			IF binding.onFocusChange THEN
-				handled = $$TRUE
 				ret_value = @binding.onFocusChange (hWnd, $$FALSE)
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_SETCURSOR
 			IF binding.hCursor && LOWORD (lParam) = $$HTCLIENT THEN
 				ret_value = $$TRUE
 				SetCursor (binding.hCursor)
+				RETURN
 			ENDIF
-			handled = $$TRUE
-
+			'
 		CASE $$WM_MOUSEMOVE
-			handled = $$TRUE
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
-
+			'
 			IFF binding.isMouseInWindow THEN
 				tme.cbSize = SIZE (tme)
 				tme.dwFlags = $$TME_LEAVE
@@ -9440,10 +9475,10 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 				TrackMouseEvent (&tme)
 				binding.isMouseInWindow = $$TRUE
 				BINDING_Update (idBinding, binding)
-
+			'
 				@binding.onEnterLeave (hWnd, $$TRUE)
 			ENDIF
-
+			'
 			IF (tvDragButton = $$MBT_LEFT) || (tvDragButton = $$MBT_RIGHT) THEN
 				GOSUB dragTreeViewItem
 				IFZ ret_value THEN SetCursor (LoadCursorA (0, $$IDC_NO)) ELSE SetCursor (LoadCursorA (0, $$IDC_ARROW))
@@ -9451,41 +9486,41 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			ELSE
 				ret_value = @binding.onMouseMove (hWnd, LOWORD (lParam), HIWORD (lParam))
 			ENDIF
-
+			RETURN
+			'
 		CASE $$WM_MOUSELEAVE
-			handled = $$TRUE
 			binding.isMouseInWindow = $$FALSE
 			BINDING_Update (idBinding, binding)
-
+			'
 			@binding.onEnterLeave (hWnd, $$FALSE)
 			ret_value = 0
-
+			RETURN
+			'
 		CASE $$WM_LBUTTONDOWN
 			IF binding.onMouseDown THEN
-				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseDown (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_MBUTTONDOWN
 			IF binding.onMouseDown THEN
-				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseDown (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_RBUTTONDOWN
 			IF binding.onMouseDown THEN
-				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_LBUTTONUP
-			handled = $$TRUE
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 			IF tvDragButton = $$MBT_LEFT THEN
@@ -9500,17 +9535,17 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					ret_value = @binding.onMouseUp (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
 				ENDIF
 			ENDIF
-
+			RETURN
+			'
 		CASE $$WM_MBUTTONUP
 			IF binding.onMouseUp THEN
-				handled = $$TRUE
 				mouseXY.x = LOWORD (lParam)
 				mouseXY.y = HIWORD (lParam)
 				ret_value = @binding.onMouseUp (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_RBUTTONUP
-			handled = $$TRUE
 			mouseXY.x = LOWORD (lParam)
 			mouseXY.y = HIWORD (lParam)
 			IF tvDragButton = $$MBT_LEFT THEN
@@ -9525,7 +9560,8 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					ret_value = @binding.onMouseUp (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
 				ENDIF
 			ENDIF
-
+			RETURN
+			'
 		CASE $$WM_MOUSEWHEEL
 			' This message is broken.  It gets passed to active window rather than the window under the mouse
 			'
@@ -9551,13 +9587,12 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 			'ENDIF
 			'
 			IF binding.onMouseWheel THEN
-				handled = $$TRUE
 				ret_value = @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+				RETURN
 			ENDIF
-
+			'
 		CASE DLM_MESSAGE
 			IF DLM_MESSAGE <> 0 THEN
-				handled = $$TRUE
 				RtlMoveMemory (&dli, lParam, SIZE (DRAGLISTINFO))
 				SELECT CASE dli.uNotification
 					CASE $$DL_BEGINDRAG
@@ -9619,26 +9654,26 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 						@binding.onDrag (wParam, $$DRAG_DONE, item, dli.ptCursor.x, dli.ptCursor.y)
 						WinXListBox_RemoveItem (dli.hWnd, -1)
 				END SELECT
+				RETURN
 			ENDIF
-
+			'
 		CASE $$WM_GETMINMAXINFO
-			handled = $$TRUE
 			pStruc = &mmi
 			XLONGAT (&&mmi) = lParam
 			mmi.ptMinTrackSize.x = binding.minW
 			mmi.ptMinTrackSize.y = binding.minH
 			XLONGAT (&&mmi) = pStruc
-
+			RETURN
+			'
 		CASE $$WM_PARENTNOTIFY
-			handled = $$TRUE
 			SELECT CASE LOWORD (wParam)
 				CASE $$WM_DESTROY
 					' free the auto sizer block if there is one
 					autoSizerBlock_Delete (binding.autoSizerInfo, GetPropA (lParam, &"autoSizerInfoBlock") - 1)
 			END SELECT
-
+			RETURN
+			'
 		CASE $$WM_TIMER
-			handled = $$TRUE
 			SELECT CASE wParam
 				CASE -1
 					IF lastDragItem = dragItem THEN
@@ -9649,25 +9684,24 @@ FUNCTION WndProc (hWnd, wMsg, wParam, lParam)
 					KillTimer (hWnd, -1)
 					ret_value = 0
 			END SELECT
-
+			RETURN
+			'
 		CASE $$WM_CLOSE
-			handled = $$TRUE
 			IFZ binding.onClose THEN
 				DestroyWindow (hWnd)
 				PostQuitMessage (0)
 			ELSE
 				ret_value = @binding.onClose (hWnd)
 			ENDIF
-
+			RETURN
+			'
 		CASE $$WM_DESTROY
-			handled = $$TRUE
 			ChangeClipboardChain (hWnd, binding.hwndNextClipViewer)
 			' clear the binding
 			BINDING_Ov_Delete (idBinding)
-
+			RETURN
+			'
 	END SELECT
-
-	IF handled THEN RETURN ret_value
 
 	IF bMDIChild THEN
 		' Pass the message to the default MDI procedure
@@ -10292,204 +10326,323 @@ FUNCTION groupBox_SizeContents (hGB, pRect)
 	RETURN GetPropA (hGB, &"WinXAutoSizerSeries")
 END FUNCTION
 '
-' #########################
-' #####  handler_add  #####
-' #########################
-' Add a new handler to a group
-' group = the group to add the handler to
-' handler = the handler to add
-' returns the idCtr of the new handler or -1 on fail
-FUNCTION handler_add (group, MSGHANDLER handler)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
-	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
-	MSGHANDLER group[]		'a local version of the group
+' ##########################
+' #####  HANDLER_Init  #####
+' ##########################
+'
+FUNCTION HANDLER_Init ()
+	SHARED HANDLER group_ragged[]		'a 2D array of handlers
+	SHARED group_arrayUM[]		'a usage map so we can see which groups are in use
+	SHARED group_idMax
 
-	' bounds checking
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN -1		' fail
-	IF handlersUM <> 0 THEN RETURN -1		' fail
-	IFZ handler.wMsg THEN RETURN -1		' Guy-17mar11-fail
+	DIM group_ragged[7,]
+	DIM group_arrayUM[7]
+	group_idMax = 0
+END FUNCTION
+'
+' #########################
+' #####  HANDLER_New  #####
+' #########################
+' Adds a new group of handlers
+' returns r_group_id, the id of the group
+FUNCTION HANDLER_New ()
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
+
+	IFZ group_arrayUM[] THEN HANDLER_Init ()
+
+	upper_slot = UBOUND (group_arrayUM[])
+	slot = -1
+	IF group_idMax <= upper_slot THEN
+		FOR i = group_idMax TO upper_slot
+			IFF group_arrayUM[i] THEN
+				slot = i
+				group_idMax = i + 1
+				EXIT FOR
+			ENDIF
+		NEXT i
+	ENDIF
+
+	IF slot = -1 THEN
+		upper_slot = ((upper_slot + 1) << 1) - 1
+		REDIM group_ragged[upper_slot,]
+		REDIM group_arrayUM[upper_slot]
+		slot = group_idMax
+		INC group_idMax
+	ENDIF
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	group_arrayUM[slot] = $$TRUE
+	r_group_id = slot + 1
+	RETURN r_group_id
+END FUNCTION
+'
+' ############################
+' #####  HANDLER_Delete  #####
+' ############################
+' Deletes a group of handlers
+' v_group = the group to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION HANDLER_Delete (v_group)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
+
+	IFZ group_arrayUM[] THEN RETURN
+	IF v_group >= group_idMax THEN RETURN
+
+	upper_slot = UBOUND (group_arrayUM[])
+	IF (v_group < 0) || (v_group > upper_slot) THEN RETURN
+	IFF group_arrayUM[v_group] THEN RETURN
+
+	group_arrayUM[v_group] = $$FALSE
+	RETURN $$TRUE ' success
+END FUNCTION
+
+FUNCTION HANDLER_Get_idMax ()
+	SHARED group_idMax
+	RETURN group_idMax
+END FUNCTION
+
+FUNCTION HANDLER_GetCount ()
+	SHARED group_arrayUM[]
+
+	IFZ group_arrayUM[] THEN RETURN 0
+	r_count = 0
+	FOR slot = UBOUND (group_arrayUM[]) TO 0 STEP -1
+		IF group_arrayUM[slot] THEN INC r_count
+	NEXT slot
+	RETURN r_count
+END FUNCTION
+'
+' #############################
+' #####  HANDLER_AddItem  #####
+' #############################
+' Add a new handler to a group
+' v_group_id = the group to add the handler to
+' v_handler = the handler to add
+' returns r_index = the index of the new handler or -1 on fail
+FUNCTION HANDLER_AddItem (v_group_id, HANDLER v_handler)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
+
+	HANDLER local_group[]		'a local version of the group
+
+	IFZ v_handler.code THEN RETURN -1		' Guy-17mar11-fail
+	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN -1
+
+	slot = v_group_id - 1
+	IFF group_arrayUM[slot] THEN RETURN -1
+
+	IFZ group_ragged[slot,] THEN
+		DIM local_group[0]
+		local_group[0] = v_handler
+		ATTACH local_group[] TO group_ragged[slot,]
+		RETURN 0
+	ENDIF
 
 	' find a free slot
-	slot = -1
-	upp = UBOUND (g_handlers[group,])
-	FOR i = 0 TO upp
-		IF g_handlers[group, i].wMsg = handler.wMsg THEN RETURN -1		' Guy-17mar11-fail: already there
-		'
-		IF g_handlers[group, i].wMsg = 0 THEN
-			slot = i
-			EXIT FOR
+	r_index = -1
+	upper_index = UBOUND (group_ragged[slot,])
+	DIM local_group[upper_index]
+	FOR i = 0 TO upper_index
+		IF group_ragged[slot, i].code = v_handler.code THEN RETURN -1
+		local_group[i] = group_ragged[slot, i]
+		IF r_index = -1 THEN
+			IF group_ragged[slot, i].code = 0 THEN r_index = i ' free slot
 		ENDIF
 	NEXT i
 
-	IF slot = -1 THEN		'allocate more memmory
-		slot = UBOUND (g_handlers[group,]) + 1
-		SWAP group[], g_handlers[group,]
-		REDIM group[ ((UBOUND (group[]) + 1) << 1) - 1]
-		SWAP group[], g_handlers[group,]
+	IF r_index = -1 THEN		'allocate more memmory
+		INC upper_index
+		REDIM local_group[upper_index]
+		r_index = upper_index
 	ENDIF
 
 	' now finish it off
-	g_handlers[group, slot] = handler
-	RETURN slot
+	local_group[r_index] = v_handler
+	SWAP local_group[], group_ragged[slot,]
+	RETURN r_index
 END FUNCTION
 '
-' ##############################
-' #####  handler_addGroup  #####
-' ##############################
-' Adds a new group of handlers
-' returns the idCtr of the group
-FUNCTION handler_addGroup ()
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
-	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
+' ################################
+' #####  HANDLER_DeleteItem  #####
+' ################################
+' Delete a single handler
+' v_group_id = the group id of the handler to delete
+' r_handler = the handler to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION HANDLER_DeleteItem (v_group_id, HANDLER r_handler)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
 
-	slot = -1
-	upp = UBOUND (g_handlersUM[])
-	FOR i = 0 TO upp
-		IFZ g_handlersUM[i] THEN
-			slot = i
+	IFZ r_handler.code THEN RETURN $$TRUE ' already deleted
+	r_handler.code = 0
+	IFZ group_arrayUM[] THEN RETURN $$TRUE
+	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN
+
+	upper_slot = UBOUND (group_arrayUM[])
+	slot = v_group_id - 1
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN $$TRUE
+	IFF group_arrayUM[slot] THEN RETURN $$TRUE
+
+	index = -1
+	upper_index = UBOUND (group_ragged[slot,])
+	FOR i = 0 TO upper_index
+		IFZ group_ragged[slot, i].code THEN DO NEXT
+		IF group_ragged[slot, i].code = r_handler.code THEN
+			index = i
 			EXIT FOR
 		ENDIF
 	NEXT i
-
-	IF slot = -1 THEN
-		slot = UBOUND (g_handlersUM[]) + 1
-		REDIM g_handlersUM[ ((UBOUND (g_handlersUM[]) + 1) << 1) - 1]
-		REDIM g_handlers[UBOUND (g_handlersUM[]),]
-	ENDIF
-
-	g_handlersUM[slot] = -1
-
-	RETURN slot
+	IF index > -1 THEN group_ragged[slot, index].code = 0
+	RETURN $$TRUE ' success
 END FUNCTION
 '
-' ##########################
-' #####  handler_call  #####
-' ##########################
-' Calls the handler for a specified message
-' group = the group to call from
-' ret = the variable to hold the message return value
-' hWnd, wMsg, wParam, lParam = the usual definitions for these parameters
-' returns retCode on success or $$FALSE on fail
-FUNCTION handler_call (group, ret, hWnd, wMsg, wParam, lParam)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
-
-	IF group < 0 THEN RETURN		' Guy-15apr09-no registered handler
-
-	' first, find the handler
-	index = handler_find (group, wMsg)
-
-	IF index < 0 THEN RETURN
-
-	' then call it
-	retCode = @g_handlers[group, index].handler (hWnd, wMsg, wParam, lParam)
-
-	' Guy-17mar11-RETURN $$TRUE ' success
-	RETURN retCode
-END FUNCTION
-'
-' ############################
-' #####  handler_delete  #####
-' ############################
-' Delete a single handler
-' group and idCtr = the group and idCtr of the handler to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_delete (group, idCtr)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
-
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
-	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN
-	IF g_handlers[group, idCtr].wMsg = 0 THEN RETURN
-
-	g_handlers[group, idCtr].wMsg = 0
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' #################################
-' #####  handler_deleteGroup  #####
-' #################################
-' Deletes a group of handlers
-' group = the group to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_deleteGroup (group)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
-	SHARED g_handlersUM[]		'a usage map so we can see which groups are in use
-	MSGHANDLER group[]		'a local version of the group
-
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
-	IF UBOUND (g_handlers[group,]) = -1 THEN RETURN $$TRUE		' success
-
-	g_handlersUM[group] = 0
-	SWAP group[], g_handlers[group,]
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ##########################
-' #####  handler_find  #####
-' ##########################
+' ##################################
+' #####  HANDLER_FindItemCode  #####
+' ##################################
 ' Locates a handler in the handler array
-' group = the group to search
-' v_msg = the message to search for
-' returns the idCtr of the message handler, -1 if it fails
+' v_group_id = the group id of the handler to search
+' v_find = the message to search for
+' returns r_index, the index of the message handler, -1 if it fails
 ' to find anything and -2 if there is a bounds error
-FUNCTION handler_find (group, v_msg)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
+FUNCTION HANDLER_FindItemCode (v_group_id, v_find)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN -2		' fail: bounds error
-	IFZ v_msg THEN RETURN -2		' fail: bounds error
+	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN -1
+	IFZ v_code THEN RETURN -2
 
-	i = 0
-	iMax = UBOUND (g_handlers[group,])
+	slot = v_group_id - 1
+	upper_index = UBOUND (group_ragged[slot,])
+	FOR r_index = 0 TO upper_index
+		IFZ group_ragged[slot, r_index].code THEN DO NEXT
+		IF group_ragged[slot, r_index].code = v_code THEN RETURN r_index
+	NEXT r_index
 
-	' IF i > iMax THEN RETURN -1 ' fail
-	' DO UNTIL g_handlers[group,i].wMsg = v_msg
-	' INC i
-	' IF i > iMax THEN RETURN -1 ' fail
-	' LOOP
-	' RETURN i
+	RETURN -1
+END FUNCTION
+'
+' #############################
+' #####  HANDLER_GetItem  #####
+' #############################
+' Retrieve a handler from the handler array
+' v_group_id = the group id of the handler to retreive
+' v_index = the index of the handler
+' r_handler = the variable to store the handler
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION HANDLER_GetItem (v_group_id, v_index, HANDLER r_handler)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
 
-	FOR i = 0 TO iMax
-		IF g_handlers[group, i].wMsg THEN
-			IF g_handlers[group, i].wMsg = v_msg THEN RETURN i
+	HANDLER item_null
+
+	r_handler = item_null ' reset
+	IFZ group_arrayUM[] THEN RETURN
+	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN
+	IF v_index < 0 THEN RETURN
+
+	upper_slot = UBOUND (group_arrayUM[])
+	slot = v_group_id - 1
+	IF slot > upper_slot THEN RETURN
+	IFF group_arrayUM[slot] THEN RETURN
+	IFZ group_ragged[slot,] THEN RETURN
+
+
+	upper_index = UBOUND (group_ragged[slot,])
+	IF v_index > upper_index THEN RETURN
+
+	IFZ group_ragged[slot, v_index].code THEN RETURN
+
+	r_handler = group_ragged[slot, v_index]
+	RETURN $$TRUE ' success
+END FUNCTION
+'
+' ################################
+' #####  HANDLER_UpdateItem  #####
+' ################################
+' Updates an existing handler
+' v_group_id = the group id of the handler to update
+' v_handler = the new version of the handler
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION HANDLER_UpdateItem (v_group_id, HANDLER v_handler)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
+
+	IFZ group_arrayUM[] THEN RETURN
+	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN
+	IFZ v_handler.code THEN RETURN
+
+	upper_slot = UBOUND (group_arrayUM[])
+	slot = v_group_id - 1
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF group_arrayUM[slot] THEN RETURN
+
+	index = -1
+	upper_index = UBOUND (group_ragged[slot,])
+	FOR i = 0 TO upper_index
+		IFZ group_ragged[slot, i].code THEN DO NEXT
+		IF group_ragged[slot, i].code = v_find THEN
+			index = i
+			EXIT FOR
 		ENDIF
 	NEXT i
-	RETURN -1		' fail
+	IF index > -1 THEN group_ragged[slot, index] = v_handler
+	RETURN $$TRUE ' success
+END FUNCTION
 
+FUNCTION HANDLER_GetItemCount (v_group_id)
+	SHARED HANDLER group_ragged[]
+	SHARED group_arrayUM[]
+	SHARED group_idMax
+
+	IFZ group_arrayUM[] THEN RETURN -1
+	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN -1
+
+	upper_slot = UBOUND (group_arrayUM[])
+	slot = v_group_id - 1
+	IF slot > upper_slot THEN RETURN -1
+	IFF group_arrayUM[slot] THEN RETURN -1
+	IFZ group_ragged[slot,] THEN RETURN -1
+
+	r_count = 0
+	upper_index = UBOUND (group_ragged[slot,])
+	FOR index = 0 TO upper_index
+		IF group_ragged[slot, index].code THEN INC r_count
+	NEXT index
+	RETURN r_count
 END FUNCTION
 '
-' #########################
-' #####  handler_get  #####
-' #########################
-' Retrieve a handler from the handler array
-' group and idCtr are the group and idCtr of the handler to retreive
-' handler = the variable to store the handler
+' ##############################
+' #####  HANDLER_CallItem  #####
+' ##############################
+' Calls the handler for a specified message
+' group_id = the group_id to call from
+' ret_value = the variable to hold the message return value
+' hWnd, wMsg, wParam, lParam = the usual definitions for these parameters
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_get (group, idCtr, MSGHANDLER handler)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
+FUNCTION HANDLER_CallItem (group_id, @ret_value, hWnd, wMsg, wParam, lParam)
+	HANDLER msgHandler
+	FUNCADDR addrHandler (XLONG, XLONG, XLONG, XLONG)		' hWnd, wMsg, wParam, lParam
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
-	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN
-	IFZ g_handlers[group, idCtr].wMsg THEN RETURN
+	addrHandler = &FnDefaultHandler ()
 
-	handler = g_handlers[group, idCtr]
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ############################
-' #####  handler_update  #####
-' ############################
-' Updates an existing handler
-' group and idCtr are the group and idCtr of the handler to update
-' handler is the new version of the handler
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_update (group, idCtr, MSGHANDLER handler)
-	SHARED MSGHANDLER g_handlers[]		'a 2D array of handlers
+	' first, find the msgHandler
+	index = HANDLER_FindItemCode (group_id, wMsg)
+	IF index >= 0 THEN
+		bOK = HANDLER_GetItem (group_id, index, @msgHandler)
+		IF bOK THEN addrHandler = msgHandler.handler
+	ENDIF
+	ret_value = @addrHandler (hWnd, wMsg, wParam, lParam)
 
-	IF group < 0 || group > UBOUND (g_handlers[]) THEN RETURN
-	IF idCtr < 0 || idCtr > UBOUND (g_handlers[group,]) THEN RETURN
-	IFZ g_handlers[group, idCtr].wMsg THEN RETURN
-
-	g_handlers[group, idCtr] = handler
-	RETURN $$TRUE		' success
+	RETURN $$TRUE ' success
 END FUNCTION
 '
 ' ###########################
@@ -10989,6 +11142,17 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+
+FUNCTION FnDefaultHandler (hWnd, wMsg, wParam, lParam)
+
+	IFZ hWnd THEN RETURN
+	IFZ wMsg THEN RETURN
+
+	' WndProc expects FUNCTION FnDefaultHandler (hWnd, wMsg, wParam, lParam)
+	' to return a non-zero value if it handled the message wMsg
+	RETURN 1
+
 END FUNCTION
 '
 '
