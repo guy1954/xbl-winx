@@ -10516,13 +10516,13 @@ FUNCTION HANDLER_FindItemCode (v_group_id, v_find)
 	SHARED group_idMax
 
 	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN -1
-	IFZ v_code THEN RETURN -2
+	IFZ v_find THEN RETURN -2
 
 	slot = v_group_id - 1
 	upper_index = UBOUND (group_ragged[slot,])
 	FOR r_index = 0 TO upper_index
 		IFZ group_ragged[slot, r_index].code THEN DO NEXT
-		IF group_ragged[slot, r_index].code = v_code THEN RETURN r_index
+		IF group_ragged[slot, r_index].code = v_find THEN RETURN r_index
 	NEXT r_index
 
 	RETURN -1
