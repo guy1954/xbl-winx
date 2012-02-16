@@ -675,7 +675,6 @@ DECLARE FUNCTION HANDLER_GetCount ()
 
 DECLARE FUNCTION HANDLER_AddItem (group, HANDLER handler)
 DECLARE FUNCTION HANDLER_GetItem (group, index, HANDLER @handler)
-DECLARE FUNCTION HANDLER_UpdateItem (group, HANDLER handler)
 DECLARE FUNCTION HANDLER_DeleteItem (group, HANDLER @handler)
 DECLARE FUNCTION HANDLER_FindItemCode (group, find)
 DECLARE FUNCTION HANDLER_GetItemCount (group)
@@ -713,6 +712,12 @@ DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION TellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 DECLARE FUNCTION CreateMdiChild (hClient, title$)
+
+DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
+DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
+DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
+
+DECLARE FUNCTION BINDING_Ov_Delete (id)
 '
 ' #######################
 ' #####  M4 macros  #####
@@ -720,17 +725,9 @@ DECLARE FUNCTION CreateMdiChild (hClient, title$)
 '
 ' These functions abstract away access to the arrays
 DeclareAccess(BINDING)
-DECLARE FUNCTION BINDING_Ov_Delete (id)
-
 DeclareAccess(SPLITTERINFO)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
-
-DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
-DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
-DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
-
-DECLARE FUNCTION FnDefaultHandler (hWnd, wMsg, wParam, lParam)
 '
 $$LeftSubSizer$  = "WinXLeftSubSizer"
 $$RightSubSizer$ = "WinXRightSubSizer"
@@ -10563,40 +10560,6 @@ FUNCTION HANDLER_GetItem (v_group_id, v_index, HANDLER r_handler)
 	r_handler = group_ragged[slot, v_index]
 	RETURN $$TRUE ' success
 END FUNCTION
-'
-' ################################
-' #####  HANDLER_UpdateItem  #####
-' ################################
-' Updates an existing handler
-' v_group_id = the group id of the handler to update
-' v_handler = the new version of the handler
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION HANDLER_UpdateItem (v_group_id, HANDLER v_handler)
-	SHARED HANDLER group_ragged[]
-	SHARED group_arrayUM[]
-	SHARED group_idMax
-
-	IFZ group_arrayUM[] THEN RETURN
-	IF v_group_id < 1 || v_group_id > group_idMax THEN RETURN
-	IFZ v_handler.code THEN RETURN
-
-	upper_slot = UBOUND (group_arrayUM[])
-	slot = v_group_id - 1
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF group_arrayUM[slot] THEN RETURN
-
-	index = -1
-	upper_index = UBOUND (group_ragged[slot,])
-	FOR i = 0 TO upper_index
-		IFZ group_ragged[slot, i].code THEN DO NEXT
-		IF group_ragged[slot, i].code = v_find THEN
-			index = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-	IF index > -1 THEN group_ragged[slot, index] = v_handler
-	RETURN $$TRUE ' success
-END FUNCTION
 
 FUNCTION HANDLER_GetItemCount (v_group_id)
 	SHARED HANDLER group_ragged[]
@@ -10628,20 +10591,17 @@ END FUNCTION
 ' ret_value = the variable to hold the message return value
 ' hWnd, wMsg, wParam, lParam = the usual definitions for these parameters
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION HANDLER_CallItem (group_id, @ret_value, hWnd, wMsg, wParam, lParam)
+FUNCTION HANDLER_CallItem (group_id, @r_ret, hWnd, wMsg, wParam, lParam)
 	HANDLER msgHandler
-	FUNCADDR addrHandler (XLONG, XLONG, XLONG, XLONG)		' hWnd, wMsg, wParam, lParam
-
-	addrHandler = &FnDefaultHandler ()
 
 	' first, find the msgHandler
 	index = HANDLER_FindItemCode (group_id, wMsg)
-	IF index >= 0 THEN
-		bOK = HANDLER_GetItem (group_id, index, @msgHandler)
-		IF bOK THEN addrHandler = msgHandler.handler
-	ENDIF
-	ret_value = @addrHandler (hWnd, wMsg, wParam, lParam)
+	IF index < 0 THEN RETURN
 
+	bOK = HANDLER_GetItem (group_id, index, @msgHandler)
+	IFF bOK THEN RETURN
+
+	r_ret = @msgHandler.handler (hWnd, wMsg, wParam, lParam)
 	RETURN $$TRUE ' success
 END FUNCTION
 '
@@ -11142,17 +11102,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
-END FUNCTION
-
-FUNCTION FnDefaultHandler (hWnd, wMsg, wParam, lParam)
-
-	IFZ hWnd THEN RETURN
-	IFZ wMsg THEN RETURN
-
-	' WndProc expects FUNCTION FnDefaultHandler (hWnd, wMsg, wParam, lParam)
-	' to return a non-zero value if it handled the message wMsg
-	RETURN 1
-
 END FUNCTION
 '
 '
