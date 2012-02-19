@@ -1322,14 +1322,26 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	IF (window_style & $$WS_SIZEBOX) = $$WS_SIZEBOX THEN style = style | $$SBARS_SIZEGRIP
 
 	' make the status bar
-	hInst = GetModuleHandleA (0)
-	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, style, 0, 0, 0, 0, hWnd, idCtr, hInst, 0)
+'	hInst = GetModuleHandleA (0)
+'	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, style, 0, 0, 0, 0, hWnd, idCtr, hInst, 0)
+
+	' Guy-19feb12-use CreateStatusWindowA
+	hCtr = CreateStatusWindowA (style, 0, hWnd, idCtr)
 	IFZ hCtr THEN RETURN
 
 	binding.hStatus = hCtr
 
 	' now prepare the parts
-	XstParseStringToStringArray (initialStatus, ",", @s$[])
+	IFZ initialStatus THEN
+		DIM s$[0]
+	ELSE
+		IFZ INSTR (initialStatus, ",") THEN
+			DIM s$[0]
+			s$[0] = initialStatus
+		ELSE
+			XstParseStringToStringArray (initialStatus, ",", @s$[])
+		ENDIF
+	ENDIF
 
 	' create array parts[] for holding the right edge cooordinates
 	uppPart = UBOUND (s$[])
@@ -1337,21 +1349,22 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 
 	binding.statusParts = uppPart
 
+	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
+	WinXSetFont (hCtr, hFont)
+	DeleteObject (hFont)		' release the font
+
 	' calculate the right edge coordinate for each part, and
 	' copy the coordinates to the array
 	GetClientRect (hCtr, &rect)
 
 	cPart = uppPart + 1		' number of right edge cooordinates
-	parts[uppPart] = rect.right - rect.left
-
-	IF uppPart > 0 THEN
+	IF cPart > 1 THEN
+		parts[uppPart] = rect.right - rect.left
 		width = parts[uppPart] / cPart
 		FOR i = uppPart - 1 TO 0 STEP -1
 			parts[i] = parts[i + 1] - width
 		NEXT i
 	ENDIF
-
-	' Guy-06dec08-the right edge for the last part extends to the right edge of the window
 	parts[uppPart] = -1		' extend to the right edge of the window
 
 	' set the part info
@@ -1361,11 +1374,6 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	FOR i = 0 TO uppPart
 		SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
 	NEXT i
-
-	' WinXSetDefaultFont (hCtr)
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	WinXSetFont (hCtr, hFont)		' redraw
-	DeleteObject (hFont)		' release the font
 
 	' and update the binding
 	BINDING_Update (idBinding, binding)
@@ -5518,7 +5526,17 @@ END FUNCTION
 ' returns a handle to the menu or 0 on fail
 FUNCTION WinXNewMenu (STRING menu, firstID, isPopup)
 	' parse the string
-	XstParseStringToStringArray (menu, ",", @items$[])
+	' Guy-19feb12-XstParseStringToStringArray (menu, ",", @items$[])
+	IFZ menu THEN
+		DIM items$[0]
+	ELSE
+		IFZ INSTR (menu, ",") THEN
+			DIM items$[0]
+			items$[0] = menu
+		ELSE
+			XstParseStringToStringArray (menu, ",", @items$[])
+		ENDIF
+	ENDIF
 
 	IF isPopup THEN hMenu = CreatePopupMenu () ELSE hMenu = CreateMenu ()
 
