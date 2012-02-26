@@ -1678,8 +1678,8 @@ FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE 
 
 			AUTOSIZER_LinkedList_Get (series, idBlock - 1, @autoSizerBlock)
 
-			style = $$WS_CHILD | $$WS_VISIBLE
-			' Guy-14jun11-style = style | $$WS_CLIPSIBLINGS
+			style = $$WS_CHILD | $$WS_VISIBLE | $$WS_CLIPSIBLINGS
+			' Guy-14jun11-$$WS_CLIPSIBLINGS problem?
 			lpParam = SPLITTERINFO_New (splitterInfo)
 
 			hInst = GetModuleHandleA (0)
@@ -9522,37 +9522,40 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 
 	SELECT CASE nmhdr.code
 		CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
-			IFZ binding.onItem THEN EXIT SELECT
-			retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+			IF binding.onItem THEN retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
 
 		CASE $$NM_KEYDOWN
-			IFZ binding.onItem THEN EXIT SELECT
-			pNmkey = &nmkey
-			XLONGAT(&&nmkey) = lParam
-			retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
-			XLONGAT(&&nmkey) = pNmkey
+			IF binding.onItem THEN
+				pNmkey = &nmkey
+				XLONGAT(&&nmkey) = lParam
+				retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
+				XLONGAT(&&nmkey) = pNmkey
+			ENDIF
 
 		CASE $$MCN_SELECT
-			IFZ binding.onCalendarSelect THEN EXIT SELECT
-			pNmsc = &nmsc
-			XLONGAT(&&nmsc) = lParam
-			retCode = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
-			XLONGAT(&&nmsc) = pNmsc
+			IF binding.onCalendarSelect THEN
+				pNmsc = &nmsc
+				XLONGAT(&&nmsc) = lParam
+				retCode = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
+				XLONGAT(&&nmsc) = pNmsc
+			ENDIF
 
 		CASE $$TVN_BEGINLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			pNmtvdi = &nmtvdi
-			XLONGAT(&&nmtvdi) = lParam
-			retCode = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
-			IFF retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
-			XLONGAT(&&nmtvdi) = pNmtvdi
+			IF binding.onLabelEdit THEN
+				pNmtvdi = &nmtvdi
+				XLONGAT(&&nmtvdi) = lParam
+				retCode = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
+				IFF retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
+				XLONGAT(&&nmtvdi) = pNmtvdi
+			ENDIF
 
 		CASE $$TVN_ENDLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			pNmtvdi = &nmtvdi
-			XLONGAT(&&nmtvdi) = lParam
-			retCode = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$(nmtvdi.item.pszText))
-			XLONGAT(&&nmtvdi) = pNmtvdi
+			IF binding.onLabelEdit THEN
+				pNmtvdi = &nmtvdi
+				XLONGAT(&&nmtvdi) = lParam
+				retCode = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$(nmtvdi.item.pszText))
+				XLONGAT(&&nmtvdi) = pNmtvdi
+			ENDIF
 
 		CASE $$TVN_BEGINDRAG,$$TVN_BEGINRDRAG
 			pNmtv = &nmtv
@@ -9605,38 +9608,49 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			NEXT i
 
 		CASE $$LVN_COLUMNCLICK
-			IFZ binding.onColumnClick THEN EXIT SELECT
-			pNmlv = &nmlv
-			XLONGAT(&&nmlv) = lParam
-			retCode = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
-			XLONGAT(&&nmlv) = pNmlv
+			IF binding.onColumnClick THEN
+				pNmlv = &nmlv
+				XLONGAT(&&nmlv) = lParam
+				retCode = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
+				XLONGAT(&&nmlv) = pNmlv
+			ENDIF
 
 		CASE $$LVN_BEGINLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			pNmlvdi = &nmlvdi
-			XLONGAT(&&nmlvdi) = lParam
-			retCode = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
-			IFF retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
-			XLONGAT(&&nmlvdi) = pNmlvdi
+			IF binding.onLabelEdit THEN
+				pNmlvdi = &nmlvdi
+				XLONGAT(&&nmlvdi) = lParam
+				retCode = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
+				IFF retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
+				XLONGAT(&&nmlvdi) = pNmlvdi
+			ENDIF
 
 		CASE $$LVN_ENDLABELEDIT
-			IFZ binding.onLabelEdit THEN EXIT SELECT
-			pNmlvdi = &nmlvdi
-			XLONGAT(&&nmlvdi) = lParam
-			retCode = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$(nmlvdi.item.pszText))
-			XLONGAT(&&nmlvdi) = pNmlvdi
+			IF binding.onLabelEdit THEN
+				pNmlvdi = &nmlvdi
+				XLONGAT(&&nmlvdi) = lParam
+				retCode = @binding.onLabelEdit(nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$(nmlvdi.item.pszText))
+				XLONGAT(&&nmlvdi) = pNmlvdi
+			ENDIF
 
 		CASE $$TVN_SELCHANGED
-			IFZ binding.onItem THEN EXIT SELECT
-			IF binding.skipOnSelect THEN EXIT SELECT
-			'
-			retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
+			IF binding.onSelect THEN
+				IF !binding.skipOnSelect THEN
+					pNmtv = &nmtv ' tree view structure
+					XLONGAT(&&nmtv) = lParam
+					retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
+					XLONGAT(&&nmtv) = pNmtv
+				ENDIF
+			ENDIF
 
 		CASE $$LVN_ITEMCHANGED
-			IFZ binding.onItem THEN EXIT SELECT
-			IF binding.skipOnSelect THEN EXIT SELECT
-			'
-			retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
+			IF binding.onSelect THEN
+				IF !binding.skipOnSelect THEN
+					pNmlv = &nmlv ' list view structure
+					XLONGAT(&&nmlv) = lParam
+					retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
+					XLONGAT(&&nmlv) = pNmlv
+				ENDIF
+			ENDIF
 
 	END SELECT
 
