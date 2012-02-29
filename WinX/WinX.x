@@ -642,7 +642,7 @@ DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' loa
 DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the .INI file
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
 
-DECLARE FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos) ' add spinner control
+DECLARE FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, uppVal, lowVal, curVal, idCtr) ' add spinner control
 DECLARE FUNCTION WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stamp
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 
@@ -1242,23 +1242,30 @@ END FUNCTION
 ' #####  WinXAddSpinner  #####
 ' ############################
 '
-FUNCTION WinXAddSpinner (parent, idCtr, hBuddy, nUpper, nLower, nPos)
+FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, uppVal, lowVal, curVal, idCtr)
 
-	IF nUpper < nLower THEN
-		temp = nUpper
-		nUpper = nLower
-		nLower = temp
+	IFZ parent THEN RETURN
+	IFZ hBuddy THEN RETURN
+
+	MoveWindow (hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, 0)
+	IF uppVal < lowVal THEN
+		temp = uppVal
+		uppVal = lowVal
+		lowVal = temp
 	ENDIF
-	style = $$WS_CHILD | $$WS_VISIBLE
+	IF curVal < lowVal || curVal > uppVal THEN curVal = lowVal
+
+	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_BORDER
+
 	' $$UDS_NOTHOUSANDS : no thousand separator
 	' $$UDS_ARROWKEYS   : Arrow keys
 	' $$UDS_ALIGNRIGHT  : Align right
 	' $$UDS_SETBUDDYINT : Set buddy
-	style = style | $$UDS_ALIGNRIGHT | $$UDS_SETBUDDYINT | $$UDS_ARROWKEYS | $$UDS_NOTHOUSANDS
+	style = style | $$WS_TABSTOP | $$UDS_ALIGNRIGHT | $$UDS_SETBUDDYINT | $$UDS_ARROWKEYS | $$UDS_NOTHOUSANDS
 
 	hInst = GetModuleHandleA (0)
-	hSpinner = CreateUpDownControl (style, 0, 0, 0, 0, parent, idCtr, hInst, hBuddy, nUpper, nLower, nPos)
-	IFZ hSpinner THEN RETURN
+	errNum = SetLastError (0)
+	hSpinner = CreateUpDownControl (style, buddy_x, buddy_y, 15, buddy_h, parent, idCtr, hInst, hBuddy, uppVal, lowVal, curVal)
 	RETURN hSpinner
 
 END FUNCTION
