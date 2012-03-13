@@ -76,16 +76,6 @@ VERSION "0.6.0.14"
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
-'          Guy-28aug11-corrected return of array argument in WinXListBox_GetSelection
-'                      used SWAP to set and return the passed array.
-'          Guy-04nov11-prevented winx.dll re-entry with SHARED variable #bReentry.
-'          Guy-15dec11-corrected return of array argument in WinXListView_GetItemText
-'                      used SWAP to set and return the passed array.
-'          Guy-30jan12-added WinXNewFont and WinXKillFont.
-'          Guy-01feb12-corrected return of array argument in WinXAddAccelerator
-'                      used SWAP to set and return the passed array r_accel[].
-'          Guy-02feb12-corrected return of array argument in WinXDraw_GetImageChannel
-'                      used SWAP to set and return the passed array r_data[].
 '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw, WinXGetWindowEffRect
 '
 ' Win32API DLL headers
@@ -161,6 +151,7 @@ TYPE BINDING
 	FUNCADDR .onCalendarSelect (XLONG, SYSTEMTIME)		' idcal, time
 	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, files
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
+
 END TYPE
 ' message handler data type
 TYPE HANDLER
@@ -529,7 +520,7 @@ DECLARE FUNCTION WinXPrint_Done (hPrinter)
 DECLARE FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
 DECLARE FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 DECLARE FUNCTION WinXSetWindowColour (hWnd, color)
-DECLARE FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
+DECLARE FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @text$[])
 DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 DECLARE FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
@@ -620,9 +611,6 @@ DECLARE FUNCTION WinXListView_UseOnSelect (hLV)
 
 DECLARE FUNCTION WinXTreeView_FreezeOnSelect (hTV)
 DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
-
-DECLARE FUNCTION WinXTellApiError (msg$) ' displays an API fail message
-DECLARE FUNCTION WinXTellRunError (msg$) ' displays an execution fail message
 
 DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path dir$ with $$PathSlash$
 DECLARE FUNCTION WinXDir_Create (dir$) ' create directory dir$
@@ -868,30 +856,24 @@ END FUNCTION
 ' control, alt, shit = $$TRUE if the modifier is down, $$FALSE otherwise
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAddAccelerator (ACCEL r_accel[], cmd, key, control, alt, shift)
-	ACCEL ACCEL_array[]
-
-	IFZ cmd THEN RETURN
-	IF key < 0 || key > 0xFE THEN RETURN
 
 	IFZ r_accel[] THEN
-		DIM ACCEL_array[0]
+		DIM r_accel[0]
 		upp = 0
 	ELSE
 		upp = UBOUND (r_accel[]) + 1
-		DIM ACCEL_array[upp]
-		bytes = SIZE (r_accel[])
-		XstCopyMemory (&r_accel[0], &ACCEL_array[0], bytes)
+		REDIM r_accel[upp]
 	ENDIF
 
-	ACCEL_array[upp].fVirt = $$FVIRTKEY
-	IF alt     THEN ACCEL_array[upp].fVirt = ACCEL_array[upp].fVirt | $$FALT
-	IF control THEN ACCEL_array[upp].fVirt = ACCEL_array[upp].fVirt | $$FCONTROL
-	IF shift   THEN ACCEL_array[upp].fVirt = ACCEL_array[upp].fVirt | $$FSHIFT
+	fVirt = $$FVIRTKEY
+	IF alt     THEN fVirt = fVirt | $$FALT
+	IF control THEN fVirt = fVirt | $$FCONTROL
+	IF shift   THEN fVirt = fVirt | $$FSHIFT
 
-	ACCEL_array[upp].key = key
-	ACCEL_array[upp].cmd = cmd
+	r_accel[upp].fVirt = fVirt
+	r_accel[upp].key = key
+	r_accel[upp].cmd = cmd
 
-	SWAP ACCEL_array[], r_accel[]
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -1309,18 +1291,52 @@ END FUNCTION
 ' ##############################
 ' #####  WinXAddStatusBar  #####
 ' ##############################
+'
 ' Adds a status bar to a window
-' hWnd = the window to add the status bar to
-' initialStatus = a string to initialise the status bar with.  This string contains
-' a number of strings for each panel, separated by commas
-' idCtr = the idCtr of the status bar
+' hWnd      = the window to add the status bar to
+' csvTexts$ = a string to initialise the status bar with.  This string contains
+'             a number of strings for each panel, separated by commas
+' idCtr     = the idCtr of the status bar
 ' returns a handle to the new status bar or 0 on fail
-FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
+' NOTE: all status bar's parts are set to the same width
+FUNCTION WinXAddStatusBar (hWnd, csvTexts$, idCtr)
 	BINDING binding
-	RECT rect
+	RECT rcWnd
+
+	IFZ hWnd THEN RETURN
+	IFZ idCtr THEN RETURN
 
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+
+	' now prepare the parts
+	uppPart = XstTally (csvTexts$, ",")
+	IFZ uppPart THEN
+		DIM s$[0]
+		s$[0] = csvTexts$
+	ELSE
+		XstParseStringToStringArray (csvTexts$, ",", @s$[])
+	ENDIF
+	uppPart = UBOUND (s$[])
+
+	' create array parts[] for holding the right edge cooordinates
+	cPart = uppPart + 1
+	IF cPart >= 2 THEN
+		' calculate the right edge coordinate for each part, and
+		' copy the coordinates to the array
+		GetClientRect (hWnd, &rcWnd)
+		width = (rcWnd.right - rcWnd.left) / cPart
+		'
+		DIM parts[uppPart]
+		'
+		' calculate each segment bounds
+		cumWidth = 0
+		FOR i = 0 TO uppPart - 1
+			cumWidth = cumWidth + width
+			parts[i] = cumWidth
+		NEXT i
+		parts[uppPart] = -1 ' extend to the right edge of the window
+	ENDIF
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 
@@ -1332,58 +1348,35 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 '	hInst = GetModuleHandleA (0)
 '	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, style, 0, 0, 0, 0, hWnd, idCtr, hInst, 0)
 
-	' Guy-19feb12-use CreateStatusWindowA
+	' Guy-19feb12-use CreateStatusWindowA instead of CreateWindowExA
 	hCtr = CreateStatusWindowA (style, 0, hWnd, idCtr)
 	IFZ hCtr THEN RETURN
 
-	binding.hStatus = hCtr
-
-	' now prepare the parts
-	IFZ initialStatus THEN
-		DIM s$[0]
-	ELSE
-		IFZ INSTR (initialStatus, ",") THEN
-			DIM s$[0]
-			s$[0] = initialStatus
-		ELSE
-			XstParseStringToStringArray (initialStatus, ",", @s$[])
-		ENDIF
-	ENDIF
-
-	' create array parts[] for holding the right edge cooordinates
-	uppPart = UBOUND (s$[])
-	DIM parts[uppPart]
-
-	binding.statusParts = uppPart
-
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	WinXSetFont (hCtr, hFont)
-	DeleteObject (hFont)		' release the font
-
-	' calculate the right edge coordinate for each part, and
-	' copy the coordinates to the array
-	GetClientRect (hCtr, &rect)
-
-	cPart = uppPart + 1		' number of right edge cooordinates
-	IF cPart > 1 THEN
-		parts[uppPart] = rect.right - rect.left
-		width = parts[uppPart] / cPart
-		FOR i = uppPart - 1 TO 0 STEP -1
-			parts[i] = parts[i + 1] - width
-		NEXT i
-	ENDIF
-	parts[uppPart] = -1		' extend to the right edge of the window
 
 	' set the part info
-	SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
+	cPart = UBOUND (parts[]) + 1
+	IF cPart < 2 THEN
+		cPart = 1
+		SendMessageA (hCtr, $$SB_SIMPLE, 1, 0)
+	ELSE
+		SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
+	ENDIF
 
 	' and finally, set the text
-	FOR i = 0 TO uppPart
-		SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
+	upp = UBOUND (s$[])
+	FOR i = 0 TO upp
+		text$ = s$[i]
+		IFZ text$ THEN text$ = " "
+		SendMessageA (hCtr, $$SB_SETTEXT, i, &text$)
 	NEXT i
 
 	' and update the binding
+	binding.hStatus = hCtr
+	binding.statusParts = cPart - 1
 	BINDING_Update (idBinding, binding)
+	DeleteObject (hFont)		' release the font
 
 	RETURN hCtr
 END FUNCTION
@@ -2328,6 +2321,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 			'
 	END SELECT
 
+	initDir$ = WinXPath_Trim$ (initDir$)
 	IF initDir$ THEN
 		' clip off a final $$PathSlash$
 		IF RIGHT$ (initDir$) = $$PathSlash$ THEN initDir$ = RCLIP$ (initDir$)
@@ -2584,12 +2578,11 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
-'	' run Microsoft program "System Information"
-'	bOK = WinXDialog_SysInfo (@msInfo$)
+'	bOK = WinXDialog_SysInfo (@msInfo$) ' System Information
 '	IFF bOK THEN
-'		msg$ = "WinXDialog_SysInfo: Can't run Microsoft program \"System Information\""
+'		msg$ = "WinXDialog_SysInfo: Can't run System Information"
 '		msg$ = msg$ + $$CRLF$ + "Execution path: " + msInfo$
-'		XstAlert (msg$)
+'		WinXDialog_Error (msg$, "System Information", 3)
 '	ENDIF
 '
 FUNCTION WinXDialog_SysInfo (@msInfo$)
@@ -2666,13 +2659,13 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage:
-' ' create dir$ if not found
+' ' create a missing directory
 ' bOK = WinXDir_Exists (dir$)
-' IFF bOK THEN		' directory not found
-'  bOK = WinXDir_Create (dir$)		' create the directory
-'  IFF bOK THEN		' fail
-'   msg$ = "WinXDir_Create: Can't create directory " + dir$
-'   XstAlert (msg$)
+' IFF bOK THEN
+'  bOK = WinXDir_Create (dir$)
+'  IFF bOK THEN
+'   msg$ = "WinXDir_Create: Can't create missing directory " + dir$
+'		WinXDialog_Error (msg$, "Create Directory", 3)
 '  ENDIF
 ' ENDIF
 
@@ -2727,7 +2720,6 @@ FUNCTION WinXDir_Exists (dir$)
 	dirToFind$ = WinXPath_Trim$ (dir$)
 	IFZ dirToFind$ THEN RETURN ' empty directory
 
-	XstTranslateChars (@dirToFind$, "/", $$PathSlash$)		' replace all Unix-like path slashes by Windows-like path slashes
 	XstGetFileAttributes (@dirToFind$, @attrib)
 
 	' check if dirToFind$ is really directory
@@ -3438,8 +3430,7 @@ FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE r_data[])
 	ULONG pixel
 
 	' reset the returned array
-	DIM reset@@[]
-	SWAP reset@@[], r_data[]
+	DIM r_data[]
 
 	IFZ hImage THEN RETURN
 	IF channel < 0 || channel > 3 THEN RETURN
@@ -3448,14 +3439,11 @@ FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE r_data[])
 	downshift = channel << 3
 
 	maxPixel = bmp.width * bmp.height - 1
-	DIM arr@@[maxPixel]
+	DIM r_data[maxPixel]
 	FOR i = 0 TO maxPixel
 		pixel = ULONGAT (bmp.bits, i << 2)
-		arr@@[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
+		r_data[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
 	NEXT i
-
-	' set the returned array
-	SWAP arr@@[], r_data[]
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -4062,8 +4050,7 @@ END FUNCTION
 FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 
 	' reset the returned array
-	DIM reset$[]
-	SWAP reset$[], r_asKey$[]
+	DIM r_asKey$[]
 
 	bracketed$ = "[" + TRIM$ (curSec$) + "]" '  [section]
 	IF bracketed$ = "[]" THEN RETURN		' fail
@@ -4096,7 +4083,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 	ENDIF
 	IFF bSecFound THEN RETURN $$TRUE ' section curSec$ not found
 
-	DIM arr$[7]
+	DIM r_asKey$[7]
 	upper_slot = 7
 	slot = -1
 	DO
@@ -4116,24 +4103,21 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 		key$ = TRIM$ (LEFT$ (line$, pos - 1))
 		IFZ key$ THEN DO DO
 		'
-		' add key to arr$[]
+		' add key to r_asKey$[]
 		INC slot
 		IF slot > upper_slot THEN
-			' expand arr$[]
+			' expand r_asKey$[]
 			upper_slot = ((upper_slot + 1) << 1) - 1
-			REDIM arr$[upper_slot]
+			REDIM r_asKey$[upper_slot]
 		ENDIF
-		arr$[slot] = key$
+		r_asKey$[slot] = key$
 		'
 	LOOP
 	IF slot < 0 THEN
-		DIM arr$[]
+		DIM r_asKey$[]
 	ELSE
-		IF slot < upper_slot THEN REDIM arr$[slot]
+		IF slot < upper_slot THEN REDIM r_asKey$[slot]
 	ENDIF
-
-	' set the returned array
-	SWAP arr$[], r_asKey$[]
 
 	RETURN $$TRUE		' OK!
 
@@ -4144,18 +4128,18 @@ END FUNCTION
 ' #####################################
 '
 ' load all section names
+' Returns $$TRUE on success
 '
 FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 
 	' reset the returned array
-	DIM reset$[]
-	SWAP reset$[], r_asSec$[]
+	DIM r_asSec$[]
 
 	' open read the .INI file
 	iniFile = OPEN (iniPath$, $$RD)
 	IF iniFile < 3 THEN RETURN ' fail
 
-	DIM arr$[7]
+	DIM r_asSec$[7]
 	upper_slot = 7
 	slot = -1
 
@@ -4170,29 +4154,26 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 			IF LEFT$ (line$) <> "[" THEN DO DO ' not a section
 			IF RIGHT$ (line$) <> "]" THEN DO DO ' not a section
 			'
-			' add section to arr$[]
+			' add section to r_asSec$[]
 			INC slot
 			IF slot > upper_slot THEN
-				' expand arr$[]
+				' expand r_asSec$[]
 				upper_slot = ((upper_slot + 1) << 1) - 1
-				REDIM arr$[upper_slot]
+				REDIM r_asSec$[upper_slot]
 			ENDIF
 			'
 			' trim off the brackets
 			cCh = LEN (line$) - 2
-			arr$[slot] = MID$ (line$, 2, cCh)
+			r_asSec$[slot] = MID$ (line$, 2, cCh)
 			'
 		LOOP
 	ENDIF
 
 	IF slot < 0 THEN
-		DIM arr$[]
+		DIM r_asSec$[]
 	ELSE
-		IF slot < upper_slot THEN REDIM arr$[slot]
+		IF slot < upper_slot THEN REDIM r_asSec$[slot]
 	ENDIF
-
-	' set the returned array
-	SWAP arr$[], r_asSec$[]
 
 	RETURN $$TRUE		' success
 
@@ -4414,37 +4395,28 @@ END FUNCTION
 ' returns the number of selected items
 FUNCTION WinXListBox_GetSelection (hListBox, r_index[])
 
-	IFZ hListBox THEN
-		DIM arr[]
-		cItem = 0
-	ELSE
-		style = GetWindowLongA (hListBox, $$GWL_STYLE)
-		SELECT CASE style AND $$LBS_EXTENDEDSEL
-			CASE $$LBS_EXTENDEDSEL		' multi-selections
-				cItem = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-				IF cItem < 1 THEN
-					DIM arr[]
-					cItem = 0
-				ELSE
-					DIM arr[cItem - 1]
-					SendMessageA (hListBox, $$LB_GETSELITEMS, cItem, &arr[0])
-				ENDIF
-				'
-			CASE ELSE		' mono-selection
-				selItem = SendMessageA (hListBox, $$LB_GETCURSEL, 0, 0)
-				IF selItem < 0 THEN
-					DIM arr[]
-					cItem = 0
-				ELSE
-					cItem = 1
-					DIM arr[0]
-					arr[0] = selItem
-				ENDIF
-				'
-		END SELECT
-	ENDIF
+	DIM r_index[]
+	cItem = 0
+	IFZ hListBox THEN RETURN
 
-	SWAP arr[], r_index[]
+	style = GetWindowLongA (hListBox, $$GWL_STYLE)
+	SELECT CASE style AND $$LBS_EXTENDEDSEL
+		CASE $$LBS_EXTENDEDSEL		' multi-selections
+			cItem = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
+			IF cItem > 0 THEN
+				DIM r_index[cItem - 1]
+				SendMessageA (hListBox, $$LB_GETSELITEMS, cItem, &r_index[0])
+			ENDIF
+			'
+		CASE ELSE		' mono-selection
+			selItem = SendMessageA (hListBox, $$LB_GETCURSEL, 0, 0)
+			IF selItem >= 0 THEN
+				DIM r_index[0]
+				r_index[0] = selItem
+				cItem = 1
+			ENDIF
+			'
+	END SELECT
 
 	RETURN cItem
 END FUNCTION
@@ -4499,16 +4471,19 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 		'
 		upp = UBOUND (index[])
 		FOR i = 0 TO upp
+			SetLastError (0)
 			ret = SendMessageA (hListBox, $$LB_SETSEL, 1, index[i])
 			IF ret < 0 THEN RETURN
 		NEXT i
 	ELSE
 		' single selection
+		SetLastError (0)
 		ret = SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0)
 		' index[0] == -1 means "deselect previous selection"
 		IF (ret < 0) && (index[0] <> -1) THEN RETURN
 		'
 		' Guy-21jun11-the list box is scrolled, if necessary, to bring the selected item into view
+		SetLastError (0)
 		SendMessageA (hListBox, $$LB_SETTOPINDEX, index[0], 0)
 	ENDIF
 
@@ -4729,7 +4704,7 @@ END FUNCTION
 ' Gets the text for a list view item
 ' hLV = the handle to the list view
 ' iItem = the zero-based index of the item
-' cSubItems = the number of sub items to get
+' uppSubItem = the upper index of sub items to get
 ' r_text$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
 
@@ -4739,33 +4714,29 @@ END FUNCTION
 '		iItem = count - 1 ' last item
 '		WinXListView_GetItemText (hLV, iItem, 1, @text$[]) ' retrieve the first 2 columns
 '	ENDIF
-FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @r_text$[])
+FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_text$[])
 	LVITEM lvi
 
 	' reset the returned array
-	DIM reset$[]
-	SWAP reset$[], r_text$[]
+	DIM r_text$[]
 
 	IFZ hLV THEN RETURN
 	IF iItem < 0 THEN iItem = 0
-	IF cSubItems < 0 THEN RETURN
+	IF uppSubItem < 0 THEN RETURN
 
-	DIM arr$[cSubItems]
-	FOR i = 0 TO cSubItems
+	DIM r_text$[uppSubItem]
+	FOR i = 0 TO uppSubItem
 		buffer$ = NULL$ (4096)
 		lvi.mask = $$LVIF_TEXT
 		lvi.pszText = &buffer$
 		lvi.cchTextMax = 4095
 		lvi.iItem = iItem
 		lvi.iSubItem = i
-
-		' gl-15dec11-IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN RETURN
+		'
 		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN EXIT FOR
-		arr$[i] = CSTRING$ (&buffer$)
+		r_text$[i] = CSTRING$ (&buffer$)
 	NEXT i
 
-	' set the returned array
-	SWAP arr$[], r_text$[]
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -4778,8 +4749,7 @@ END FUNCTION
 FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
 	' reset the returned array
-	DIM reset[]
-	SWAP reset[], r_iItems[]
+	DIM r_iItems[]
 
 	IFZ hLV THEN RETURN
 	' get count of items in listview
@@ -4788,21 +4758,21 @@ FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
 	cSelItem = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
 	IF cSelItem = 0 THEN RETURN
-	DIM arr[cSelItem - 1]
 
-	slot = -1
+	upper_slot = cSelItem - 1
+	DIM r_iItems[upper_slot]
+
 	' now iterate over all the items to locate the selected ones
-	uppItem = count - 1
-	FOR iItem = 0 TO uppItem
-		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
+	slot = -1
+	upp = count - 1
+	FOR i = 0 TO upp
+		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED)
 		IF ret THEN
 			INC slot
-			IF slot < cSelItem THEN arr[slot] = iItem
+			IF slot > upper_slot THEN EXIT FOR
+			r_iItems[slot] = i
 		ENDIF
-	NEXT iItem
-
-	' set the returned array
-	SWAP arr[], r_iItems[]
+	NEXT i
 
 	RETURN cSelItem
 END FUNCTION
@@ -5194,10 +5164,9 @@ END FUNCTION
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 
 	' reset the returned array
-	DIM reset$[]
-	SWAP reset$[], r_mruList$[]
+	DIM r_mruList$[]
 
-	iniPath$ = TRIM$ (iniPath$)
+	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN
 
 	' create ini file if it does not exist
@@ -5205,63 +5174,57 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
 	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
 
-	DIM arr$[$$UPP_MRU]
+	DIM r_mruList$[$$UPP_MRU]
 	upp = -1
 
-	' add real file pathNew$ to arr$[0]
-	pathNew$ = TRIM$ (pathNew$)
+	' add real file pathNew$ to r_mruList$[0]
+	pathNew$ = WinXPath_Trim$ (pathNew$)
 	IF pathNew$ THEN
-		XstTranslateChars (@pathNew$, "/", $$PathSlash$)
 		bErr = XstFileExists (pathNew$)
 		IFF bErr THEN
 			upp = 0
-			arr$[0] = pathNew$
+			r_mruList$[0] = pathNew$
 		ENDIF
 	ENDIF
 
-	' load the MRU projects list into arr$[]
+	' load the MRU projects list into r_mruList$[]
 	FOR id = 1 TO $$UPP_MRU + 1
 		key$ = WinXMRU_MakeKey$ (id)
 		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+		fpath$ = WinXPath_Trim$ (fpath$)
 		IFZ fpath$ THEN DO NEXT ' empty => skip it!
 		'
-		XstTranslateChars (@fpath$, "/", $$PathSlash$)
 		bErr = XstFileExists (fpath$)
 		IF bErr THEN DO NEXT ' fpath$ does not exist => skip it!
 		'
-		' don't add fpath$ if already in arr$[]
+		' don't add fpath$ if already in r_mruList$[]
 		bFound = $$FALSE
 		IF upp >= 0 THEN
 			find_lc$ = LCASE$ (fpath$)
 			findLen = LEN (find_lc$)
 			'
 			FOR z = 0 TO upp
-				IF LEN (arr$[z]) <> findLen THEN DO NEXT
-				IF LCASE$ (arr$[z]) = find_lc$ THEN
+				IF LEN (r_mruList$[z]) <> findLen THEN DO NEXT
+				IF LCASE$ (r_mruList$[z]) = find_lc$ THEN
 					bFound = $$TRUE
 					EXIT FOR
 				ENDIF
 			NEXT z
 		ENDIF
-		IF bFound THEN DO NEXT ' already in arr$[] => skip it!
+		IF bFound THEN DO NEXT ' already in r_mruList$[] => skip it!
 		'
-		IF upp >= $$UPP_MRU THEN EXIT FOR ' arr$[] is full
+		IF upp >= $$UPP_MRU THEN EXIT FOR ' r_mruList$[] is full
 		'
 		INC upp
-		arr$[upp] = fpath$
+		r_mruList$[upp] = fpath$
 	NEXT id
 
 	IF upp < 0 THEN
-		DIM arr$[]
+		DIM r_mruList$[]
 	ELSE
-		IF UBOUND (arr$[]) <> upp THEN REDIM arr$[upp]
+		IF UBOUND (r_mruList$[]) <> upp THEN REDIM r_mruList$[upp]
 	ENDIF
-
-	' set the returned array
-	SWAP arr$[], r_mruList$[]
-
 	RETURN $$TRUE		' success
-
 END FUNCTION
 '
 ' ##############################
@@ -5287,13 +5250,11 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
 	' full then the least recently used item is removed to make room.
 
 	DIM arr$[$$UPP_MRU]
-
 	upp = -1
 
 	' add real file pathNew$ to arr$[0]
-	pathNew$ = TRIM$ (pathNew$)
+	pathNew$ = WinXPath_Trim$ (pathNew$)
 	IF pathNew$ THEN
-		XstTranslateChars (@pathNew$, "/", $$PathSlash$)
 		bErr = XstFileExists (pathNew$)
 		IFF bErr THEN
 			upp = 0
@@ -5305,10 +5266,9 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
 	IF r_mruList$[] THEN
 		uppmru = UBOUND (r_mruList$[])
 		FOR imru = 0 TO uppmru
-			fpath$ = TRIM$ (r_mruList$[imru])
+			fpath$ = WinXPath_Trim$ (r_mruList$[imru])
 			IFZ fpath$ THEN DO NEXT
 			'
-			XstTranslateChars (@fpath$, "/", $$PathSlash$)
 			bErr = XstFileExists (fpath$)
 			IF bErr THEN DO NEXT
 			'
@@ -5363,10 +5323,17 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
 	ENDIF
 
 	' reset the Most Recently Used project lists
-	SWAP arr$[], r_mruList$[]
+	IFZ arr$[] THEN
+		DIM r_mruList$[]
+	ELSE
+		upp = UBOUND (arr$[])
+		DIM r_mruList$[upp]
+		FOR i = 0 TO upp
+			r_mruList$[i] = arr$[i]
+		NEXT i
+	ENDIF
 
 	RETURN $$TRUE		' success
-
 END FUNCTION
 '
 ' ###############################
@@ -5798,7 +5765,6 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 		' get the binding
 		idBinding = GetWindowLongA (hOwner, $$GWL_USERDATA)
 		IF BINDING_Get (idBinding, @binding) THEN
-			' Guy-12feb12-does not work for some reason (maybe the window class?)
 			hWindow = CreateMdiChild (hOwner, title)
 			IF hWindow THEN
 				' Guy-11feb12-position the child window
@@ -5913,12 +5879,12 @@ FUNCTION WinXPath_Trim$ (path$)
 	IF length < 1 THEN RETURN "" ' empty
 
 	' trim off leading and trailing spaces
-	pathNew$ = MID$ (path$, iFirst + 1, length)
+	trimmed$ = MID$ (path$, iFirst + 1, length)
 
 	' make sure there are only Windows PathSlashes
-	IF INSTR (pathNew$, "/") THEN XstTranslateChars (@pathNew$, "/", $$PathSlash$)
+	IF INSTR (trimmed$, "/") THEN XstTranslateChars (@trimmed$, "/", $$PathSlash$)
 
-	RETURN pathNew$
+	RETURN trimmed$
 
 END FUNCTION
 '
@@ -7764,96 +7730,6 @@ FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
-' ##############################
-' #####  WinXTellApiError  #####
-' ##############################
-'
-' [WinXTellApiError]
-' Description = display an API failure message
-' Function    = WinXTellApiError (msg$)
-' ArgCount    = 1
-' Return      = $$TRUE = real failure, $$FALSE = false failure
-'
-' Usage:
-'	SetLastError (0)
-'	hImage = LoadBitmapA (hInst, &image$)
-'	IFZ hImage THEN		' fail
-'		msg$ = "CreateWindows: Can't load image " + image$
-'		WinXTellApiError (msg$)
-'	ENDIF
-'
-FUNCTION WinXTellApiError (msg$)		' display an API fail message
-
-	' get the last fail code, then clear it
-	errNum = GetLastError ()
-	SetLastError (0)
-	IFZ errNum THEN RETURN		' was success
-
-	fmtMsg$ = "Last fail code " + STRING$ (errNum) + ": "
-	bufLen = 1020
-	buf$ = NULL$ (bufLen)		' fill buf$ with (bufLen + 1) null chars
-
-	' set up FormatMessageA arguments
-	dwFlags = $$FORMAT_MESSAGE_FROM_SYSTEM | $$FORMAT_MESSAGE_IGNORE_INSERTS
-	lpBuffer = &buf$
-
-	' format a message string
-	ret = FormatMessageA (dwFlags, 0, errNum, 0, lpBuffer, bufLen, 0)
-	IFZ ret THEN
-		fmtMsg$ = fmtMsg$ + "(unknown)"
-	ELSE
-		fmtMsg$ = fmtMsg$ + CSTRING$ (&buf$)
-	ENDIF
-	fmtMsg$ = fmtMsg$ + $$CRLF$ + msg$
-
-	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "Win32 API fail"
-	XstGetOSName (@os$)
-	XstGetOSVersion (@major, @minor, @platformId, @version$, @platform$)
-	text$ = $$CRLF$ + "OS: " + os$ + STR$ (major) + "." + STRING$ (minor) + " " + platform$
-
-	' set up MessageBoxA arguments
-	fmtMsg$ = fmtMsg$ + text$
-	title$ = "WinX-API Error"
-	hWnd = GetActiveWindow ()
-	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
-
-	RETURN $$TRUE		' an fail really occurred!
-
-END FUNCTION
-'
-' ##############################
-' #####  WinXTellRunError  #####
-' ##############################
-'
-' [WinXTellRunError]
-' Description = display a run-time failure message
-' Function    = WinXTellRunError (msg$)
-' ArgCount    = 1
-' Return      = $$TRUE = real failure, $$FALSE = false failure
-'
-' Usage:
-' errNum = ERROR (0) ' clear the last-fail code
-' inFile = OPEN (inFile$, $$RD)
-' IF inFile < 3 THEN
-'  msg$ = "Can't open input file " + inFile$
-'  WinXTellRunError (msg$)
-' ENDIF
-FUNCTION WinXTellRunError (msg$)		' display the run-time fail message
-
-	' get current fail, then clear it
-	errNum = ERROR (0)
-	fmtMsg$ = "Error code " + STRING$ (errNum) + ": " + ERROR$ (errNum) + $$CRLF$ + msg$
-	IFZ TRIM$ (msg$) THEN fmtMsg$ = fmtMsg$ + "XBLite library failure"
-
-	' set up MessageBoxA arguments
-	title$ = "WinX-Execution Error"
-	hWnd = GetActiveWindow ()
-	MessageBoxA (hWnd, &fmtMsg$, &title$, $$MB_ICONSTOP)
-
-	RETURN $$TRUE		' an fail really occurred!
-
-END FUNCTION
-'
 ' #####################################
 ' #####  WinXTimePicker_GetTime  #####
 ' #####################################
@@ -8936,26 +8812,9 @@ FUNCTION CreateMdiChild (hClient, STRING title)
 
 	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
 	IFZ hInst THEN hInst = GetModuleHandleA (0)
-	lpClassName = &#WinXclass$
-	IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
 
-	XstGetOSVersion (@major, 0, 0, "", "")
-	IF major < 4 THEN
-		mdi.szClass = lpClassName
-		mdi.szTitle = lpWindowName
-		mdi.hOwner = hInst
-		mdi.x = $$CW_USEDEFAULT
-		mdi.y = $$CW_USEDEFAULT
-		mdi.cx = $$CW_USEDEFAULT
-		mdi.cy = $$CW_USEDEFAULT
-		mdi.style = $$WS_MAXIMIZE
-		hWindow = SendMessageA (hClient, $$WM_MDICREATE, 0, &mdi)
-	ELSE
-		' Windows NT 4.0 or later
-		' Guy-12feb12-does not work for some reason (maybe the window class?)
-		hWindow = CreateWindowExA ($$WS_EX_MDICHILD,lpClassName, lpWindowName, $$WS_MAXIMIZE, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
-	ENDIF
-
+	IFZ title THEN pTitle = 0 ELSE pTitle = &title
+	hWindow = CreateWindowExA ($$WS_EX_MDICHILD, &#WinXclass$, pTitle, $$WS_MAXIMIZE, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
 	RETURN hWindow
 
 END FUNCTION
@@ -9086,6 +8945,8 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	'call any associated message handler
 	IF binding.msgHandlers THEN
 		handled = HANDLER_CallItem (binding.msgHandlers, @retCode, hWnd, wMsg, wParam, lParam)
+		IFF handled THEN ret_value = 0 ' NOT handled
+		IF ret_value THEN handled = $$TRUE ' handled
 	ENDIF
 
 	'and handle the message
@@ -9457,10 +9318,13 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	IF retCode THEN RETURN retCode
 	IF handled THEN RETURN
 
-	' binding.hwndMDIParent == hOwner => hWnd is an MDI child
-	IF binding.hwndMDIParent THEN RETURN DefMDIChildProcA (hWnd, wMsg, wParam, lParam)
-
-	RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
+	hWndClient = binding.hwndMDIParent
+	IFZ hWndClient THEN
+		RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
+	ELSE
+		' Send the message to the MDI frame window procedure
+		RETURN DefFrameProcA (hWnd, hWndClient, wMsg, wParam, lParam)
+	ENDIF
 
 	SUB dragTreeViewItem
 		IFZ tvDragging THEN EXIT SUB
