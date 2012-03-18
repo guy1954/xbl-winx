@@ -77,6 +77,7 @@ VERSION "0.6.0.14"
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
 '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw, WinXGetWindowEffRect
+'          Guy-18mar12-added $$ES_READONLY handling in WinXSetStyle
 '
 ' Win32API DLL headers
 '
@@ -132,8 +133,8 @@ TYPE BINDING
 	FUNCADDR .onDimControls (XLONG, XLONG, XLONG)		'hWnd, w, h : dimension the controls
 	FUNCADDR .onCommand (XLONG, XLONG, XLONG)		'idCtr, notifyCode, lParam
 	FUNCADDR .onMouseMove (XLONG, XLONG, XLONG)		'hWnd, x, y
-	FUNCADDR .onMouseDown (XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT const, x, y
-	FUNCADDR .onMouseUp (XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT const, x, y
+	FUNCADDR .onMouseDown (XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT_const, x, y
+	FUNCADDR .onMouseUp (XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT_const, x, y
 	FUNCADDR .onMouseWheel (XLONG, XLONG, XLONG, XLONG)		'hWnd, delta, x, y
 	FUNCADDR .onKeyDown (XLONG, XLONG)		'hWnd, VK
 	FUNCADDR .onKeyUp (XLONG, XLONG)		'hWnd, VK
@@ -7298,44 +7299,36 @@ END FUNCTION
 '
 FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 
-	IFZ hWnd THEN RETURN ' ignore null window handle
+	IFZ hWnd THEN RETURN
 
-	' ----------------------------------------------------
-	' Guy-03sep10-not that simple!
-	'
-	'style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	'styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-	'
-	'style = style OR add
-	'styleEx = styleEx OR addEx
-	'
-	'style = style AND NOT(sub)
-	'styleEx = styleEx AND NOT(subEx)
-	'
-	'ret = SetWindowLongA (hWnd, $$GWL_STYLE, style)
-	'ret = SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleEx)
-	' ----------------------------------------------------
-
-	bOK = $$TRUE		' success
-	IF add <> sub THEN
+	bOK = $$TRUE
+	IF add <> sub THEN ' if add same as sub, style is unchanged
 		'
 		style = GetWindowLongA (hWnd, $$GWL_STYLE)
 		styleNew = style
 		'
+		' add before subtracting
 		IF add THEN
-			' add before subtracting
+			' add only if not there
 			IF (styleNew & add) <> add THEN styleNew = styleNew | add
 		ENDIF
 		'
+		' subtract sub from styleNew
 		IF sub THEN
-			' subtract sub from styleNew
+			' subtract only if present
 			IF (styleNew & sub) = sub THEN styleNew = styleNew & (~sub)
 		ENDIF
 		'
 		' update the control only for a style change
 		IF styleNew <> style THEN
-			ret = SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
-			IFZ ret THEN bOK = $$FALSE		' fail
+			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
+			'
+			' Guy-18mar12-added $$ES_READONLY handling
+			IF add = $$ES_READONLY THEN SendMessageA (hWnd, $$EM_SETREADONLY, 1, 0)
+			IF sub = $$ES_READONLY THEN SendMessageA (hWnd, $$EM_SETREADONLY, 0, 0)
+			'
+			styleUpd = GetWindowLongA (hWnd, $$GWL_STYLE)
+			IF styleUpd <> styleNew THEN bOK = $$FALSE		' fail
 		ENDIF
 		'
 	ENDIF
@@ -7345,20 +7338,19 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 		styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
 		styleExNew = styleEx
 		'
+		' add before subtracting
 		IF addEx THEN
-			' add before subtracting
 			IF (styleExNew & addEx) <> addEx THEN styleExNew = styleExNew | addEx
 		ENDIF
 		'
 		IF subEx THEN
-			' subtract subEx from styleExNew
 			IF (styleExNew & subEx) = subEx THEN styleExNew = styleExNew & (~subEx)
 		ENDIF
 		'
-		' update the control only for a style change
 		IF styleExNew <> styleEx THEN
-			ret = SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
-			IFZ ret THEN bOK = $$FALSE		' fail
+			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
+			styleExUpd = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
+			IF styleExUpd <> styleExNew THEN bOK = $$FALSE		' fail
 		ENDIF
 		'
 	ENDIF
