@@ -3650,8 +3650,8 @@ FUNCTION WinXDraw_SaveImage (hImage, STRING fileName, fileType)
 	SELECT CASE fileType
 		CASE $$FILETYPE_WINBMP
 			IFZ GetObjectA (hImage, SIZE (bmp), &bmp) THEN RETURN
-			file = OPEN (fileName, $$WRNEW)
-			IF file = -1 THEN RETURN
+			fileNumber = OPEN (fileName, $$WRNEW)
+			IF fileNumber = -1 THEN RETURN
 
 			bmfh.bfType = 0x4D42
 			bmfh.bfSize = SIZE (BITMAPFILEHEADER) + SIZE (BITMAPINFOHEADER) + (bmp.widthBytes * bmp.height)
@@ -3664,10 +3664,10 @@ FUNCTION WinXDraw_SaveImage (hImage, STRING fileName, fileType)
 			bmih.biBitCount = bmp.bitsPixel
 			bmih.biCompression = $$BI_RGB
 
-			WRITE[file], bmfh
-			WRITE[file], bmih
-			XstBinWrite (file, bmp.bits, bmp.widthBytes * bmp.height)
-			CLOSE (file)
+			WRITE[fileNumber], bmfh
+			WRITE[fileNumber], bmih
+			XstBinWrite (fileNumber, bmp.bits, bmp.widthBytes * bmp.height)
+			CLOSE (fileNumber)
 
 			RETURN $$TRUE		' success
 	END SELECT
@@ -4061,15 +4061,15 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 	IF bracketed$ = "[]" THEN RETURN		' fail
 
 	' open read the .INI file
-	iniFile = OPEN (iniPath$, $$RD)
-	IF iniFile < 3 THEN RETURN ' error
+	fileNumber = OPEN (iniPath$, $$RD)
+	IF fileNumber < 3 THEN RETURN ' error
 
 	' look for the section curSec$
 	bSecFound = $$FALSE ' assume section curSec$ not found
-	IFF EOF (iniFile) THEN
+	IFF EOF (fileNumber) THEN
 		DO
-			line$ = INFILE$ (iniFile)
-			IF EOF (iniFile) THEN EXIT DO		' end of file
+			line$ = INFILE$ (fileNumber)
+			IF EOF (fileNumber) THEN EXIT DO		' end of file
 			'
 			line$ = TRIM$ (line$)
 			IFZ line$ THEN DO DO ' skip an empty line
@@ -4085,14 +4085,19 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 			'
 		LOOP
 	ENDIF
-	IFF bSecFound THEN RETURN $$TRUE ' section curSec$ not found
+
+	IFF bSecFound THEN
+		' section curSec$ not found
+		CLOSE (fileNumber)
+		RETURN $$TRUE
+	ENDIF
 
 	DIM r_asKey$[7]
 	upper_slot = 7
 	slot = -1
 	DO
-		line$ = INFILE$ (iniFile)
-		IF EOF (iniFile) THEN EXIT DO		' end of file
+		line$ = INFILE$ (fileNumber)
+		IF EOF (fileNumber) THEN EXIT DO		' end of file
 		'
 		line$ = TRIM$ (line$)
 		IFZ line$ THEN DO DO ' skip an empty line
@@ -4117,6 +4122,8 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 		r_asKey$[slot] = key$
 		'
 	LOOP
+	CLOSE (fileNumber)
+
 	IF slot < 0 THEN
 		DIM r_asKey$[]
 	ELSE
@@ -4136,21 +4143,22 @@ END FUNCTION
 '
 FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 
-	' reset the returned array
-	DIM r_asSec$[]
-
 	' open read the .INI file
-	iniFile = OPEN (iniPath$, $$RD)
-	IF iniFile < 3 THEN RETURN ' fail
+	fileNumber = OPEN (iniPath$, $$RD)
+	IF fileNumber < 3 THEN
+		' reset the returned array
+		DIM r_asSec$[]
+		RETURN ' fail
+	ENDIF
 
 	DIM r_asSec$[7]
 	upper_slot = 7
 	slot = -1
 
-	IFF EOF (iniFile) THEN
+	IFF EOF (fileNumber) THEN
 		DO
-			line$ = INFILE$ (iniFile)
-			IF EOF (iniFile) THEN EXIT DO		' end of file
+			line$ = INFILE$ (fileNumber)
+			IF EOF (fileNumber) THEN EXIT DO		' end of file
 			'
 			line$ = TRIM$ (line$)
 			IFZ line$ THEN DO DO ' skip an empty line
@@ -4172,6 +4180,7 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 			'
 		LOOP
 	ENDIF
+	CLOSE (fileNumber)
 
 	IF slot < 0 THEN
 		DIM r_asSec$[]
