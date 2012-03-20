@@ -4003,7 +4003,6 @@ FUNCTION WinXIni_Delete (iniPath$, section$, key$)
 	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN
 
-	section$ = TRIM$ (section$)
 	IFZ section$ THEN RETURN
 
 	key$ = TRIM$ (key$)
@@ -4031,8 +4030,10 @@ END FUNCTION
 
 FUNCTION WinXIni_DeleteSection (iniPath$, section$)
 
-	IFZ TRIM$ (iniPath$) THEN RETURN
-	IFZ TRIM$ (section$) THEN RETURN
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN
+
+	IFZ section$ THEN RETURN
 
 	' passing key$=0 and value$=0 causes the section deletion
 	ret = WritePrivateProfileStringA (&section$, 0, 0, &iniPath$)
@@ -4053,9 +4054,11 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 	' reset the returned array
 	DIM r_asKey$[]
 
+ 	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN
+
 	bracketed$ = "[" + TRIM$ (curSec$) + "]" '  [section]
 	IF bracketed$ = "[]" THEN RETURN		' fail
-	IFZ TRIM$ (iniPath$) THEN RETURN		' fail
 
 	' open read the .INI file
 	iniFile = OPEN (iniPath$, $$RD)
@@ -4203,7 +4206,6 @@ FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 	bErr = XstFileExists (iniPath$)
 	IF bErr THEN RETURN defVal$ ' file NOT found
 
-	section$ = TRIM$ (section$)
 	IFZ section$ THEN RETURN defVal$
 
 	' read from the INI file
@@ -4240,7 +4242,6 @@ FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN
 
-	section$ = TRIM$ (section$)
 	IFZ section$ THEN RETURN
 
 	key$ = TRIM$ (key$)
