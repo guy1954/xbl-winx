@@ -126,13 +126,15 @@ DECLARE FUNCTION StringCompare (a, b)
 DECLARE FUNCTION IStringCompare (a, b)
 
 DECLARE FUNCTION STRING_Init ()
-DECLARE FUNCTION STRING_New (STRING_item$)
-DECLARE FUNCTION STRING_Get (id, @STRING_item$)
-DECLARE FUNCTION STRING_Update (id, STRING_item$)
+DECLARE FUNCTION STRING_New (st$)
+DECLARE FUNCTION STRING_Get (id, @st$)
+DECLARE FUNCTION STRING_Update (id, st$)
 DECLARE FUNCTION STRING_Delete (id)
 DECLARE FUNCTION STRING_Find (find$)
 DECLARE FUNCTION STRING_InsFind (find$)
 DECLARE FUNCTION STRING_Get_idMax ()
+DECLARE FUNCTION STRING_Get_idMin ()
+DECLARE FUNCTION STRING_GetCount ()
 
 END EXPORT
 
@@ -1358,7 +1360,7 @@ FUNCTION STRING_Init ()
 END FUNCTION
 
 ' returns id on success or 0 on fail
-' id = STRING_New (STRING_item$)
+' id = STRING_New (st$)
 ' IFZ id THEN ' fail
 FUNCTION STRING_New (v_STRING_item$)
 	SHARED STRING_array$[]
@@ -1399,10 +1401,10 @@ FUNCTION STRING_New (v_STRING_item$)
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
-' bOK = STRING_Get (id, @STRING_item$)
+' bOK = STRING_Get (id, @st$)
 '	IFF bOK THEN ' fail
 ' or
-'	IFZ STRING_item$ THEN ' fail
+'	IFZ st$ THEN ' fail
 FUNCTION STRING_Get (v_id, @r_STRING_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1422,7 +1424,7 @@ FUNCTION STRING_Get (v_id, @r_STRING_item$)
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
-' bOK = STRING_Update (id, STRING_item$)
+' bOK = STRING_Update (id, st$)
 '	IFF bOK THEN ' fail
 FUNCTION STRING_Update (v_id, v_STRING_item$)
 	SHARED STRING_array$[]
@@ -1462,8 +1464,8 @@ FUNCTION STRING_Delete (v_id)
 END FUNCTION
 
 ' returns id on success or 0 on fail
-' id = STRING_Find (find$)
-'	IFZ id THEN ' not found
+' idFound = STRING_Find (find$) ' find exact match
+'	IFZ idFound THEN ' not found
 FUNCTION STRING_Find (v_find$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1479,15 +1481,15 @@ FUNCTION STRING_Find (v_find$)
 
 	FOR slot = 0 TO upper_slot
 		IFF STRING_arrayUM[slot] THEN DO NEXT
-		STRING_item$ = TRIM$ (STRING_array$[slot])
-		IF LEN (STRING_item$) <> findLen THEN DO NEXT
-		IF STRING_item$ = v_find$ THEN RETURN (slot + 1) ' return id
+		st$ = TRIM$ (STRING_array$[slot])
+		IF LEN (st$) <> findLen THEN DO NEXT
+		IF st$ = v_find$ THEN RETURN (slot + 1) ' return id
 	NEXT slot
 END FUNCTION
 
 ' returns id on success or 0 on fail
-' id = STRING_Find (v_find$) ' find case insensitive
-'	IFZ id THEN ' not found
+' idFound = STRING_InsFind (find$) ' find case insensitive
+'	IFZ idFound THEN ' not found
 FUNCTION STRING_InsFind (v_find$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1504,23 +1506,55 @@ FUNCTION STRING_InsFind (v_find$)
 	find_lc$ = LCASE$ (v_find$)
 	FOR slot = 0 TO upper_slot
 		IFF STRING_arrayUM[slot] THEN DO NEXT
-		STRING_item$ = TRIM$ (STRING_array$[slot])
-		IF LEN (STRING_item$) <> findLen THEN DO NEXT
+		st$ = TRIM$ (STRING_array$[slot])
+		IF LEN (st$) <> findLen THEN DO NEXT
 		' find case insensitive
-		IF LCASE$ (STRING_item$) = find_lc$ THEN RETURN (slot + 1) ' return id
+		IF LCASE$ (st$) = find_lc$ THEN RETURN (slot + 1) ' return id
 	NEXT slot
 END FUNCTION
 
-' returns STRING_idMax
-' wald thru STRING_items
-' idMax = STRING_Get_idMax ()
-' FOR id = 1 TO idMax
-'		STRING_Get (id, @STRING_item$)
-'		IFZ STRING_item$ THEN DO NEXT ' deleted
-' NEXT id
+' usage: walk thru the STRING pool
+'	idMax = STRING_Get_idMax ()
+'	FOR id = 1 TO idMax
+'		bOK = STRING_Get (id, @st$)
+'		IFF bOK THEN DO NEXT		' deleted
+'	NEXT id
 FUNCTION STRING_Get_idMax ()
 	SHARED STRING_idMax
 	RETURN STRING_idMax
+END FUNCTION
+
+FUNCTION STRING_Get_idMin ()
+	SHARED STRING_arrayUM[]
+
+	IFZ STRING_arrayUM[] THEN RETURN
+
+	upper_slot = UBOUND (STRING_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IF STRING_arrayUM[slot] THEN RETURN (slot + 1)
+	NEXT slot
+END FUNCTION
+
+' usage: walk thru a heavily deleted STRING pool
+'	IF STRING_GetCount () THEN
+'		idMin = STRING_Get_idMin ()
+'		idMax = STRING_Get_idMax ()
+'		FOR id = idMin TO idMax
+'			bOK = STRING_Get (id, @st$)
+'			IFF bOK THEN DO NEXT		' deleted
+'		NEXT id
+'	ENDIF
+FUNCTION STRING_GetCount ()
+	SHARED STRING_arrayUM[]
+
+	IFZ STRING_arrayUM[] THEN RETURN
+
+	r_count = 0
+	upper_slot = UBOUND (STRING_arrayUM[])
+	FOR slot = 0 TO upper_slot
+		IF STRING_arrayUM[slot] THEN INC r_count
+	NEXT slot
+	RETURN r_count
 END FUNCTION
 
 DefineAccess(LINKEDNODE)
