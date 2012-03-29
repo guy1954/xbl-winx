@@ -75,9 +75,10 @@ VERSION "0.6.0.14"
 '          Guy-09mar10-modified WinXDialog_SysInfo for Widowsn 7.
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 ' 0.6.0.13-Guy-04may11-added new functions.
-' 0.6.0.14-Guy-25may11-added Most Recently Used file list and freeze/use .onSelect
+' 0.6.0.14-Guy-25may11-added internal lock "freeze/use .onSelect", some functions for Most Recently Used file list
 '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw, WinXGetWindowEffRect
 '          Guy-18mar12-added $$ES_READONLY handling in WinXSetStyle
+'          Guy-27mar12-modified .onItem to receive $$VK_LBUTTON
 '
 ' Win32API DLL headers
 '
@@ -126,12 +127,34 @@ TYPE BINDING
 	XLONG .isMouseInWindow
 	XLONG .hUpdateRegion
 	XLONG .hAccelTable		' Guy-21jan09-handle to the window's accelerator table
-	XLONG .skipOnSelect		' Guy-25may11-skip/use .onSelect
+	XLONG .skipOnSelect		' Guy-25may11-internal lock "freeze/use .onSelect"
 	XLONG .hwndMDIParent	' parent window of an MDI child
+
+' To process $$WM_PAINT wMsg
+' - .onPaint (XLONG hWnd, XLONG hdc)
+' - registered with WinXRegOnPaint
+'
+' To process $$WM_SIZE, $$TCN_SELCHANGE, ... wMsg
+' - .onDimControls (XLONG hWnd, XLONG w, XLONG h)
+' - registered with WinXRegControlSizer
+'
+' To process $$WM_COMMAND wMsg
+' - .onCommand (XLONG idCtr, XLONG notifyCode, XLONG hCtr)
+' - registered with WinXRegOnCommand
+'
+' To process $$WM_CLOSE wMsg
+' - .onClose (XLONG hWnd)
+' - registered with WinXRegOnClose
+'
+' To process the "set selection" event: $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
+' notified by the $$WM_NOTIFY wMsg
+' (internal lock .skipOnSelect to block repeted notifications)
+' - .onSelect (XLONG idCtr, XLONG event, XLONG parameter)
+' - registered with WinXRegOnSelect
 
 	FUNCADDR .onPaint (XLONG, XLONG)		'hWnd, hdc : paint the window
 	FUNCADDR .onDimControls (XLONG, XLONG, XLONG)		'hWnd, w, h : dimension the controls
-	FUNCADDR .onCommand (XLONG, XLONG, XLONG)		'idCtr, notifyCode, lParam
+	FUNCADDR .onCommand (XLONG, XLONG, XLONG)		'idCtr, notifyCode, hCtr
 	FUNCADDR .onMouseMove (XLONG, XLONG, XLONG)		'hWnd, x, y
 	FUNCADDR .onMouseDown (XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT_const, x, y
 	FUNCADDR .onMouseUp (XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT_const, x, y
@@ -147,10 +170,10 @@ TYPE BINDING
 	FUNCADDR .onFocusChange (XLONG, XLONG)		' hWnd, hasFocus
 	FUNCADDR .onClipChange ()		' Sent when clipboard changes
 	FUNCADDR .onEnterLeave (XLONG, XLONG)		' hWnd, mouseInWindow
-	FUNCADDR .onItem (XLONG, XLONG, XLONG)		' idCtr, event, parameter
+	FUNCADDR .onItem (XLONG, XLONG, XLONG)		' idCtr, event, virtualKey
 	FUNCADDR .onColumnClick (XLONG, XLONG)		' idCtr, iColumn
 	FUNCADDR .onCalendarSelect (XLONG, SYSTEMTIME)		' idcal, time
-	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, files
+	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, file$[]
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
 
 END TYPE
@@ -4729,23 +4752,27 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_text$[])
 	LVITEM lvi
 
 	' reset the returned array
-	DIM r_text$[]
+	IF uppSubItem < 0 THEN uppSubItem = 0
+	DIM r_text$[uppSubItem]
 
 	IFZ hLV THEN RETURN
-	IF iItem < 0 THEN iItem = 0
-	IF uppSubItem < 0 THEN RETURN
 
-	DIM r_text$[uppSubItem]
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN
+
+	IF iItem < 0 THEN RETURN
+	IF iItem >= count THEN RETURN
+
+
+	buffer$ = NULL$ (4096)
 	FOR i = 0 TO uppSubItem
-		buffer$ = NULL$ (4096)
 		lvi.mask = $$LVIF_TEXT
 		lvi.pszText = &buffer$
 		lvi.cchTextMax = 4095
 		lvi.iItem = iItem
 		lvi.iSubItem = i
 		'
-		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN EXIT FOR
-		r_text$[i] = CSTRING$ (&buffer$)
+		IF SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN r_text$[i] = CSTRING$ (&buffer$)
 	NEXT i
 
 	RETURN $$TRUE		' success
@@ -6225,7 +6252,7 @@ END FUNCTION
 '
 ' Guy-17mar11-Note:
 ' mainWndProc expects FUNCTION FnMsgHandler (hWnd, wMsg, wParam, lParam)
-' to return a non-zero value if it handled the message wMsg
+' to return a non-zero value if it handled the message wMsg and want to disable further wMsg handlers
 '
 FUNCTION WinXRegMessageHandler (hWnd, wMsg, FUNCADDR FnMsgHandler)
 	BINDING binding
@@ -9395,7 +9422,24 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 
 	SELECT CASE nmhdr.code
 		CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
-			IF binding.onItem THEN retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+			' Guy-27mar12-IF binding.onItem THEN retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+			IF binding.onItem THEN
+				virtualKey = $$VK_LBUTTON ' assume a left mouse button click
+				'
+				' we need to take into account the possibility that the mouse buttons are swapped
+				IF GetSystemMetrics ($$SM_SWAPBUTTON) THEN bSwapped = $$TRUE ELSE bSwapped = $$FALSE
+				'
+				SELECT CASE nmhdr.code
+					CASE $$NM_RCLICK, $$NM_RDBLCLK
+						' fake a right mouse button click
+						IFF bSwapped THEN virtualKey = $$VK_RBUTTON
+					CASE ELSE
+						' fake a left mouse button click
+						IF bSwapped THEN virtualKey = $$VK_RBUTTON
+				END SELECT
+				retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, virtualKey)
+				'retCode == 0 doesn't stop the handling here!
+			ENDIF
 
 		CASE $$NM_KEYDOWN
 			IF binding.onItem THEN
