@@ -793,8 +793,7 @@ FUNCTION WinX ()
 	  $$ICC_PAGESCROLLER_CLASS | $$ICC_PROGRESS_CLASS | $$ICC_TAB_CLASSES | $$ICC_TREEVIEW_CLASSES | _
 	  $$ICC_UPDOWN_CLASS | $$ICC_USEREX_CLASSES | $$ICC_WIN95_CLASSES
 
-	' Guy-04mar09-IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE ' fail
-	InitCommonControlsEx (&iccex) ' Guy-04mar09-don't care!
+	InitCommonControlsEx (&iccex)
 
 	BINDING_Init ()
 	HANDLER_Init ()
@@ -4558,6 +4557,7 @@ FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, STRING label, iSubItem)
 	LVCOLUMN lvCol
 
 	IFZ hLV THEN RETURN -1		' fail
+	IF iColumn < 0 THEN iColumn = 0
 
 	lvCol.mask = $$LVCF_FMT | $$LVCF_ORDER | $$LVCF_SUBITEM | $$LVCF_TEXT | $$LVCF_WIDTH
 	lvCol.fmt = $$LVCFMT_LEFT
@@ -4668,10 +4668,16 @@ END FUNCTION
 ' Deletes an item from a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_DeleteItem (hLV, iItem)
-	IFZ hLV THEN RETURN
-
-	IFZ SendMessageA (hLV, $$LVM_DELETEITEM, iItem, 0) THEN RETURN
-	RETURN $$TRUE		' success
+	bDeleted = $$FALSE
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	SELECT CASE TRUE
+		CASE count < 1
+		CASE iItem < 0 || iItem >= count
+		CASE ELSE
+			ret = SendMessageA (hLV, $$LVM_DELETEITEM, iItem, 0)
+			IF ret THEN bDeleted = $$TRUE
+	END SELECT
+	RETURN bDeleted
 END FUNCTION
 '
 ' #########################################
@@ -4688,14 +4694,21 @@ FUNCTION WinXListView_FreezeOnSelect (hLV)
 END FUNCTION
 
 ' Determines if an item in a list view control is checked
-' hLV = the handle to the list view
+' hLV   = the handle to the list view
 ' iItem = the index of the item to get the check state for
+'          iItem < 0 or iItem >= count, return unchecked
 ' returns $$TRUE if the button is checked, $$FALSE otherwise
 FUNCTION WinXListView_GetCheckState (hLV, iItem)
-	IFZ hLV THEN RETURN
-	IF iItem < 0 THEN iItem = 0
-	ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_STATEIMAGEMASK)
-	IF (ret & 0x2000) = 0x2000 THEN RETURN $$TRUE ELSE RETURN $$FALSE		' button NOT checked
+	bChecked = $$FALSE
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	SELECT CASE TRUE
+		CASE count < 1
+		CASE iItem < 0 || iItem >= count
+		CASE ELSE
+			ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_STATEIMAGEMASK)
+			IF (ret & 0x2000) = 0x2000 THEN bChecked = $$TRUE
+	END SELECT
+	RETURN bChecked
 END FUNCTION
 '
 ' ##########################################
@@ -4709,7 +4722,8 @@ FUNCTION WinXListView_GetHeaderHeight (hLV)
 	hHeader = SendMessageA (hLV, $$LVM_GETHEADER, 0, 0)
 	IFZ hHeader THEN RETURN
 	GetWindowRect (hHeader, &rect)
-	RETURN rect.bottom - rect.top
+	headerHeight = rect.bottom - rect.top
+	RETURN headerHeight
 
 END FUNCTION
 '
@@ -4739,43 +4753,40 @@ END FUNCTION
 ' hLV = the handle to the list view
 ' iItem = the zero-based index of the item
 ' uppSubItem = the upper index of sub items to get
-' r_text$[] = the array to store the result
+' r_cell$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage
-'	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-'	IF count > 0 THEN
-'		iItem = count - 1 ' last item
-'		WinXListView_GetItemText (hLV, iItem, 1, @text$[]) ' retrieve the first 2 columns
-'	ENDIF
-FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_text$[])
+'	WinXListView_GetItemText (hLV, iItem, 1, @text$[]) ' retrieve the first 2 columns
+
+FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_cell$[])
 	LVITEM lvi
 
 	' reset the returned array
 	IF uppSubItem < 0 THEN uppSubItem = 0
-	DIM r_text$[uppSubItem]
+	DIM r_cell$[uppSubItem]
 
-	IFZ hLV THEN RETURN
-
+	bOK = $$FALSE
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN
+	SELECT CASE TRUE
+		CASE count < 1
+		CASE iItem < 0 || iItem >= count
+		CASE ELSE
+			FOR iSubItem = 0 TO uppSubItem
+				lvi.mask = $$LVIF_TEXT
+				buf$ = NULL$ (4096)
+				lvi.pszText = &buf$
+				lvi.cchTextMax = 4095
+				lvi.iItem = iItem
+				lvi.iSubItem = iSubItem
+				'
+				ret = SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi)
+				IF ret THEN r_cell$[iSubItem] = CSTRING$ (&buf$)
+			NEXT iSubItem
+			bOK = $$TRUE
+	END SELECT
 
-	IF iItem < 0 THEN RETURN
-	IF iItem >= count THEN RETURN
-
-
-	buffer$ = NULL$ (4096)
-	FOR i = 0 TO uppSubItem
-		lvi.mask = $$LVIF_TEXT
-		lvi.pszText = &buffer$
-		lvi.cchTextMax = 4095
-		lvi.iItem = iItem
-		lvi.iSubItem = i
-		'
-		IF SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN r_text$[i] = CSTRING$ (&buffer$)
-	NEXT i
-
-	RETURN $$TRUE		' success
+	RETURN bOK
 END FUNCTION
 '
 ' #######################################
@@ -4783,34 +4794,52 @@ END FUNCTION
 ' #######################################
 ' Gets the current selection
 ' r_iItems[] = the array in which to store the indexes of selected items
-' returns the number of selected items
+' returns the number of selected items, or 0 if fail
 FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
 	' reset the returned array
 	DIM r_iItems[]
 
 	IFZ hLV THEN RETURN
-	' get count of items in listview
+
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IF count < 1 THEN RETURN
 
 	cSelItem = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-	IF cSelItem = 0 THEN RETURN
+	IF cSelItem < 1 THEN RETURN
 
 	upper_slot = cSelItem - 1
 	DIM r_iItems[upper_slot]
 
 	' now iterate over all the items to locate the selected ones
 	slot = -1
-	upp = count - 1
-	FOR i = 0 TO upp
-		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED)
+	uppItem = count - 1
+	FOR iItem = 0 TO uppItem
+		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
 		IF ret THEN
 			INC slot
-			IF slot > upper_slot THEN EXIT FOR
-			r_iItems[slot] = i
+			IF slot > upper_slot THEN
+				' should never happen!
+				upper_slot = slot
+				REDIM r_iItems[upper_slot]
+				cSelItem = upper_slot + 1
+			ENDIF
+			r_iItems[slot] = iItem
 		ENDIF
-	NEXT i
+	NEXT iItem
+
+	IF slot < upper_slot THEN
+		' should never happen!
+		IF slot < 0 THEN
+			' reset the returned array
+			DIM r_iItems[]
+			cSelItem = 0
+		ELSE
+			upper_slot = slot
+			REDIM r_iItems[upper_slot]
+			cSelItem = upper_slot + 1
+		ENDIF
+	ENDIF
 
 	RETURN cSelItem
 END FUNCTION
@@ -4823,17 +4852,23 @@ END FUNCTION
 ' iItem = the index to the item to remove the check box
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_RemoveCheckBox (hLV, iItem)
-
 	LV_ITEM lvi		' list view item
 
-	IFZ hLV THEN RETURN
+	bCheckBoxRemoved = $$FALSE
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	SELECT CASE TRUE
+		CASE count < 1
+		CASE iItem < 0 || iItem >= count
+		CASE ELSE
+			lvi.state = 0		' no check box
+			lvi.mask = $$LVIF_STATE
+			lvi.stateMask = $$LVIS_STATEIMAGEMASK
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+			bCheckBoxRemoved = $$TRUE
+	END SELECT
 
-	lvi.state = 0		' no check box
-	lvi.mask = $$LVIF_STATE
-	lvi.stateMask = $$LVIS_STATEIMAGEMASK
+	RETURN bCheckBoxRemoved
 
-	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' ########################################
@@ -4960,20 +4995,21 @@ END FUNCTION
 FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
 	LV_ITEM lvi		' list view item
 
-	IFZ hLV THEN RETURN
-	IF iItem < 0 THEN RETURN
-
-	IF checked THEN
-		lvi.state = 0x2000 ' on
-	ELSE
-		lvi.state = 0x1000 ' off
-	ENDIF
-	lvi.mask = $$LVIF_STATE
-	lvi.stateMask = $$LVIS_STATEIMAGEMASK
-
-	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-
-	RETURN $$TRUE		' success
+	bSetCheckState = $$FALSE
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	SELECT CASE TRUE
+		CASE count < 1
+		CASE iItem < 0 || iItem >= count
+		CASE ELSE
+			lvi.state = 0x1000 ' off
+			IF checked THEN lvi.state = 0x2000 ' on
+			lvi.mask = $$LVIF_STATE
+			lvi.stateMask = $$LVIS_STATEIMAGEMASK
+			'
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+			bSetCheckState = $$TRUE
+	END SELECT
+	RETURN bSetCheckState
 END FUNCTION
 '
 ' #######################################
@@ -4981,6 +5017,7 @@ END FUNCTION
 ' #######################################
 '
 ' Sets the focus on an item
+' Note: although more than one item may be selected, only one item can have the focus
 ' iItem = the zero-based index of the item
 ' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
 ' returns $$TRUE on success or $$FALSE on fail
@@ -4993,11 +5030,12 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
-	IF iItem < 0 THEN iItem = 0
-	IF iItem >= count THEN RETURN
+	IF iItem < 0 THEN iItem = 0 ' the first
+	IF iItem >= count THEN iItem = count - 1 ' the last
 
-	IF iSubItem < 0 THEN iSubItem = 0
+	IF iSubItem < 0 THEN iSubItem = 0 ' the first
 
+	' select the focused item
 	lvi.iItem = iItem
 	lvi.iSubItem = iSubItem
 	lvi.mask = $$LVIF_TEXT
@@ -5007,21 +5045,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 	ret = SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
 	IFZ ret THEN RETURN
 
-	' unselect all the items
-	lvi.mask = $$LVIF_STATE
-	lvi.stateMask = $$LVIS_SELECTED
-	lvi.state = 0
-	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
-
-	' select the focused item
-	lvi.iItem = iItem
-	lvi.iSubItem = iSubItem
-	lvi.mask = $$LVIF_STATE
-	lvi.stateMask = $$LVIS_SELECTED
-	lvi.state = $$LVIS_SELECTED
-	SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-
-	' show the item
+	' show the item (0 = scrolling occurs if the item is not visible)
 	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, 0)
 
 	RETURN $$TRUE		' success
@@ -5037,15 +5061,20 @@ END FUNCTION
 FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
 	LVITEM lvi
 
-	IFZ hLV THEN RETURN
-
-	lvi.mask = $$LVIF_TEXT
-	lvi.iItem = iItem
-	lvi.iSubItem = iSubItem
-	lvi.pszText = &newText
-
-	IFZ SendMessageA (hLV, $$LVM_SETITEMTEXT, iItem, &lvi) THEN RETURN
-	RETURN $$TRUE		' success
+	bSetItemText = $$FALSE
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	SELECT CASE TRUE
+		CASE count < 1
+		CASE iItem < 0 || iItem >= count
+		CASE ELSE
+			lvi.mask = $$LVIF_TEXT
+			lvi.iItem = iItem
+			lvi.iSubItem = iSubItem
+			lvi.pszText = &newText
+			ret = SendMessageA (hLV, $$LVM_SETITEMTEXT, iItem, &lvi)
+			IF ret THEN bSetItemText = $$TRUE
+	END SELECT
+	RETURN bSetItemText
 END FUNCTION
 '
 ' #######################################
@@ -5099,8 +5128,8 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
-	IF iItem < 0 THEN iItem = 0
-	IF iItem >= count THEN RETURN
+	IF iItem < 0 THEN iItem = 0 ' the first
+	IF iItem >= count THEN iItem = count - 1 ' the last
 
 	IF iSubItem < 0 THEN iSubItem = 0
 
@@ -5149,8 +5178,8 @@ FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IF count < 1 THEN RETURN		' empty
 
-	IF iItem < 0 THEN iItem = 0
-	IF iItem >= count THEN RETURN
+	IF iItem < 0 THEN iItem = 0 ' the first
+	IF iItem >= count THEN iItem = count - 1 ' the last
 
 	IF iSubItem < 0 THEN iSubItem = 0
 
