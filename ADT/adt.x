@@ -158,7 +158,7 @@ DeclareAccess(STACK)
 ' returns $$TRUE on error otherwise $$FALSE
 FUNCTION ADT ()
 
-	IF #bReentry THEN RETURN
+	IF #bReentry THEN RETURN ' already initialized!
 
 	' in prevision of a static build
 	Xst ()		' initialize Xblite Standard Library
@@ -170,7 +170,7 @@ FUNCTION ADT ()
 	BINWALK_Init ()
 	STACK_Init ()
 
-	#bReentry = $$TRUE
+	#bReentry = $$TRUE ' protect for reentry
 
 END FUNCTION
 '
