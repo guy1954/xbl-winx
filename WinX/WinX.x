@@ -163,6 +163,8 @@ TYPE BINDING
 '
 ' To process $$WM_CLOSE wMsg
 ' - .onClose (XLONG hWnd)
+' Note: a zero RETURN resumes WinX's default closing,
+'       a non-zero RETURN cancels WinX's default closing.
 ' - registered with WinXRegOnClose
 '
 ' To process the "set selection" event: $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
@@ -1825,6 +1827,7 @@ END FUNCTION
 FUNCTION WinXCleanUp ()
 	SHARED BINDING BINDING_array[]
 	SHARED g_hClipMem
+
 	WNDCLASS wc
 
 	IF g_hClipMem THEN
@@ -1835,21 +1838,18 @@ FUNCTION WinXCleanUp ()
 
 	IF BINDING_array[] THEN
 		' destroy all windows
-		FOR i = UBOUND (BINDING_array[]) TO 0 STEP -1
-			hWnd = BINDING_array[i].hwnd
-			IF hWnd THEN
-				ret = ShowWindow (hWnd, $$SW_HIDE)	' Guy-01feb10-prevent from crashing
-				IF ret THEN DestroyWindow (hWnd)		' destroy the window
-			ENDIF
+		FOR slot = UBOUND (BINDING_array[]) TO 0 STEP -1
+			hWnd = BINDING_array[slot].hwnd
+			IFZ hWnd THEN DO NEXT
 			'
-			' destroy accelerator table
-			IF BINDING_array[i].hAccelTable THEN DestroyAcceleratorTable (BINDING_array[i].hAccelTable)
-			BINDING_array[i].hAccelTable = 0
-		NEXT i
+			ret = ShowWindow (hWnd, $$SW_HIDE)	' Guy-01feb10-prevent from crashing
+			IF ret THEN DestroyWindow (hWnd)		' destroy the window
+			' NOTE: DestroyWindow causes the deletion of current binding's slot
+		NEXT slot
 	ENDIF
 
 	' unregister WinX main window class
-	' 1. destroy any window that would still use this obsolete window class
+	' 1. destroy any window that would still use this now obsolete window class
 	hWnd = FindWindowA (&#WinXclass$, 0)
 	DO WHILE hWnd
 		ShowWindow (hWnd, $$SW_HIDE)
@@ -4245,7 +4245,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 		INC slot
 		IF slot > upper_slot THEN
 			' expand r_asKey$[]
-			upper_slot = ((upper_slot + 1) << 1) - 1
+			upper_slot = ((upper_slot + 1) * 2) - 1
 			REDIM r_asKey$[upper_slot]
 		ENDIF
 		r_asKey$[slot] = key$
@@ -4299,7 +4299,7 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 			INC slot
 			IF slot > upper_slot THEN
 				' expand r_asSec$[]
-				upper_slot = ((upper_slot + 1) << 1) - 1
+				upper_slot = ((upper_slot + 1) * 2) - 1
 				REDIM r_asSec$[upper_slot]
 			ENDIF
 			'
@@ -5913,52 +5913,14 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	IFF #bReentry THEN WinX () ' Guy-07nov11-initialize WinX library
 
-	hWindow = 0
 	style = XWSStoWS (simpleStyle)
 
-	' Is it an MDI child window?
-	IF hOwner THEN
-		' get the owner's binding
-		idBinding = GetWindowLongA (hOwner, $$GWL_USERDATA)
-		IF BINDING_Get (idBinding, @binding) THEN
-			hWindow = CreateMdiChild (hOwner, title, style)
-		ENDIF
-	ENDIF
+	hWindow = 0
+	IF hOwner THEN hWindow = CreateMdiChild (hOwner, title, style) ' MDI child window
 
 	IFZ hWindow THEN
-		rect.right = winW
-		rect.bottom = winH
-		IFZ menu THEN fMenu = 0 ELSE fMenu = 1
-		AdjustWindowRectEx (&rect, style, fMenu, exStyle)
-		'
-		IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
-			rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
-		ENDIF
-		IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
-			rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
-		ENDIF
-		'
-		w = rect.right - rect.left
-		IF w < 0 THEN w = 0
-		IF winX = -1 THEN
-			screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
-			x = (screenWidth - w) >> 1
-		ELSE
-			x = winX
-		ENDIF
-		'
-		h = rect.bottom - rect.top
-		IF h < 0 THEN h = 0
-		IF winY = -1 THEN
-			screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
-			y = (screenHeight - h) >> 1
-		ELSE
-			y = winY
-		ENDIF
-		'
 		IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
 		hInst = GetModuleHandleA (0)
-' Guy-30apr12-hWindow = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, style, w, y, w, h, hOwner, menu, hInst, 0)
 		hWindow = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, style, 0, 0, 0, 0, hOwner, menu, hInst, 0)
 	ENDIF
 	IFZ hWindow THEN RETURN
@@ -5977,7 +5939,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 	dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
 	hInst = GetModuleHandleA (0)
 
-	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWindow, 0, hInst, 0)
+	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, lpWindowName, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, binding.hwnd, 0, hInst, 0)
 
 	binding.msgHandlers = handler_New ()
 	LinkedList_Init (@autoDrawList)
@@ -5985,10 +5947,39 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	binding.autoSizerInfo = AUTOSIZER_LIST_New ($$DIR_VERT)
 
-	SetWindowLongA (hWindow, $$GWL_USERDATA, BINDING_New (binding))
-'	MoveWindow (hWindow, x, y, w, h, 1)
+	SetWindowLongA (binding.hwnd, $$GWL_USERDATA, BINDING_New (binding))
 
 	IFZ hOwner THEN
+		rect.right = winW
+		rect.bottom = winH
+		IFZ menu THEN fMenu = 0 ELSE fMenu = 1
+		AdjustWindowRectEx (&rect, style, fMenu, exStyle)
+		'
+		IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
+			rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
+		ENDIF
+		IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
+			rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
+		ENDIF
+		'
+		w = rect.right - rect.left
+		IF w < 0 THEN w = 0
+		IF winX = -1 THEN
+			screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
+			x = (screenWidth - w) \ 2
+		ELSE
+			x = winX
+		ENDIF
+		'
+		h = rect.bottom - rect.top
+		IF h < 0 THEN h = 0
+		IF winY = -1 THEN
+			screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
+			y = (screenHeight - h) \ 2
+		ELSE
+			y = winY
+		ENDIF
+		'
 		MoveWindow (hWindow, x, y, w, h, 1)
 	ELSE
 		WinXGetWindowEffRect (hOwner, @rect)
@@ -6005,6 +5996,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 		IF child_y < rect.top THEN child_y = rect.top
 		IF rect.right < (child_x + child_w) THEN child_w = rect.right - child_x
 		IF rect.bottom < (child_y + child_h) THEN child_h = rect.bottom - child_y
+		'
 		MoveWindow (hWindow, child_x, child_y, child_w, child_h, 1)
 	ENDIF
 
@@ -8858,7 +8850,7 @@ FUNCTION AUTOSIZER_LIST_New (direction)
 	NEXT i
 
 	IF slot = -1 THEN
-		upper_slot = ((upper_slot + 1) << 1) - 1
+		upper_slot = ((upper_slot + 1) * 2) - 1
 		REDIM autoSizerList[upper_slot]
 		REDIM AUTOSIZERINFO_array[upper_slot,]
 		slot = AUTOSIZERINFO_idMax
@@ -8935,28 +8927,32 @@ END FUNCTION
 ' ###############################
 '
 ' Deletes a binding from the binding table
-' idDelete = the idDelete of the binding to delete
+' idDelete = the id of the binding to delete
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION BINDING_Ov_Delete (idDelete)
-	BINDING item
+	BINDING binding
 	LINKEDLIST list
 
-	bOK = BINDING_Get (idDelete, @item)
+	bOK = BINDING_Get (idDelete, @binding)
 	IFF bOK THEN RETURN
 
-	IFZ item.hwnd THEN RETURN
+	IFZ binding.hwnd THEN RETURN
+
+	' destroy accelerator table
+	IF binding.hAccelTable THEN DestroyAcceleratorTable (binding.hAccelTable)
+	binding.hAccelTable = 0
 
 	' delete the auto draw info
-	autoDraw_clear (item.autoDrawInfo)
-	LINKEDLIST_Get (item.autoDrawInfo, @list)
+	autoDraw_clear (binding.autoDrawInfo)
+	LINKEDLIST_Get (binding.autoDrawInfo, @list)
 	LinkedList_Uninit (@list)
-	LINKEDLIST_Delete (item.autoDrawInfo)
+	LINKEDLIST_Delete (binding.autoDrawInfo)
 
 	' delete the message handlers
-	handler_Delete (item.msgHandlers)
+	handler_Delete (binding.msgHandlers)
 
 	' delete the auto sizer info
-	AUTOSIZER_LIST_Delete (item.autoSizerInfo)
+	AUTOSIZER_LIST_Delete (binding.autoSizerInfo)
 
 	bOK = BINDING_Delete (idDelete)
 	RETURN bOK
@@ -9018,25 +9014,33 @@ SUB GetItemText
 END SUB
 
 END FUNCTION
-
+'
+'
+' #############################
+' #####	CreateMdiChild ()	#####
+' #############################
+'
+' Create MDI child window
+'
+' binding.hwnd = CreateMdiChild (binding.hwndMDIParent, "", $$WS_MAXIMIZE)
 FUNCTION CreateMdiChild (hClient, STRING title, style)
-	MDICREATESTRUCT mdi
 
 	IFZ hClient THEN RETURN
+
+	IFZ title THEN pTitle = 0 ELSE pTitle = &title
+
+	exStyle = $$WS_EX_MDICHILD | $$WS_EX_CLIENTEDGE
+
+	hMdiActive = SendMessageA (hClient, $$WM_MDIGETACTIVE, 0, 0)
+	IF hMdiActive THEN
+		IF IsZoomed (hMdiActive) THEN style = style | $$WS_MAXIMIZE
+	ENDIF
 
 	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
 	IFZ hInst THEN hInst = GetModuleHandleA (0)
 
-	IFZ title THEN pTitle = 0 ELSE pTitle = &title
-'	hWindow = CreateWindowExA ($$WS_EX_MDICHILD, &#WinXclass$, pTitle, $$WS_MAXIMIZE, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
-
-	dwExStyle = $$WS_EX_MDICHILD OR $$WS_EX_CLIENTEDGE
-	dwStyle = style
-	hMdiActive = SendMessageA (hClient, $$WM_MDIGETACTIVE, 0, 0)
-	IF IsZoomed (hMdiActive) THEN dwStyle = dwStyle OR $$WS_MAXIMIZE
-	hWindow = CreateWindowExA (dwExStyle, &#WinXclass$, pTitle, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
-
-	RETURN hWindow
+	hMdi = CreateWindowExA (exStyle, &#WinXclass$, pTitle, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
+	RETURN hMdi
 
 END FUNCTION
 '
@@ -9141,9 +9145,10 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 '	STATIC s_lastW ' unused
 '	STATIC s_lastH ' unused
 
-	PAINTSTRUCT	ps
 	BINDING binding
-	BINDING innerBinding
+'	BINDING innerBinding
+
+	PAINTSTRUCT	ps
 	MINMAXINFO mmi
 	RECT rect
 	SCROLLINFO si
@@ -9499,16 +9504,20 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 
 		CASE $$WM_CLOSE ' closed by User
 			IF binding.onClose THEN
+				' a non-zero RETURNed code cancels WinX's default closing
 				retCode = @binding.onClose (hWnd)
-			ELSE
+			ENDIF
+			IFZ retCode THEN
 				IF idBinding = 1 THEN
-					' Guy-10may12-end execution if main window
 					WinXCleanUp ()
-					PostQuitMessage($$WM_QUIT)
+					PostQuitMessage($$WM_QUIT) ' Guy-10may12-Quit the application
+				ELSE
+					DestroyWindow (hWnd)	' triggers $$WM_DESTROY below
 				ENDIF
 			ENDIF
+			handled = $$TRUE
 
-		CASE $$WM_DESTROY
+		CASE $$WM_DESTROY	' being destroyed
 			ChangeClipboardChain (hWnd, binding.hwndNextClipViewer)
 			'clear the binding
 			BINDING_Ov_Delete (idBinding)
@@ -10054,7 +10063,7 @@ FUNCTION autoSizerInfo_AddGroup (id, AUTOSIZERINFO item)
 	IF slot = -1 THEN
 		slot = UBOUND (AUTOSIZERINFO_array[id,]) + 1
 		SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[id,]
-		REDIM autoSizerInfoLocal[ ((UBOUND (autoSizerInfoLocal[]) + 1) << 1) - 1]
+		REDIM autoSizerInfoLocal[ ((UBOUND (autoSizerInfoLocal[]) + 1) * 2) - 1]
 		SWAP autoSizerInfoLocal[], AUTOSIZERINFO_array[id,]
 	ENDIF
 
@@ -10370,7 +10379,7 @@ FUNCTION handler_New ()
 	ENDIF
 
 	IF slot = -1 THEN
-		upper_slot = ((upper_slot + 1) << 1) - 1
+		upper_slot = ((upper_slot + 1) * 2) - 1
 		REDIM group_ragged[upper_slot,]
 		REDIM group_arrayUM[upper_slot]
 		slot = group_idMax
