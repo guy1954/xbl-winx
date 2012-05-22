@@ -9347,12 +9347,10 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			END SELECT
 			IF g_drag_button = m_button THEN
 				GOSUB dragTreeViewItem
-				IF retOnDrag THEN
-					retOnDrag = @binding.onDrag (GetDlgCtrlID (g_drag_hCtr), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
-					GOSUB endDragTreeViewItem
-					g_drag_button = 0
-				ENDIF
-				RETURN
+				IF retOnDrag THEN retOnDrag = @binding.onDrag (GetDlgCtrlID (g_drag_hCtr), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
+				GOSUB endDragTreeViewItem
+				g_drag_button = 0
+				RETURN retOnDrag
 			ELSE
 				RETURN @binding.onMouseUp(hWnd, m_button,LOWORD (lParam), HIWORD (lParam))
 			ENDIF
@@ -9558,17 +9556,15 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	SUB dragTreeViewItem
 		IFZ g_drag_hCtr THEN EXIT SUB
 
-		tvHit.pt.x = LOWORD (lParam)
-		tvHit.pt.y = HIWORD (lParam)
-		ClientToScreen (hWnd, &tvHit.pt)
-		pt = tvHit.pt
+		pt.x = LOWORD (lParam)
+		pt.y = HIWORD (lParam)
+		ClientToScreen (hWnd, &pt)
 
 		GetWindowRect (g_drag_hCtr, &rect)
-		tvHit.pt.x = tvHit.pt.x - rect.left
-		tvHit.pt.y = tvHit.pt.y - rect.top
+		tvHit.pt.x = pt.x - rect.left
+		tvHit.pt.y = pt.y - rect.top
 
-		hItem = SendMessageA (g_drag_hCtr, $$TVM_HITTEST, 0, &tvHit)
-		IFZ hItem THEN EXIT SUB
+		IFZ SendMessageA (g_drag_hCtr, $$TVM_HITTEST, 0, &tvHit) THEN EXIT SUB
 
 		IF tvHit.hItem != g_drag_item THEN
 			ImageList_DragShowNolock (0)
