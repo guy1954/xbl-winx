@@ -76,7 +76,7 @@ VERSION "0.6.0.14"
 ' 0.6.0.12-Guy-03sep10-corrected function WinXSetStyle.
 ' 0.6.0.13-Guy-04may11-added new functions.
 ' 0.6.0.14-Guy-25may11-added internal lock "freeze/use .onSelect", some functions for Most Recently Used file list
-'          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw, WinXGetWindowEffRect
+'          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw
 '          Guy-18mar12-added $$ES_READONLY handling in WinXSetStyle
 '          Guy-08may12-added .onSelect handling on $$TCN_SELCHANGE
 '
@@ -665,7 +665,6 @@ DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the Use
 
 DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
 DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
-DECLARE FUNCTION WinXGetWindowEffRect (hWnd, RECT @rect) ' get the window's effective rectangle
 
 END EXPORT
 
@@ -2473,16 +2472,19 @@ END FUNCTION
 ' returns the idCtr of the button the User selected
 '
 ' Usage:
-'	title$ = "Save File"
-'	text$ = "Do you confirm?"
-'	mret = WinXDialog_Question (#winMain, text$, title$, $$FALSE, 1) ' default to the 'No' button
-'	SELECT CASE mret
-'		CASE $$IDYES ' the 'Yes' button was selected
-'			MessageBoxA (#winMain, &"Confirmed", &title$, $$MB_ICONINFORMATION)
-'		CASE ELSE
-'			MessageBoxA (#winMain, &"Not confirmed", &title$, $$MB_ICONINFORMATION)
-'	END SELECT
-
+'FUNCTION winMain_OnClose (hWnd)
+'
+'	text$ = "Are you sure you want to quit the application?"
+'	title$ = "Exit " + PROGRAM$ (0)
+'	mret = WinXDialog_Question (#winMain, text$, title$, $$FALSE, 0) ' default to the 'Yes' button
+'	IF mret = $$IDYES THEN
+'		PostQuitMessage ($$WM_QUIT) ' end application
+'		RETURN
+'	ENDIF
+'	RETURN 1 ' cancel exit
+'
+'END FUNCTION
+'
 FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 	IF cancel THEN flags = $$MB_YESNOCANCEL ELSE flags = $$MB_YESNO
 	SELECT CASE defaultButton
@@ -2838,8 +2840,7 @@ FUNCTION WinXDisplay (hWnd)
 	SELECT CASE TRUE
 		CASE hWnd = 0
 		CASE ELSE
-'			bOK = WinXGetUsableRect (hWnd, @rect)
-			bOK = WinXGetWindowEffRect (hWnd, @rect) ' get the window's effective rectangle
+			bOK = WinXGetUsableRect (hWnd, @rect)
 			IF bOK THEN
 				' resize the window
 				w = rect.right - rect.left
@@ -3937,9 +3938,9 @@ FUNCTION WinXGetPlacement (hWnd, @minMax, RECT restored)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
-' #################################
+' ##########################
 ' #####  WinXGetText$  #####
-' #################################
+' ##########################
 ' Gets the text from a control
 ' hWnd = the handle to the control
 ' returns a string containing the window text
@@ -3952,32 +3953,32 @@ FUNCTION WinXGetText$ (hWnd)
 	RETURN CSTRING$ (&buf$)
 END FUNCTION
 '
-' ################################
+' ###############################
 ' #####  WinXGetUsableRect  #####
-' ################################
+' ###############################
 '
 ' Gets a rect describing the usable portion of a window's client area,
 ' that is, the portion not obscured with a toolbar or status bar
 ' hWnd = the handle to the window to get the rect for
-' rect = the variable to hold the rect structure
+' r_rect = the variable to hold the rect structure
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
 'bOK = WinXGetUsableRect (hWnd, @rect)
-FUNCTION WinXGetUsableRect (hWnd, RECT rect)
+FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
 	BINDING binding
 	RECT rc
 
-	rect.left = 0
-	rect.top = 0
-	rect.right = 0
-	rect.bottom = 0
+	r_rect.left = 0
+	r_rect.top = 0
+	r_rect.right = 0
+	r_rect.bottom = 0
 
 	bOK = $$FALSE
 	SELECT CASE TRUE
 		CASE hWnd = 0
 		CASE ELSE
-			ret = GetClientRect (hWnd, &rect)
+			ret = GetClientRect (hWnd, &r_rect)
 			IFZ ret THEN EXIT SELECT
 			'
 			' get the binding
@@ -3987,76 +3988,13 @@ FUNCTION WinXGetUsableRect (hWnd, RECT rect)
 			' account for the toolbar's height
 			IF binding.hBar THEN
 				GetClientRect (binding.hBar, &rc)
-				rect.top = rect.top + (rc.bottom - rc.top) + 2
+				r_rect.top = r_rect.top + (rc.bottom - rc.top) + 2
 			ENDIF
 			'
 			' account for the statusbar's height
 			IF binding.hStatus THEN
 				GetClientRect (binding.hStatus, &rc)
-				rect.bottom = rect.bottom - (rc.bottom - rc.top)
-			ENDIF
-			'
-			bOK = $$TRUE		' success
-			'
-	END SELECT
-	RETURN bOK
-END FUNCTION
-'
-' ##################################
-' #####  WinXGetWindowEffRect  #####
-' ##################################
-' hWnd = the handle to the window
-' rect = the effective rectangle
-'
-' Usage:
-'bOK = WinXGetWindowEffRect (hWnd, @rect) ' get the window's effective rectangle
-FUNCTION WinXGetWindowEffRect (hWnd, RECT rect)		' get the window's effective rectangle
-	BINDING binding
-	RECT rc
-
-	rect.left = 0
-	rect.top = 0
-	rect.right = 0
-	rect.bottom = 0
-
-	bOK = $$FALSE
-	SELECT CASE TRUE
-		CASE hWnd = 0
-		CASE ELSE
-			ret = GetWindowRect (hWnd, &rect)
-			IFZ ret THEN EXIT SELECT
-			'
-			style = GetWindowLongA (hWnd, $$GWL_STYLE)
-			menu = GetMenu (hWnd)
-			IFZ menu THEN fMenu = 0 ELSE fMenu = 1
-			exStyle = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-			'
-			AdjustWindowRectEx (&rect, style, fMenu, exStyle)
-			'
-			' account for the vertical scrollbar's width
-			IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
-				rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
-			ENDIF
-			'
-			' account for the horizontal scrollbar's height
-			IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
-				rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
-			ENDIF
-			'
-			' get the binding
-			idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-			IFF BINDING_Get (idBinding, @binding) THEN EXIT SELECT
-			'
-			' account for the toolbar's height
-			IF binding.hBar THEN
-				GetClientRect (binding.hBar, &rc)
-				rect.top = rect.top + (rc.bottom - rc.top) + 2
-			ENDIF
-			'
-			' account for the statusbar's height
-			IF binding.hStatus THEN
-				GetClientRect (binding.hStatus, &rc)
-				rect.bottom = rect.bottom - (rc.bottom - rc.top)
+				r_rect.bottom = r_rect.bottom - (rc.bottom - rc.top)
 			ENDIF
 			'
 			bOK = $$TRUE		' success
@@ -5888,9 +5826,12 @@ END FUNCTION
 ' Examples    = 'Make a simple window
 ' #hMyWnd = WinXNewWindow (0, "My window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 '
+' 'Make a child window
+' #hChild = WinXNewWindow (#hOwner, "My child window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+'
 FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyle, exStyle, icon, menu)
 	BINDING binding
-	RECT rect
+	RECT ownerRect
 	LINKEDLIST autoDrawList
 
 	IFF #bReentry THEN WinX () ' Guy-07nov11-initialize WinX library
@@ -5931,56 +5872,41 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	SetWindowLongA (binding.hwnd, $$GWL_USERDATA, BINDING_New (binding))
 
-	IFZ hOwner THEN
-		rect.right = winW
-		rect.bottom = winH
-		IFZ menu THEN fMenu = 0 ELSE fMenu = 1
-		AdjustWindowRectEx (&rect, style, fMenu, exStyle)
+	' position the new window
+	x = winX
+	y = winY
+	w = winW
+	h = winH
+
+	IF w < 0 THEN w = 0
+	IF h < 0 THEN h = 0
+
+	IF x = -1 THEN x = (GetSystemMetrics ($$SM_CXSCREEN) - w) / 2 ' center horizontal
+	IF y = -1 THEN y = (GetSystemMetrics ($$SM_CYSCREEN) - h) / 2 ' center vertical
+
+	IF hOwner THEN
+		' child window: position the child window inside its owner
+		' Guy-18jun12-GetWindowRect (hOwner, &ownerRect)
+		WinXGetUsableRect (hOwner, @ownerRect)
 		'
-		IF (style & $$WS_VSCROLL) = $$WS_VSCROLL THEN
-			rect.right = rect.right + GetSystemMetrics ($$SM_CXVSCROLL)		' width vertical scroll bar
-		ENDIF
-		IF (style & $$WS_HSCROLL) = $$WS_HSCROLL THEN
-			rect.bottom = rect.bottom + GetSystemMetrics ($$SM_CXHSCROLL)		' width horizontal scroll bar
-		ENDIF
+		corr = GetSystemMetrics ($$SM_CXFRAME)	' width of window frame
+		ownerRect.left = ownerRect.left + corr
+		ownerRect.right = ownerRect.right - (2 * corr)
 		'
-		w = rect.right - rect.left
-		IF w < 0 THEN w = 0
-		IF winX = -1 THEN
-			screenWidth = GetSystemMetrics ($$SM_CXSCREEN)
-			x = (screenWidth - w) \ 2
-		ELSE
-			x = winX
-		ENDIF
+		corr = GetSystemMetrics ($$SM_CYFRAME)	' height of window frame
+		ownerRect.top = ownerRect.top + corr
+		ownerRect.bottom = ownerRect.bottom - (2 * corr)
 		'
-		h = rect.bottom - rect.top
-		IF h < 0 THEN h = 0
-		IF winY = -1 THEN
-			screenHeight = GetSystemMetrics ($$SM_CYSCREEN)
-			y = (screenHeight - h) \ 2
-		ELSE
-			y = winY
-		ENDIF
+		IF x < ownerRect.left THEN x = ownerRect.left
+		IF y < ownerRect.top THEN y = ownerRect.top
 		'
-		MoveWindow (hWindow, x, y, w, h, 1)
-	ELSE
-		WinXGetWindowEffRect (hOwner, @rect)
-		rect.left = rect.left + GetSystemMetrics ($$SM_CXFRAME)	' width of window frame
-		rect.top = rect.top + GetSystemMetrics ($$SM_CYCAPTION)	' height of caption
-		rect.right = rect.right - GetSystemMetrics ($$SM_CXFRAME)	' width of window frame
-		rect.bottom = rect.bottom - GetSystemMetrics ($$SM_CYFRAME)	' height of window frame
+		child_right = x + w
+		IF child_right > ownerRect.right THEN w = ownerRect.right - x
 		'
-		child_x = x
-		child_y = y
-		child_w = w
-		child_h = h
-		IF child_x < rect.left THEN child_x = rect.left
-		IF child_y < rect.top THEN child_y = rect.top
-		IF rect.right < (child_x + child_w) THEN child_w = rect.right - child_x
-		IF rect.bottom < (child_y + child_h) THEN child_h = rect.bottom - child_y
-		'
-		MoveWindow (hWindow, child_x, child_y, child_w, child_h, 1)
+		child_bottom = y + h
+		IF child_bottom > ownerRect.bottom THEN h = ownerRect.bottom - y
 	ENDIF
+	MoveWindow (hWindow, x, y, w, h, 0)
 
 	' and we're done
 	RETURN hWindow
@@ -9614,22 +9540,24 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 
 	RECT rect
 
-	IFZ lParam THEN RETURN
-
 	retCode = 0
+	IFZ lParam THEN RETURN retCode
 
 	nmhdrAddr = &nmhdr
 	XLONGAT(&&nmhdr) = lParam
 
-	SELECT CASE nmhdr.code
+	idCtr = nmhdr.idFrom
+	notifyCode = nmhdr.code
+
+	SELECT CASE notifyCode
 		CASE $$NM_CLICK, $$NM_DBLCLK, $$NM_RCLICK, $$NM_RDBLCLK, $$NM_RETURN, $$NM_HOVER
-			IF binding.onItem THEN retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, 0)
+			IF binding.onItem THEN retCode = @binding.onItem (idCtr, notifyCode, 0)
 
 		CASE $$NM_KEYDOWN
 			IF binding.onItem THEN
 				pNmkey = &nmkey
 				XLONGAT(&&nmkey) = lParam
-				retCode = @binding.onItem (nmhdr.idFrom, nmhdr.code, nmkey.nVKey)
+				retCode = @binding.onItem (idCtr, notifyCode, nmkey.nVKey)
 				XLONGAT(&&nmkey) = pNmkey
 			ENDIF
 
@@ -9637,7 +9565,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			IF binding.onCalendarSelect THEN
 				pNmsc = &nmsc
 				XLONGAT(&&nmsc) = lParam
-				retCode = @binding.onCalendarSelect (nmhdr.idFrom, nmsc.stSelStart)
+				retCode = @binding.onCalendarSelect (idCtr, nmsc.stSelStart)
 				XLONGAT(&&nmsc) = pNmsc
 			ENDIF
 
@@ -9646,7 +9574,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				pNmtvdi = &nmtvdi
 				XLONGAT(&&nmtvdi) = lParam
 				retCode = @binding.onLabelEdit(nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
-				IFF retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
+				IFZ retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
 				XLONGAT(&&nmtvdi) = pNmtvdi
 			ENDIF
 
@@ -9665,7 +9593,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			drag_y = nmtv.ptDrag.y
 			retOnDrag = @binding.onDrag (nmtv.hdr.idFrom, $$DRAG_START, nmtv.itemNew.hItem, drag_x, drag_y)
 			IF retOnDrag THEN
-				SELECT CASE nmhdr.code
+				SELECT CASE notifyCode
 					CASE $$TVN_BEGINDRAG : g_drag_button = $$MBT_LEFT
 					CASE $$TVN_BEGINRDRAG	: g_drag_button = $$MBT_RIGHT
 				END SELECT
@@ -9689,14 +9617,14 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 					autoSizerInfo_showGroup (series, visible)
 				ENDIF
 			NEXT i
-			IF binding.onSelect THEN retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, currTab)		' Guy-08may12-idCtr, event, parameter
+			IF binding.onSelect THEN retCode = @binding.onSelect (idCtr, notifyCode, currTab)		' Guy-08may12-idCtr, event, parameter
 			RefreshParentWindow (nmhdr.hwndFrom)
 
 		CASE $$LVN_COLUMNCLICK
 			IF binding.onColumnClick THEN
 				pNmlv = &nmlv
 				XLONGAT(&&nmlv) = lParam
-				retCode = @binding.onColumnClick (nmhdr.idFrom, nmlv.iSubItem)
+				retCode = @binding.onColumnClick (idCtr, nmlv.iSubItem)
 				XLONGAT(&&nmlv) = pNmlv
 			ENDIF
 
@@ -9720,24 +9648,18 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 		CASE $$TVN_SELCHANGED
 			IF binding.onSelect THEN
 				IFF binding.skipOnSelect THEN
-					pNmtv = &nmtv ' tree view structure
-					XLONGAT(&&nmtv) = lParam
-					retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
-					XLONGAT(&&nmtv) = pNmtv
+					retCode = @binding.onSelect (idCtr, notifyCode, lParam)
 				ENDIF
 			ENDIF
 
 		CASE $$LVN_ITEMCHANGED
 			IF binding.onSelect THEN
 				IFF binding.skipOnSelect THEN
-					pNmlv = &nmlv ' list view structure
-					XLONGAT(&&nmlv) = lParam
-					retCode = @binding.onSelect (nmhdr.idFrom, nmhdr.code, lParam)
-					XLONGAT(&&nmlv) = pNmlv
+					retCode = @binding.onSelect (idCtr, notifyCode, lParam)
 				ENDIF
 			ENDIF
 
-	END SELECT
+	END SELECT ' notifyCode
 
 	XLONGAT(&&nmhdr) = nmhdrAddr
 	RETURN retCode
@@ -10019,7 +9941,7 @@ FUNCTION VOID RefreshParentWindow (hCtr)
 		IFZ hWnd THEN EXIT DO
 	LOOP
 	IF hWnd THEN
-		bOK = WinXGetWindowEffRect (hWnd, @rect) ' get the window's effective rectangle
+		bOK = WinXGetUsableRect (hWnd, @rect) ' get the window's effective rectangle
 		IF bOK THEN
 			' refresh the parent window
 			w = rect.right - rect.left
@@ -10626,8 +10548,6 @@ END FUNCTION
 ' winW and winH = the new width and height
 ' returns nothing of interest
 FUNCTION sizeWindow (hWnd, winW, winH)
-	STATIC s_barWMax
-
 	BINDING binding
 	SCROLLINFO si
 	WINDOWPLACEMENT WinPla
@@ -10642,14 +10562,10 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	IF winH <= binding.minH THEN winH = binding.minH
 
 	' now handle the tool bar
-	hCtr = binding.hBar
-	IF hCtr THEN
-		IF winW > s_barWMax THEN
-			GetClientRect (hCtr, &rect)
-			hOld = rect.bottom - rect.top
-			SendMessageA (hCtr, $$WM_SIZE, winW, hOld)
-			s_barWMax = winW
-		ENDIF
+	IF binding.hBar THEN
+		GetClientRect (binding.hBar, &rect)
+		hOld = rect.bottom - rect.top
+		SendMessageA (binding.hBar, $$WM_SIZE, winW, hOld)
 	ENDIF
 
 	' handle the status bar
@@ -10671,10 +10587,8 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 		ENDIF
 		'
 		parts[uppPart] = -1		' extend to the right edge of the window
-		SendMessageA (binding.hStatus, $$WM_SIZE, winW, hOld)
 		SendMessageA (binding.hStatus, $$SB_SETPARTS, cPart, &parts[0])
-		' Guy-28apr12-reposition statusbar
-		MoveWindow(binding.hStatus, 0, 0, 0, 0, 1)
+		MoveWindow(binding.hStatus, 0, 0, 0, 0, 1) ' Guy-28apr12-reposition status bar
 	ENDIF
 
 	' and the scroll bars
