@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.14"
+VERSION "0.6.0.15"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -79,6 +79,7 @@ VERSION "0.6.0.14"
 '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw
 '          Guy-18mar12-added $$ES_READONLY handling in WinXSetStyle
 '          Guy-08may12-added .onSelect handling on $$TCN_SELCHANGE
+' 0.6.0.15-Guy-07may12-changed functions WinXNewWindow and sizeWindow.
 '
 ' Win32API DLL headers
 '
