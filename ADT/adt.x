@@ -126,9 +126,9 @@ DECLARE FUNCTION StringCompare (a, b)
 DECLARE FUNCTION IStringCompare (a, b)
 
 DECLARE FUNCTION STRING_Init ()
-DECLARE FUNCTION STRING_New (st$)
-DECLARE FUNCTION STRING_Get (id, @st$)
-DECLARE FUNCTION STRING_Update (id, st$)
+DECLARE FUNCTION STRING_New (item$)
+DECLARE FUNCTION STRING_Get (id, @item$)
+DECLARE FUNCTION STRING_Update (id, item$)
 DECLARE FUNCTION STRING_Delete (id)
 DECLARE FUNCTION STRING_Find (find$)
 DECLARE FUNCTION STRING_InsFind (find$)
@@ -1362,7 +1362,7 @@ END FUNCTION
 ' returns id on success or 0 on fail
 ' id = STRING_New (st$)
 ' IFZ id THEN ' fail
-FUNCTION STRING_New (v_STRING_item$)
+FUNCTION STRING_New (v_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
@@ -1394,10 +1394,13 @@ FUNCTION STRING_New (v_STRING_item$)
 		INC STRING_idMax
 	ENDIF
 
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	STRING_array$[slot] = v_STRING_item$
-	STRING_arrayUM[slot] = $$TRUE
-	RETURN (slot + 1) ' return id
+	r_id = 0
+	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
+		STRING_array$[slot] = v_item$
+		STRING_arrayUM[slot] = $$TRUE
+		r_id = slot + 1
+	ENDIF
+	RETURN r_id ' return id
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
@@ -1405,42 +1408,36 @@ END FUNCTION
 '	IFF bOK THEN ' fail
 ' or
 '	IFZ st$ THEN ' fail
-FUNCTION STRING_Get (v_id, @r_STRING_item$)
+FUNCTION STRING_Get (v_id, @r_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	r_STRING_item$ = ""
-	IFZ STRING_arrayUM[] THEN RETURN
-	IF v_id < 1 || v_id > STRING_idMax THEN RETURN
-
-	upper_slot = UBOUND (STRING_arrayUM[])
 	slot = v_id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF STRING_arrayUM[slot] THEN RETURN
-
-	r_STRING_item$ = STRING_array$[slot]
-	RETURN $$TRUE ' success
+	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
+		IF STRING_arrayUM[slot] THEN
+			r_item$ = STRING_array$[slot]
+			RETURN $$TRUE
+		ENDIF
+	ENDIF
+	r_item$ = ""
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
 ' bOK = STRING_Update (id, st$)
 '	IFF bOK THEN ' fail
-FUNCTION STRING_Update (v_id, v_STRING_item$)
+FUNCTION STRING_Update (v_id, v_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	IFZ STRING_arrayUM[] THEN RETURN
-	IF v_id < 1 || v_id > STRING_idMax THEN RETURN
-
-	upper_slot = UBOUND (STRING_arrayUM[])
 	slot = v_id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF STRING_arrayUM[slot] THEN RETURN
-
-	STRING_array$[slot] = v_STRING_item$
-	RETURN $$TRUE ' success
+	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
+		IF STRING_arrayUM[slot] THEN
+			STRING_array$[slot] = v_item$
+			RETURN $$TRUE
+		ENDIF
+	ENDIF
 END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
@@ -1451,16 +1448,11 @@ FUNCTION STRING_Delete (v_id)
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	IFZ STRING_arrayUM[] THEN RETURN
-	IF v_id < 1 || v_id > STRING_idMax THEN RETURN
-
-	upper_slot = UBOUND (STRING_arrayUM[])
 	slot = v_id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF STRING_arrayUM[slot] THEN RETURN
-
-	STRING_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE ' success
+	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
+		STRING_arrayUM[slot] = $$FALSE
+		RETURN $$TRUE
+	ENDIF
 END FUNCTION
 
 ' returns id on success or 0 on fail
@@ -1535,7 +1527,7 @@ FUNCTION STRING_Get_idMin ()
 	NEXT slot
 END FUNCTION
 
-' usage: walk thru a heavily deleted STRING pool
+' usage of STRING_GetCount(): walk thru a heavily deleted STRING pool
 '	IF STRING_GetCount () THEN
 '		idMin = STRING_Get_idMin ()
 '		idMax = STRING_Get_idMax ()

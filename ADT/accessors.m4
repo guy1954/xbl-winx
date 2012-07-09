@@ -4,7 +4,7 @@ DECLARE FUNCTION $1_Get (id, $1 @$1_item)
 DECLARE FUNCTION $1_Update (id, $1 $1_item)
 DECLARE FUNCTION $1_Delete (id)')
 
-m4_define(`DefineAccess', `FUNCTION $1_Init ()
+'m4_define(`DefineAccess', `FUNCTION $1_Init ()
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
@@ -41,10 +41,12 @@ FUNCTION $1_New ($1 v_$1_item)
 		INC $1_idMax
 	ENDIF
 
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	$1_array[slot] = v_$1_item
-	$1_arrayUM[slot] = $$TRUE
-	r_id = slot + 1
+	r_id = 0
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		$1_array[slot] = v_$1_item
+		$1_arrayUM[slot] = $$TRUE
+		r_id = slot + 1
+	ENDIF
 	RETURN r_id
 END FUNCTION
 
@@ -53,19 +55,16 @@ FUNCTION $1_Get (v_id, $1 r_$1_item)
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
-	$1 $1_item_null
+	$1 $1_$1Nil
 
-	r_$1_item = $1_item_null
-	IFZ $1_arrayUM[] THEN RETURN
-	IF v_id < 1 || v_id > $1_idMax THEN RETURN
-
-	upper_slot = UBOUND ($1_arrayUM[])
 	slot = v_id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF $1_arrayUM[slot] THEN RETURN
-
-	r_$1_item = $1_array[slot]
-	RETURN $$TRUE
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		IF $1_arrayUM[slot] THEN
+			r_$1_item = $1_array[slot]
+			RETURN $$TRUE
+		ENDIF
+	ENDIF
+	r_$1_item = $1_$1Nil
 END FUNCTION
 
 FUNCTION $1_Update (v_id, $1 v_$1_item)
@@ -73,16 +72,13 @@ FUNCTION $1_Update (v_id, $1 v_$1_item)
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
-	IFZ $1_arrayUM[] THEN RETURN
-	IF v_id < 1 || v_id > $1_idMax THEN RETURN
-
-	upper_slot = UBOUND ($1_arrayUM[])
 	slot = v_id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF $1_arrayUM[slot] THEN RETURN
-
-	$1_array[slot] = v_$1_item
-	RETURN $$TRUE
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		IF $1_arrayUM[slot] THEN
+			$1_array[slot] = v_$1_item
+			RETURN $$TRUE
+		ENDIF
+	ENDIF
 END FUNCTION
 
 FUNCTION $1_Delete (v_id)
@@ -90,15 +86,10 @@ FUNCTION $1_Delete (v_id)
 	SHARED $1_arrayUM[]
 	SHARED $1_idMax
 
-	IFZ $1_arrayUM[] THEN RETURN
-	IF v_id < 1 || v_id > $1_idMax THEN RETURN
-
-	upper_slot = UBOUND ($1_arrayUM[])
 	slot = v_id - 1
-	IF slot > upper_slot THEN RETURN
-	IFF $1_arrayUM[slot] THEN RETURN
-
-	$1_arrayUM[slot] = $$FALSE
-	RETURN $$TRUE
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		$1_arrayUM[slot] = $$FALSE
+		RETURN $$TRUE
+	ENDIF
 END FUNCTION
 ')
