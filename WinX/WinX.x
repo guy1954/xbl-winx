@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.15"
+VERSION "0.6.0.14"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -79,7 +79,6 @@ VERSION "0.6.0.15"
 '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw
 '          Guy-18mar12-added $$ES_READONLY handling in WinXSetStyle
 '          Guy-08may12-added .onSelect handling on $$TCN_SELCHANGE
-' 0.6.0.15-Guy-07may12-changed functions WinXNewWindow and sizeWindow.
 '
 ' Win32API DLL headers
 '
@@ -4658,14 +4657,16 @@ FUNCTION WinXListView_DeleteAllItems (hLV)
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
-	statusOld = LOCK_Get_skipOnSelect (id)
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
-	IF statusOld THEN
-		ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
-	ELSE
-		LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
-		ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
-		LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
+	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
+
+	LOCK_Set_skipOnSelect (id, bSkipOld)
+	IFF bSkipOld THEN
+		SendMessageA (hLV, $$LVM_REDRAWITEMS, 0, 0)
+		hWnd = GetParent (hLV)
+		UpdateWindow (hWnd)
 	ENDIF
 
 	IFZ ret THEN RETURN
@@ -4704,9 +4705,12 @@ END FUNCTION
 '
 FUNCTION WinXListView_FreezeOnSelect (hLV)
 
+	IFZ hLV THEN RETURN
 	id = LOCK_Get_id_hCtr (hLV)
-	statusOld = LOCK_Get_skipOnSelect (id)
-	IF statusOld THEN RETURN $$TRUE ' already frozen
+	IF id < 1 THEN RETURN
+
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	IF bSkipOld THEN RETURN $$TRUE ' already frozen
 	RETURN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 END FUNCTION
@@ -4890,8 +4894,8 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
-	statusOld = LOCK_Get_skipOnSelect (id)
-	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 	uppItem = count - 1
 	IF uppItem >= 0 THEN
@@ -4904,7 +4908,12 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 		NEXT iItem
 	ENDIF
 
-	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
+	LOCK_Set_skipOnSelect (id, bSkipOld)
+	IFF bSkipOld THEN
+		SendMessageA (hLV, $$LVM_REDRAWITEMS, 0, 0)
+		hWnd = GetParent (hLV)
+		UpdateWindow (hWnd)
+	ENDIF
 
 	RETURN $$TRUE		' success
 
@@ -4947,8 +4956,8 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
-	statusOld = LOCK_Get_skipOnSelect (id)
-	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 	uppItem = count - 1
 	FOR iItem = 0 TO uppItem
@@ -4959,7 +4968,12 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 		SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
 	NEXT iItem
 
-	IFF statusOld THEN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
+	LOCK_Set_skipOnSelect (id, bSkipOld)
+	IFF bSkipOld THEN
+		SendMessageA (hLV, $$LVM_REDRAWITEMS, 0, 0)
+		hWnd = GetParent (hLV)
+		UpdateWindow (hWnd)
+	ENDIF
 
 	RETURN $$TRUE		' success
 
@@ -5222,9 +5236,12 @@ END FUNCTION
 '
 FUNCTION WinXListView_UseOnSelect (hLV)
 
+	IFZ hLV THEN RETURN
 	id = LOCK_Get_id_hCtr (hLV)
-	statusOld = LOCK_Get_skipOnSelect (id)
-	IFF statusOld THEN RETURN $$TRUE ' already in use
+	IF id < 1 THEN RETURN
+
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	IFF bSkipOld THEN RETURN $$TRUE ' already in use
 	RETURN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
 END FUNCTION
@@ -8208,7 +8225,7 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 			'
 			prevChild = child
 '			child = WinXTreeView_GetNextItem (hTV, prevChild)
-			child = SendMessageA (#tvwNav, $$TVM_GETNEXTITEM, $$TVGN_NEXT, prevChild)
+			child = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_NEXT, prevChild)
 		LOOP
 	ENDIF
 
@@ -8230,18 +8247,18 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
-	statusOld = LOCK_Get_skipOnSelect (id)
+	bSkipOld = LOCK_Get_skipOnSelect (id)
 
-	IF statusOld THEN
-		ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
-	ELSE
-		LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
-		ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
-		LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
+	LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
+
+	LOCK_Set_skipOnSelect (id, bSkipOld)
+	IFF bSkipOld THEN
+		hWnd = GetParent (hTV)
+		UpdateWindow (hWnd)
 	ENDIF
 
 	IFZ ret THEN RETURN
-
 	RETURN $$TRUE		' success
 
 END FUNCTION
@@ -8355,9 +8372,12 @@ END FUNCTION
 '
 FUNCTION WinXTreeView_FreezeOnSelect (hTV)
 
+	IFZ hTV THEN RETURN
 	id = LOCK_Get_id_hCtr (hTV)
-	statusOld = LOCK_Get_skipOnSelect (id)
-	IF statusOld THEN RETURN $$TRUE
+	IF id < 1 THEN RETURN
+
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	IF bSkipOld THEN RETURN $$TRUE ' already frozen
 	RETURN LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
 
 END FUNCTION
@@ -8591,9 +8611,12 @@ END FUNCTION
 '
 FUNCTION WinXTreeView_UseOnSelect (hTV)
 
+	IFZ hTV THEN RETURN
 	id = LOCK_Get_id_hCtr (hTV)
-	statusOld = LOCK_Get_skipOnSelect (id)
-	IF statusOld THEN RETURN $$TRUE
+	IF id < 1 THEN RETURN
+
+	bSkipOld = LOCK_Get_skipOnSelect (id)
+	IFF bSkipOld THEN RETURN $$TRUE ' already in use
 	RETURN LOCK_Set_skipOnSelect (id, $$FALSE) ' use .onSelect
 
 END FUNCTION
@@ -8982,15 +9005,12 @@ END FUNCTION
 FUNCTION LOCK_Get_skipOnSelect (id)
 	BINDING binding
 
-	bSkip = $$FALSE
-
 	bOK = BINDING_Get (id, @binding)
-	IFF bOK THEN RETURN bSkip
-	IFZ binding.onSelect THEN RETURN bSkip
-
-	IF binding.skipOnSelect THEN bSkip = $$TRUE
-	RETURN bSkip
-
+	IF bOK THEN
+		IF binding.onSelect THEN
+			IF binding.skipOnSelect THEN RETURN $$TRUE
+		ENDIF
+	ENDIF
 END FUNCTION
 '
 ' ###################################
@@ -9003,11 +9023,12 @@ FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 	bOK = BINDING_Get (id, @binding)
 	IFF bOK THEN RETURN
 
-	IF bSkip THEN bSkip = $$TRUE ' true value of TRUE
-	IF binding.skipOnSelect = bSkip THEN RETURN $$TRUE
+	IF bSkip THEN bool = $$TRUE ELSE bool = $$FALSE
+
+	IF binding.skipOnSelect = bool THEN RETURN $$TRUE ' already set
 
 	' update the binding
-	binding.skipOnSelect = bSkip
+	binding.skipOnSelect = bool
 	bOK = BINDING_Update (id, binding)
 	RETURN bOK
 
@@ -9646,18 +9667,9 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				XLONGAT(&&nmlvdi) = pNmlvdi
 			ENDIF
 
-		CASE $$TVN_SELCHANGED
+		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
 			IF binding.onSelect THEN
-				IFF binding.skipOnSelect THEN
-					retCode = @binding.onSelect (idCtr, notifyCode, lParam)
-				ENDIF
-			ENDIF
-
-		CASE $$LVN_ITEMCHANGED
-			IF binding.onSelect THEN
-				IFF binding.skipOnSelect THEN
-					retCode = @binding.onSelect (idCtr, notifyCode, lParam)
-				ENDIF
+				IFF binding.skipOnSelect THEN retCode = @binding.onSelect (idCtr, notifyCode, lParam)
 			ENDIF
 
 	END SELECT ' notifyCode
