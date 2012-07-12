@@ -2708,7 +2708,7 @@ END FUNCTION
 
 FUNCTION WinXDir_Create (dir$)		' Creates a directory making sure that the directory is created
 
-	dir$ = TRIM$ (dir$)
+	dir$ = WinXPath_Trim$ (dir$)
 	IFZ dir$ THEN RETURN $$TRUE		' dir$ is empty
 
 	XstPathToAbsolutePath (dir$, @dir$)		' Get the complete path
@@ -2773,39 +2773,44 @@ FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 
 	IF s_xblDir$ THEN RETURN s_xblDir$
 
-	XstGetEnvironmentVariable ("XBLDIR", @dir$)
-	dir$ = TRIM$ (dir$)
-	IFZ dir$ THEN
+	' try Windows' environment variables
+	XstGetEnvironmentVariable ("XBLDIR", @s_xblDir$)
+	s_xblDir$ = WinXPath_Trim$ (s_xblDir$)
+
+	IFZ s_xblDir$ THEN
+		' bad new! try Windows' registry
 		envKey$ = "Environment"
-		IFZ RegOpenKeyExA ($$HKEY_CURRENT_USER, &envKey$, 0, $$KEY_READ, &hkey) THEN
-			index = 0
-			type = 0
+		zeroOK = RegOpenKeyExA ($$HKEY_CURRENT_USER, &envKey$, 0, $$KEY_READ, &hKey)
+		IFZ zeroOK THEN ' (0 is for OK!)
+			dwIndex = 0
+			wType = 0
 			DO
-				szName$ = NULL$ ($$MAX_PATH)
-				lenName = LEN (szName$)
-				szData$ = NULL$ ($$MAX_PATH)
-				lenData = LEN (szData$)
-				ret = RegEnumValueA (hkey, index, &szName$, &lenName, 0, &type, &szData$, &lenData)
-				IFZ ret THEN
-					subKey$ = CSTRING$ (&szName$)
+				lenName = $$MAX_PATH
+				szName$ = NULL$ (lenName)
+				'
+				lenData = $$MAX_PATH
+				szData$ = NULL$ (lenData)
+				'
+				zeroOK = RegEnumValueA (hKey, dwIndex, &szName$, &lenName, 0, &wType, &szData$, &lenData)
+				IFZ zeroOK THEN		' OK!
+					subKey$ = CSIZE$ (szName$)
 					IF UCASE$ (subKey$) = "XBLDIR" THEN
-						dir$ = CSTRING$ (&szData$)
-						dir$ = TRIM$ (dir$)
+						s_xblDir$ = CSIZE$ (szData$)
+						s_xblDir$ = WinXPath_Trim$ (s_xblDir$)
 						EXIT DO
 					ENDIF
-					INC index
+					INC dwIndex
 				ENDIF
-			LOOP UNTIL ret
-			RegCloseKey (hkey)
+			LOOP UNTIL zeroOK
+			'
+			RegCloseKey (hKey)
 		ENDIF
 	ENDIF
-	IFZ dir$ THEN dir$ = "C:" + $$PathSlash$ + "xblite" + $$PathSlash$
 
-	WinXDir_AppendSlash (@dir$)		' end directory path with \
-	s_xblDir$ = dir$
+	IFZ s_xblDir$ THEN s_xblDir$ = "C:" + $$PathSlash$ + "xblite"
+	WinXDir_AppendSlash (@s_xblDir$)		' end directory path with \
 
 	RETURN s_xblDir$
-
 END FUNCTION
 
 ' returns "" on fail
@@ -4054,7 +4059,7 @@ FUNCTION WinXIni_Delete (iniPath$, section$, key$)
 
 	IFZ section$ THEN RETURN
 
-	key$ = TRIM$ (key$)
+	key$ = WinXPath_Trim$ (key$)
 	IFZ key$ THEN RETURN
 
 	' passing argument lpString set to zero causes the key deletion
@@ -4106,7 +4111,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
  	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN
 
-	bracketed$ = "[" + TRIM$ (curSec$) + "]" '  [section]
+	bracketed$ = "[" + WinXPath_Trim$ (curSec$) + "]" '  [section]
 	IF bracketed$ = "[]" THEN RETURN		' fail
 
 	' open read the .INI file
@@ -4120,7 +4125,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 			line$ = INFILE$ (fileNumber)
 			IF EOF (fileNumber) THEN EXIT DO		' end of file
 			'
-			line$ = TRIM$ (line$)
+			line$ = WinXPath_Trim$ (line$)
 			IFZ line$ THEN DO DO ' skip an empty line
 			'
 			IF LEFT$ (line$) <> "[" THEN DO DO ' not a section
@@ -4148,7 +4153,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 		line$ = INFILE$ (fileNumber)
 		IF EOF (fileNumber) THEN EXIT DO		' end of file
 		'
-		line$ = TRIM$ (line$)
+		line$ = WinXPath_Trim$ (line$)
 		IFZ line$ THEN DO DO ' skip an empty line
 		IF LEFT$ (line$) =";" THEN DO DO '  ' skip a comment
 		'
@@ -4158,7 +4163,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 		pos = INSTR (line$, "=", 1)
 		IFZ pos THEN DO DO
 		'
-		key$ = TRIM$ (LEFT$ (line$, pos - 1))
+		key$ = WinXPath_Trim$ (LEFT$ (line$, pos - 1))
 		IFZ key$ THEN DO DO
 		'
 		' add key to r_asKey$[]
@@ -4209,7 +4214,7 @@ FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 			line$ = INFILE$ (fileNumber)
 			IF EOF (fileNumber) THEN EXIT DO		' end of file
 			'
-			line$ = TRIM$ (line$)
+			line$ = WinXPath_Trim$ (line$)
 			IFZ line$ THEN DO DO ' skip an empty line
 			'
 			IF LEFT$ (line$) <> "[" THEN DO DO ' not a section
@@ -4302,7 +4307,7 @@ FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 
 	IFZ section$ THEN RETURN
 
-	key$ = TRIM$ (key$)
+	key$ = WinXPath_Trim$ (key$)
 	IFZ key$ THEN RETURN
 
 	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
@@ -4350,16 +4355,12 @@ END FUNCTION
 ' ##########################
 '
 ' release a font created by WinXNewFont
-' hFont = the handle of the logical font
-' Returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXKillFont (@hFont)
-
-	IFZ hFont THEN RETURN ' fail
-
-	ret = DeleteObject (hFont) ' release the font
-	hFont = 0
-	RETURN $$TRUE ' success
-
+' r_hFont = the handle of the logical font
+FUNCTION WinXKillFont (@r_hFont)
+	IF r_hFont THEN
+		DeleteObject (r_hFont) ' release the font
+		r_hFont = 0
+	ENDIF
 END FUNCTION
 '
 ' #################################
