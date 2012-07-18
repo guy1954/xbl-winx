@@ -168,7 +168,7 @@ TYPE BINDING
 	FUNCADDR .onScroll (XLONG, XLONG, XLONG)		'pos, hWnd, direction
 	FUNCADDR .onTrackerPos (XLONG, XLONG)		'idCtr, pos
 	FUNCADDR .onDrag (XLONG, XLONG, XLONG, XLONG, XLONG)		'idCtr, drag_const, drag_item, drag_x, drag_y
-	FUNCADDR .onLabelEdit (XLONG, XLONG, XLONG, STRING)		'idCtr, edit_const, item, newLabel$
+	FUNCADDR .onLabelEdit (XLONG, XLONG, XLONG, STRING)		'idCtr, edit_const, edit_item, newLabel$
 	FUNCADDR .onClose (XLONG)		' hWnd
 	FUNCADDR .onFocusChange (XLONG, XLONG)		' hWnd, hasFocus
 	FUNCADDR .onClipChange ()		' Sent when clipboard changes
@@ -2220,15 +2220,12 @@ END FUNCTION
 ' severity = the severity of the error.  0 = debug, 1 = warning, 2 = error, 3 = unrecoverable error
 ' returns $$TRUE
 FUNCTION WinXDialog_Error (STRING message, STRING title, severity)
+	icon = 0
 	SELECT CASE severity
-		CASE 0
-			icon = $$MB_ICONASTERISK
-		CASE 1
-			icon = $$MB_ICONWARNING
-		CASE 2
-			icon = $$MB_ICONSTOP
-		CASE 3
-			icon = $$MB_ICONSTOP
+		CASE 0 : icon = $$MB_ICONASTERISK
+		CASE 1 : icon = $$MB_ICONWARNING
+		CASE 2 : icon = $$MB_ICONSTOP
+		CASE 3 : icon = $$MB_ICONSTOP
 	END SELECT
 	MessageBoxA (0, &message, &title, $$MB_OK | icon)
 
@@ -4659,15 +4656,18 @@ FUNCTION WinXListView_DeleteAllItems (hLV)
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
 	bSkipOld = LOCK_Get_skipOnSelect (id)
-	LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+	IFF bSkipOld THEN
+		LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+		SendMessageA (hLV, $$WM_SETREDRAW, 0, 0 ) ' don't redraw listview
+	ENDIF
 
 	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
 
-	LOCK_Set_skipOnSelect (id, bSkipOld)
 	IFF bSkipOld THEN
-		SendMessageA (hLV, $$LVM_REDRAWITEMS, 0, 0)
-		hWnd = GetParent (hLV)
-		UpdateWindow (hWnd)
+		LOCK_Set_skipOnSelect (id, $$FALSE)
+		SendMessageA (hLV, $$WM_SETREDRAW, 1, 0) ' redraw listview
+'		hWnd = GetParent (hLV)
+'		UpdateWindow (hWnd)
 	ENDIF
 
 	IFZ ret THEN RETURN
@@ -8142,6 +8142,7 @@ END FUNCTION
 ' ##################################
 ' #####  WinXTreeView_AddItem  #####
 ' ##################################
+'
 ' Adds an item to a tree view control
 ' hTV = the handle to the tree view control to add the item to
 ' hParent = The parent item, 0 or $$TVI_ROOT for root
@@ -8149,7 +8150,7 @@ END FUNCTION
 ' iImage = the index of the image for this item
 ' iImageSel = the index of the image to use when the item is expanded
 ' item = the text for the item
-' data = extra data to associate with this item
+'
 ' returns the handle to the item or 0 on fail
 FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect, STRING item)
 	TV_INSERTSTRUCT tvis
@@ -8250,13 +8251,18 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	id = LOCK_Get_id_hCtr (hLV)
 	bSkipOld = LOCK_Get_skipOnSelect (id)
 
-	LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+	IFF bSkipOld THEN
+		LOCK_Set_skipOnSelect (id, $$TRUE) ' freeze .onSelect
+		SendMessageA (hTV, $$WM_SETREDRAW, 0, 0 ) ' don't redraw treeview
+	ENDIF
+
 	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
 
-	LOCK_Set_skipOnSelect (id, bSkipOld)
 	IFF bSkipOld THEN
-		hWnd = GetParent (hTV)
-		UpdateWindow (hWnd)
+		LOCK_Set_skipOnSelect (id, $$FALSE)
+		SendMessageA (hTV, $$WM_SETREDRAW, 1, 0) ' redraw treeview
+'		hWnd = GetParent (hTV)
+'		UpdateWindow (hWnd)
 	ENDIF
 
 	IFZ ret THEN RETURN
@@ -8701,7 +8707,9 @@ END FUNCTION
 ' #####  WinXVersion$ ()  #####
 ' #############################
 '
-FUNCTION WinXVersion$ ()		' get WinX's current version
+' Gets WinX's current version
+'
+FUNCTION WinXVersion$ ()
 	version$ = VERSION$ (0)
 	RETURN (version$)
 END FUNCTION
