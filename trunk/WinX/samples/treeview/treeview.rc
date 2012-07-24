@@ -1,5 +1,4 @@
 #include "winres.h"
 
-scrabble ICON    scrabble.ico
-
-1 24 manifest.xml
+1 24 "treeview.manifest"
+imagesImg    BITMAP  images.bmp
