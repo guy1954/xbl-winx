@@ -168,16 +168,16 @@ TYPE BINDING
 	FUNCADDR .onChar (XLONG, XLONG)		'hWnd, char
 	FUNCADDR .onScroll (XLONG, XLONG, XLONG)		'pos, hWnd, direction
 	FUNCADDR .onTrackerPos (XLONG, XLONG)		'idCtr, pos
-	FUNCADDR .onDrag (XLONG, XLONG, XLONG, XLONG, XLONG)		'idCtr, drag_const, drag_item, drag_x, drag_y
+	FUNCADDR .onDrag (XLONG, XLONG, XLONG, XLONG, XLONG, XLONG)		'idCtr, drag_const, drag_item_start, drag_running_item, drag_x, drag_y
 	FUNCADDR .onLabelEdit (XLONG, XLONG, XLONG, STRING)		'idCtr, edit_const, edit_item, newLabel$
 	FUNCADDR .onClose (XLONG)		' hWnd
 	FUNCADDR .onFocusChange (XLONG, XLONG)		' hWnd, hasFocus
 	FUNCADDR .onClipChange ()		' Sent when clipboard changes
 	FUNCADDR .onEnterLeave (XLONG, XLONG)		' hWnd, mouseInWindow
-	FUNCADDR .onItem (XLONG, XLONG, XLONG)		' idCtr, event, virtualKey
+	FUNCADDR .onItem (XLONG, XLONG, XLONG)		' idCtr, event, VK (virtualKey for $$NM_KEYDOWN)
 	FUNCADDR .onColumnClick (XLONG, XLONG)		' idCtr, iColumn
 	FUNCADDR .onCalendarSelect (XLONG, SYSTEMTIME)		' idcal, time
-	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, file$[]
+	FUNCADDR .onDropFiles (XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, @files$[]
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
 
 END TYPE
@@ -307,7 +307,7 @@ m4_include(`accessors.m4')
 '
 EXPORT
 
-' WinX specific stuff
+' Red/Green/Blue/Alpha
 TYPE WINX_RGBA
 	UBYTE .blue
 	UBYTE .green
@@ -315,57 +315,63 @@ TYPE WINX_RGBA
 	UBYTE .alpha
 END TYPE
 
+$$CHANNEL_BLUE  = 0
+$$CHANNEL_GREEN = 1
+$$CHANNEL_RED   = 2
+$$CHANNEL_ALPHA = 3
+
 ' Simplified window styles
-$$XWSS_APP = 0x00000000
-$$XWSS_APPNORESIZE = 0x00000001
-$$XWSS_POPUP = 0x00000002
-$$XWSS_POPUPNOTITLE = 0x00000003
-$$XWSS_NOBORDER = 0x00000004
+$$XWSS_APP          = 0
+$$XWSS_APPNORESIZE  = 1
+$$XWSS_POPUP        = 2
+$$XWSS_POPUPNOTITLE = 3
+$$XWSS_NOBORDER     = 4
 
 ' mouse buttons
-$$MBT_LEFT = 1
+$$MBT_LEFT   = 1
 $$MBT_MIDDLE = 2
-$$MBT_RIGHT = 3
+$$MBT_RIGHT  = 3
 
 ' font styles
-$$FONT_BOLD = 0x00000001
-$$FONT_ITALIC = 0x00000002
-$$FONT_UNDERLINE = 0x00000004
-$$FONT_STRIKEOUT = 0x00000008
+$$FONT_BOLD      = 0x1
+$$FONT_ITALIC    = 0x2
+$$FONT_UNDERLINE = 0x4
+$$FONT_STRIKEOUT = 0x8
 
 ' file types
 $$FILETYPE_WINBMP = 1
 
-$$SIZER_SIZERELREST = 0x00000001
-$$SIZER_XRELRIGHT = 0x00000002
-$$SIZER_YRELBOTTOM = 0x00000004
-$$SIZER_SERIES = 0x00000008
-$$SIZER_WCOMPLEMENT = 0x00000010
-$$SIZER_HCOMPLEMENT = 0x00000020
-$$SIZER_SPLITTER = 0x00000040
+' AutoSizer flags (autoSizerBlock.flags)
+$$SIZER_FLAGS_NONE  = 0x0
+$$SIZER_SIZERELREST = 0x1
+$$SIZER_XRELRIGHT   = 0x2
+$$SIZER_YRELBOTTOM  = 0x4
+$$SIZER_SERIES      = 0x8
 
-$$CONTROL = 0
-$$DIR_VERT = 1
-$$DIR_HORIZ = 2
+$$SIZER_WCOMPLEMENT = 0x10
+$$SIZER_HCOMPLEMENT = 0x20
+$$SIZER_SPLITTER    = 0x40
+
+$$CONTROL     = 0
+$$DIR_VERT    = 1
+$$DIR_HORIZ   = 2
 $$DIR_REVERSE = 0x80000000
 
 $$UNIT_LINE = 0
 $$UNIT_PAGE = 1
-$$UNIT_END = 2
+$$UNIT_END  = 2
 
-$$DRAG_START = 0
+' drag states
+$$DRAG_START    = 0
 $$DRAG_DRAGGING = 1
-$$DRAG_DONE = 2
+$$DRAG_DONE     = 2
 
+' edit states
 $$EDIT_START = 0
-$$EDIT_DONE = 1
+$$EDIT_DONE  = 1
 
-$$CHANNEL_RED = 2
-$$CHANNEL_GREEN = 1
-$$CHANNEL_BLUE = 0
-$$CHANNEL_ALPHA = 3
-
-$$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
+' Guy-20jul12-deleted
+'$$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
 
 ' Most Recently Used
 $$MRU_SECTION$     = "Recent files"
@@ -451,7 +457,7 @@ DECLARE FUNCTION WinXAddTabs (parent, multiline, idCtr)
 DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr)
 DECLARE FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
-DECLARE FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
+DECLARE FUNCTION WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity)
 DECLARE FUNCTION WinXProgress_SetPos (hProg, DOUBLE pos)
 DECLARE FUNCTION WinXProgress_SetMarquee (hProg, enable)
@@ -668,6 +674,7 @@ DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
 DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
 
 DECLARE FUNCTION WinXDisplayHelpFile (helpFile$) ' display the contents of helpFile$
+DECLARE FUNCTION WinXTreeView_GetChildCount (hTV, hItem)
 END EXPORT
 ' ----------------------------------------- end of WinX's exported declarations
 
@@ -1620,7 +1627,10 @@ END FUNCTION
 ' #########################################
 ' Gets the index of the main autosizer series for a window
 ' hWnd = the window to get the series for
-' returns the index of the main series of the window, -1 on fail
+' returns the index of the window's main series, -1 on fail
+'
+' ----- Usage -----
+'serHoriz = WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
 FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 	BINDING binding
 
@@ -1641,9 +1651,9 @@ END FUNCTION
 ' space = the space from the previous control
 ' size = the size of this control
 ' x, y, w, h = the size and position of the control on the current window
-' flags = a set of $$SIZER flags
+' sizer_flags = a set of AutoSizer flags
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, flags)
+FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, sizer_flags)
 	SHARED AUTOSIZER_LIST autoSizerList[]
 
 	BINDING binding
@@ -1670,7 +1680,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 	autoSizerBlock.y = y
 	autoSizerBlock.w = w
 	autoSizerBlock.h = h
-	autoSizerBlock.flags = flags
+	autoSizerBlock.flags = sizer_flags
 
 	' register the block
 	idBlock = GetPropA (hCtr, &$$AutoSizerInfo$)
@@ -1721,10 +1731,11 @@ END FUNCTION
 ' #####  WinXAutoSizer_SetSimpleInfo  #####
 ' #########################################
 ' A simplified version of WinXAutoSizer_SetInfo
-FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, DOUBLE space, DOUBLE size, flags)
+' sizer_flags = a set of AutoSizer flags
+FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, DOUBLE space, DOUBLE size, sizer_flags)
 	IFZ hWnd THEN RETURN
 	' x, y, w, h = the size and position of the control on the current window
-	RETURN WinXAutoSizer_SetInfo (hWnd, series, space, size, 0.0, 0.0, 1.0, 1.0, flags)
+	RETURN WinXAutoSizer_SetInfo (hWnd, series, space, size, 0.0, 0.0, 1.0, 1.0, sizer_flags)
 END FUNCTION
 '
 ' #################################
@@ -2228,7 +2239,8 @@ END FUNCTION
 ' hMod = the handle to the module from which the icon comes, 0 for this module
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' Usage: WinXDialog_Message (#dlgAUD, "Not wanted", "Wanted?", "0", hInst)
+' ----- Usage -----
+'WinXDialog_Message (#dlgAUD, "Not wanted", "Wanted?", "0", hInst)
 ' --> SHARED hInst ' is needed by WinXDialog_Message for the icon "0"
 '
 FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
@@ -2260,8 +2272,8 @@ END FUNCTION
 ' initDirIDL = the Windows' special folder to initialize the dialog with
 ' returns the directory path or "" on cancel or error
 '
-' Usage:
-' dir$ = WinXDialog_OpenDir$ (#winMain, "", $$CSIDL_PERSONAL) ' My Documents' folder
+' ----- Usage -----
+'dir$ = WinXDialog_OpenDir$ (#winMain, "", $$CSIDL_PERSONAL) ' My Documents' folder
 '
 FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows directory picker dialog
 
@@ -2451,19 +2463,17 @@ END FUNCTION
 ' defaultButton = the zero-based index of the default button
 ' returns the idCtr of the button the User selected
 '
-' Usage:
-' FUNCTION winMain_OnClose (hWnd)
-'
-' text$ = "Are you sure you want to quit the application?"
-' title$ = "Exit " + PROGRAM$ (0)
-' mret = WinXDialog_Question (#winMain, text$, title$, $$FALSE, 0) ' default to the 'Yes' button
-' IF mret = $$IDYES THEN
-' PostQuitMessage ($$WM_QUIT) ' end application
-' RETURN
-' ENDIF
-' RETURN 1 ' cancel exit
-'
-' END FUNCTION
+' ----- Usage -----
+'FUNCTION winMain_OnClose (hWnd)
+'	text$ = "Are you sure you want to quit the application?"
+'	title$ = "Exit " + PROGRAM$ (0)
+'	mret = WinXDialog_Question (#winMain, text$, title$, $$FALSE, 0)		' default to the 'Yes' button
+'	IF mret = $$IDYES THEN
+'		PostQuitMessage ($$WM_QUIT)		' end application
+'		RETURN
+'	ENDIF
+'	RETURN 1		' cancel exit
+'END FUNCTION
 '
 FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 	IF cancel THEN flags = $$MB_YESNOCANCEL ELSE flags = $$MB_YESNO
@@ -2591,14 +2601,14 @@ END FUNCTION
 ' OUT			: msInfo$	- execution path
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' Usage:
-' ' run Microsoft program "System Information"
-' bOK = WinXDialog_SysInfo (@msInfo$)
-' IFF bOK THEN
-' msg$ = "WinXDialog_SysInfo: Can't run System Information"
-' msg$ = msg$ + $$CRLF$ + "Execution path: " + msInfo$
-' WinXDialog_Error (msg$, "System Information", 3)
-' ENDIF
+' ----- Usage -----
+'' run Microsoft program "System Information"
+'bOK = WinXDialog_SysInfo (@msInfo$)
+'IFF bOK THEN
+'	msg$ = "WinXDialog_SysInfo: Can't run System Information"
+'	msg$ = msg$ + $$CRLF$ + "Execution path: " + msInfo$
+'	WinXDialog_Error (msg$, "System Information", 3)
+'ENDIF
 '
 FUNCTION WinXDialog_SysInfo (@msInfo$)
 	SECURITY_ATTRIBUTES sa		' not used
@@ -2657,10 +2667,12 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 END FUNCTION
 
 ' Ends a directory path with \
-' Usage:
-' dir$ = "  c:/Lonné  "
-' WinXDir_AppendSlash (@dir$) ' end directory path with \
-' ' result: "  c:/Lonné  " --> "c:\\Lonné\\"
+'
+' ----- Usage -----
+'dir$ = "  c:/Lonné  "
+'WinXDir_AppendSlash (@dir$) ' end directory path with \
+' --> correct result: "  c:/Lonné  " ==> "c:\\Lonné\\"
+'
 FUNCTION WinXDir_AppendSlash (@dir$)
 
 	dir$ = WinXPath_Trim$ (dir$)
@@ -2672,18 +2684,18 @@ END FUNCTION
 ' OUT			: dir$ - directory path
 
 ' returns $$TRUE on success or $$FALSE on fail
-
-' Usage:
-' ' create a missing directory
-' bOK = WinXDir_Exists (dir$)
-' IFF bOK THEN
-' bOK = WinXDir_Create (dir$)
-' IFF bOK THEN
-' msg$ = "WinXDir_Create: Can't create missing directory " + dir$
-' WinXDialog_Error (msg$, "Create Directory", 3)
-' ENDIF
-' ENDIF
-
+'
+' ----- Usage -----
+'bOK = WinXDir_Exists (dir$)
+'IFF bOK THEN
+'	' create a missing directory
+'	bOK = WinXDir_Create (dir$)
+'	IFF bOK THEN
+'		msg$ = "WinXDir_Create: Can't create missing directory " + dir$
+'		WinXDialog_Error (msg$, "Create Directory", 3) ' 3 = unrecoverable error
+'	ENDIF
+'ENDIF
+'
 FUNCTION WinXDir_Create (dir$)		' Creates a directory making sure that the directory is created
 
 	dir$ = WinXPath_Trim$ (dir$)
@@ -2740,11 +2752,13 @@ FUNCTION WinXDir_Exists (dir$)
 	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE		' success directory exists
 
 END FUNCTION
-' returns "" on fail
 
-' Usage:
-' xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
-' eg. C:\xblite\
+' returns "" on fail
+'
+' ----- Usage -----
+'xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
+' --> eg. C:\xblite\
+'
 FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 	STATIC s_xblDir$
 
@@ -2791,9 +2805,11 @@ FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 END FUNCTION
 
 ' returns "" on fail
-
-' Usage:
-' xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get xblite's program dir
+'
+' ----- Usage -----
+'xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get XBLite's program dir
+' --> eg. C:\xblite\programs\
+'
 FUNCTION WinXDir_GetXblProgramDir$ ()		' Gets the complete path of xblite's programs' directory
 
 	xblPgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
@@ -2843,14 +2859,14 @@ END FUNCTION
 ' helpFile$ = the application help file
 ' returns $$TRUE on success
 '
-' Usage:
-' runPath$ = XstGetProgramFileName$ ()
-' XstDecomposePathname (runPath$, @runDir$, "", "", "", "")
-' WinXDir_AppendSlash (@runDir$)	' end directory path with \
+' ----- Usage -----
+'runPath$ = XstGetProgramFileName$ ()
+'XstDecomposePathname (runPath$, @runDir$, "", "", "", "")
+'WinXDir_AppendSlash (@runDir$)	' end directory path with \
 '
-' helpFile$ = runDir$ + PROGRAM$ (0) + ".chm"
-' bOK = WinXDisplayHelpFile (helpFile$)
-' IFF bOK THEN XstAlert ("Can't display the contents help file " + helpFile$)
+'helpFile$ = runDir$ + PROGRAM$ (0) + ".chm"
+'bOK = WinXDisplayHelpFile (helpFile$)
+'IFF bOK THEN XstAlert ("Can't display the contents help file " + helpFile$)
 '
 FUNCTION WinXDisplayHelpFile (helpFile$)
 
@@ -3870,9 +3886,9 @@ END FUNCTION
 ' nFolder = the Windows' special folder
 ' returns the qualified path, or "" on error
 '
-' Usage:
-' ' get the qualified path of folder "My Documents"
-' dir$ = WinXFolder_GetDir$ ($$CSIDL_PERSONAL)
+' ----- Usage -----
+'' get the qualified path of folder "My Documents"
+'dir$ = WinXFolder_GetDir$ ($$CSIDL_PERSONAL)
 '
 FUNCTION WinXFolder_GetDir$ (nFolder)		' get the path for a Windows special folder
 
@@ -3980,8 +3996,9 @@ END FUNCTION
 ' r_rect = the variable to hold the rect structure
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' Usage:
-' bOK = WinXGetUsableRect (hWnd, @rect)
+' ----- Usage -----
+'bOK = WinXGetUsableRect (hWnd, @rect)
+'
 FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
 	BINDING binding
 	RECT rc
@@ -4773,13 +4790,14 @@ END FUNCTION
 ' uppSubItem = the upper index of sub items to get
 ' r_cell$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
-
-' Usage
-' count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-' IF count > 0 THEN
-' iItem = count - 1 ' last item
-' WinXListView_GetItemText (hLV, iItem, 1, @text$[]) ' retrieve the first 2 columns
-' ENDIF
+'
+' ----- Usage -----
+'count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+'IF count > 0 THEN
+'	iItem = count - 1		' last item
+'	WinXListView_GetItemText (hLV, iItem, 1, @text$[])		' retrieve the first 2 columns
+'ENDIF
+'
 FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_cell$[])
 	LVITEM lvi
 
@@ -5922,17 +5940,19 @@ END FUNCTION
 ' #####  WinXPath_Trim$  #####
 ' ############################
 ' Trims a path, directory or file
-' Usage
-' dir$ = "  c:/Lonné  "
-' dir$ = WinXPath_Trim$ (dir$)
-' result: "  c:/Lonné  " --> "c:\\Lonné"
+'
+' ----- Usage -----
+'
+'dir$ = "  c:/Lonné  "
+' ------------------------the direct way----------------------------
+'dir$ = TRIM$ (dir$)
+' --> BAD: "  c:/Lonné  " --> "c:\\Lonn"
+' ------------------------------------------------------------------
+'dir$ = WinXPath_Trim$ (dir$)
+' --> OK!: "  c:/Lonné  " --> "c:\\Lonné"
+' ------------------------------------------------------------------
+'
 FUNCTION WinXPath_Trim$ (path$)
-
-	' the direct way----------------------------------------------------
-	' dir$ = "  c:/Lonné  "
-	' dir$ = TRIM$ (dir$)
-	' is buggy: "  c:/Lonné  " --> "c:\\Lonn" BAD!!!
-	' ------------------------------------------------------------------
 
 	IFZ path$ THEN RETURN ""		' empty
 	upp = LEN (path$) - 1
@@ -6256,6 +6276,7 @@ END FUNCTION
 ' this callback.  The callback function has two XLONG parameters, w and h.
 ' See Also    =
 ' Examples    = WinXRegControlSizer (#hMain, &customSizer())
+' DECLARE FUNCTION customSizer(hWnd, w, h)
 '
 FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 	BINDING binding
@@ -6268,7 +6289,7 @@ FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' set the function
-	binding.onDimControls = FnControlSizer
+	binding.onDimControls = FnControlSizer ' (hWnd, w, h)
 	RETURN BINDING_Update (idBinding, binding)
 END FUNCTION
 '
@@ -6337,7 +6358,7 @@ FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onCalendarSelect = FnOnCalendarSelect
+	binding.onCalendarSelect = FnOnCalendarSelect ' (idcal, time)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6359,7 +6380,7 @@ FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onChar = FnOnChar
+	binding.onChar = FnOnChar ' (hWnd, char)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6383,7 +6404,7 @@ FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR FnOnClipChange)
 
 	binding.hwndNextClipViewer = SetClipboardViewer (hWnd)
 
-	binding.onClipChange = FnOnClipChange
+	binding.onClipChange = FnOnClipChange ' ()
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6402,7 +6423,7 @@ FUNCTION WinXRegOnClose (hWnd, FUNCADDR FnOnClose)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onClose = FnOnClose
+	binding.onClose = FnOnClose ' (hWnd)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6424,7 +6445,7 @@ FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onColumnClick = FnOnColumnClick
+	binding.onColumnClick = FnOnColumnClick ' (idCtr, iColumn)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6446,7 +6467,7 @@ FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onCommand = FnOnCommand
+	binding.onCommand = FnOnCommand ' (idCtr, notifyCode, hCtr)
 	BINDING_Update (idBinding, binding)
 
 	RETURN $$TRUE		' success
@@ -6466,7 +6487,7 @@ FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onDrag = FnOnDrag
+	binding.onDrag = FnOnDrag ' (idCtr, drag_const, drag_item_start, drag_running_item, drag_x, drag_y)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6489,7 +6510,7 @@ FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	DragAcceptFiles (hWnd, 1)
-	binding.onDropFiles = FnOnDropFiles
+	binding.onDropFiles = FnOnDropFiles ' (hWnd, x, y, @files$[])
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6511,7 +6532,7 @@ FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onEnterLeave = FnOnEnterLeave
+	binding.onEnterLeave = FnOnEnterLeave ' (hWnd, mouseInWindow)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6533,7 +6554,7 @@ FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onFocusChange = FnOnFocusChange
+	binding.onFocusChange = FnOnFocusChange ' (hWnd, hasFocus)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6555,7 +6576,7 @@ FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onItem = FnOnItem
+	binding.onItem = FnOnItem ' (idCtr, event, VK)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6577,7 +6598,7 @@ FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onKeyDown = FnOnKeyDown
+	binding.onKeyDown = FnOnKeyDown ' (hWnd, VK)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6599,7 +6620,7 @@ FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onKeyUp = FnOnKeyUp
+	binding.onKeyUp = FnOnKeyUp ' (hWnd, VK)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6618,7 +6639,7 @@ FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onLabelEdit = FnOnLabelEdit
+	binding.onLabelEdit = FnOnLabelEdit ' (idCtr, edit_const, edit_item, newLabel$)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6640,7 +6661,7 @@ FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR FnOnMouseDown)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onMouseDown = FnOnMouseDown
+	binding.onMouseDown = FnOnMouseDown ' (hWnd, MBT_const, x, y)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6662,7 +6683,7 @@ FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR FnOnMouseMove)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onMouseMove = FnOnMouseMove
+	binding.onMouseMove = FnOnMouseMove ' (hWnd, x, y)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6684,7 +6705,7 @@ FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR FnOnMouseUp)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onMouseUp = FnOnMouseUp
+	binding.onMouseUp = FnOnMouseUp ' (hWnd, MBT_const, x, y)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6706,7 +6727,7 @@ FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR FnOnMouseWheel)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onMouseWheel = FnOnMouseWheel
+	binding.onMouseWheel = FnOnMouseWheel ' (hWnd, delta, x, y)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6738,7 +6759,7 @@ FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' set the paint function
-	binding.onPaint = FnOnPaint
+	binding.onPaint = FnOnPaint ' (hWnd, hdc)
 	BINDING_Update (idBinding, binding)
 
 	RETURN $$TRUE		' success
@@ -6761,7 +6782,7 @@ FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onScroll = FnOnScroll
+	binding.onScroll = FnOnScroll ' (pos, hWnd, direction)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6785,7 +6806,7 @@ FUNCTION WinXRegOnSelect (hWnd, FUNCADDR FnOnSelect)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onSelect = FnOnSelect
+	binding.onSelect = FnOnSelect ' (idCtr, event, parameter)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6807,7 +6828,7 @@ FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onTrackerPos = FnOnTrackerPos
+	binding.onTrackerPos = FnOnTrackerPos ' (idCtr, pos)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -7358,7 +7379,7 @@ FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 	IFZ GetWindowPlacement (hWnd, &wp) THEN RETURN
 
 	IF wp.showCmd THEN wp.showCmd = minMax
-	IF (restored.left <> 0) || (restored.right <> 0) || (restored.top <> 0) || (restored.bottom) THEN wp.rcNormalPosition = restored
+	IF (restored.left != 0) || (restored.right != 0) || (restored.top != 0) || (restored.bottom) THEN wp.rcNormalPosition = restored
 	ret = SetWindowPlacement (hWnd, &wp)
 	IF ret THEN
 		GetClientRect (hWnd, &rect)
@@ -7614,7 +7635,7 @@ FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 
 	SPLITTERINFO_Update (iSplitter, splitterInfo)
 
-	' RefreshParentWindow (hCtr)
+'	RefreshParentWindow (hCtr)
 	parent = GetParent (hCtr)
 	IF parent THEN
 		GetClientRect (parent, &rect)
@@ -7736,7 +7757,7 @@ FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 	ENDIF
 
 	ret = SendMessageA (binding.hStatus, $$SB_SETTEXT, part, &text)
-	IFZ ret THEN bOK = $$FALSE		' fail
+	IFZ ret THEN bOK = $$FALSE ' fail
 
 	RETURN bOK
 END FUNCTION
@@ -8209,13 +8230,11 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 
 	IF tvi.cChildren > 0 THEN
 		prevChild = $$TVI_FIRST
-		' child = WinXTreeView_GetChildItem (hTV, hItem)
 		child = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CHILD, hItem)
 		DO WHILE child
 			WinXTreeView_CopyItem (hTV, tvis.item.hItem, prevChild, child)
 			'
 			prevChild = child
-			' child = WinXTreeView_GetNextItem (hTV, prevChild)
 			child = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_NEXT, prevChild)
 		LOOP
 	ENDIF
@@ -8250,8 +8269,6 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	IFF bSkipOld THEN
 		LOCK_Set_skipOnSelect (id, $$FALSE)
 		SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)		' redraw treeview
-		' hWnd = GetParent (hTV)
-		' UpdateWindow (hWnd)
 	ENDIF
 
 	IFZ ret THEN RETURN
@@ -8399,6 +8416,24 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 	IF (tvi.state & 0x2000) = 0x2000 THEN RETURN $$TRUE ELSE RETURN $$FALSE		' *not* checked
 END FUNCTION
 '
+' ###################################
+' #####  WinXTreeView_GetChildCount  #####
+' ###################################
+'
+'
+'
+FUNCTION WinXTreeView_GetChildCount (hTV, hItem)
+	TV_ITEM tvi
+
+	IFZ hTV THEN RETURN
+
+	tvi.mask = $$TVIF_CHILDREN
+	tvi.hItem = hItem
+	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
+	IF ret THEN RETURN tvi.cChildren
+
+END FUNCTION
+'
 ' #######################################
 ' #####  WinXTreeView_GetChildItem  #####
 ' #######################################
@@ -8444,14 +8479,14 @@ FUNCTION WinXTreeView_GetItemLabel$ (hTV, hItem)
 	IFZ hTV THEN RETURN ""		' fail
 	IFZ hItem THEN RETURN ""		' fail
 
-	tvi.mask = $$TVIF_HANDLE | $$TVIF_TEXT
-	tvi.hItem = hItem
-
 	bufSize = $$MAX_PATH
 	buf$ = NULL$ (bufSize)
 
-	tvi.pszText = &buf$
-	tvi.cchTextMax = bufSize
+	tvi.mask = $$TVIF_HANDLE | $$TVIF_TEXT ' item text attribute
+	tvi.hItem = hItem ' the selected item
+	tvi.pszText = &buf$ '  pointer to the buffer
+	tvi.cchTextMax = bufSize '  size of the text to retrieve
+
 	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
 	IFZ ret THEN RETURN ""		' fail
 
@@ -8514,7 +8549,7 @@ END FUNCTION
 ' returns the handle of the selected item, 0 on fail
 FUNCTION WinXTreeView_GetSelection (hTV)
 	IFZ hTV THEN RETURN
-	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CARET, 0)
+	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CARET, 0) ' retrieve the currently selected item
 END FUNCTION
 '
 ' #########################################
@@ -9882,10 +9917,13 @@ END FUNCTION
 ' The main window procedure
 ' parameters and return are as usual
 FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
+	' for drag and drop
 	SHARED g_drag_button
-	SHARED g_drag_hCtr
-	SHARED g_drag_image
-	SHARED g_drag_item
+	SHARED g_drag_hCtr ' if treeview, its property "Disable Drag And Drop" must NOT be set
+	SHARED g_drag_idCtr ' g_drag_idCtr = GetDlgCtrlID (g_drag_hCtr)
+	SHARED g_drag_image ' image list for the dragging effect
+	SHARED g_drag_item_start
+	SHARED g_drag_running_item
 	SHARED g_DL_msg
 	SHARED g_hClipMem		' to copy to the clipboard
 
@@ -9921,14 +9959,14 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	' and handle the message
 	SELECT CASE wMsg
 		CASE $$WM_COMMAND
-			RETURN @binding.onCommand (LOWORD (wParam), HIWORD (wParam), lParam)
+			IF binding.onCommand THEN RETURN @binding.onCommand (LOWORD (wParam), HIWORD (wParam), lParam)
 
 		CASE $$WM_NOTIFY
 			RETURN onNotify (hWnd, wParam, lParam, binding)
 
 		CASE $$WM_DRAWCLIPBOARD
 			IF binding.hwndNextClipViewer THEN SendMessageA (binding.hwndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
-			RETURN @binding.onClipChange ()
+			IF binding.onClipChange THEN RETURN @binding.onClipChange ()
 
 		CASE $$WM_CHANGECBCHAIN
 			IF wParam = binding.hwndNextClipViewer THEN
@@ -9956,7 +9994,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 				NEXT
 				DragFinish (wParam)
 
-				RETURN @binding.onDropFiles (hWnd, pt.x, pt.y, @files$[])
+				IF binding.onDropFiles THEN RETURN @binding.onDropFiles (hWnd, pt.x, pt.y, @files$[])
 			ENDIF
 
 			DragFinish (wParam)
@@ -9976,12 +10014,12 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			WinXGetUsableRect (hWnd, @rect)
 
 			' Auto scroll?
-			' IF binding.hScrollPageM THEN
-			' GetScrollInfo (hWnd, $$SB_HORZ, &si)
-			' xOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
-			' GetScrollInfo (hWnd, $$SB_VERT, &si)
-			' yOff = (si.nPos-binding.hScrollPageC)\binding.hScrollPageM
-			' ENDIF
+			'IF binding.hScrollPageM THEN
+			'	GetScrollInfo (hWnd, $$SB_HORZ, &si)
+			'	xOff = (si.nPos - binding.hScrollPageC) \ binding.hScrollPageM
+			'	GetScrollInfo (hWnd, $$SB_VERT, &si)
+			'	yOff = (si.nPos - binding.hScrollPageC) \ binding.hScrollPageM
+			'ENDIF
 
 			autoDraw_draw (hDC, binding.autoDrawInfo, xOff, yOff)
 			retCode = @binding.onPaint (hWnd, hDC)
@@ -9996,7 +10034,9 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			buf$ = NULL$ (LEN ($$TRACKBAR_CLASS) + 1)
 			GetClassNameA (lParam, &buf$, LEN (buf$))
 			buf$ = TRIM$ (CSTRING$ (&buf$))
-			IF buf$ = $$TRACKBAR_CLASS THEN RETURN @binding.onTrackerPos (GetDlgCtrlID (lParam), SendMessageA (lParam, $$TBM_GETPOS, 0, 0))
+			IF buf$ = $$TRACKBAR_CLASS THEN
+				IF binding.onTrackerPos THEN RETURN @binding.onTrackerPos (GetDlgCtrlID (lParam), SendMessageA (lParam, $$TBM_GETPOS, 0, 0))
+			ENDIF
 
 			sbval = LOWORD (wParam)
 			IF wMsg = $$WM_HSCROLL THEN
@@ -10033,23 +10073,23 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			ENDIF
 
 			SetScrollInfo (hWnd, sb, &si, $$TRUE)
-			RETURN @binding.onScroll (si.nPos, hWnd, dir)
+			IF binding.onScroll THEN RETURN @binding.onScroll (si.nPos, hWnd, dir)
 
-			' This allows for mouse activation of child windows, for some reason WM_ACTIVATE doesn't work
-			' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
-			' CASE $$WM_MOUSEACTIVATE
-			' IF hWnd != wParam THEN
-			' SetFocus (hWnd)
-			' RETURN $$MA_NOACTIVATE
-			' ENDIF
-			' RETURN $$MA_ACTIVATE
-			' WinXGetMousePos (wParam, @x, @y)
-			' hChild = wParam
-			' DO WHILE hChild
-			' wParam = hChild
-			' hChild = ChildWindowFromPoint (wParam, x, y)
-			' LOOP
-			' IF wParam = GetFocus() THEN RETURN $$MA_NOACTIVATE
+		' This allows for mouse activation of child windows, for some reason $$WM_ACTIVATE doesn't work
+		' unfortunately it interferes with label editing - hence the strange hWnd != wParam condition
+		'CASE $$WM_MOUSEACTIVATE
+		'	IF hWnd <> wParam THEN
+		'		SetFocus (hWnd)
+		'		RETURN $$MA_NOACTIVATE
+		'	ENDIF
+		'	RETURN $$MA_ACTIVATE
+		'	WinXGetMousePos (wParam, @x, @y)
+		'	hChild = wParam
+		'	DO WHILE hChild
+		'		wParam = hChild
+		'		hChild = ChildWindowFromPoint (wParam, x, y)
+		'	LOOP
+		'	IF wParam = GetFocus () THEN RETURN $$MA_NOACTIVATE
 
 		CASE $$WM_SETFOCUS
 			IF binding.onFocusChange THEN RETURN @binding.onFocusChange (hWnd, $$TRUE)
@@ -10075,13 +10115,14 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 				@binding.onEnterLeave (hWnd, $$TRUE)
 			ENDIF
 
-			IF g_drag_button THEN
+			IFZ g_drag_button THEN
+				IF binding.onMouseMove THEN RETURN @binding.onMouseMove (hWnd, LOWORD (lParam), HIWORD (lParam))
+			ELSE
+				' dragging
 				GOSUB dragTreeViewItem
 				IFZ retOnDrag THEN cursorName = $$IDC_NO ELSE cursorName = $$IDC_ARROW
 				SetCursor (LoadCursorA (0, cursorName))
 				RETURN
-			ELSE
-				RETURN @binding.onMouseMove (hWnd, LOWORD (lParam), HIWORD (lParam))
 			ENDIF
 
 		CASE $$WM_MOUSELEAVE
@@ -10092,61 +10133,90 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			RETURN
 
 		CASE $$WM_LBUTTONDOWN
-			RETURN @binding.onMouseDown (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
+			IF binding.onMouseDown THEN RETURN @binding.onMouseDown (hWnd, $$MBT_LEFT, LOWORD (lParam), HIWORD (lParam))
 
 		CASE $$WM_MBUTTONDOWN
-			RETURN @binding.onMouseDown (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
+			IF binding.onMouseDown THEN RETURN @binding.onMouseDown (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
 
 		CASE $$WM_RBUTTONDOWN
-			RETURN @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
+			IF binding.onMouseDown THEN RETURN @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
 
 		CASE $$WM_LBUTTONUP, $$WM_RBUTTONUP
-			SELECT CASE wMsg
-				CASE $$WM_LBUTTONUP : m_button = $$MBT_LEFT
-				CASE $$WM_RBUTTONUP : m_button = $$MBT_RIGHT
-			END SELECT
-			IF g_drag_button = m_button THEN
+			IFZ g_drag_button THEN
+				IF binding.onMouseUp THEN RETURN @binding.onMouseUp (hWnd, m_button, LOWORD (lParam), HIWORD (lParam))
+			ELSE
+				' drag_const = $$DRAG_DONE
 				GOSUB dragTreeViewItem
-				IF retOnDrag THEN retOnDrag = @binding.onDrag (GetDlgCtrlID (g_drag_hCtr), $$DRAG_DONE, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
+				IFZ g_drag_running_item THEN retOnDrag = 0
+				IF g_drag_running_item = g_drag_item_start THEN retOnDrag = 0
+
+				IF retOnDrag THEN
+					IF binding.onDrag THEN
+						IF g_drag_idCtr THEN
+							retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_DONE, g_drag_item_start, g_drag_running_item, tvHit.pt.x, tvHit.pt.y)
+						ENDIF
+					ELSE
+						IF tvHit.hItem <> g_drag_item_start THEN
+							' valid tvHit.hItem, move it!
+							SendMessageA (g_drag_hCtr, $$WM_SETREDRAW, 0, 0) ' turn off redrawing
+							hItemNew = WinXTreeView_CopyItem (g_drag_hCtr, tvHit.hItem, $$TVI_FIRST, g_drag_item_start)
+							SendMessageA (g_drag_hCtr, $$TVM_DELETEITEM, 0, g_drag_item_start)
+							s_dragItem_start = 0
+							SendMessageA (g_drag_hCtr, $$WM_SETREDRAW, 1, 0) ' turn on redrawing
+							SendMessageA (g_drag_hCtr, $$TVM_SELECTITEM, $$TVGN_CARET, hItemNew)
+							retOnDrag = 1 ' OK!
+						ENDIF
+					ENDIF
+				ENDIF
+
 				GOSUB endDragTreeViewItem
 				g_drag_button = 0
+				g_drag_item_start = 0 ' done with it!
+				' refresh the treeview
 				RETURN retOnDrag
-			ELSE
-				RETURN @binding.onMouseUp (hWnd, m_button, LOWORD (lParam), HIWORD (lParam))
 			ENDIF
 
 		CASE $$WM_MBUTTONUP
-			RETURN @binding.onMouseUp (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
+			IF binding.onMouseUp THEN RETURN @binding.onMouseUp (hWnd, $$MBT_MIDDLE, LOWORD (lParam), HIWORD (lParam))
 
 		CASE $$WM_MOUSEWHEEL
 			' This message is broken.  It gets passed to active window rather than the window under the mouse
 
 			' ? "-";hWnd
-			' hChild = WindowFromPoint (LOWORD (lParam), HIWORD (lParam))
+			'hChild = WindowFromPoint (LOWORD (lParam), HIWORD (lParam))
 			' ? hChild
-			' ScreenToClient (hChild, &mouseXY)
-			' hChild = ChildWindowFromPointEx (hChild, LOWORD (lParam), HIWORD (lParam), $$CWP_ALL)
+			'ScreenToClient (hChild, &mouseXY)
+			'hChild = ChildWindowFromPointEx (hChild, LOWORD (lParam), HIWORD (lParam), $$CWP_ALL)
 			' ? hChild
 
-			' idInnerBinding = GetWindowLongA (hChild, $$GWL_USERDATA)
-			' IFF binding_get (idInnerBinding, @innerBinding) THEN
-			RETURN @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
-			' ELSE
-			' IF innerBinding.onMouseWheel THEN
-			' RETURN @innerBinding.onMouseWheel(hChild, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
-			' ELSE
-			' RETURN @binding.onMouseWheel(hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
-			' ENDIF
-			' ENDIF
+			'idInnerBinding = GetWindowLongA (hChild, $$GWL_USERDATA)
+			'IFF binding_get (idInnerBinding, @innerBinding) THEN
+				IF binding.onMouseWheel THEN RETURN @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+			'ELSE
+			'	IF innerBinding.onMouseWheel THEN
+			'		IF innerBinding.onMouseWheel THEN RETURN @innerBinding.onMouseWheel (hChild, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+			'	ELSE
+			'		IF binding.onMouseWheel THEN RETURN @binding.onMouseWheel (hWnd, HIWORD (wParam), LOWORD (lParam), HIWORD (lParam))
+			'	ENDIF
+			'ENDIF
 
 		CASE $$WM_KEYDOWN
-			RETURN @binding.onKeyDown (hWnd, wParam)
+			IF wParam THEN
+				IF binding.onKeyDown THEN
+					retCode = @binding.onKeyDown (hWnd, wParam)
+'					IFZ lParam{BITFIELD(1, 30)} THEN ' bit 30 off
+'						' the key was up before the message is sent
+'						retCode = @binding.onKeyDown (hWnd, wParam)
+'					ENDIF
+					RETURN retCode
+				ENDIF
+			ENDIF
 
 		CASE $$WM_KEYUP
-			RETURN @binding.onKeyUp (hWnd, wParam)
+			IF binding.onKeyUp THEN RETURN @binding.onKeyUp (hWnd, wParam)
 
 		CASE $$WM_CHAR
-			RETURN @binding.onChar (hWnd, wParam)
+			IF binding.onChar THEN RETURN @binding.onChar (hWnd, wParam)
 
 		CASE g_DL_msg
 			IF g_DL_msg <> 0 THEN
@@ -10155,23 +10225,47 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 					CASE $$DL_BEGINDRAG
 						g_drag_button = $$MBT_LEFT
 						g_drag_hCtr = dli.hWnd
+						g_drag_idCtr = wParam
 						drag_x = dli.ptCursor.x
 						drag_y = dli.ptCursor.y
-						g_drag_item = ApiLBItemFromPt (g_drag_hCtr, drag_x, drag_y, 1)
+						g_drag_item_start = ApiLBItemFromPt (g_drag_hCtr, drag_x, drag_y, 1)
 						WinXListBox_AddItem (g_drag_hCtr, -1, " ")
-						retOnDrag = @binding.onDrag (wParam, $$DRAG_START, g_drag_item, drag_x, drag_y)
+
+						retOnDrag = 0
+						g_drag_running_item = g_drag_item_start
+						IFZ binding.onDrag THEN
+							retOnDrag = 1 ' OK to drag, but no callback for User processing
+						ELSE
+							IF g_drag_idCtr THEN
+								retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_START, g_drag_item_start, g_drag_running_item, drag_x, drag_y)
+							ENDIF
+						ENDIF
 						RETURN retOnDrag
 
 					CASE $$DL_CANCELDRAG
-						retOnDrag = @binding.onDrag (wParam, $$DRAG_DONE, -1, dli.ptCursor.x, dli.ptCursor.y)
+						IFZ binding.onDrag THEN
+							retOnDrag = 0 ' no callback for dragging
+						ELSE
+							' complete dragging if retOnDrag != 0
+							IF g_drag_idCtr = wParam THEN
+								IF retOnDrag THEN retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_DONE, g_drag_item_start, -1, dli.ptCursor.x, dli.ptCursor.y)
+							ENDIF
+						ENDIF
 						WinXListBox_RemoveItem (g_drag_hCtr, -1)
+						g_drag_item_start = 0 ' done with it!
 
 					CASE $$DL_DRAGGING
 						item = ApiLBItemFromPt (g_drag_hCtr, dli.ptCursor.x, dli.ptCursor.y, 1)
 						IF item > -1 THEN
-							retOnDrag = @binding.onDrag (wParam, $$DRAG_DRAGGING, item, dli.ptCursor.x, dli.ptCursor.y)
+							IFZ binding.onDrag THEN
+								retOnDrag = 1 ' continue dragging
+							ELSE
+								IF g_drag_idCtr = wParam THEN
+									retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_DRAGGING, drag_item_start, item, dli.ptCursor.x, dli.ptCursor.y)
+								ENDIF
+							ENDIF
 							IF retOnDrag THEN
-								IF item <> g_drag_item THEN
+								IF item <> g_drag_running_item THEN
 									SendMessageA (g_drag_hCtr, $$LB_GETITEMRECT, item, &rect)
 									InvalidateRect (g_drag_hCtr, 0, 1)
 									UpdateWindow (g_drag_hCtr)
@@ -10195,20 +10289,20 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 									MoveToEx (hDC, rect.right - 3, rect.top - 2, 0)
 									LineTo (hDC, rect.right - 3, rect.top + 2)
 									ReleaseDC (g_drag_hCtr, hDC)
-									g_drag_item = item
+									g_drag_running_item = item
 								ENDIF
 								RETURN $$DL_MOVECURSOR
 							ELSE
-								IF item <> g_drag_item THEN
+								IF item <> g_drag_running_item THEN
 									InvalidateRect (g_drag_hCtr, 0, 1)
-									g_drag_item = item
+									g_drag_running_item = item
 								ENDIF
 								RETURN $$DL_STOPCURSOR
 							ENDIF
 						ELSE
-							IF item <> g_drag_item THEN
+							IF item <> g_drag_running_item THEN
 								InvalidateRect (g_drag_hCtr, 0, 1)
-								g_drag_item = -1
+								g_drag_running_item = -1
 							ENDIF
 							RETURN $$DL_STOPCURSOR
 						ENDIF
@@ -10216,10 +10310,25 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 					CASE $$DL_DROPPED
 						InvalidateRect (g_drag_hCtr, 0, 1)
 						item = ApiLBItemFromPt (g_drag_hCtr, dli.ptCursor.x, dli.ptCursor.y, 1)
-						retOnDrag = @binding.onDrag (wParam, $$DRAG_DRAGGING, item, dli.ptCursor.x, dli.ptCursor.y)
+						IFZ binding.onDrag THEN
+							retOnDrag = 1 ' continue dragging
+						ELSE
+							IF g_drag_idCtr = wParam THEN
+								retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_DRAGGING, drag_item_start, item, dli.ptCursor.x, dli.ptCursor.y)
+							ENDIF
+						ENDIF
+
 						IFZ retOnDrag THEN item = -1
-						retOnDrag = @binding.onDrag (wParam, $$DRAG_DONE, item, dli.ptCursor.x, dli.ptCursor.y)
+						IFZ binding.onDrag THEN
+							retOnDrag = 0 ' no callback for dragging
+						ELSE
+							' complete dragging if retOnDrag != 0
+							IF g_drag_idCtr = wParam THEN
+								IF retOnDrag THEN retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_DONE, drag_item_start, item, dli.ptCursor.x, dli.ptCursor.y)
+							ENDIF
+						ENDIF
 						WinXListBox_RemoveItem (g_drag_hCtr, -1)
+						g_drag_item_start = 0 ' done with it!
 
 				END SELECT
 			ENDIF
@@ -10244,9 +10353,9 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 		CASE $$WM_TIMER
 			SELECT CASE wParam
 				CASE -1
-					IF s_lastDragItem = g_drag_item THEN
+					IF s_lastDragItem = g_drag_running_item THEN
 						ImageList_DragShowNolock (0)
-						SendMessageA (g_drag_hCtr, $$TVM_EXPAND, $$TVE_EXPAND, g_drag_item)
+						SendMessageA (g_drag_hCtr, $$TVM_EXPAND, $$TVE_EXPAND, g_drag_running_item)
 						ImageList_DragShowNolock (1)
 					ENDIF
 					KillTimer (hWnd, -1)
@@ -10314,8 +10423,11 @@ SUB CreateDraggingImage
 END SUB
 
 SUB dragTreeViewItem
-	IFZ g_drag_hCtr THEN EXIT SUB
 
+	retOnDrag = 0
+	IFZ g_drag_hCtr THEN EXIT SUB ' not dragging
+
+	' handle the Mouse Move message $$WM_MOUSEMOVE
 	pt.x = LOWORD (lParam)
 	pt.y = HIWORD (lParam)
 	ClientToScreen (hWnd, &pt)
@@ -10324,32 +10436,53 @@ SUB dragTreeViewItem
 	tvHit.pt.x = pt.x - rect.left
 	tvHit.pt.y = pt.y - rect.top
 
-	IFZ SendMessageA (g_drag_hCtr, $$TVM_HITTEST, 0, &tvHit) THEN EXIT SUB
+	' items should be as the same points as the drag
+	hitTarget = SendMessageA (g_drag_hCtr, $$TVM_HITTEST, 0, &tvHit)
+	IFZ hitTarget THEN EXIT SUB ' there is no hit
 
-	IF tvHit.hItem <> g_drag_item THEN
+	IF tvHit.hItem <> g_drag_running_item THEN
+    ' the drag from
 		ImageList_DragShowNolock (0)
-		SendMessageA (g_drag_hCtr, $$TVM_SELECTITEM, $$TVGN_DROPHILITE, tvHit.hItem)
+		SendMessageA (g_drag_hCtr, $$TVM_SELECTITEM, $$TVGN_DROPHILITE, tvHit.hItem) ' highlight it
 		ImageList_DragShowNolock (1)
-		g_drag_item = tvHit.hItem
+		g_drag_running_item = tvHit.hItem
 	ENDIF
 
 	IF WinXTreeView_GetChildItem (g_drag_hCtr, tvHit.hItem) <> 0 THEN
 		SetTimer (hWnd, -1, 400, 0)
-		s_lastDragItem = g_drag_item
+		s_lastDragItem = g_drag_running_item
 	ENDIF
 
-	retOnDrag = @binding.onDrag (GetDlgCtrlID (g_drag_hCtr), $$DRAG_DRAGGING, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
+	IFZ binding.onDrag THEN
+		retOnDrag = 1 ' continue dragging
+	ELSE
+		IF g_drag_idCtr THEN
+			retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_DRAGGING, drag_item_start, tvHit.hItem, tvHit.pt.x, tvHit.pt.y)
+		ENDIF
+	ENDIF
 	ImageList_DragMove (pt.x, pt.y)
+
 END SUB
+
 SUB endDragTreeViewItem
+
 	IF g_drag_image THEN
-		ImageList_EndDrag ()
+		ImageList_DragLeave (g_drag_hCtr) ' Guy-20jul12-needed?
+		ImageList_EndDrag () ' inform image list that dragging has stopped
 		ImageList_Destroy (g_drag_image)
 		g_drag_image = 0
 	ENDIF
-	ReleaseCapture ()
-	SendMessageA (g_drag_hCtr, $$TVM_SELECTITEM, $$TVGN_DROPHILITE, 0)
-	g_drag_button = 0
+
+	IFZ g_drag_button THEN EXIT SUB
+
+	' handle the Mouse button message $$WM_LBUTTONUP / $$WM_RBUTTONUP
+	ReleaseCapture () ' release the mouse capture
+	g_drag_button = 0 ' reset the global dragging indicator to a non-dragging state
+
+	' refresh  treeview to erase a remanent target label
+	SendMessageA (g_drag_hCtr, $$WM_SETREDRAW, 1, 0) ' turn on redrawing (just in case)
+	UpdateWindow (hWnd)
+
 END SUB
 
 END FUNCTION		' mainWndProc
@@ -10360,13 +10493,18 @@ END FUNCTION		' mainWndProc
 ' Handles notify messages
 FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 	SHARED g_drag_button
-	SHARED g_drag_hCtr
-	SHARED g_drag_image
-	SHARED g_drag_item
+	SHARED g_drag_hCtr ' if treeview, its property "Disable Drag And Drop" must NOT be set
+	SHARED g_drag_idCtr ' g_drag_idCtr = GetDlgCtrlID (g_drag_hCtr)
+	SHARED g_drag_image ' image list for the dragging effect
+	SHARED g_drag_item_start
+	SHARED g_drag_running_item
 
 	NMHDR nmhdr
+
 	TV_DISPINFO nmtvdi
 	NM_TREEVIEW nmtv
+	TV_KEYDOWN tvKeyDown
+
 	LV_DISPINFO nmlvdi
 	NMKEY nmkey
 	NM_LISTVIEW nmlv
@@ -10395,6 +10533,14 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				XLONGAT (&&nmkey) = pNmkey
 			ENDIF
 
+		CASE $$TVN_KEYDOWN ' Guy-23jul12-added
+			IF binding.onItem THEN
+				pTvKeyDown = &tvKeyDown
+				XLONGAT (&&tvKeyDown) = lParam
+				retCode = @binding.onItem (idCtr, notifyCode, tvKeyDown.wVKey)
+				XLONGAT (&&tvKeyDown) = pTvKeyDown
+			ENDIF
+
 		CASE $$MCN_SELECT
 			IF binding.onCalendarSelect THEN
 				pNmsc = &nmsc
@@ -10403,7 +10549,8 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				XLONGAT (&&nmsc) = pNmsc
 			ENDIF
 
-		CASE $$TVN_BEGINLABELEDIT
+		CASE $$TVN_BEGINLABELEDIT '  sent as notification
+			' the program sent a message $$TVM_EDITLABEL
 			IF binding.onLabelEdit THEN
 				pNmtvdi = &nmtvdi
 				XLONGAT (&&nmtvdi) = lParam
@@ -10421,23 +10568,38 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			ENDIF
 
 		CASE $$TVN_BEGINDRAG, $$TVN_BEGINRDRAG
+			' begin the notify trap
 			pNmtv = &nmtv
 			XLONGAT (&&nmtv) = lParam
+
+			g_drag_hCtr = nmtv.hdr.hwndFrom
+			g_drag_idCtr = nmtv.hdr.idFrom
+			g_drag_item_start = nmtv.itemNew.hItem
+
 			drag_x = nmtv.ptDrag.x
 			drag_y = nmtv.ptDrag.y
-			retOnDrag = @binding.onDrag (nmtv.hdr.idFrom, $$DRAG_START, nmtv.itemNew.hItem, drag_x, drag_y)
+			retOnDrag = 0
+			g_drag_running_item = g_drag_item_start
+
+			IFZ binding.onDrag THEN
+				retOnDrag = 1 ' OK to drag, but no callback for User processing
+			ELSE
+				IF g_drag_idCtr THEN
+					retOnDrag = @binding.onDrag (g_drag_idCtr, $$DRAG_START, g_drag_item_start, g_drag_running_item, drag_x, drag_y)
+				ENDIF
+			ENDIF
 			IF retOnDrag THEN
+				' OK to start dragging!
 				SELECT CASE notifyCode
-					CASE $$TVN_BEGINDRAG : g_drag_button = $$MBT_LEFT
-					CASE $$TVN_BEGINRDRAG : g_drag_button = $$MBT_RIGHT
+					CASE $$TVN_BEGINDRAG : g_drag_button = $$MBT_LEFT ' dragging with left mouse button
+					CASE $$TVN_BEGINRDRAG : g_drag_button = $$MBT_RIGHT ' dragging with right mouse button
 				END SELECT
-				g_drag_hCtr = nmtv.hdr.hwndFrom
-				g_drag_item = nmtv.itemNew.hItem
-				XLONGAT (&rect) = g_drag_item
+				XLONGAT (&rect) = g_drag_running_item
 				SendMessageA (g_drag_hCtr, $$TVM_GETITEMRECT, 1, &rect)
 				rect.left = rect.left - SendMessageA (g_drag_hCtr, $$TVM_GETINDENT, 0, 0)
+
 				GOSUB CreateDraggingImage
-				SetCapture (hWnd)
+				SetCapture (hWnd) ' snap mouse & window
 			ENDIF
 			XLONGAT (&&nmtv) = pNmtv
 
@@ -10462,7 +10624,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				XLONGAT (&&nmlv) = pNmlv
 			ENDIF
 
-		CASE $$LVN_BEGINLABELEDIT
+		CASE $$LVN_BEGINLABELEDIT '  sent as notification
 			IF binding.onLabelEdit THEN
 				pNmlvdi = &nmlvdi
 				XLONGAT (&&nmlvdi) = lParam
