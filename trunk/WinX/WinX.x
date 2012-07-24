@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.14"
+VERSION "0.6.0.15"
 '
 ' WinX - *The* GUI library for XBlite
 ' Copyright © LGPL Callum Lowcay 2007-2009.
@@ -79,7 +79,9 @@ VERSION "0.6.0.14"
 '          Guy-06feb12-added new functions WinXGetMinSize, WinXSetFontAndRedraw
 '          Guy-18mar12-added $$ES_READONLY handling in WinXSetStyle
 '          Guy-08may12-added .onSelect handling on $$TCN_SELCHANGE
+' 0.6.0.15-Guy-19jul12-full support for tree view dragNdrop and label editing.
 '          Guy-19jul12-added function WinXDisplayHelpFile (helpFile$): display the contents of helpFile$
+'          Guy-23jul12-coded callback for .onDrag and .onLabelEdit (see demo WinX_0_6_0_15_samples\treeview\treeview.x)
 '
 ' Win32API DLL headers
 '
@@ -8261,14 +8263,14 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 
 	IFF bSkipOld THEN
 		LOCK_Set_skipOnSelect (id, $$TRUE)		' freeze .onSelect
-		SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)		' don't redraw treeview
+		SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)		' don't redraw tree view
 	ENDIF
 
 	ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
 
 	IFF bSkipOld THEN
 		LOCK_Set_skipOnSelect (id, $$FALSE)
-		SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)		' redraw treeview
+		SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)		' redraw tree view
 	ENDIF
 
 	IFZ ret THEN RETURN
@@ -9919,7 +9921,7 @@ END FUNCTION
 FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	' for drag and drop
 	SHARED g_drag_button
-	SHARED g_drag_hCtr ' if treeview, its property "Disable Drag And Drop" must NOT be set
+	SHARED g_drag_hCtr ' if tree view, its property "Disable Drag And Drop" must NOT be set
 	SHARED g_drag_idCtr ' g_drag_idCtr = GetDlgCtrlID (g_drag_hCtr)
 	SHARED g_drag_image ' image list for the dragging effect
 	SHARED g_drag_item_start
@@ -10172,7 +10174,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 				GOSUB endDragTreeViewItem
 				g_drag_button = 0
 				g_drag_item_start = 0 ' done with it!
-				' refresh the treeview
+				' refresh the tree view
 				RETURN retOnDrag
 			ENDIF
 
@@ -10479,7 +10481,7 @@ SUB endDragTreeViewItem
 	ReleaseCapture () ' release the mouse capture
 	g_drag_button = 0 ' reset the global dragging indicator to a non-dragging state
 
-	' refresh  treeview to erase a remanent target label
+	' refresh  tree view to erase a remanent target label
 	SendMessageA (g_drag_hCtr, $$WM_SETREDRAW, 1, 0) ' turn on redrawing (just in case)
 	UpdateWindow (hWnd)
 
@@ -10493,7 +10495,7 @@ END FUNCTION		' mainWndProc
 ' Handles notify messages
 FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 	SHARED g_drag_button
-	SHARED g_drag_hCtr ' if treeview, its property "Disable Drag And Drop" must NOT be set
+	SHARED g_drag_hCtr ' if tree view, its property "Disable Drag And Drop" must NOT be set
 	SHARED g_drag_idCtr ' g_drag_idCtr = GetDlgCtrlID (g_drag_hCtr)
 	SHARED g_drag_image ' image list for the dragging effect
 	SHARED g_drag_item_start
