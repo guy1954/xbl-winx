@@ -171,7 +171,7 @@ TYPE BINDING
 	FUNCADDR .onScroll (XLONG, XLONG, XLONG)		'pos, hWnd, direction
 	FUNCADDR .onTrackerPos (XLONG, XLONG)		'idCtr, pos
 	FUNCADDR .onDrag (XLONG, XLONG, XLONG, XLONG, XLONG, XLONG)		'idCtr, drag_const, drag_item_start, drag_running_item, drag_x, drag_y
-	FUNCADDR .onLabelEdit (XLONG, XLONG, XLONG, STRING)		'idCtr, edit_const, edit_item, newLabel$
+	FUNCADDR .onLabelEdit (XLONG, XLONG, XLONG, XLONG, STRING)		'idCtr, edit_const, edit_item, edit_sub_item, newLabel$
 	FUNCADDR .onClose (XLONG)		' hWnd
 	FUNCADDR .onFocusChange (XLONG, XLONG)		' hWnd, hasFocus
 	FUNCADDR .onClipChange ()		' Sent when clipboard changes
@@ -829,16 +829,6 @@ FUNCTION WinX ()
 
 	initPrintInfo ()
 
-	' set hIcon with WinX's application icon
-	hWinXIcon = 0
-	st$ = "WinX.dll"
-	hLib = LoadLibraryA (&st$)
-	IF hLib THEN
-		st$ = "WinXIcon"
-		hWinXIcon = LoadIconA (hLib, &st$)
-		FreeLibrary (hLib)
-	ENDIF
-
 	' Guy-09feb12-build a unique WinX's main window class: "WinXssmmhhddmm" (second, minute, hour, day, month)
 	XstGetLocalDateAndTime (@year, @month, @day, @weekDay, @hour, @minute, @second, @nanos) ' get today's date
 
@@ -856,6 +846,15 @@ FUNCTION WinX ()
 	NEXT i
 
 	#WinXclass$ = stamp$
+
+	' set hIcon with WinX's application icon
+	hLib = LoadLibraryA (&"WinX.dll")
+	IFZ hLib THEN
+		hWinXIcon = 0
+	ELSE
+		hWinXIcon = LoadIconA (hLib, &"WinXIcon")
+		FreeLibrary (hLib)
+	ENDIF
 
 	' register WinX main window class
 	wc.style = $$CS_PARENTDC
@@ -1188,7 +1187,7 @@ END FUNCTION
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
 
-	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
+	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP ' multi-selection
 	IF editable THEN style = style | $$LVS_EDITLABELS
 
 	' Guy-21sep10-don't keep a zero view, since it make the list view go berserk
@@ -2224,7 +2223,10 @@ FUNCTION WinXDialog_Error (STRING message, STRING title, severity)
 		CASE 2 : icon = $$MB_ICONSTOP
 		CASE 3 : icon = $$MB_ICONSTOP
 	END SELECT
-	MessageBoxA (0, &message, &title, $$MB_OK | icon)
+
+	' Guy-27jul12-MessageBoxA (0, &message, &title, $$MB_OK | icon)
+	hwnd = GetActiveWindow ()
+	MessageBoxA (hwnd, &message, &title, $$MB_OK | icon)
 
 	IF severity = 3 THEN QUIT (0)
 	RETURN $$TRUE		' success
@@ -4303,7 +4305,7 @@ FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 	buf$ = NULL$ (bufSize)
 	SetLastError (0)
 	cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
-	IF cCh < 1 THEN RETURN defVal$		' default value returned
+	IFZ cCh THEN RETURN defVal$		' default value returned
 
 	' value$ = CSTRING$ (&buf$)
 	value$ = LEFT$ (buf$, cCh)
@@ -4435,7 +4437,7 @@ FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 
 	' get count of items in listbox
 	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
-	IF count < 1 THEN RETURN $$LB_ERR
+	IFZ count THEN RETURN $$LB_ERR
 
 	r_index = -1
 	DO
@@ -4514,7 +4516,7 @@ FUNCTION WinXListBox_RemoveItem (hListBox, index)
 
 	' get count of items in listbox
 	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
-	IF count < 1 THEN RETURN $$LB_ERR		' empty listbox
+	IFZ count THEN RETURN $$LB_ERR		' empty listbox
 
 	IF index < 0 THEN index = count - 1
 	RETURN SendMessageA (hListBox, $$LB_DELETESTRING, index, 0)
@@ -4731,7 +4733,7 @@ FUNCTION WinXListView_FreezeOnSelect (hLV)
 
 	IFZ hLV THEN RETURN
 	id = LOCK_Get_id_hCtr (hLV)
-	IF id < 1 THEN RETURN
+	IFZ id THEN RETURN
 
 	bSkipOld = LOCK_Get_skipOnSelect (id)
 	IF bSkipOld THEN RETURN $$TRUE		' already frozen
@@ -4794,8 +4796,8 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' ----- Usage -----
-'count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-'IF count > 0 THEN
+'count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) ' number of items
+'IF count THEN
 '	iItem = count - 1		' last item
 '	WinXListView_GetItemText (hLV, iItem, 1, @text$[])		' retrieve the first 2 columns
 'ENDIF
@@ -4846,34 +4848,34 @@ END FUNCTION
 ' returns the number of selected items, or 0 if fail
 FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
-	' reset the returned array
-	DIM r_iItems[]
+	count = 0
+	IF hLV THEN count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 
-	IFZ hLV THEN RETURN
-
-	' get count of items in listview
-	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
-
-	r_cSelItem = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-	IF r_cSelItem < 1 THEN RETURN
-
-	upper_slot = r_cSelItem - 1
-	DIM r_iItems[upper_slot]
-
-	' now iterate over all the items to locate the selected ones
-	slot = -1
-	uppItem = count - 1
-	FOR iItem = 0 TO uppItem
-		ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
-		IF ret THEN
-			INC slot
-			IF slot > upper_slot THEN EXIT FOR
-			r_iItems[slot] = iItem
+	slot_add = -1
+	IF count THEN
+		upper_slot = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0) - 1
+		IF upper_slot >= 0 THEN
+			DIM r_iItems[upper_slot]
+			'
+			' now iterate over all the items to locate the selected ones
+			uppItem = count - 1
+			FOR iItem = 0 TO uppItem
+				ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
+				IFZ ret THEN DO NEXT
+				'
+				INC slot_add
+				IF slot_add <= upper_slot THEN r_iItems[slot_add] = iItem
+				IF slot_add >= upper_slot THEN EXIT FOR ' Guy-25jul12-stop iteration
+				'
+			NEXT iItem
 		ENDIF
-	NEXT iItem
+	ENDIF
+
+	r_cSelItem = slot_add + 1
+	IF slot_add = -1 THEN DIM r_iItems[] ' reset the returned array
 
 	RETURN r_cSelItem
+
 END FUNCTION
 '
 ' #########################################
@@ -4910,7 +4912,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IFZ count THEN RETURN		' empty
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
@@ -4970,7 +4972,7 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IFZ count THEN RETURN		' empty
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
@@ -5057,7 +5059,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IFZ count THEN RETURN		' empty
 
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN
@@ -5124,27 +5126,42 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 
 	IFZ hLV THEN RETURN
 
+	SetFocus (hLV)
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IFZ count THEN RETURN		' empty
 
-	IFZ iItems[] THEN RETURN
+'	IFZ iItems[] THEN RETURN ' Guy-25jul12-now un-selects all
 
 	' unselect all
 	lvi.state = NOT $$LVIS_SELECTED
 	lvi.stateMask = $$LVIS_SELECTED
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
 
-	upp = UBOUND (iItems[])
-	FOR i = 0 TO upp
-		iItem = iItems[i]
-		IF iItem >= 0 && iItem < count THEN
+'	upp = UBOUND (iItems[])
+'	FOR i = 0 TO upp
+'		iItem = iItems[i]
+'		IF iItem >= 0 && iItem < count THEN
+'			lvi.state = $$LVIS_SELECTED
+'			lvi.stateMask = $$LVIS_SELECTED
+'			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+'		ENDIF
+'	NEXT i
+
+	IF iItems[] THEN
+		upp = UBOUND (iItems[])
+		FOR i = 0 TO upp
+			idx = iItems[i]
+			IF idx < 0 THEN DO NEXT
+			'
+			IF idx >= count THEN idx = count - 1 ' Guy-25jul12-select last item
 			lvi.state = $$LVIS_SELECTED
 			lvi.stateMask = $$LVIS_SELECTED
-			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-		ENDIF
-	NEXT i
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, idx, &lvi)
+		NEXT i
+	ENDIF
 
+	SetFocus (hLV)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5162,7 +5179,7 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IFZ count THEN RETURN		' empty
 
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN
@@ -5211,7 +5228,7 @@ FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 
 	' get count of items in listview
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF count < 1 THEN RETURN		' empty
+	IFZ count THEN RETURN		' empty
 
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN
@@ -5251,7 +5268,7 @@ FUNCTION WinXListView_UseOnSelect (hLV)
 
 	IFZ hLV THEN RETURN
 	id = LOCK_Get_id_hCtr (hLV)
-	IF id < 1 THEN RETURN
+	IFZ id THEN RETURN
 
 	bSkipOld = LOCK_Get_skipOnSelect (id)
 	IFF bSkipOld THEN RETURN $$TRUE		' already in use
@@ -5335,7 +5352,7 @@ END FUNCTION
 ' ##############################
 FUNCTION WinXMRU_MakeKey$ (id)
 
-	IF id < 1 THEN id$ = " 0" ELSE id$ = STR$ (id)
+	IFZ id THEN id$ = " 0" ELSE id$ = STR$ (id)
 	RETURN "File" + id$
 
 END FUNCTION
@@ -5978,7 +5995,7 @@ FUNCTION WinXPath_Trim$ (path$)
 	NEXT i
 
 	length = iLast - iFirst + 1
-	IF length < 1 THEN RETURN ""		' empty
+	IFZ length THEN RETURN ""		' empty
 
 	' trim off leading and trailing spaces
 	trimmed$ = MID$ (path$, iFirst + 1, length)
@@ -6641,7 +6658,7 @@ FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	binding.onLabelEdit = FnOnLabelEdit ' (idCtr, edit_const, edit_item, newLabel$)
+	binding.onLabelEdit = FnOnLabelEdit ' (idCtr, edit_const, edit_item, edit_sub_item, newLabel$)
 	BINDING_Update (idBinding, binding)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -8255,7 +8272,7 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 	IFZ hTV THEN RETURN
 
 	count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
-	IF count < 1 THEN RETURN $$TRUE		' success
+	IFZ count THEN RETURN $$TRUE		' success
 
 	' protect from an endless loop
 	id = LOCK_Get_id_hCtr (hLV)
@@ -8388,7 +8405,7 @@ FUNCTION WinXTreeView_FreezeOnSelect (hTV)
 
 	IFZ hTV THEN RETURN
 	id = LOCK_Get_id_hCtr (hTV)
-	IF id < 1 THEN RETURN
+	IFZ id THEN RETURN
 
 	bSkipOld = LOCK_Get_skipOnSelect (id)
 	IF bSkipOld THEN RETURN $$TRUE		' already frozen
@@ -8634,6 +8651,8 @@ FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 
 	ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
 	IFZ ret THEN RETURN
+
+	SetFocus (hTV)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -8644,7 +8663,7 @@ FUNCTION WinXTreeView_UseOnSelect (hTV)
 
 	IFZ hTV THEN RETURN
 	id = LOCK_Get_id_hCtr (hTV)
-	IF id < 1 THEN RETURN
+	IFZ id THEN RETURN
 
 	bSkipOld = LOCK_Get_skipOnSelect (id)
 	IFF bSkipOld THEN RETURN $$TRUE		' already in use
@@ -9480,7 +9499,7 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 		IF AUTOSIZERINFO_array[group, i].hwnd THEN INC cItem
 		i = AUTOSIZERINFO_array[group, i].nextItem
 	LOOP
-	IF cItem < 1 THEN RETURN
+	IFZ cItem THEN RETURN
 
 	IF (autoSizerList[group].direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
 		SELECT CASE autoSizerList[group].direction AND 0x00000003
@@ -10535,14 +10554,6 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				XLONGAT (&&nmkey) = pNmkey
 			ENDIF
 
-		CASE $$TVN_KEYDOWN ' Guy-23jul12-added
-			IF binding.onItem THEN
-				pTvKeyDown = &tvKeyDown
-				XLONGAT (&&tvKeyDown) = lParam
-				retCode = @binding.onItem (idCtr, notifyCode, tvKeyDown.wVKey)
-				XLONGAT (&&tvKeyDown) = pTvKeyDown
-			ENDIF
-
 		CASE $$MCN_SELECT
 			IF binding.onCalendarSelect THEN
 				pNmsc = &nmsc
@@ -10551,23 +10562,38 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				XLONGAT (&&nmsc) = pNmsc
 			ENDIF
 
-		CASE $$TVN_BEGINLABELEDIT '  sent as notification
-			' the program sent a message $$TVM_EDITLABEL
-			IF binding.onLabelEdit THEN
-				pNmtvdi = &nmtvdi
-				XLONGAT (&&nmtvdi) = lParam
-				retCode = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, "")
-				IFZ retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
-				XLONGAT (&&nmtvdi) = pNmtvdi
+' TreeView notification messages
+		CASE $$TVN_KEYDOWN ' Guy-23jul12-added (note that $$TVN_KEYUP does not exist)
+			IF binding.onItem THEN
+				pTvKeyDown = &tvKeyDown ' TV_KEYDOWN structure
+				XLONGAT (&&tvKeyDown) = lParam
+				retCode = @binding.onItem (idCtr, notifyCode, tvKeyDown.wVKey)
+				XLONGAT (&&tvKeyDown) = pTvKeyDown
 			ENDIF
 
-		CASE $$TVN_ENDLABELEDIT
-			IF binding.onLabelEdit THEN
-				pNmtvdi = &nmtvdi
-				XLONGAT (&&nmtvdi) = lParam
-				retCode = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, CSTRING$ (nmtvdi.item.pszText))
-				XLONGAT (&&nmtvdi) = pNmtvdi
+		CASE $$TVN_BEGINLABELEDIT '  sent as notification
+			' the program sent a message $$TVM_EDITLABEL
+			pNmtvdi = &nmtvdi
+			XLONGAT (&&nmtvdi) = lParam
+			IFZ binding.onLabelEdit THEN
+				retCode = 0
+			ELSE
+				r_edit_start = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, 0,"")
+				IFZ r_edit_start THEN retCode = 1 ELSE retCode = 0
 			ENDIF
+			XLONGAT (&&nmtvdi) = pNmtvdi
+
+		CASE $$TVN_ENDLABELEDIT
+			pNmtvdi = &nmtvdi
+			XLONGAT (&&nmtvdi) = lParam
+			newLabel$ = CSTRING$ (nmtvdi.item.pszText)
+			IFZ binding.onLabelEdit THEN
+				hTV = GetDlgItem (hWnd, nmtvdi.hdr.idFrom)
+				WinXTreeView_SetItemLabel (hTV, nmtvdi.item.hItem, newLabel$) ' update label
+			ELSE
+				retCode = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_DONE, nmtvdi.item.hItem, 0, newLabel$)
+			ENDIF
+			XLONGAT (&&nmtvdi) = pNmtvdi
 
 		CASE $$TVN_BEGINDRAG, $$TVN_BEGINRDRAG
 			' begin the notify trap
@@ -10618,6 +10644,15 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			IF binding.onSelect THEN retCode = @binding.onSelect (idCtr, notifyCode, currTab)		' Guy-08may12-idCtr, event, parameter
 			RefreshParentWindow (nmhdr.hwndFrom)
 
+' ListView notification messages
+		CASE $$LVN_KEYDOWN ' Guy-23jul12-added (note that $$LVN_KEYUP does not exist)
+			IF binding.onItem THEN
+				pNmkey = &nmkey ' NMKEY structure
+				XLONGAT (&&nmkey) = lParam
+				retCode = @binding.onItem (idCtr, notifyCode, nmkey.nVKey)
+				XLONGAT (&&nmkey) = pNmkey
+			ENDIF
+
 		CASE $$LVN_COLUMNCLICK
 			IF binding.onColumnClick THEN
 				pNmlv = &nmlv
@@ -10627,21 +10662,28 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			ENDIF
 
 		CASE $$LVN_BEGINLABELEDIT '  sent as notification
-			IF binding.onLabelEdit THEN
-				pNmlvdi = &nmlvdi
-				XLONGAT (&&nmlvdi) = lParam
-				retCode = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, "")
-				IFF retCode THEN retCode = $$TRUE ELSE retCode = $$FALSE
-				XLONGAT (&&nmlvdi) = pNmlvdi
+			' the program sent a message $$LVM_EDITLABEL
+			pNmlvdi = &nmlvdi
+			XLONGAT (&&nmlvdi) = lParam
+			IFZ binding.onLabelEdit THEN
+				retCode = 0
+			ELSE
+				r_edit_start = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, nmlvdi.item.iSubItem, "")
+				IFZ r_edit_start THEN retCode = 1 ELSE retCode = 0
 			ENDIF
+			XLONGAT (&&nmlvdi) = pNmlvdi
 
 		CASE $$LVN_ENDLABELEDIT
-			IF binding.onLabelEdit THEN
-				pNmlvdi = &nmlvdi
-				XLONGAT (&&nmlvdi) = lParam
-				retCode = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, CSTRING$ (nmlvdi.item.pszText))
-				XLONGAT (&&nmlvdi) = pNmlvdi
+			pNmlvdi = &nmlvdi
+			XLONGAT (&&nmlvdi) = lParam
+			newText$ = CSTRING$ (nmlvdi.item.pszText)
+			IFZ binding.onLabelEdit THEN
+				hLV = GetDlgItem (hWnd, nmlvdi.hdr.idFrom)
+				WinXListView_SetItemText (hLV, nmlvdi.item.iItem, nmlvdi.item.iSubItem, newText$) ' update text
+			ELSE
+				retCode = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_DONE, nmlvdi.item.iItem, nmlvdi.item.iSubItem, newText$)
 			ENDIF
+			XLONGAT (&&nmlvdi) = pNmlvdi
 
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
 			IF binding.onSelect THEN
