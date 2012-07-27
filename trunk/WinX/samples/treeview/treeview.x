@@ -49,8 +49,8 @@ DECLARE FUNCTION InitWindows () ' for initializations after CreateWindows()
 DECLARE FUNCTION Main_OnClose (hWnd) ' to process $$WM_CLOSE wMsg
 DECLARE FUNCTION Main_OnCommand (idCtr, notifyCode, hCtr) ' to process $$WM_COMMAND wMsg
 DECLARE FUNCTION Main_OnDrag (idCtr, drag_const, drag_item_start, drag_running_item, drag_x, drag_y) ' to process $$WM_LBUTTONUP wMsg
-DECLARE FUNCTION Main_OnItem (idCtr, event, VK)
-DECLARE FUNCTION Main_OnLabelEdit (idCtr, edit_item, edit_const, newLabel$) ' to process $$TVN_BEGINLABELEDIT wMsg
+DECLARE FUNCTION Main_OnItem (idCtr, event, VK) ' to process $$TVN_KEYDOWN wMsg
+DECLARE FUNCTION Main_OnLabelEdit (idCtr, edit_const, edit_item, dummy_parm, newLabel$) ' to process $$TVN_BEGINLABELEDIT wMsg
 DECLARE FUNCTION Main_OnSelect (idCtr, notifyCode, parameter) ' to process $$WM_NOTIFY wMsg
 
 DECLARE FUNCTION StartUp () ' application setup
@@ -78,6 +78,7 @@ $$MnuEditTree    = 8008	' menu item '&Edit Tree Node\tF2'
 $$MnuEndEditTree = 8009	' menu item 'E&nd Edit of Tree Node'
 '
 FUNCTION Entry ()
+	SHARED hTV
 	STATIC entry            ' ensure Entry is entered only one time
 
 	IF entry THEN RETURN    ' enter once
@@ -90,17 +91,22 @@ FUNCTION Entry ()
 	IF CreateWindows ()  THEN XstAbend ("Can't create the windows")
 	InitWindows ()          ' for initializations after CreateWindows()
 
-	msg$ = "To start editing a TreeView node, select first the node,"
-	msg$ = msg$ + $$CRLF$ + "and do any of the following:"
-	msg$ = msg$ + $$CRLF$ + "- Triple-click on the selected node;"
-	msg$ = msg$ + $$CRLF$ + "- Click on the menu option \"Edit node/Edit Label\tF2\";"
-	msg$ = msg$ + $$CRLF$ + "- Press accelerator key F2."
-	msg$ = msg$ + $$CRLF$ + $$CRLF$ + "To stop editing:"
-	msg$ = msg$ + $$CRLF$ + "- Either press the Enter key;"
-	msg$ = msg$ + $$CRLF$ + "- Or click on another node."
-
-	title$ = "Edit a TreeView Label"
-	MessageBoxA (#hMain, &msg$, &title$, $$MB_ICONINFORMATION)
+	text$ = "Do you want some explanations?"
+	title$ = "Starting " + PROGRAM$ (0) + ".exe"
+	mret = WinXDialog_Question (#hMain, text$, title$, $$FALSE, 1)		' default to the 'No' button
+	IF mret = $$IDYES THEN
+		msg$ = "To start editing a TreeView node, select first the node,"
+		msg$ = msg$ + $$CRLF$ + "and do any of the following:"
+		msg$ = msg$ + $$CRLF$ + "- Triple-click on the selected node;"
+		msg$ = msg$ + $$CRLF$ + "- Click on the menu option \"Edit node/Edit Label\tF2\";"
+		msg$ = msg$ + $$CRLF$ + "- Press accelerator key F2."
+		msg$ = msg$ + $$CRLF$ + $$CRLF$ + "To stop editing:"
+		msg$ = msg$ + $$CRLF$ + "- Either press the Enter key,"
+		msg$ = msg$ + $$CRLF$ + "- Or click on another node."
+		title$ = "Edit a TreeView Label"
+		MessageBoxA (#hMain, &msg$, &title$, $$MB_ICONINFORMATION)
+	ENDIF
+	SetFocus (hTV)
 
 	WinXDoEvents ()         ' monitor the events
 	CleanUp ()              ' application cleanup
@@ -262,7 +268,7 @@ FUNCTION CreateWindows ()	' create the windows of the application
 	addrWndProc = &Main_OnLabelEdit () ' to process $$TVN_BEGINLABELEDIT wMsg
 	WinXRegOnLabelEdit (#hMain, addrWndProc)
 
-	addrWndProc = &Main_OnItem ()
+	addrWndProc = &Main_OnItem ()  ' to process $$TVN_KEYDOWN wMsg
 	WinXRegOnItem (#hMain, addrWndProc)
 
 	WinXDisplay (#hMain)
@@ -388,7 +394,7 @@ END FUNCTION
 
 FUNCTION Main_OnCommand (idCtr, notifyCode, hCtr)
 	SHARED hTV		' the handle to the tree view
-	SHARED g_edit_typein		' handle to the edit control used to Main_OnItem
+	SHARED g_edit_typein		' handle to the edit control
 
 	SELECT CASE idCtr
 		CASE $$MnuFileExit
@@ -406,8 +412,8 @@ FUNCTION Main_OnCommand (idCtr, notifyCode, hCtr)
 			SendMessageA (hTV, $$TVM_ENDEDITLABELNOW, 0, 0)
 			RETURN 1 ' handled
 			'
-		CASE $$IDOK
-			' capture the "Enter" key from the inplace edit box, which is placed there
+		CASE $$IDOK, $$IDCANCEL
+			' capture the "Enter" or "Escape"  key from the inplace edit box, which is placed there
 			' by Windows in response to $$TVM_EDITLABEL
 			IF notifyCode = $$BN_CLICKED THEN
 				IF g_edit_typein THEN
@@ -499,25 +505,43 @@ FUNCTION Main_OnItem (idCtr, event, VK)
 END FUNCTION
 
 ' Called when the user attempts to edit a label
-FUNCTION Main_OnLabelEdit (idCtr, edit_const, hItem, newLabel$)
+FUNCTION Main_OnLabelEdit (idCtr, edit_const, edit_item, dummy_parm, newLabel$)
 	SHARED hTV		' the handle to the tree view $$Tree
 	SHARED g_edit_typein ' handle to the edit control used to edit a TreeView item text
 	STATIC s_oldLabel$
 
 	SELECT CASE edit_const
 		CASE $$EDIT_START
-			s_oldLabel$ = WinXTreeView_GetItemLabel$ (hTV, hItem)
+			s_oldLabel$ = WinXTreeView_GetItemLabel$ (hTV, edit_item)
+			s_oldLabel$ = TRIM$ (s_oldLabel$)
 			RETURN 1
 			'
 		CASE $$EDIT_DONE
-			IFZ TRIM$ (newLabel$) THEN
-				WinXTreeView_SetItemLabel (hTV, hItem, s_oldLabel$)
-				RETURN
-			ENDIF
-			msg$ = "Old label \"" + s_oldLabel$ + "\", changed to \"" + newLabel$ + "\""
+			'
+			retVal = 0 ' not handled
+			wType = $$MB_ICONSTOP
+			newLabel$ = TRIM$ (newLabel$)
+			SELECT CASE TRUE
+				CASE LEN (newLabel$) = 0
+					msg$ = "Empty entry; old label \"" + s_oldLabel$ + "\" restored!"
+					'
+				CASE newLabel$ = s_oldLabel$
+					msg$ = "Expected old label \"" + s_oldLabel$ + "\" to change"
+					'
+				CASE ELSE
+					retVal = 1 ' HANDLED!
+					msg$ = "Old label \"" + s_oldLabel$ + "\", changed to \"" + newLabel$ + "\""
+					wType = $$MB_ICONINFORMATION
+					'
+			END SELECT
+			'
 			title$ = "Edit a TreeView Label"
-			MessageBoxA (#hMain, &msg$, &title$, $$MB_ICONINFORMATION)
-			RETURN 1
+			MessageBoxA (#hMain, &msg$, &title$, wType)
+			'
+			IF retVal = 1 THEN WinXTreeView_SetItemLabel (hTV, edit_item, newLabel$) ' update label
+			'
+			WinXTreeView_SetSelection (hTV, edit_item)
+			RETURN retVal
 			'
 	END SELECT
 
@@ -553,8 +577,8 @@ FUNCTION Main_OnSelect (idCtr, notifyCode, parameter) ' to process $$WM_NOTIFY w
 							#hNodeExpandOld = hItem
 						ENDIF
 						WinXTreeView_SetSelection (hTV, hItem)
+						WinXTreeView_UseOnSelect (hTV) ' re-enable $$TVN_SELCHANGED
 					ENDIF
-					WinXTreeView_UseOnSelect (hTV) ' re-enable $$TVN_SELCHANGED
 					'
 					RETURN 1 ' handled
 					'

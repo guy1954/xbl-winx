@@ -65,7 +65,7 @@ FUNCTION initWindow ()
 
 	'create the main window
 	#hMain = WinXNewWindow (0, "Buttons Example", -1, -1, 200, 200, $$XWSS_APP, 0, 0, 0)
-	WinXSetMinSize (#hMain, 200, 200)
+	WinXSetMinSize (#hMain, 160, 160)
 
 	'set up the layout
 	'we are using three auto sizer series.
