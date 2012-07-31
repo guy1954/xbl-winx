@@ -78,7 +78,8 @@ FUNCTION initWindow ()
 	#penBlack = CreatePen ($$PS_SOLID, 1, 0x000000)
 
 	' Create the main window.  Notice the 2 extended styles, these create a tool window which is always on top
-	#hMain = WinXNewWindow (0, "Click a colour to copy it to the clipboard", -1, -1, 256, 16, $$XWSS_POPUP, $$WS_EX_TOOLWINDOW|$$WS_EX_TOPMOST, 0, 0)
+'	#hMain = WinXNewWindow (0, "Click a colour to copy it to the clipboard", -1, -1, 256, 16, $$XWSS_POPUP, $$WS_EX_TOOLWINDOW|$$WS_EX_TOPMOST, 0, 0)
+	#hMain = WinXNewWindow (0, "Click a colour to copy it to the clipboard", -1, -1, 262, 40, $$XWSS_POPUP, $$WS_EX_TOOLWINDOW|$$WS_EX_TOPMOST, 0, 0)
 	' A new WinX function, set the window background colour
 	WinXSetWindowColour (#hMain, 0x000000)
 
@@ -106,7 +107,6 @@ FUNCTION initWindow ()
 	' make the window visible
 	WinXDisplay (#hMain)
 
-	RETURN 0
 END FUNCTION
 '
 ' ##########################
@@ -125,6 +125,7 @@ FUNCTION onEnterLeave (hWnd, mouseInWindow)
 		WinXDrawRect (hWnd, #penBlack, 0, 0, 15, 15)
 	END IF
 	WinXUpdate (hWnd)
+	RETURN 1
 END FUNCTION
 '
 ' #######################
@@ -134,12 +135,15 @@ END FUNCTION
 FUNCTION onMouseUp (hWnd, button, x, y)
 	SHARED colours[]
 
+msg$ = "button = "+STRING$(button)+", $$MBT_LEFT = "+STRING$($$MBT_LEFT)
+MessageBoxA (#hMain, &msg$, &"Debug", $$MB_ICONINFORMATION)
 	IF button = $$MBT_LEFT THEN
 		' Remember I set the control id to 100+index into colours array?
 		' now we can recover the id to get the index to this control's  colour
 		colour = GetDlgCtrlID (hWnd)-100
 		' copying to the clipboard is so easy
 		WinXClip_PutString ("#"+HEX$(colours[colour],6))
+		RETURN 1
 	END IF
 END FUNCTION
 '
