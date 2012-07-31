@@ -10545,9 +10545,12 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			IF binding.onMouseDown THEN RETURN @binding.onMouseDown (hWnd, $$MBT_RIGHT, LOWORD (lParam), HIWORD (lParam))
 
 		CASE $$WM_LBUTTONUP, $$WM_RBUTTONUP
+			IF wMsg = $$WM_LBUTTONUP THEN m_button = $$MBT_LEFT ELSE m_button = $$MBT_RIGHT
 			IFZ g_drag_button THEN
 				IF binding.onMouseUp THEN RETURN @binding.onMouseUp (hWnd, m_button, LOWORD (lParam), HIWORD (lParam))
 			ELSE
+				IF m_button <> g_drag_button THEN EXIT SELECT
+				'
 				' drag_const = $$DRAG_DONE
 				GOSUB dragTreeViewItem
 				IFZ g_drag_running THEN retOnDrag = 0
