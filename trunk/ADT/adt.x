@@ -23,14 +23,9 @@ VERSION "0.2"
 m4_include(`accessors.m4')
 
 EXPORT
+
 TYPE LINKEDNODE
 	XLONG	.iNext
-	XLONG	.iData
-END TYPE
-TYPE BINNODE
-	XLONG	.iKey
-	XLONG	.iLeft
-	XLONG	.iRight
 	XLONG	.iData
 END TYPE
 TYPE LINKEDWALK
@@ -40,21 +35,30 @@ TYPE LINKEDWALK
 	XLONG	.iNext
 	XLONG	.last
 END TYPE
-TYPE BINWALK
-	XLONG		.order
-	XLONG		.nextItem
-	BINNODE	.node
-END TYPE
-' Guy-10apr11-EXPORT
-$$ADT_PREORDER	= 0
-$$ADT_INORDER		= 1
-$$ADT_POSTORDER	= 2
-
 TYPE LINKEDLIST
 	XLONG	.iHead
 	XLONG	.iTail
 	XLONG	.cItems
 END TYPE
+
+TYPE BINNODE
+	XLONG	.iKey
+	XLONG	.iLeft
+	XLONG	.iRight
+	XLONG	.iData
+END TYPE
+
+TYPE BINWALK
+	XLONG		.order
+	XLONG		.nextItem
+	BINNODE	.node
+END TYPE
+
+'	XLONG		.order
+$$ADT_PREORDER	= 0
+$$ADT_INORDER		= 1
+$$ADT_POSTORDER	= 2
+
 TYPE BINTREE
 	XLONG	.iHead
 	FUNCADDR	.comparator(XLONG, XLONG) ' (id_1, id_2)
