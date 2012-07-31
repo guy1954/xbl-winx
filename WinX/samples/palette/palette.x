@@ -107,6 +107,7 @@ FUNCTION initWindow ()
 	' make the window visible
 	WinXDisplay (#hMain)
 
+	RETURN 0
 END FUNCTION
 '
 ' ##########################
@@ -125,7 +126,6 @@ FUNCTION onEnterLeave (hWnd, mouseInWindow)
 		WinXDrawRect (hWnd, #penBlack, 0, 0, 15, 15)
 	END IF
 	WinXUpdate (hWnd)
-	RETURN 1
 END FUNCTION
 '
 ' #######################
@@ -135,15 +135,20 @@ END FUNCTION
 FUNCTION onMouseUp (hWnd, button, x, y)
 	SHARED colours[]
 
-msg$ = "button = "+STRING$(button)+", $$MBT_LEFT = "+STRING$($$MBT_LEFT)
-MessageBoxA (#hMain, &msg$, &"Debug", $$MB_ICONINFORMATION)
 	IF button = $$MBT_LEFT THEN
 		' Remember I set the control id to 100+index into colours array?
 		' now we can recover the id to get the index to this control's  colour
 		colour = GetDlgCtrlID (hWnd)-100
 		' copying to the clipboard is so easy
 		WinXClip_PutString ("#"+HEX$(colours[colour],6))
-		RETURN 1
+		'
+		msg$ = "onMouseUp: Copied the color " + HEXX$(colours[colour],6) + " in the clipboard."
+		title$ = "Information"
+		MessageBoxA (#hMain, &msg$, &title$, $$MB_ICONINFORMATION)
+	ELSE
+		msg$ = "onMouseUp: Can't copy the color n the clipboard!"
+		msg$ = msg$ + "\r\nMouse button is " + STRING$ (button) + " and should be $$MBT_LEFT = " + STRING$ ($$MBT_LEFT)
+		MessageBoxA (#hMain, &msg$, &"Alert", $$MB_ICONSTOP)
 	END IF
 END FUNCTION
 '
