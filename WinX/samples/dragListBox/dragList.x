@@ -28,7 +28,7 @@ $$ID_LIST = 100
 
 DECLARE FUNCTION Entry ()
 DECLARE FUNCTION initWindow ()
-DECLARE FUNCTION onDrag (idControl, status, item, x, y)
+DECLARE FUNCTION onDrag (idCtr, drag_const, drag_item_start, drag_running_item, x, y)
 '
 '
 ' ######################
@@ -79,31 +79,31 @@ END FUNCTION
 ' ####################
 ' #####  onDrag  #####
 ' ####################
-' This function is called when the user drags an item
-FUNCTION onDrag (idControl, status, item, x, y)
+' This function is called when the user drags an drag_running_item
+FUNCTION onDrag (idCtr, drag_const, drag_item_start, drag_running_item, x, y)
 	SHARED dragItem
 
-	SELECT CASE status
+	SELECT CASE drag_const
 		CASE $$DRAG_START
-			'remember the item we're dragging
-			dragItem =  item
+			'remember the drag_running_item we're dragging
+			dragItem =  drag_running_item
 			RETURN $$TRUE
 		CASE $$DRAG_DRAGGING
-			'if item is valid then allow otherwise deny
-			IF item = dragItem THEN RETURN $$FALSE
+			'if drag_running_item is valid then allow otherwise deny
+			IF drag_running_item = dragItem THEN RETURN $$FALSE
 			RETURN $$TRUE
 		CASE $$DRAG_DONE
 			hListBox = GetDlgItem (#hMain, $$ID_LIST)
 
-			'if the item is invalid, do nothing
-			IF item = -1 THEN	RETURN $$TRUE
+			'if the drag_running_item is invalid, do nothing
+			IF drag_running_item = -1 THEN	RETURN $$TRUE
 
-			'move the item
-			IF dragItem < item THEN DEC item
+			'move the drag_running_item
+			IF dragItem < drag_running_item THEN DEC drag_running_item
 			Item$ = WinXListBox_GetItem$ (hListBox, dragItem)
 			WinXListBox_RemoveItem (hListBox, dragItem)
-			WinXListBox_AddItem (hListBox, item, Item$)
-			WinXListBox_SetCaret (hListBox, item)
+			WinXListBox_AddItem (hListBox, drag_running_item, Item$)
+			WinXListBox_SetCaret (hListBox, drag_running_item)
 	END SELECT
 END FUNCTION
 END PROGRAM
