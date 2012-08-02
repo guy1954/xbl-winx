@@ -171,6 +171,7 @@ TYPE BINDING
 	XLONG .skipOnSelect		' Guy-25may11-internal lock to skip/use .onSelect
 	XLONG .hWndMDIParent	' parent window of an MDI child
 	FUNCADDR .onSelect (XLONG, XLONG, XLONG)		' idCtr, event, parameter
+	FUNCADDR .onCreate (XLONG)		' hWnd ($$WM_CREATE)
 
 END TYPE
 'message handler data type
@@ -1815,16 +1816,20 @@ END FUNCTION
 ' cleanup of any resources that need to be deallocated
 '
 FUNCTION WinXCleanUp ()
-	SHARED BINDING BINDING_array[]
 	SHARED g_hClipMem
+	SHARED g_drag_image		' image list for the dragging effect
+	SHARED BINDING BINDING_array[]
 
 	WNDCLASS wc
 
-	IF g_hClipMem THEN
-		' free global allocated memory
-		GlobalFree (g_hClipMem)
-		g_hClipMem = 0		' don't free twice
-	ENDIF
+	' free global allocated memory
+	IF g_hClipMem THEN GlobalFree (g_hClipMem)
+	g_hClipMem = 0
+
+	' delete the image list created by CreateDragImage
+	IF g_drag_image THEN ImageList_Destroy (g_drag_image)
+	g_drag_image = 0
+
 
 	IF BINDING_array[] THEN
 		' destroy all windows
@@ -4077,7 +4082,9 @@ END FUNCTION
 ' hWnd = the handle to the control or window to hide
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXHide (hWnd)
-	ShowWindow (hWnd, $$SW_HIDE)
+	IFZ hWnd THEN RETURN
+	ret = ShowWindow (hWnd, $$SW_HIDE)
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7316,8 +7323,8 @@ FUNCTION WinXSetDefaultFont (hCtr)
 
 	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
 	IFZ hFont THEN RETURN
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
-	DeleteObject (hFont)		' release the font
+	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)		' 0 = do not redraw
+	DeleteObject (hFont)		' release the default GUI font
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7330,8 +7337,11 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetFont (hCtr, hFont)
 	IFZ hCtr THEN RETURN		' ignore a null handle
-	IFZ hFont THEN RETURN		' ignore a null handle
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)
+	IFZ hFont THEN
+		WinXSetDefaultFont (hCtr) ' use the default GUI font
+	ELSE
+		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)		' 0 = do not redraw
+	ENDIF
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7344,8 +7354,14 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
 	IFZ hCtr THEN RETURN		' ignore a null handle
-	IFZ hFont THEN RETURN		' ignore a null handle
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 1)		' redraw
+
+	IF hFont THEN
+		SendMessageA (hCtr, $$WM_SETFONT, hFont, 1)		' 1 = redraw
+	ELSE
+		hFontDefault = GetStockObject ($$DEFAULT_GUI_FONT)		' use the default GUI font
+		SendMessageA (hCtr, $$WM_SETFONT, hFontDefault, 1)		' 1 = redraw
+		DeleteObject (hFontDefault)		' release the default GUI font
+	ENDIF
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7542,11 +7558,7 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 	BINDING binding
 
 	IFZ hToolbar THEN RETURN
-
-	' get the binding
 	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' set the toolbar parent
 	SetParent (hToolbar, hWnd)
@@ -7557,6 +7569,11 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 	WinXSetStyle (hToolbar, add, 0, 0, 0)
 
 	SendMessageA (hToolbar, $$TB_SETPARENT, hWnd, 0)
+
+	' get the binding
+	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+	IFZ idBinding THEN RETURN
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	' and update the binding
 	binding.hBar = hToolbar
@@ -7570,7 +7587,9 @@ END FUNCTION
 ' hWnd = the handle to the control or window to show
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXShow (hWnd)
-	ShowWindow (hWnd, $$SW_SHOW)
+	IFZ hWnd THEN RETURN
+	ret = ShowWindow (hWnd, $$SW_SHOW)
+	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -10361,6 +10380,10 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 
 	' and handle the message
 	SELECT CASE wMsg
+		CASE $$WM_CREATE	' created by calling CreateWindowExA
+			IF binding.onCreate THEN @binding.onCreate (hWnd)
+			RETURN
+
 		CASE $$WM_COMMAND
 			IF binding.onCommand THEN RETURN @binding.onCommand (LOWORD (wParam), HIWORD (wParam), lParam)
 
@@ -11142,7 +11165,7 @@ END FUNCTION
 FUNCTION sizeWindow (hWnd, winW, winH)
 	BINDING binding
 	SCROLLINFO si
-	WINDOWPLACEMENT WinPla
+	' Guy-01aug12-unused-WINDOWPLACEMENT WinPla
 	RECT rect
 
 	' get the binding
@@ -11150,8 +11173,8 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	IF winW <= binding.minW THEN winW = binding.minW
-	IF winH <= binding.minH THEN winH = binding.minH
+	IF winW < binding.minW THEN winW = binding.minW
+	IF winH < binding.minH THEN winH = binding.minH
 
 	' now handle the tool bar
 	IF binding.hBar THEN
