@@ -125,20 +125,20 @@ DECLARE FUNCTION AssocArray_Find (ASSOCARRAY array,key$, @iData)
 DECLARE FUNCTION AssocArray_Clear (ASSOCARRAY @array)
 DECLARE FUNCTION AssocArray_Init (ASSOCARRAY @array)
 
+DECLARE FUNCTION STRING_Init () ' initialize the STRING class
+DECLARE FUNCTION STRING_New (STRING_item$) ' add STRING_item$ to STRING pool
+DECLARE FUNCTION STRING_Get (id, @STRING_item$) ' get data of item id
+DECLARE FUNCTION STRING_Update (id, STRING_item$) ' update data of item id
+DECLARE FUNCTION STRING_Delete (id) ' delete item id
+DECLARE FUNCTION STRING_Find (searchFor$) ' find exact match of searchFor$
+DECLARE FUNCTION STRING_InsFind (searchFor$) ' find searchFor$ insensitive
+DECLARE FUNCTION STRING_Get_idMax () ' get item id max
+DECLARE FUNCTION STRING_Get_idMin () ' get item id min
+DECLARE FUNCTION STRING_GetCount () ' get item count
+
 DECLARE FUNCTION IntCompare (a, b)
 DECLARE FUNCTION StringCompare (a, b)
 DECLARE FUNCTION IStringCompare (a, b)
-
-DECLARE FUNCTION STRING_Init ()
-DECLARE FUNCTION STRING_New (item$)
-DECLARE FUNCTION STRING_Get (id, @item$)
-DECLARE FUNCTION STRING_Update (id, item$)
-DECLARE FUNCTION STRING_Delete (id)
-DECLARE FUNCTION STRING_Find (find$)
-DECLARE FUNCTION STRING_InsFind (find$)
-DECLARE FUNCTION STRING_Get_idMax ()
-DECLARE FUNCTION STRING_Get_idMin ()
-DECLARE FUNCTION STRING_GetCount ()
 
 END EXPORT
 
@@ -1348,24 +1348,36 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 	RETURN $$TRUE ' success
 END FUNCTION
 '
-' ##############################
-' #####  ADT STRING_class  #####
-' ##############################
+' ==============================
+' =====  ADT STRING_class  =====
+' ==============================
 '
-' STRING_Init () ' initialize STRING_class
+' #########################
+' #####  STRING_Init  #####
+' #########################
+'
+' Initializes STRING_class
 FUNCTION STRING_Init ()
-	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[] ' usage map
+	SHARED STRING_array$[]  ' an array of STRING_kids
+	SHARED STRING_arrayUM[] ' a usage map so we can see which array elements are in use
 	SHARED STRING_idMax
 
 	DIM STRING_array$[7]
 	DIM STRING_arrayUM[7]
 	STRING_idMax = 0
 END FUNCTION
-
+'
+' ########################
+' #####  STRING_New  #####
+' ########################
+'
+' Adds a STRING item to STRING pool
 ' returns id on success or 0 on fail
-' id = STRING_New (st$)
-' IFZ id THEN ' fail
+
+' Usage:
+'id = STRING_New (STRING_item$)
+'IFZ id THEN ' can't add STRING item
+
 FUNCTION STRING_New (v_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1375,8 +1387,8 @@ FUNCTION STRING_New (v_item$)
 
 	upper_slot = UBOUND (STRING_arrayUM[])
 
-	' since STRING_array$[] is oversized, look for a spot
-	' after STRING_idMax
+	' since STRING_array$[] is oversized
+	' look for a spot after STRING_idMax
 	slot = -1 ' spot not found
 	IF STRING_idMax <= upper_slot THEN
 		FOR i = STRING_idMax TO upper_slot
@@ -1406,12 +1418,22 @@ FUNCTION STRING_New (v_item$)
 	ENDIF
 	RETURN r_id ' return id
 END FUNCTION
-
+'
+' ########################
+' #####  STRING_Get  #####
+' ########################
+'
+' Gets data of a STRING item using its id
+' v_id = id of STRING item
+' r_item$ = returned data
 ' returns $$TRUE on success or $$FALSE on fail
-' bOK = STRING_Get (id, @st$)
-'	IFF bOK THEN ' fail
+
+' Usage:
+'bOK = STRING_Get (id, @STRING_item$)
+'IFF bOK THEN ' can't get STRING item
 ' or
-'	IFZ st$ THEN ' fail
+'IFZ STRING_item$ THEN ' can't get STRING item
+
 FUNCTION STRING_Get (v_id, @r_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1420,16 +1442,26 @@ FUNCTION STRING_Get (v_id, @r_item$)
 	slot = v_id - 1
 	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
 		IF STRING_arrayUM[slot] THEN
-			r_item$ = STRING_array$[slot]
-			RETURN $$TRUE
+			r_item$ = STRING_array$[slot] ' get STRING item
+			RETURN $$TRUE ' OK!
 		ENDIF
 	ENDIF
-	r_item$ = ""
+	r_item$ = "" ' can't get STRING item
 END FUNCTION
-
+'
+' ###########################
+' #####  STRING_Update  #####
+' ###########################
+'
+' Updates the data of a STRING item using its id
+' v_id = id of STRING item
+' v_item$ = new data
 ' returns $$TRUE on success or $$FALSE on fail
-' bOK = STRING_Update (id, st$)
-'	IFF bOK THEN ' fail
+
+' Usage:
+'bOK = STRING_Update (id, STRING_item$)
+'IFF bOK THEN ' can't update STRING item
+
 FUNCTION STRING_Update (v_id, v_item$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1438,15 +1470,24 @@ FUNCTION STRING_Update (v_id, v_item$)
 	slot = v_id - 1
 	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
 		IF STRING_arrayUM[slot] THEN
-			STRING_array$[slot] = v_item$
-			RETURN $$TRUE
+			STRING_array$[slot] = v_item$ ' update STRING item
+			RETURN $$TRUE ' OK!
 		ENDIF
 	ENDIF
 END FUNCTION
-
+'
+' ###########################
+' #####  STRING_Delete  #####
+' ###########################
+'
+' Deletes a STRING item using its id
+' v_id = id of STRING item
 ' returns $$TRUE on success or $$FALSE on fail
-' bOK = STRING_Delete (id)
-'	IFF bOK THEN ' fail
+
+' Usage:
+'bOK = STRING_Delete (id)
+'IFF bOK THEN ' can't delete STRING item
+
 FUNCTION STRING_Delete (v_id)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
@@ -1454,23 +1495,32 @@ FUNCTION STRING_Delete (v_id)
 
 	slot = v_id - 1
 	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
-		STRING_arrayUM[slot] = $$FALSE
-		RETURN $$TRUE
+		STRING_arrayUM[slot] = $$FALSE ' delete STRING item
+		RETURN $$TRUE ' OK!
 	ENDIF
 END FUNCTION
-
+'
+' #########################
+' #####  STRING_Find  #####
+' #########################
+'
+' Finds a STRING item using its key
+' v_searchFor$ = the key to search for
 ' returns id on success or 0 on fail
-' idFound = STRING_Find (find$) ' find exact match
-'	IFZ idFound THEN ' not found
-FUNCTION STRING_Find (v_find$)
+
+' Usage:
+'idFound = STRING_Find (searchFor$) ' find exact match of searchFor$
+'IFZ idFound THEN ' can't find STRING item
+
+FUNCTION STRING_Find (v_searchFor$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	v_find$ = TRIM$ (v_find$)
-	IFZ v_find$ THEN RETURN
+	v_searchFor$ = TRIM$ (v_searchFor$)
+	IFZ v_searchFor$ THEN RETURN
 
-	findLen = LEN (v_find$)
+	findLen = LEN (v_searchFor$)
 	upper_slot = STRING_idMax - 1
 	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
 	IF upper_slot < 0 THEN RETURN
@@ -1479,46 +1529,76 @@ FUNCTION STRING_Find (v_find$)
 		IFF STRING_arrayUM[slot] THEN DO NEXT
 		st$ = TRIM$ (STRING_array$[slot])
 		IF LEN (st$) <> findLen THEN DO NEXT
-		IF st$ = v_find$ THEN RETURN (slot + 1) ' return id
+		' find exact match
+		IF st$ = v_searchFor$ THEN RETURN (slot + 1) ' return id of found STRING item
 	NEXT slot
 END FUNCTION
-
+'
+' ############################
+' #####  STRING_InsFind  #####
+' ############################
+'
+' Finds case insensitive a STRING item using its key
+' v_searchFor$ = the key to search for
 ' returns id on success or 0 on fail
-' idFound = STRING_InsFind (find$) ' find case insensitive
-'	IFZ idFound THEN ' not found
-FUNCTION STRING_InsFind (v_find$)
+
+' Usage:
+'idFound = STRING_InsFind (searchFor$) ' find match of searchFor$ (case insensitive)
+'IFZ idFound THEN ' can't find (case insensitive) STRING item
+
+FUNCTION STRING_InsFind (v_searchFor$)
 	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	v_find$ = TRIM$ (v_find$)
-	IFZ v_find$ THEN RETURN
+	v_searchFor$ = TRIM$ (v_searchFor$)
+	IFZ v_searchFor$ THEN RETURN
 
-	findLen = LEN (v_find$)
+	findLen = LEN (v_searchFor$)
 	upper_slot = STRING_idMax - 1
 	IF upper_slot > UBOUND (STRING_arrayUM[]) THEN upper_slot = UBOUND (STRING_arrayUM[])
 	IF upper_slot < 0 THEN RETURN
 
-	find_lc$ = LCASE$ (v_find$)
+	find_lc$ = LCASE$ (v_searchFor$)
 	FOR slot = 0 TO upper_slot
 		IFF STRING_arrayUM[slot] THEN DO NEXT
 		st$ = TRIM$ (STRING_array$[slot])
 		IF LEN (st$) <> findLen THEN DO NEXT
 		' find case insensitive
-		IF LCASE$ (st$) = find_lc$ THEN RETURN (slot + 1) ' return id
+		IF LCASE$ (st$) = find_lc$ THEN RETURN (slot + 1) ' return id of found STRING item
 	NEXT slot
 END FUNCTION
+'
+' ##############################
+' #####  STRING_Get_idMax  #####
+' ##############################
+'
+' Gets STRING item id max
 
-' usage: walk thru the STRING pool
-'	idMax = STRING_Get_idMax ()
-'	FOR id = 1 TO idMax
-'		bOK = STRING_Get (id, @st$)
-'		IFF bOK THEN DO NEXT		' deleted
-'	NEXT id
+' Usage: walk thru the STRING pool
+'idMax = STRING_Get_idMax () ' get item id max
+'FOR id = 1 TO idMax
+'	bOK = STRING_Get (id, @STRING_item$)
+'	IFF bOK THEN DO NEXT		' deleted
+'NEXT id
+
 FUNCTION STRING_Get_idMax ()
 	SHARED STRING_idMax
 	RETURN STRING_idMax
 END FUNCTION
+'
+' ##############################
+' #####  STRING_Get_idMin  #####
+' ##############################
+'
+' Gets STRING item id min
+
+' Usage: walk thru the STRING pool
+'idMin = STRING_Get_idMin () ' get item id min
+'FOR id = idMin TO STRING_Get_idMax ()
+'	bOK = STRING_Get (id, @STRING_item$)
+'	IFF bOK THEN DO NEXT ' was deleted
+'NEXT id
 
 FUNCTION STRING_Get_idMin ()
 	SHARED STRING_arrayUM[]
@@ -1527,19 +1607,26 @@ FUNCTION STRING_Get_idMin ()
 
 	upper_slot = UBOUND (STRING_arrayUM[])
 	FOR slot = 0 TO upper_slot
-		IF STRING_arrayUM[slot] THEN RETURN (slot + 1)
+		IF STRING_arrayUM[slot] THEN RETURN (slot + 1) ' min id
 	NEXT slot
 END FUNCTION
+'
+' #############################
+' #####  STRING_GetCount  #####
+' #############################
+'
+' Gets STRING item count
 
-' usage of STRING_GetCount(): walk thru a heavily deleted STRING pool
-'	IF STRING_GetCount () THEN
-'		idMin = STRING_Get_idMin ()
-'		idMax = STRING_Get_idMax ()
-'		FOR id = idMin TO idMax
-'			bOK = STRING_Get (id, @st$)
-'			IFF bOK THEN DO NEXT		' deleted
-'		NEXT id
-'	ENDIF
+' Usage of STRING_GetCount(): walk thru a heavily deleted STRING pool
+'IF STRING_GetCount () THEN
+'	idMin = STRING_Get_idMin ()
+'	idMax = STRING_Get_idMax ()
+'	FOR id = idMin TO idMax
+'		bOK = STRING_Get (id, @STRING_item$)
+'		IFF bOK THEN DO NEXT ' was deleted
+'	NEXT id
+'ENDIF
+
 FUNCTION STRING_GetCount ()
 	SHARED STRING_arrayUM[]
 
