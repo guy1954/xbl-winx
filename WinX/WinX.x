@@ -118,6 +118,13 @@ VERSION "0.6.0.15"
 '	IMPORT "adt_s"      ' Callum's Abstract Data Types library
 	'-------------------------------------------------------------
 '
+' #######################
+' #####  M4 macros  #####
+' #######################
+' Notes:
+' - use the compiler switch -m4
+m4_include(`accessors.m4')
+'
 'the data type to manage bindings
 TYPE BINDING
 	XLONG			.hWnd						'handle to the window this binds to, when 0, this record is not in use
@@ -290,13 +297,6 @@ TYPE TBBUTTONDATA
 	XLONG			.optional
 	TBBUTTON	.tbb
 END TYPE
-'
-' #######################
-' #####  M4 macros  #####
-' #######################
-' Notes:
-' - use the compiler switch -m4
-m4_include(`accessors.m4')
 '
 '
 EXPORT
@@ -665,6 +665,7 @@ DECLARE FUNCTION WinXTreeView_GetSelection (hTV)
 DECLARE FUNCTION WinXTreeView_RemoveCheckBox (hTV, hItem) ' remove the check box of a tree view item
 DECLARE FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked) ' set the item's check state of a tree view with check boxes
 DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
+DECLARE FUNCTION WinXTreeView_SetItemData (hTV, hItem, data) ' Set the lParam data member of the TreeView item
 DECLARE FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
 
@@ -8461,12 +8462,9 @@ FUNCTION WinXTreeView_GetCheckState (hTV, hItem)
 	IF (tvi.state & 0x2000) = 0x2000 THEN RETURN $$TRUE ELSE RETURN $$FALSE		' *not* checked
 END FUNCTION
 '
-' ###################################
+' ########################################
 ' #####  WinXTreeView_GetChildCount  #####
-' ###################################
-'
-'
-'
+' ########################################
 FUNCTION WinXTreeView_GetChildCount (hTV, hItem)
 	TV_ITEM tvi
 
@@ -8659,6 +8657,30 @@ FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, STRING newLabel)
 	tvi.cchTextMax = LEN (newLabel)
 
 	RETURN SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
+END FUNCTION
+'
+' ######################################
+' #####  WinXTreeView_SetItemData  #####
+' ######################################
+' Sets the lParam data member of the TreeView item
+' hTV = the handle to the tree view
+' hItem = the item to set the data for
+' newData = the new data
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXTreeView_SetItemData (hTV, hItem, newData)
+	TV_ITEM tvi
+
+	IFZ hTV THEN RETURN
+	IFZ hItem THEN RETURN
+
+	tvi.mask   = $$TVIF_PARAM | $$TVIF_HANDLE
+	tvi.hItem  = hItem
+	tvi.lParam = newData
+
+	ret = SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
+	IFZ ret THEN RETURN
+	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' #######################################
