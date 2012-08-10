@@ -1,26 +1,33 @@
-m4_define(`DeclareAccess', `
-'' declaration of $1 class
+m4_define(`DeclareAccess',`
+'' Declaration of $1 class
 ' ===========
-DECLARE FUNCTION $1_Init () ' initialize the $1 class
+DECLARE FUNCTION $1_Init () '' initialize the $1 class ' initialize the $1 class
 DECLARE FUNCTION $1_New ($1 $1_item) ' add $1_item to $1 pool
-DECLARE FUNCTION $1_Get (id, $1 @$1_item) ' get data of a $1 item using its id
-DECLARE FUNCTION $1_Update (id, $1 $1_item) ' update data of a $1 item using its id
+DECLARE FUNCTION $1_Get (id`,' $1 @$1_item) ' get data of a $1 item using its id
+DECLARE FUNCTION $1_Update (id`,' $1 $1_item) ' update data of a $1 item using its id
 DECLARE FUNCTION $1_Delete (id) ' delete a $1 item using its id
 DECLARE FUNCTION $1_Get_idMax () ' get $1 item id max
 )
 
-'m4_define(`DefineAccess', `
-'' definition of $1 class
+m4_define(`DefineAccess',`
+'' Definition of $1 class
 ' ==========
 
-' Initializes $1 class
+' Initializes the $1 class
 FUNCTION $1_Init ()
 	SHARED $1 $1_array[]  ' an array of $1_item
 	SHARED $1_arrayUM[] ' a usage map so we can see which array elements are in use
 	SHARED $1_idMax
 
-	DIM $1_array[7]
-	DIM $1_arrayUM[7]
+	IFZ $1_array[]
+		DIM $1_array[7]
+		DIM $1_arrayUM[7]
+	ENDIF
+
+	upper_slot = UBOUND ($1_arrayUM[])
+	FOR i = 0 TO upper_slot
+		$1_arrayUM[i] = $$FALSE
+	NEXT i
 	$1_idMax = 0
 END FUNCTION
 
@@ -31,7 +38,7 @@ END FUNCTION
 'id = $1_New ($1_item)
 'IFZ id THEN ' can't add $1 item
 
-FUNCTION $1_New ($1 v_$1_item)
+FUNCTION $1_New ($1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
 	SHARED $1_idMax
@@ -63,78 +70,78 @@ FUNCTION $1_New ($1 v_$1_item)
 		INC $1_idMax
 	ENDIF
 
-	r_id = 0
+	id = 0
 	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
-		$1_array[slot] = v_$1_item
+		$1_array[slot] = $1_item
 		$1_arrayUM[slot] = $$TRUE
-		r_id = slot + 1
+		id = slot + 1
 	ENDIF
-	RETURN r_id ' return id
+	RETURN id ' return id
 END FUNCTION
 
 ' Gets data of a $1 item using its id
-' v_id = id of $1 item
-' r_$1_item = returned data
+' id = id of $1 item
+' $1_item = returned data
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage:
-'bOK = $1_Get (id, @$1_item)
+'bOK = $1_Get (id`,' @$1_item)
 'IFF bOK THEN ' can't get $1 item
 
-FUNCTION $1_Get (v_id, $1 r_$1_item)
+FUNCTION $1_Get (id`,' $1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
 	SHARED $1_idMax
 
 	$1 $1_Nil
 
-	slot = v_id - 1
+	slot = id - 1
 	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
 		IF $1_arrayUM[slot] THEN
-			r_$1_item = $1_array[slot] ' get $1 item
+			$1_item = $1_array[slot] ' get $1 item
 			RETURN $$TRUE ' OK!
 		ENDIF
 	ENDIF
-	r_$1_item = $1_Nil ' can't get $1 item
+	$1_item = $1_Nil ' can't get $1 item
 END FUNCTION
 
 ' Updates the data of a $1 item using its id
-' v_id = id of $1 item
-' v_$1_item = new data
+' id = id of $1 item
+' $1_item = new data
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage:
-'bOK = $1_Update (id, $1_item)
+'bOK = $1_Update (id`,' $1_item)
 'IFF bOK THEN ' can't update $1 item
 
-FUNCTION $1_Update (v_id, $1 v_$1_item)
+FUNCTION $1_Update (id`,' $1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
 	SHARED $1_idMax
 
-	slot = v_id - 1
+	slot = id - 1
 	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
 		IF $1_arrayUM[slot] THEN
-			$1_array[slot] = v_$1_item ' update $1 item
+			$1_array[slot] = $1_item ' update $1 item
 			RETURN $$TRUE ' OK!
 		ENDIF
 	ENDIF
 END FUNCTION
 
 ' Deletes a $1 item using its id
-' v_id = id of $1 item
+' id = id of $1 item
 ' returns $$TRUE on success or $$FALSE on fail
 
 ' Usage:
 'bOK = $1_Delete (id)
 'IFF bOK THEN ' can't delete $1 item
 
-FUNCTION $1_Delete (v_id)
+FUNCTION $1_Delete (id)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
 	SHARED $1_idMax
 
-	slot = v_id - 1
+	slot = id - 1
 	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
 		$1_arrayUM[slot] = $$FALSE ' delete $1 item
 		RETURN $$TRUE ' OK!
@@ -146,7 +153,7 @@ END FUNCTION
 ' Usage: walk thru the $1 pool
 'idMax = $1_Get_idMax () ' get $1 item id max
 'FOR id = 1 TO idMax
-'	bOK = $1_Get (id, @$1_item)
+'	bOK = $1_Get (id`,' @$1_item)
 '	IFF bOK THEN DO NEXT		' deleted
 'NEXT id
 
