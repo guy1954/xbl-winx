@@ -15,19 +15,19 @@ m4_define(`DefineAccess',`
 
 ' Initializes the $1 class
 FUNCTION $1_Init ()
-	SHARED $1 $1_array[]  ' an array of $1_item
+	SHARED $1 $1_array[] ' an array of $1_item
 	SHARED $1_arrayUM[] ' a usage map so we can see which array elements are in use
 	SHARED $1_idMax
 
 	IFZ $1_array[]
 		DIM $1_array[7]
 		DIM $1_arrayUM[7]
+	ELSE
+		upper_slot = UBOUND ($1_arrayUM[])
+		FOR i = 0 TO upper_slot
+			$1_arrayUM[i] = $$FALSE
+		NEXT i
 	ENDIF
-
-	upper_slot = UBOUND ($1_arrayUM[])
-	FOR i = 0 TO upper_slot
-		$1_arrayUM[i] = $$FALSE
-	NEXT i
 	$1_idMax = 0
 END FUNCTION
 
