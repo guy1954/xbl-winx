@@ -2101,14 +2101,23 @@ END FUNCTION
 ' ######################################
 ' #####  WinXComboBox_GetEditText  #####
 ' ######################################
-' Gets the text in the edit cotrol of a combo box
+' Gets the text in the edit control of a combo box
 ' hCombo = the handle to the extended combo box
 ' returns the text or "" on fail
 FUNCTION WinXComboBox_GetEditText$ (hCombo)
-	IFZ hCombo THEN RETURN ""
-	hEdit = SendMessageA (hCombo, $$CBEM_GETEDITCONTROL, 0, 0)
-	IFZ hEdit THEN RETURN ""
-	ret$ = WinXGetText$ (hEdit)
+	ret$ = ""
+	IF hCombo THEN
+		style = GetWindowLongA (hCombo, $$GWL_STYLE)
+		IF (style & $$CBS_DROPDOWNLIST) = $$CBS_DROPDOWNLIST THEN
+			' not editable
+			index = SendMessageA (hCombo, $$CB_GETCURSEL, 0, 0)
+			ret$ = WinXComboBox_GetItem$ (hCombo, index)
+		ELSE
+			errNum = SetLastError (0)
+			hEdit = SendMessageA (hCombo, $$CBEM_GETEDITCONTROL, 0, 0)
+			IF hEdit THEN ret$ = WinXGetText$ (hEdit)
+		ENDIF
+	ENDIF
 	RETURN ret$
 END FUNCTION
 '
@@ -2130,8 +2139,8 @@ FUNCTION WinXComboBox_GetItem$ (hCombo, index)
 	cbexi.cchTextMax = SIZE (item$)
 
 	IFZ SendMessageA (hCombo, $$CBEM_GETITEM, 0, &cbexi) THEN RETURN ""		' fail
-	ret_text$ = CSTRING$ (cbexi.pszText)
-	RETURN ret_text$
+	ret$ = CSTRING$ (cbexi.pszText)
+	RETURN ret$
 END FUNCTION
 '
 ' #######################################
@@ -8375,7 +8384,7 @@ FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)
 		hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
 	ENDIF
 
-	DO UNTIL hItem = 0
+	DO WHILE hItem
 		'
 		bufSize = $$MAX_PATH
 		buf$ = NULL$ (bufSize)
@@ -8486,7 +8495,6 @@ END FUNCTION
 ' returns the handle to the child item or 0 on error
 FUNCTION WinXTreeView_GetChildItem (hTV, hItem)
 	IFZ hTV THEN RETURN
-
 	RETURN SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CHILD, hItem)
 END FUNCTION
 '
