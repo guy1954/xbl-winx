@@ -2111,7 +2111,7 @@ FUNCTION WinXComboBox_GetEditText$ (hCombo)
 		IF (style & $$CBS_DROPDOWNLIST) = $$CBS_DROPDOWNLIST THEN
 			' not editable
 			index = SendMessageA (hCombo, $$CB_GETCURSEL, 0, 0)
-			ret$ = WinXComboBox_GetItem$ (hCombo, index)
+			IF index >= 0 THEN ret$ = WinXComboBox_GetItem$ (hCombo, index)
 		ELSE
 			errNum = SetLastError (0)
 			hEdit = SendMessageA (hCombo, $$CBEM_GETEDITCONTROL, 0, 0)
