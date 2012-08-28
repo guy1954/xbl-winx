@@ -675,6 +675,7 @@ DECLARE FUNCTION VOID WinXUpdate (hWnd)
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 
 DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
+
 END EXPORT
 '
 ' #######################
@@ -768,7 +769,7 @@ DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
 $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
 $$LeftSubSizer$  = "WinXLeftSubSizer"
-$$RightSubSizer$ = "WinXRightSubSizer"
+$$RightSubSizer$ = "WinXRightSubSizer" ' Guy-16mar11-unused???
 '
 '
 ' #####################
@@ -1275,7 +1276,7 @@ END FUNCTION
 FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, uppVal, lowVal, curVal, idCtr)
 
 	' $$UDS_ARROWKEYS  : Arrow keys
-	style = $$WS_CHILD | $$WS_VISIBLE | $$UDS_ARROWKEYS
+	style = $$WS_CHILD | $$WS_VISIBLE | $$UDS_ARROWKEYS ' arrow keys
 
 	hCtr = 0
 	SELECT CASE TRUE
@@ -1830,7 +1831,6 @@ FUNCTION WinXCleanUp ()
 	' delete the image list created by CreateDragImage
 	IF g_drag_image THEN ImageList_Destroy (g_drag_image)
 	g_drag_image = 0
-
 
 	IF BINDING_array[] THEN
 		' destroy all windows
@@ -2635,11 +2635,11 @@ END FUNCTION
 'IFF bOK THEN
 '	msg$ = "WinXDialog_SysInfo: Can't run System Information"
 '	msg$ = msg$ + $$CRLF$ + "Execution path: " + msInfo$
-'	WinXDialog_Error (msg$, "System Information", 3)
+'	XstAlert (msg$)
 'ENDIF
 '
 FUNCTION WinXDialog_SysInfo (@msInfo$)
-	SECURITY_ATTRIBUTES sa		' not used
+	SECURITY_ATTRIBUTES sa
 
 	buf$ = NULL$ ($$MAX_PATH)
 	ret = GetWindowsDirectoryA (&buf$, $$MAX_PATH)
@@ -4424,6 +4424,13 @@ END FUNCTION
 ' index = the zero-based index to insert the item at, -1 for the end of the list
 ' item$ = the string to add to the list
 ' returns the index of the string in the list or -1 on fail
+'
+' ----- Usage -----
+'index = WinXListBox_AddItem (hListBox, -1, item$)
+'IF index < 0 THEN
+'	msg$ = "WinXListBox_AddItem: Can't add item " + item$
+'	XstAlert (msg$)
+'ENDIF
 FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 	IFZ hListBox THEN RETURN $$LB_ERR		' fail
 
@@ -5376,10 +5383,9 @@ END FUNCTION
 ' #####  WinXMRU_MakeKey$  #####
 ' ##############################
 FUNCTION WinXMRU_MakeKey$ (id)
-
-	IFZ id THEN id$ = " 0" ELSE id$ = STR$ (id)
-	RETURN "File" + id$
-
+	key$ = "File"
+	IF id < 1 THEN key$ = key$ + " 0" ELSE key$ = key$ + STR$ (id)
+	RETURN key$
 END FUNCTION
 '
 ' ###################################
@@ -5387,96 +5393,91 @@ END FUNCTION
 ' ###################################
 ' Saves the Most Recently Used file list
 ' Returns $$FALSE = failure, $$TRUE = success
+'
+' Add file pathNew$ to MRU file list. If file already exists in list then it is
+' simply moved up to the top of the list and not added again. If list is
+' full then the least recently used item is removed to make room.
 FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
-	' Add file pathNew$ to MRU file list. If file already exists in list then it is
-	' simply moved up to the top of the list and not added again. If list is
-	' full then the least recently used item is removed to make room.
 
-	DIM arr$[$$UPP_MRU]
-	upp = -1
+	iniPath$ = WinXPath_Trim$ (iniPath$)
+	IFZ iniPath$ THEN RETURN
 
-	' add real file pathNew$ to arr$[0]
+	' local array of file paths
+	DIM file$[$$UPP_MRU]
+	uppFile = -1
+
 	pathNew$ = WinXPath_Trim$ (pathNew$)
 	IF pathNew$ THEN
-		bErr = XstFileExists (pathNew$)
-		IFF bErr THEN
-			upp = 0
-			arr$[0] = pathNew$
-		ENDIF
+		' add pathNew$ to path array
+		fPath$ = pathNew$
+		GOSUB AddFile
 	ENDIF
 
-	' copy the current Most Recently Used file list
 	IF r_mruList$[] THEN
-		uppmru = UBOUND (r_mruList$[])
-		FOR imru = 0 TO uppmru
-			fpath$ = WinXPath_Trim$ (r_mruList$[imru])
-			IFZ fpath$ THEN DO NEXT
-			'
-			bErr = XstFileExists (fpath$)
-			IF bErr THEN DO NEXT
-			'
-			' don't add fpath$ if already in arr$[]
-			bFound = $$FALSE
-			IF upp >= 0 THEN
-				find_lc$ = LCASE$ (fpath$)
-				findLen = LEN (find_lc$)
-				'
-				FOR z = 0 TO upp
-					IF LEN (arr$[z]) <> findLen THEN DO NEXT
-					IF LCASE$ (arr$[z]) = find_lc$ THEN
-						bFound = $$TRUE
-						EXIT FOR
-					ENDIF
-				NEXT z
-			ENDIF
-			'
-			IFF bFound THEN
-				IF upp >= $$UPP_MRU THEN EXIT FOR		' MRU list is full
-				INC upp
-				arr$[upp] = fpath$
-			ENDIF
-		NEXT imru
+		' copy r_mruList$[] into path array
+		uppMru = UBOUND (r_mruList$[])
+		FOR i = 0 TO uppMru
+			fPath$ = r_mruList$[i]
+			GOSUB AddFile
+		NEXT i
 	ENDIF
-	IF upp < 0 THEN
-		DIM arr$[]
-	ELSE
-		IF UBOUND (arr$[]) <> upp THEN REDIM arr$[upp]
+
+	IF uppFile <> UBOUND (r_mruList$[]) THEN
+		IF uppFile < 0 THEN DIM r_mruList$[] ELSE DIM r_mruList$[uppFile]
 	ENDIF
 
 	' save the Most Recently Used project list in the .INI file
-	idAdd = 0
-	IF upp >= 0 THEN
-		FOR i = 0 TO upp
-			INC idAdd
-			key$ = WinXMRU_MakeKey$ (idAdd)
-			' replace an existing key
-			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-			IF value$ <> arr$[i] THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, arr$[i])
-		NEXT i
-	ENDIF
-
-	' delete from .INI file extraneous MRU items
-	idInf = idAdd + 1
-	idSup = $$UPP_MRU + 1
-	IF idInf <= idSup THEN
-		FOR id = idInf TO idSup
-			key$ = WinXMRU_MakeKey$ (id)
-			WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
-		NEXT id
-	ENDIF
-
-	' reset the Most Recently Used project lists
-	IFZ arr$[] THEN
-		DIM r_mruList$[]
-	ELSE
-		upp = UBOUND (arr$[])
-		DIM r_mruList$[upp]
-		FOR i = 0 TO upp
-			r_mruList$[i] = arr$[i]
-		NEXT i
-	ENDIF
+	' and copy path array into r_mruList$[]
+	uppMru = -1
+	FOR iFile = 0 TO $$UPP_MRU
+		fPath$ = file$[iFile]
+		key$ = WinXMRU_MakeKey$ (iFile + 1)
+		value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+		IFZ fPath$ THEN
+			IF value$ THEN WinXIni_Delete (iniPath$, $$MRU_SECTION$, key$)
+		ELSE
+			INC uppMru
+			r_mruList$[uppMru] = fPath$
+			IF LCASE$ (value$) <> LCASE$ (fPath$) THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, fPath$)
+		ENDIF
+	NEXT iFile
 
 	RETURN $$TRUE		' success
+
+SUB AddFile
+
+	SELECT CASE TRUE
+		CASE uppFile >= $$UPP_MRU ' file$[] is full
+			'
+		CASE ELSE
+			fPath$ = WinXPath_Trim$ (fPath$)
+			IFZ fPath$ THEN EXIT SELECT ' fPath$ is empty
+			'
+			bErr = XstFileExists (fPath$)
+			IF bErr THEN EXIT SELECT ' fPath$ does not exist
+			'
+			bFound = $$FALSE
+			IF uppFile >= 0 THEN
+				find_lc$ = LCASE$ (fPath$)
+				findLen = LEN (find_lc$)
+				FOR z = 0 TO uppFile
+					IF LEN (file$[z]) = findLen THEN
+						IF LCASE$ (file$[z]) = find_lc$ THEN
+							bFound = $$TRUE
+							EXIT FOR
+						ENDIF
+					ENDIF
+				NEXT z
+			ENDIF
+			IF bFound EXIT SELECT ' fPath$ is already in file$[]
+			'
+			INC uppFile
+			file$[uppFile] = fPath$
+			'
+	END SELECT
+
+END SUB
+
 END FUNCTION
 '
 ' #############################
@@ -8648,25 +8649,6 @@ FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
-' #######################################
-' #####  WinXTreeView_SetItemLabel  #####
-' #######################################
-' Sets the lable for a tree view item
-' hTV = the handle to the tree view control
-' hItem = the item to set the label for
-' newLabel = the new label
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, STRING newLabel)
-	TVITEM tvi
-
-	tvi.mask = $$TVIF_HANDLE | $$TVIF_TEXT
-	tvi.hItem = hItem
-	tvi.pszText = &newLabel
-	tvi.cchTextMax = LEN (newLabel)
-
-	RETURN SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
-END FUNCTION
-'
 ' ######################################
 ' #####  WinXTreeView_SetItemData  #####
 ' ######################################
@@ -8689,6 +8671,25 @@ FUNCTION WinXTreeView_SetItemData (hTV, hItem, newData)
 	IFZ ret THEN RETURN
 	RETURN $$TRUE		' success
 
+END FUNCTION
+'
+' #######################################
+' #####  WinXTreeView_SetItemLabel  #####
+' #######################################
+' Sets the lable for a tree view item
+' hTV = the handle to the tree view control
+' hItem = the item to set the label for
+' newLabel = the new label
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, STRING newLabel)
+	TVITEM tvi
+
+	tvi.mask = $$TVIF_HANDLE | $$TVIF_TEXT
+	tvi.hItem = hItem
+	tvi.pszText = &newLabel
+	tvi.cchTextMax = LEN (newLabel)
+
+	RETURN SendMessageA (hTV, $$TVM_SETITEM, 0, &tvi)
 END FUNCTION
 '
 ' #######################################
@@ -8985,15 +8986,16 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN
 	IFF autoSizerList[id].inUse THEN RETURN
 
-	' Guy-13jan11-#hWinPosInfo = BeginDeferWindowPos (cItem)
-	cItem = 0
+	' Guy-13jan11-compute nNumWindows for later call BeginDeferWindowPos (nNumWindows)
+	nNumWindows = 0
 	index = autoSizerList[id].iHead
 	DO WHILE index > -1
-		IF AUTOSIZER_ragged[id, index].hwnd THEN INC cItem
+		IF AUTOSIZER_ragged[id, index].hwnd THEN INC nNumWindows
 		index = AUTOSIZER_ragged[id, index].iNext
 	LOOP
-	IFZ cItem THEN RETURN
+	IFZ nNumWindows THEN RETURN ' none!
 
+	currPos = 0
 	IF (autoSizerList[id].direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
 		SELECT CASE autoSizerList[id].direction AND 0x00000003
 			CASE $$DIR_HORIZ
@@ -9001,19 +9003,17 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 			CASE $$DIR_VERT
 				currPos = h
 		END SELECT
-	ELSE
-		currPos = 0
 	ENDIF
 
-	' Guy-13jan11-cItem is known
+	' Guy-13jan11-nNumWindows was computed
 	' #hWinPosInfo = BeginDeferWindowPos (10)
-	#hWinPosInfo = BeginDeferWindowPos (cItem)
+
+	#hWinPosInfo = BeginDeferWindowPos (nNumWindows)
 	index = autoSizerList[id].iHead
 	DO WHILE index > -1
 		IF AUTOSIZER_ragged[id, index].hwnd THEN
 			currPos = autoSizerInfo_add (AUTOSIZER_ragged[id, index], autoSizerList[id].direction, x0, y0, w, h, currPos)
 		ENDIF
-
 		index = AUTOSIZER_ragged[id, index].iNext
 	LOOP
 	EndDeferWindowPos (#hWinPosInfo)
@@ -9058,6 +9058,7 @@ END FUNCTION
 ' #####  BINDING_Ov_Delete  #####
 ' ###############################
 ' Deletes a binding from the binding table
+' "overloading" BINDING_Delete
 ' idDelete = the id of the binding to delete
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION BINDING_Ov_Delete (idDelete)
@@ -9834,7 +9835,7 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 			IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN boxX = boxX - boxW
 	END SELECT
 
-	' adjust the width and height as necassary
+	' adjust the width and height as necessary
 	IF autoSizerBlock.flags AND $$SIZER_WCOMPLEMENT THEN autoSizerBlock.w = boxW - autoSizerBlock.w
 	IF autoSizerBlock.flags AND $$SIZER_HCOMPLEMENT THEN autoSizerBlock.h = boxH - autoSizerBlock.h
 
