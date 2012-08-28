@@ -19,7 +19,7 @@ FUNCTION $1_Init ()
 	SHARED $1_arrayUM[] ' a usage map so we can see which array elements are in use
 	SHARED $1_idMax
 
-	IFZ $1_array[]
+	IFZ $1_array[] THEN
 		DIM $1_array[7]
 		DIM $1_arrayUM[7]
 	ELSE
