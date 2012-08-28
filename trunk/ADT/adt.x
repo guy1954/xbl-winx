@@ -1351,7 +1351,7 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 END FUNCTION
 '
 ' ==============================
-' =====  ADT STRING_class  =====
+' =====  ADT STRING class  =====
 ' ==============================
 '
 ' #########################
@@ -1364,16 +1364,16 @@ FUNCTION STRING_Init ()
 	SHARED STRING_arrayUM[] ' a usage map so we can see which array elements are in use
 	SHARED STRING_idMax
 
-	IFZ STRING_array$[]
+	IFZ STRING_array$[] THEN
 		DIM STRING_array$[7]
 		DIM STRING_arrayUM[7]
+	ELSE
+		upper_slot = UBOUND (STRING_arrayUM[])
+		FOR i = 0 TO upper_slot
+			STRING_array$[i] = ""
+			STRING_arrayUM[i] = $$FALSE
+		NEXT i
 	ENDIF
-
-	upper_slot = UBOUND (STRING_arrayUM[])
-	FOR i = 0 TO upper_slot
-		STRING_array$[i] = ""
-		STRING_arrayUM[i] = $$FALSE
-	NEXT i
 	STRING_idMax = 0
 END FUNCTION
 '
