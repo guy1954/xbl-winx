@@ -1,18 +1,16 @@
-m4_define(`DeclareAccess',`
-'' Declaration of $1 class
-' ===========
-DECLARE FUNCTION $1_Init () '' initialize the $1 class ' initialize the $1 class
+m4_define(`DeclareAccess',`''
+' === $1 class ===
+'
+DECLARE FUNCTION $1_Init () ' initialize the $1 class
 DECLARE FUNCTION $1_New ($1 $1_item) ' add $1_item to $1 pool
 DECLARE FUNCTION $1_Get (id`,' $1 @$1_item) ' get data of a $1 item using its id
 DECLARE FUNCTION $1_Update (id`,' $1 $1_item) ' update data of a $1 item using its id
 DECLARE FUNCTION $1_Delete (id) ' delete a $1 item using its id
-DECLARE FUNCTION $1_Get_idMax () ' get $1 item id max
-)
+DECLARE FUNCTION $1_Get_idMax () ' get $1 item id max)
 
-m4_define(`DefineAccess',`
-'' Definition of $1 class
-' ==========
-
+m4_define(`DefineAccess',`''
+' === $1 class ===
+'
 ' Initializes the $1 class
 FUNCTION $1_Init ()
 	SHARED $1 $1_array[] ' an array of $1_item
@@ -30,14 +28,14 @@ FUNCTION $1_Init ()
 	ENDIF
 	$1_idMax = 0
 END FUNCTION
-
+'
 ' Adds a $1 item to $1 pool
 ' returns id on success or 0 on fail
-
+'
 ' Usage:
 'id = $1_New ($1_item)
 'IFZ id THEN ' can't add $1 item
-
+'
 FUNCTION $1_New ($1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
@@ -78,16 +76,16 @@ FUNCTION $1_New ($1 $1_item)
 	ENDIF
 	RETURN id ' return id
 END FUNCTION
-
+'
 ' Gets data of a $1 item using its id
 ' id = id of $1 item
 ' $1_item = returned data
 ' returns $$TRUE on success or $$FALSE on fail
-
+'
 ' Usage:
 'bOK = $1_Get (id`,' @$1_item)
 'IFF bOK THEN ' can't get $1 item
-
+'
 FUNCTION $1_Get (id`,' $1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
@@ -104,16 +102,16 @@ FUNCTION $1_Get (id`,' $1 $1_item)
 	ENDIF
 	$1_item = $1_Nil ' can't get $1 item
 END FUNCTION
-
+'
 ' Updates the data of a $1 item using its id
 ' id = id of $1 item
 ' $1_item = new data
 ' returns $$TRUE on success or $$FALSE on fail
-
+'
 ' Usage:
 'bOK = $1_Update (id`,' $1_item)
 'IFF bOK THEN ' can't update $1 item
-
+'
 FUNCTION $1_Update (id`,' $1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
@@ -127,15 +125,15 @@ FUNCTION $1_Update (id`,' $1 $1_item)
 		ENDIF
 	ENDIF
 END FUNCTION
-
+'
 ' Deletes a $1 item using its id
 ' id = id of $1 item
 ' returns $$TRUE on success or $$FALSE on fail
-
+'
 ' Usage:
 'bOK = $1_Delete (id)
 'IFF bOK THEN ' can't delete $1 item
-
+'
 FUNCTION $1_Delete (id)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[] ' usage map
@@ -147,18 +145,17 @@ FUNCTION $1_Delete (id)
 		RETURN $$TRUE ' OK!
 	ENDIF
 END FUNCTION
-
+'
 ' Gets $1 item id max
-
+'
 ' Usage: walk thru the $1 pool
 'idMax = $1_Get_idMax () ' get $1 item id max
 'FOR id = 1 TO idMax
 '	bOK = $1_Get (id`,' @$1_item)
 '	IFF bOK THEN DO NEXT		' deleted
 'NEXT id
-
+'
 FUNCTION $1_Get_idMax ()
 	SHARED $1_idMax
 	RETURN $1_idMax
-END FUNCTION
-)
+END FUNCTION)
