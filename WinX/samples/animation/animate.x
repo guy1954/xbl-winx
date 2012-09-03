@@ -5,7 +5,7 @@
 '
 ' Demonstrates the animation control
 '
-' This program is in the public domain
+' This program is in the public domain.
 '
 VERSION	"1.00"
 '

@@ -495,12 +495,12 @@ DECLARE FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
 
 DECLARE FUNCTION WinXHide (hWnd)
 
-DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an INI file
+DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an .INI file
 DECLARE FUNCTION WinXIni_DeleteSection (iniPath$, section$) ' delete section from .INI file
 DECLARE FUNCTION WinXIni_LoadKeyList (iniPath$, section$, @key$[]) ' load all key names of a given section
 DECLARE FUNCTION WinXIni_LoadSectionList (iniPath$, @section$[]) ' load all section names
-DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from INI file
-DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the INI file
+DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from .INI file
+DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the .INI file
 
 DECLARE FUNCTION WinXIsKeyDown (key)
 DECLARE FUNCTION WinXIsMousePressed (button)
@@ -664,8 +664,8 @@ DECLARE FUNCTION WinXTreeView_GetRootItem (hTV) ' get the handle of the tree vie
 DECLARE FUNCTION WinXTreeView_GetSelection (hTV)
 DECLARE FUNCTION WinXTreeView_RemoveCheckBox (hTV, hItem) ' remove the check box of a tree view item
 DECLARE FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked) ' set the item's check state of a tree view with check boxes
-DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
 DECLARE FUNCTION WinXTreeView_SetItemData (hTV, hItem, data) ' Set the lParam data member of the TreeView item
+DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
 DECLARE FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
 
@@ -686,14 +686,11 @@ DeclareAccess(BINDING)
 DeclareAccess(SPLITTER)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
-'
-'
+
 DECLARE FUNCTION AUTOSIZER_Delete (id)
 DECLARE FUNCTION AUTOSIZER_Init ()
 DECLARE FUNCTION AUTOSIZER_New (id, AUTOSIZER autoSizerBlock)
-
 DECLARE FUNCTION AUTOSIZER_Ov_New (direction)
-
 DECLARE FUNCTION AUTOSIZER_Show (id, visible)
 DECLARE FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 
@@ -747,11 +744,9 @@ DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
 DECLARE FUNCTION handler_Call (id, @ret, hWnd, wMsg, wParam, lParam)
 DECLARE FUNCTION handler_Delete (id)
 DECLARE FUNCTION handler_Init ()
-
 DECLARE FUNCTION handler_Msg_add (id, MSGHANDLER handler)
 DECLARE FUNCTION handler_Msg_find_by_code (id, msg)
 DECLARE FUNCTION handler_Msg_get (id, index, MSGHANDLER @handler)
-
 DECLARE FUNCTION handler_New ()
 
 DECLARE FUNCTION initPrintInfo ()
@@ -4326,7 +4321,7 @@ FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 
 	IFZ section$ THEN RETURN defVal$
 
-	' read from the INI file
+	' read from the .INI file
 	' bufSize = $$MAX_PATH
 	bufSize = 4095
 	buf$ = NULL$ (bufSize)
