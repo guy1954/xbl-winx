@@ -3,7 +3,7 @@ VERSION "0.6.0.15"
 '
 ' WinX - *The* GUI library for XBlite
 ' (c) Callum Lowcay 2007-2008
-' Guy Lonne 2009-2012.
+'     Guy Lonne 2009-2012.
 '
 ' The WinX GUI library is distributed under the
 ' terms and conditions of the GNU LGPL, see the file COPYING_LIB
@@ -82,6 +82,8 @@ VERSION "0.6.0.15"
 ' 0.6.0.15-Guy-19jul12-full support for tree view dragNdrop and label editing.
 '          Guy-19jul12-added function WinXDisplayHelpFile (helpFile$): display the contents of helpFile$
 '          Guy-23jul12-coded callback for .onDrag and .onLabelEdit (see demo WinX_0_6_0_15_samples\treeview\treeview.x)
+'          Guy-11sep12-WinXListBox_RemoveAllItems : remove all items from a list box
+'          Guy-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from a extended combo box
 '
 ' Win32API DLL headers
 '
@@ -383,7 +385,7 @@ DECLARE FUNCTION WinXAddButton (parent, title$, hImage, idCtr)
 DECLARE FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
 DECLARE FUNCTION WinXAddCheckButton (parent, title$, isFirst, pushlike, idCtr)
 DECLARE FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
-DECLARE FUNCTION WinXAddControl (parent, class$, title$, style, exStyle, idCtr)
+DECLARE FUNCTION WinXAddControl (parent, class$, title$, style, exStyle, idCtr) ' add a custom control
 DECLARE FUNCTION WinXAddEdit (parent, title$, style, idCtr)
 DECLARE FUNCTION WinXAddGroupBox (parent, label$, idCtr)
 DECLARE FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
@@ -423,15 +425,18 @@ DECLARE FUNCTION WinXClip_IsImage ()
 DECLARE FUNCTION WinXClip_IsString ()
 DECLARE FUNCTION WinXClip_PutImage (hImage)
 DECLARE FUNCTION WinXClip_PutString (Stri$)
+
 DECLARE FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
 DECLARE FUNCTION WinXComboBox_GetEditText$ (hCombo)
 DECLARE FUNCTION WinXComboBox_GetItem$ (hCombo, index)
 DECLARE FUNCTION WinXComboBox_GetSelection (hCombo)
+DECLARE FUNCTION WinXComboBox_RemoveAllItems (hCombo)
 DECLARE FUNCTION WinXComboBox_RemoveItem (hCombo, index)
 DECLARE FUNCTION WinXComboBox_SetEditText (hCombo, text$)
 DECLARE FUNCTION WinXComboBox_SetSelection (hCombo, index)
 
 DECLARE FUNCTION WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stamp
+
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity)
 DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
@@ -439,6 +444,7 @@ DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 DECLARE FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwritePrompt) ' display a SaveFile dialog box
 DECLARE FUNCTION WinXDialog_SysInfo (@msInfo$) ' run Microsoft program "System Information"
+
 DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path dir$ with $$PathSlash$
 DECLARE FUNCTION WinXDir_Create (dir$) ' create directory dir$
 DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if directory dir$ exists
@@ -448,6 +454,7 @@ DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
 DECLARE FUNCTION WinXDisplay (hWnd)
 DECLARE FUNCTION WinXDisplayHelpFile (helpFile$) ' display the contents of helpFile$
 DECLARE FUNCTION WinXDoEvents ()
+
 DECLARE FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 DECLARE FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 DECLARE FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
@@ -511,6 +518,7 @@ DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
 DECLARE FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 DECLARE FUNCTION WinXListBox_GetItem$ (hListBox, index)
 DECLARE FUNCTION WinXListBox_GetSelection (hListBox, @index[])
+DECLARE FUNCTION WinXListBox_RemoveAllItems (hListBox)
 DECLARE FUNCTION WinXListBox_RemoveItem (hListBox, index)
 DECLARE FUNCTION WinXListBox_SetCaret (hListBox, item)
 DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
@@ -629,19 +637,23 @@ DECLARE FUNCTION WinXTabs_DeleteTab (hTabs, iTab)
 DECLARE FUNCTION WinXTabs_GetAutosizerSeries (hTabs, iTab)
 DECLARE FUNCTION WinXTabs_GetCurrentTab (hTabs)
 DECLARE FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
+
 DECLARE FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid)
 DECLARE FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
+
 DECLARE FUNCTION WinXToolbar_AddButton (hToolbar, commandId, iImage, tooltipText$, optional, moveable)
 DECLARE FUNCTION WinXToolbar_AddControl (hToolbar, hCtr, w)
 DECLARE FUNCTION WinXToolbar_AddSeparator (hToolbar)
 DECLARE FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, tooltipText$, mutex, optional, moveable)
 DECLARE FUNCTION WinXToolbar_EnableButton (hToolbar, iButton, enable)
 DECLARE FUNCTION WinXToolbar_ToggleButton (hToolbar, iButton, on)
+
 DECLARE FUNCTION WinXTracker_GetPos (hTracker)
 DECLARE FUNCTION WinXTracker_SetLabels (hTracker, leftLabel$, rightLabel$)
 DECLARE FUNCTION WinXTracker_SetPos (hTracker, newPos)
 DECLARE FUNCTION WinXTracker_SetRange (hTracker, USHORT min, USHORT max, ticks)
 DECLARE FUNCTION WinXTracker_SetSelRange (hTracker, USHORT start, USHORT end)
+
 DECLARE FUNCTION WinXTreeView_AddCheckBoxes (hTV) ' add the check boxes to a tree view
 DECLARE FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect, item$)
 DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem) ' collapse the tree view item
@@ -765,6 +777,8 @@ $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
 $$LeftSubSizer$  = "WinXLeftSubSizer"
 $$RightSubSizer$ = "WinXRightSubSizer" ' Guy-16mar11-unused???
+'
+$$XBL_DIR$ = "XBLDIR"
 '
 '
 ' #####################
@@ -2149,6 +2163,18 @@ FUNCTION WinXComboBox_GetSelection (hCombo)
 	RETURN SendMessageA (hCombo, $$CB_GETCURSEL, 0, 0)
 END FUNCTION
 '
+' #########################################
+' #####  WinXComboBox_RemoveAllItems  #####
+' #########################################
+' removes all items from a extended combo box
+' hCombo = the handle to the extended combo box
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXComboBox_RemoveAllItems (hCombo)
+	IFZ hCombo THEN RETURN
+	SendMessageA (hCombo, $$CB_RESETCONTENT, 0, 0)
+	RETURN $$TRUE
+END FUNCTION
+'
 ' #####################################
 ' #####  WinXComboBox_RemoveItem  #####
 ' #####################################
@@ -2775,20 +2801,25 @@ FUNCTION WinXDir_Exists (dir$)
 	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE		' success directory exists
 
 END FUNCTION
-
+'
+' ################################
+' #####  WinXDir_GetXblDir$  #####
+' ################################
+'
+' Gets the complete path of xblite's directory
 ' returns "" on fail
 '
 ' ----- Usage -----
 'xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
 ' --> eg. C:\xblite\
 '
-FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
+FUNCTION WinXDir_GetXblDir$ ()
 	STATIC s_xblDir$
 
 	IF s_xblDir$ THEN RETURN s_xblDir$
 
 	' try Windows' environment variables
-	XstGetEnvironmentVariable ("XBLDIR", @s_xblDir$)
+	XstGetEnvironmentVariable ($$XBL_DIR$, @s_xblDir$)
 	s_xblDir$ = WinXPath_Trim$ (s_xblDir$)
 
 	IFZ s_xblDir$ THEN
@@ -2808,7 +2839,7 @@ FUNCTION WinXDir_GetXblDir$ ()		' Gets the complete path of xblite's directory
 				zeroOK = RegEnumValueA (hKey, dwIndex, &szName$, &lenName, 0, &wType, &szData$, &lenData)
 				IFZ zeroOK THEN		' OK!
 					subKey$ = CSIZE$ (szName$)
-					IF UCASE$ (subKey$) = "XBLDIR" THEN
+					IF UCASE$ (subKey$) = $$XBL_DIR$ THEN
 						s_xblDir$ = CSIZE$ (szData$)
 						s_xblDir$ = WinXPath_Trim$ (s_xblDir$)
 						EXIT DO
@@ -4533,6 +4564,18 @@ FUNCTION WinXListBox_GetSelection (hListBox, r_idxSel[])
 	RETURN r_cSel
 END FUNCTION
 '
+' ########################################
+' #####  WinXListBox_RemoveAllItems  #####
+' ########################################
+' removes all items from a list box
+' hListBox = the handle to the list box
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListBox_RemoveAllItems (hListBox)
+	IFZ hListBox THEN RETURN
+	SendMessageA (hListBox, $$LB_RESETCONTENT, 0, 0)
+	RETURN $$TRUE
+END FUNCTION
+'
 ' ####################################
 ' #####  WinXListBox_RemoveItem  #####
 ' ####################################
@@ -4825,11 +4868,8 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' ----- Usage -----
-'count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) ' number of items
-'IF count THEN
-'	iItem = count - 1		' last item
-'	WinXListView_GetItemText (hLV, iItem, 1, @text$[])		' retrieve the first 2 columns
-'ENDIF
+' retrieve the first 2 columns of the 1st item
+'bOK = WinXListView_GetItemText (hLV, 0, 1, @text$[])
 '
 FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_cell$[])
 	LVITEM lvi
@@ -6888,11 +6928,15 @@ FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY
 	IFZ sa.length THEN pSA = 0 ELSE pSA = &sa
 
 	ret = $$FALSE
-	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+'	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey)
+	IFZ zeroOK THEN		' (0 is for OK!)
 		GOSUB QueryVariable
 		RegCloseKey (hSubKey)
 	ELSE
-		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+'		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition)
+		IFZ zeroOK THEN		' (0 is for OK!)
 			SELECT CASE disposition
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
@@ -6937,7 +6981,9 @@ FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY
 
 	four = 4
 	ret = $$FALSE
-	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+'	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey)
+	IFZ zeroOK THEN		' (0 is for OK!)
 		IF RegQueryValueExA (hSubKey, &value$, 0, &type, &result, &four) = $$ERROR_SUCCESS THEN
 			ret = $$TRUE
 		ELSE
@@ -6947,7 +6993,9 @@ FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY
 		ENDIF
 		RegCloseKey (hSubKey)
 	ELSE
-		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+'		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition)
+		IFZ zeroOK THEN		' (0 is for OK!)
 			SELECT CASE disposition
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
@@ -6978,11 +7026,15 @@ FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECUR
 	IFZ sa.length THEN pSA = 0 ELSE pSA = &sa
 
 	ret = $$FALSE
-	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+'	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey)
+	IFZ zeroOK THEN		' (0 is for OK!)
 		GOSUB QueryVariable
 		RegCloseKey (hSubKey)
 	ELSE
-		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+'		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition)
+		IFZ zeroOK THEN		' (0 is for OK!)
 			SELECT CASE disposition
 				CASE $$REG_OPENED_EXISTING_KEY : GOSUB QueryVariable
 				CASE $$REG_CREATED_NEW_KEY
@@ -7028,11 +7080,15 @@ FUNCTION WinXRegistry_WriteBin (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, b
 	IFZ sa.length THEN pSA = 0 ELSE pSA = &sa
 
 	ret = $$FALSE
-	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+'	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey)
+	IFZ zeroOK THEN		' (0 is for OK!)
 		IF RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &buf$, LEN (buf$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
 		RegCloseKey (hSubKey)
 	ELSE
-		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+'		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition)
+		IFZ zeroOK THEN		' (0 is for OK!)
 			IF RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &buf$, LEN (buf$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			RegCloseKey (hSubKey)
 		ENDIF
@@ -7056,11 +7112,15 @@ FUNCTION WinXRegistry_WriteInt (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, i
 	IFZ sa.length THEN pSA = 0 ELSE pSA = &sa
 
 	ret = $$FALSE
-	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+'	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey)
+	IFZ zeroOK THEN		' (0 is for OK!)
 		IF RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &int, 4) = $$ERROR_SUCCESS THEN ret = $$TRUE
 		RegCloseKey (hSubKey)
 	ELSE
-		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+'		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition)
+		IFZ zeroOK THEN		' (0 is for OK!)
 			IF RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &int, 4) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			RegCloseKey (hSubKey)
 		ENDIF
@@ -7084,11 +7144,15 @@ FUNCTION WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa
 	IFZ sa.length THEN pSA = 0 ELSE pSA = &sa
 
 	ret = $$FALSE
-	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+'	IF RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey) = $$ERROR_SUCCESS THEN
+	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ | $$KEY_WRITE, &hSubKey)
+	IFZ zeroOK THEN		' (0 is for OK!)
 		IF RegSetValueExA (hSubKey, &value$, 0, $$REG_SZ, &buf$, LEN (buf$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
 		RegCloseKey (hSubKey)
 	ELSE
-		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+'		IF RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition) = $$ERROR_SUCCESS THEN
+		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ | $$KEY_WRITE, pSA, &hSubKey, &disposition)
+		IFZ zeroOK THEN		' (0 is for OK!)
 			IF RegSetValueExA (hSubKey, &value$, 0, $$REG_SZ, &buf$, LEN (buf$)) = $$ERROR_SUCCESS THEN ret = $$TRUE
 			RegCloseKey (hSubKey)
 		ENDIF
