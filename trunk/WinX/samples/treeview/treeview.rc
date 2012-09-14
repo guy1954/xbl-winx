@@ -1,4 +1,4 @@
 #include "winres.h"
 
-1 24 "treeview.manifest"
+1 24 "manifest.xml"
 imagesImg    BITMAP  images.bmp
