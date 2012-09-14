@@ -378,6 +378,7 @@ $$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 
 DECLARE FUNCTION WinX ()
+
 DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr)
@@ -448,7 +449,8 @@ DECLARE FUNCTION WinXDialog_SysInfo (@msInfo$) ' run Microsoft program "System I
 DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path dir$ with $$PathSlash$
 DECLARE FUNCTION WinXDir_Create (dir$) ' create directory dir$
 DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if directory dir$ exists
-DECLARE FUNCTION WinXDir_GetXblDir$ () ' get xblite's dir
+DECLARE FUNCTION WinXDir_GetXBasicDir$ () ' get the complete path of XBasic's directory
+DECLARE FUNCTION WinXDir_GetXblDir$ () ' get the complete path of XBLite's directory
 DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
 
 DECLARE FUNCTION WinXDisplay (hWnd)
@@ -777,8 +779,6 @@ $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
 $$LeftSubSizer$  = "WinXLeftSubSizer"
 $$RightSubSizer$ = "WinXRightSubSizer" ' Guy-16mar11-unused???
-'
-$$XBL_DIR$ = "XBLDIR"
 '
 '
 ' #####################
@@ -1720,7 +1720,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 		IFZ SetPropA (hCtr, &$$AutoSizerInfo$, idBlock) THEN RETURN
 
 		' make a splitter if we need one
-		IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
+		IF autoSizerBlock.flags & $$SIZER_SPLITTER THEN
 			splitterInfo.group = series
 			splitterInfo.id = idBlock - 1
 			splitterInfo.direction = autoSizerList[series].direction
@@ -2802,6 +2802,62 @@ FUNCTION WinXDir_Exists (dir$)
 
 END FUNCTION
 '
+' ###################################
+' #####  WinXDir_GetXBasicDir$  #####
+' ###################################
+'
+' Gets the complete path of XBasic's directory
+' returns "" on fail
+'
+' ----- Usage -----
+'xbasicDir$ = WinXDir_GetXBasicDir$ () ' get XBasic's dir
+' --> eg. C:\xb\
+'
+FUNCTION WinXDir_GetXBasicDir$ ()
+	STATIC s_xbasicDir$
+
+	IF s_xbasicDir$ THEN RETURN s_xbasicDir$
+
+	' try Windows' environment variables
+	XstGetEnvironmentVariable ("XBDIR", @s_xbasicDir$)
+	s_xbasicDir$ = WinXPath_Trim$ (s_xbasicDir$)
+
+	IFZ s_xbasicDir$ THEN
+		' bad new! try Windows' registry
+		envKey$ = "Environment"
+		zeroOK = RegOpenKeyExA ($$HKEY_CURRENT_USER, &envKey$, 0, $$KEY_READ, &hKey)
+		IFZ zeroOK THEN		' (0 is for OK!)
+			dwIndex = 0
+			wType = 0
+			DO
+				lenName = $$MAX_PATH
+				szName$ = NULL$ (lenName)
+				'
+				lenData = $$MAX_PATH
+				szData$ = NULL$ (lenData)
+				'
+				zeroOK = RegEnumValueA (hKey, dwIndex, &szName$, &lenName, 0, &wType, &szData$, &lenData)
+				IFZ zeroOK THEN		' OK!
+					subKey$ = CSIZE$ (szName$)
+					IF UCASE$ (subKey$) = "XBDIR" THEN
+						s_xbasicDir$ = CSIZE$ (szData$)
+						s_xbasicDir$ = WinXPath_Trim$ (s_xbasicDir$)
+						EXIT DO
+					ENDIF
+					INC dwIndex
+				ENDIF
+			LOOP UNTIL zeroOK
+			'
+			RegCloseKey (hKey)
+		ENDIF
+	ENDIF
+
+	IFZ s_xbasicDir$ THEN s_xbasicDir$ = "C:" + $$PathSlash$ + "xb"
+	WinXDir_AppendSlash (@s_xbasicDir$)		' end directory path with \
+
+	RETURN s_xbasicDir$
+END FUNCTION
+'
 ' ################################
 ' #####  WinXDir_GetXblDir$  #####
 ' ################################
@@ -2819,7 +2875,7 @@ FUNCTION WinXDir_GetXblDir$ ()
 	IF s_xblDir$ THEN RETURN s_xblDir$
 
 	' try Windows' environment variables
-	XstGetEnvironmentVariable ($$XBL_DIR$, @s_xblDir$)
+	XstGetEnvironmentVariable ("XBLDIR", @s_xblDir$)
 	s_xblDir$ = WinXPath_Trim$ (s_xblDir$)
 
 	IFZ s_xblDir$ THEN
@@ -2839,7 +2895,7 @@ FUNCTION WinXDir_GetXblDir$ ()
 				zeroOK = RegEnumValueA (hKey, dwIndex, &szName$, &lenName, 0, &wType, &szData$, &lenData)
 				IFZ zeroOK THEN		' OK!
 					subKey$ = CSIZE$ (szName$)
-					IF UCASE$ (subKey$) = $$XBL_DIR$ THEN
+					IF UCASE$ (subKey$) = "XBLDIR" THEN
 						s_xblDir$ = CSIZE$ (szData$)
 						s_xblDir$ = WinXPath_Trim$ (s_xblDir$)
 						EXIT DO
@@ -2858,13 +2914,14 @@ FUNCTION WinXDir_GetXblDir$ ()
 	RETURN s_xblDir$
 END FUNCTION
 
+' Gets the complete path of xblite's programs' directory
 ' returns "" on fail
 '
 ' ----- Usage -----
 'xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get XBLite's program dir
 ' --> eg. C:\xblite\programs\
 '
-FUNCTION WinXDir_GetXblProgramDir$ ()		' Gets the complete path of xblite's programs' directory
+FUNCTION WinXDir_GetXblProgramDir$ ()
 
 	xblPgmDir$ = WinXDir_GetXblDir$ () + "programs" + $$PathSlash$
 	RETURN xblPgmDir$
@@ -3591,7 +3648,7 @@ FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE r_data[])
 	DIM r_data[maxPixel]
 	FOR i = 0 TO maxPixel
 		pixel = ULONGAT (bmp.bits, i << 2)
-		r_data[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
+		r_data[i] = UBYTE ((pixel >> downshift) & 0x000000FF)
 	NEXT i
 
 	RETURN $$TRUE		' success
@@ -3701,10 +3758,10 @@ FUNCTION LOGFONT WinXDraw_MakeLogFont (STRING font, height, style)
 
 	logFont.height = height
 	logFont.width = 0
-	IF style AND $$FONT_BOLD THEN logFont.weight = $$FW_BOLD ELSE logFont.weight = $$FW_NORMAL
-	IF style AND $$FONT_ITALIC THEN logFont.italic = 1 ELSE logFont.italic = 0
-	IF style AND $$FONT_UNDERLINE THEN logFont.underline = 1 ELSE logFont.underline = 0
-	IF style AND $$FONT_STRIKEOUT THEN logFont.strikeOut = 1 ELSE logFont.strikeOut = 0
+	IF style & $$FONT_BOLD THEN logFont.weight = $$FW_BOLD ELSE logFont.weight = $$FW_NORMAL
+	IF style & $$FONT_ITALIC THEN logFont.italic = 1 ELSE logFont.italic = 0
+	IF style & $$FONT_UNDERLINE THEN logFont.underline = 1 ELSE logFont.underline = 0
+	IF style & $$FONT_STRIKEOUT THEN logFont.strikeOut = 1 ELSE logFont.strikeOut = 0
 	logFont.charSet = $$DEFAULT_CHARSET
 	logFont.outPrecision = $$OUT_DEFAULT_PRECIS
 	logFont.clipPrecision = $$CLIP_DEFAULT_PRECIS
@@ -3839,7 +3896,7 @@ FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 
 	maxPixel = bmp.width * bmp.height - 1
 	FOR i = 0 TO maxPixel
-		ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) AND 0x00FFFFFFFF) | intAlpha
+		ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) & 0x00FFFFFFFF) | intAlpha
 	NEXT i
 
 	RETURN $$TRUE		' success
@@ -3860,12 +3917,12 @@ FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE data[])
 	IFZ GetObjectA (hImage, SIZE (BITMAP), &bmp) THEN RETURN
 
 	upshift = channel << 3
-	mask = NOT (255 << upshift)
+	mask = ~(255 << upshift)
 
 	maxPixel = bmp.width * bmp.height - 1
 	IF maxPixel <> UBOUND (data[]) THEN RETURN
 	FOR i = 0 TO maxPixel
-		ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) AND mask) | ULONG (data[i]) << upshift
+		ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) & mask) | ULONG (data[i]) << upshift
 	NEXT i
 
 	RETURN $$TRUE		' success
@@ -4406,7 +4463,7 @@ END FUNCTION
 FUNCTION WinXIsKeyDown (key)
 	' Have to check the high order bit, and since this returns a short that might not be
 	' where you expected it.
-	IFZ GetKeyState (key) AND 0x8000 THEN RETURN $$FALSE ELSE RETURN $$TRUE		' key pressed
+	IFZ GetKeyState (key) & 0x8000 THEN RETURN $$FALSE ELSE RETURN $$TRUE		' key pressed
 END FUNCTION
 '
 ' ################################
@@ -4460,7 +4517,7 @@ END FUNCTION
 FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 	IFZ hListBox THEN RETURN $$LB_ERR		' fail
 
-	IF GetWindowLongA (hListBox, $$GWL_STYLE) AND $$LBS_SORT THEN
+	IF GetWindowLongA (hListBox, $$GWL_STYLE) & $$LBS_SORT THEN
 		RETURN SendMessageA (hListBox, $$LB_ADDSTRING, 0, &item$)
 	ELSE
 		IF index < 0 THEN index = -1
@@ -4543,7 +4600,7 @@ FUNCTION WinXListBox_GetSelection (hListBox, r_idxSel[])
 	IFZ hListBox THEN RETURN
 
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
-	SELECT CASE style AND $$LBS_EXTENDEDSEL
+	SELECT CASE style & $$LBS_EXTENDEDSEL
 		CASE $$LBS_EXTENDEDSEL		' multi-selections
 			r_cSel = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
 			IF r_cSel > 0 THEN
@@ -4620,7 +4677,7 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 	IFZ index[] THEN RETURN
 
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
-	IF (style AND $$LBS_EXTENDEDSEL) = $$LBS_EXTENDEDSEL THEN
+	IF (style & $$LBS_EXTENDEDSEL) = $$LBS_EXTENDEDSEL THEN
 		' first, deselect everything
 		SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
 		'
@@ -5201,7 +5258,7 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	IFZ count THEN RETURN		' empty
 
 	' unselect all
-	lvi.state = NOT $$LVIS_SELECTED
+	lvi.state = ~$$LVIS_SELECTED
 	lvi.stateMask = $$LVIS_SELECTED
 	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
 
@@ -5277,7 +5334,7 @@ FUNCTION WinXListView_SetView (hLV, view)
 	IFZ hLV THEN RETURN
 
 	style = GetWindowLongA (hLV, $$GWL_STYLE)
-	style = (style AND NOT ($$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT)) OR view
+	style = (style & NOT ($$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT)) | view
 	SetWindowLongA (hLV, $$GWL_STYLE, style)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -6194,7 +6251,7 @@ FUNCTION WinXPrint_PageSetup (parent)
 	printInfo.marginBottom = pageSetupDlg.rtMargin.bottom
 	IFZ printInfo.hDevMode THEN printInfo.hDevMode = pageSetupDlg.hDevMode
 	IFZ printInfo.hDevNames THEN printInfo.hDevNames = pageSetupDlg.hDevNames
-	IF pageSetupDlg.flags AND $$PSD_INHUNDREDTHSOFMILLIMETERS THEN
+	IF pageSetupDlg.flags & $$PSD_INHUNDREDTHSOFMILLIMETERS THEN
 		printInfo.marginLeft = XLONG (DOUBLE (printInfo.marginLeft) / 2.54)
 		printInfo.marginRight = XLONG (DOUBLE (printInfo.marginRight) / 2.54)
 		printInfo.marginTop = XLONG (DOUBLE (printInfo.marginTop) / 2.54)
@@ -6251,11 +6308,11 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			IFZ printInfo.hDevMode THEN printInfo.hDevMode = printDlg.hDevMode
 			IFZ printInfo.hDevNames THEN printInfo.hDevNames = printDlg.hDevNames
 			printInfo.printSetupFlags = printDlg.flags
-			IF printDlg.flags AND $$PD_PAGENUMS THEN
+			IF printDlg.flags & $$PD_PAGENUMS THEN
 				rangeMin = printDlg.nFromPage		'range
 				rangeMax = printDlg.nToPage
 			ELSE
-				IF printDlg.flags AND $$PD_SELECTION THEN
+				IF printDlg.flags & $$PD_SELECTION THEN
 					rangeMin = 0		'selection
 				ELSE
 					rangeMax = -1		'all pages
@@ -6323,7 +6380,7 @@ FUNCTION WinXProgress_SetMarquee (hProg, enable)
 		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) | $$PBS_MARQUEE)
 		SendMessageA (hProg, $$PBM_SETMARQUEE, 1, 50)
 	ELSE
-		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) AND NOT $$PBS_MARQUEE)
+		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) & (~$$PBS_MARQUEE))
 		SendMessageA (hProg, $$PBM_SETMARQUEE, $$FALSE, 50)
 	ENDIF
 	RETURN $$TRUE		' success
@@ -7174,7 +7231,7 @@ FUNCTION WinXScroll_GetPos (hWnd, direction, @pos)
 
 	si.cbSize = SIZE (SCROLLINFO)
 	si.fMask = $$SIF_POS
-	SELECT CASE direction AND 0x00000003
+	SELECT CASE direction & 0x00000003
 		CASE $$DIR_HORIZ
 			GetScrollInfo (hWnd, $$SB_HORZ, &si)
 		CASE $$DIR_VERT
@@ -7207,7 +7264,7 @@ FUNCTION WinXScroll_Scroll (hWnd, direction, unitType, scrollingDirection)
 
 	i = ABS (scrollingDirection)
 	IF i THEN
-		SELECT CASE direction AND 0x00000003
+		SELECT CASE direction & 0x00000003
 			CASE $$DIR_HORIZ
 				FOR i = 1 TO i
 					SendMessageA (hWnd, $$WM_HSCROLL, wParam, 0)
@@ -7249,7 +7306,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 	si.cbSize = SIZE (SCROLLINFO)
 	si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
 
-	SELECT CASE direction AND 0x00000003
+	SELECT CASE direction & 0x00000003
 		CASE $$DIR_HORIZ
 			binding.hScrollPageM = mul
 			binding.hScrollPageC = constant
@@ -7288,7 +7345,7 @@ FUNCTION WinXScroll_SetPos (hWnd, direction, pos)
 	si.cbSize = SIZE (SCROLLINFO)
 	si.fMask = $$SIF_POS
 	si.nPos = pos
-	SELECT CASE direction AND 0x00000003
+	SELECT CASE direction & 0x00000003
 		CASE $$DIR_HORIZ : SetScrollInfo (hWnd, $$SB_HORZ, &si, 1)		' redraw
 		CASE $$DIR_VERT : SetScrollInfo (hWnd, $$SB_VERT, &si, 1)		' redraw
 	END SELECT
@@ -7309,7 +7366,7 @@ FUNCTION WinXScroll_SetRange (hWnd, direction, min, max)
 	SCROLLINFO si
 	RECT rect
 
-	SELECT CASE direction AND 0x00000003
+	SELECT CASE direction & 0x00000003
 		CASE $$DIR_HORIZ : sb = $$SB_HORZ
 		CASE $$DIR_VERT : sb = $$SB_VERT
 		CASE ELSE : RETURN
@@ -7338,8 +7395,8 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXScroll_Show (hWnd, horiz, vert)
 	style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	IF horiz THEN style = style | $$WS_HSCROLL ELSE style = style AND NOT $$WS_HSCROLL
-	IF vert THEN style = style | $$WS_VSCROLL ELSE style = style AND NOT $$WS_VSCROLL
+	IF horiz THEN style = style | $$WS_HSCROLL ELSE style = style & (~$$WS_HSCROLL)
+	IF vert THEN style = style | $$WS_VSCROLL ELSE style = style & (~$$WS_VSCROLL)
 	SetWindowLongA (hWnd, $$GWL_STYLE, style)
 	SetWindowPos (hWnd, 0, 0, 0, 0, 0, $$SWP_NOMOVE | $$SWP_NOSIZE | $$SWP_NOZORDER | $$SWP_FRAMECHANGED)
 	RETURN $$TRUE		' success
@@ -7800,7 +7857,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	IFF dock THEN
 		splitterInfo.dock = $$DOCK_DISABLED
 	ELSE
-		IF (autoSizerList[series].direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
+		IF (autoSizerList[series].direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
 			splitterInfo.dock = $$DOCK_BACKWARD
 		ELSE
 			splitterInfo.dock = $$DOCK_FORWARD
@@ -8140,7 +8197,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_ToggleButton (hToolbar, idButton, on)
 	state = SendMessageA (hToolbar, $$TB_GETSTATE, idButton, 0)
-	IF on THEN state = state | $$TBSTATE_CHECKED ELSE state = state AND NOT ($$TBSTATE_CHECKED)
+	IF on THEN state = state | $$TBSTATE_CHECKED ELSE state = state & (~$$TBSTATE_CHECKED)
 	' Guy-13jan11-SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
 	ret = SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
 	IFZ ret THEN RETURN
@@ -9055,8 +9112,8 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	IFZ nNumWindows THEN RETURN ' none!
 
 	currPos = 0
-	IF (autoSizerList[id].direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
-		SELECT CASE autoSizerList[id].direction AND 0x00000003
+	IF (autoSizerList[id].direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
+		SELECT CASE autoSizerList[id].direction & 0x00000003
 			CASE $$DIR_HORIZ
 				currPos = w
 			CASE $$DIR_VERT
@@ -9198,7 +9255,7 @@ SUB GetItemText
 	lvi.pszText = &buf$
 	lvi.cchTextMax = bufSize - 1
 	lvi.iItem = item1
-	lvi.iSubItem = lvs_iCol AND 0x7FFFFFFF
+	lvi.iSubItem = lvs_iCol & 0x7FFFFFFF
 
 	SendMessageA (hLV, $$LVM_GETITEM, index, &lvi)
 
@@ -9347,7 +9404,7 @@ FUNCTION SPLITTER_Proc (hSplitter, wMsg, wParam, lParam)
 			ScreenToClient (hSplitter, &pt)
 			IF PtInRect (&dock, pt.x, pt.y) THEN FillRect (hDC, &dock, hHighlightBrush)
 
-			SELECT CASE splitterInfo.direction AND 0x00000003
+			SELECT CASE splitterInfo.direction & 0x00000003
 				CASE $$DIR_VERT
 					SELECT CASE TRUE
 						CASE $$DOCK_DISABLED
@@ -9518,7 +9575,7 @@ FUNCTION SPLITTER_Proc (hSplitter, wMsg, wParam, lParam)
 
 				autoSizerInfo_get (splitterInfo.group, splitterInfo.id, @autoSizerBlock)
 
-				SELECT CASE splitterInfo.direction AND 0x00000003
+				SELECT CASE splitterInfo.direction & 0x00000003
 					CASE $$DIR_HORIZ
 						delta = newMousePos.x - mousePos.x
 					CASE $$DIR_VERT
@@ -9526,7 +9583,7 @@ FUNCTION SPLITTER_Proc (hSplitter, wMsg, wParam, lParam)
 				END SELECT
 
 				IFZ delta THEN RETURN
-				IF (splitterInfo.direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
+				IF (splitterInfo.direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
 					autoSizerBlock.size = autoSizerBlock.size - delta
 					IF splitterInfo.min && autoSizerBlock.size < splitterInfo.min THEN
 						autoSizerBlock.size = splitterInfo.min
@@ -9652,7 +9709,7 @@ SUB GetRect
 		dock.bottom = 0
 		dock.top = 0
 	ELSE
-		SELECT CASE splitterInfo.direction AND 0x00000003
+		SELECT CASE splitterInfo.direction & 0x00000003
 			CASE $$DIR_VERT
 				GetClientRect (hSplitter, &rect)
 				dock.left = (rect.right - 120) / 2
@@ -9670,7 +9727,7 @@ SUB GetRect
 END SUB
 
 SUB SetSizeCursor
-	IF splitterInfo.direction AND 0x00000003 = $$DIR_HORIZ THEN
+	IF splitterInfo.direction & 0x00000003 = $$DIR_HORIZ THEN
 		SetCursor (LoadCursorA (0, $$IDC_SIZEWE))		' vertical bar
 	ELSE
 		SetCursor (LoadCursorA (0, $$IDC_SIZENS))		' horizontal bar
@@ -9820,12 +9877,12 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 
 	' calculate the SIZE
 	' first, the x, y, w and h of the box
-	SELECT CASE direction AND 0x00000003
+	SELECT CASE direction & 0x00000003
 		CASE $$DIR_VERT
 			IF autoSizerBlock.space <= 1 THEN autoSizerBlock.space = autoSizerBlock.space * nh
 
-			IF autoSizerBlock.flags AND $$SIZER_SIZERELREST THEN
-				IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN rest = currPos ELSE rest = nh - currPos
+			IF autoSizerBlock.flags & $$SIZER_SIZERELREST THEN
+				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN rest = currPos ELSE rest = nh - currPos
 				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
 				autoSizerBlock.size = autoSizerBlock.size - autoSizerBlock.space
 			ELSE
@@ -9842,26 +9899,26 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 			boxW = nw
 			boxH = autoSizerBlock.size
 
-			IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
+			IF autoSizerBlock.flags & $$SIZER_SPLITTER THEN
 				boxH = boxH - 8
 				autoSizerBlock.h = autoSizerBlock.h - 8
 
-				IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN h = boxY - boxH - 8 ELSE h = boxY + boxH
+				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN h = boxY - boxH - 8 ELSE h = boxY + boxH
 				MoveWindow (autoSizerBlock.hSplitter, boxX, h, boxW, 8, 0)
 				InvalidateRect (autoSizerBlock.hSplitter, 0, 1)		' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTER_Get (iSplitter, @splitterInfo)
-				IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nh - currPos - autoSizerBlock.space
+				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nh - currPos - autoSizerBlock.space
 				SPLITTER_Update (iSplitter, splitterInfo)
 			ENDIF
 
-			IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN boxY = boxY - boxH
+			IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN boxY = boxY - boxH
 		CASE $$DIR_HORIZ
 			IF autoSizerBlock.space <= 1 THEN autoSizerBlock.space = autoSizerBlock.space * nw
 
-			IF autoSizerBlock.flags AND $$SIZER_SIZERELREST THEN
-				IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN rest = currPos ELSE rest = nw - currPos
+			IF autoSizerBlock.flags & $$SIZER_SIZERELREST THEN
+				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN rest = currPos ELSE rest = nw - currPos
 				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
 				autoSizerBlock.size = autoSizerBlock.size - autoSizerBlock.space
 			ELSE
@@ -9877,40 +9934,40 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 			boxW = autoSizerBlock.size
 			boxH = nh
 
-			IF autoSizerBlock.flags AND $$SIZER_SPLITTER THEN
+			IF autoSizerBlock.flags & $$SIZER_SPLITTER THEN
 				boxW = boxW - 8
 				autoSizerBlock.w = autoSizerBlock.w - 8
 
-				IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN h = boxX - boxW - 8 ELSE h = boxX + boxW
+				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN h = boxX - boxW - 8 ELSE h = boxX + boxW
 				MoveWindow (autoSizerBlock.hSplitter, h, boxY, 8, boxH, 0)
 				InvalidateRect (autoSizerBlock.hSplitter, 0, 1)		' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTER_Get (iSplitter, @splitterInfo)
-				IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nw - currPos - autoSizerBlock.space
+				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nw - currPos - autoSizerBlock.space
 				SPLITTER_Update (iSplitter, splitterInfo)
 			ENDIF
 
-			IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN boxX = boxX - boxW
+			IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN boxX = boxX - boxW
 	END SELECT
 
 	' adjust the width and height as necessary
-	IF autoSizerBlock.flags AND $$SIZER_WCOMPLEMENT THEN autoSizerBlock.w = boxW - autoSizerBlock.w
-	IF autoSizerBlock.flags AND $$SIZER_HCOMPLEMENT THEN autoSizerBlock.h = boxH - autoSizerBlock.h
+	IF autoSizerBlock.flags & $$SIZER_WCOMPLEMENT THEN autoSizerBlock.w = boxW - autoSizerBlock.w
+	IF autoSizerBlock.flags & $$SIZER_HCOMPLEMENT THEN autoSizerBlock.h = boxH - autoSizerBlock.h
 
 	' adjust x and y
 	IF autoSizerBlock.x < 0 THEN
 		autoSizerBlock.x = (boxW - autoSizerBlock.w) \ 2
 	ELSE
-		IF autoSizerBlock.flags AND $$SIZER_XRELRIGHT THEN autoSizerBlock.x = boxW - autoSizerBlock.x
+		IF autoSizerBlock.flags & $$SIZER_XRELRIGHT THEN autoSizerBlock.x = boxW - autoSizerBlock.x
 	ENDIF
 	IF autoSizerBlock.y < 0 THEN
 		autoSizerBlock.y = (boxH - autoSizerBlock.h) \ 2
 	ELSE
-		IF autoSizerBlock.flags AND $$SIZER_YRELBOTTOM THEN autoSizerBlock.y = boxH - autoSizerBlock.y
+		IF autoSizerBlock.flags & $$SIZER_YRELBOTTOM THEN autoSizerBlock.y = boxH - autoSizerBlock.y
 	ENDIF
 
-	IF autoSizerBlock.flags AND $$SIZER_SERIES THEN
+	IF autoSizerBlock.flags & $$SIZER_SERIES THEN
 		AUTOSIZER_Size (hCtr, autoSizerBlock.x + boxX, autoSizerBlock.y + boxY, autoSizerBlock.w, autoSizerBlock.h)
 	ELSE
 		' Actually size the control
@@ -9934,7 +9991,7 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 		ENDIF
 	ENDIF
 
-	IF (direction AND $$DIR_REVERSE) = $$DIR_REVERSE THEN
+	IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
 		RETURN currPos - autoSizerBlock.space - autoSizerBlock.size
 	ELSE
 		RETURN currPos + autoSizerBlock.space + autoSizerBlock.size
@@ -11301,7 +11358,7 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	yoff = 0
 
 	style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	IF style AND $$WS_HSCROLL THEN
+	IF style & $$WS_HSCROLL THEN
 		si.cbSize = SIZE (SCROLLINFO)
 		si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
 		si.nPage = winW * binding.hScrollPageM + binding.hScrollPageC
@@ -11312,7 +11369,7 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 		xoff = si.nPos
 	ENDIF
 
-	IF style AND $$WS_VSCROLL THEN
+	IF style & $$WS_VSCROLL THEN
 		si.cbSize = SIZE (SCROLLINFO)
 		si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
 		si.nPage = winH * binding.vScrollPageM + binding.vScrollPageC
