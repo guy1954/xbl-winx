@@ -83,7 +83,7 @@ VERSION "0.6.0.15"
 '          Guy-19jul12-added function WinXDisplayHelpFile (helpFile$): display the contents of helpFile$
 '          Guy-23jul12-coded callback for .onDrag and .onLabelEdit (see demo WinX_0_6_0_15_samples\treeview\treeview.x)
 '          Guy-11sep12-WinXListBox_RemoveAllItems : remove all items from a list box
-'          Guy-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from a extended combo box
+'          Guy-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from an extended combo box
 '
 ' Win32API DLL headers
 '
