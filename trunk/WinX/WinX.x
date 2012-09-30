@@ -132,7 +132,7 @@ TYPE BINDING
 	XLONG			.hWnd						'handle to the window this binds to, when 0, this record is not in use
 	XLONG			.backCol				'window background color
 	XLONG			.hStatus				'handle to the status bar, if there is one
-	XLONG .statusParts		'the upper index of partitions in the status bar
+	XLONG     .statusParts		'the upper index of partitions in the status bar
 	XLONG			.msgHandlers		'index into an array of arrays of message handlers
 	XLONG			.minW
 	XLONG			.minH
@@ -153,6 +153,7 @@ TYPE BINDING
 	XLONG			.hCursor							'custom cursor for this window
 	XLONG			.isMouseInWindow
 	XLONG			.hUpdateRegion
+
 	FUNCADDR .paint (XLONG, XLONG)		'hWnd, hdc : paint the window
 	FUNCADDR .dimControls (XLONG, XLONG, XLONG)		'hWnd, w, h : dimension the controls
 	FUNCADDR .onCommand (XLONG, XLONG, XLONG)		'idCtr, notifyCode, hCtr
@@ -377,8 +378,8 @@ $$UPP_MRU          = 19
 $$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 
-DECLARE FUNCTION WinX ()
 
+DECLARE FUNCTION WinX ()
 DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr)
@@ -447,6 +448,7 @@ DECLARE FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$
 DECLARE FUNCTION WinXDialog_SysInfo (@msInfo$) ' run Microsoft program "System Information"
 
 DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path dir$ with $$PathSlash$
+DECLARE FUNCTION WinXDir_ClipEndSlash (@dir$) ' remove the trailing \ from directory path
 DECLARE FUNCTION WinXDir_Create (dir$) ' create directory dir$
 DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if directory dir$ exists
 DECLARE FUNCTION WinXDir_GetXBasicDir$ () ' get the complete path of XBasic's directory
@@ -456,7 +458,6 @@ DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
 DECLARE FUNCTION WinXDisplay (hWnd)
 DECLARE FUNCTION WinXDisplayHelpFile (helpFile$) ' display the contents of helpFile$
 DECLARE FUNCTION WinXDoEvents ()
-
 DECLARE FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 DECLARE FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 DECLARE FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
@@ -524,6 +525,7 @@ DECLARE FUNCTION WinXListBox_RemoveAllItems (hListBox)
 DECLARE FUNCTION WinXListBox_RemoveItem (hListBox, index)
 DECLARE FUNCTION WinXListBox_SetCaret (hListBox, item)
 DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
+
 DECLARE FUNCTION WinXListView_AddCheckBoxes (hLV) ' add the check boxes to a list view
 DECLARE FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, label$, iSubItem)
 DECLARE FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
@@ -554,6 +556,7 @@ DECLARE FUNCTION WinXListView_UseOnSelect (hLV)
 DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' load the Most Recently Used file list from the .INI file
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
 DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the .INI file
+
 DECLARE FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
 
 DECLARE FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
@@ -566,12 +569,14 @@ DECLARE FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, cus
 DECLARE FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
 
 DECLARE FUNCTION WinXPath_Trim$ (path$) ' trim file path path$
+
 DECLARE FUNCTION WinXPrint_DevUnitsPerInch (hPrinter, @w, @h)
 DECLARE FUNCTION WinXPrint_Done (hPrinter)
 DECLARE FUNCTION DOUBLE WinXPrint_LogUnitsPerPoint (hPrinter, cyLog, cyPhys)
 DECLARE FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pageNum, pageCount)
 DECLARE FUNCTION WinXPrint_PageSetup (parent)
 DECLARE FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPhys, fileName$, showDialog, parent)
+
 DECLARE FUNCTION WinXProgress_SetMarquee (hProg, enable)
 DECLARE FUNCTION WinXProgress_SetPos (hProg, DOUBLE pos)
 
@@ -631,6 +636,7 @@ DECLARE FUNCTION WinXShow (hWnd)
 DECLARE FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
 DECLARE FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 DECLARE FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
+
 DECLARE FUNCTION WinXStatus_GetText$ (hWnd, part)
 DECLARE FUNCTION WinXStatus_SetText (hWnd, part, text$)
 
@@ -689,12 +695,12 @@ DECLARE FUNCTION VOID WinXUpdate (hWnd)
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 
 DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
-
 END EXPORT
 '
 ' #######################
 ' #####  M4 macros  #####
 ' #######################
+'
 ' These functions abstract away access to the arrays
 DeclareAccess(BINDING)
 DeclareAccess(SPLITTER)
@@ -733,8 +739,8 @@ DECLARE FUNCTION XWSStoWS (xwss)
 DECLARE FUNCTION autoDraw_add (iList, iRecord)
 DECLARE FUNCTION autoDraw_clear (group)
 DECLARE FUNCTION autoDraw_draw (hdc, group, x0, y0)
-
 DECLARE FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, w, h, currPos)
+
 DECLARE FUNCTION autoSizerInfo_delete (id, idCtr)
 DECLARE FUNCTION autoSizerInfo_get (id, idCtr, AUTOSIZER @autoSizerBlock)
 DECLARE FUNCTION autoSizerInfo_update (id, idCtr, AUTOSIZER autoSizerBlock)
@@ -1127,7 +1133,7 @@ END FUNCTION
 ' Adds a new edit control to the window
 ' parent = the parent window
 ' title = the initial text to display in the control
-' v_style = the style of the control
+' v_style = the style of the control ("v_" = passed by Value)
 ' idCtr = the unique id for this control
 ' returns a handle to the new edit control or 0 on fail
 FUNCTION WinXAddEdit (parent, STRING title, v_style, idCtr)
@@ -1772,7 +1778,8 @@ END FUNCTION
 FUNCTION WinXButton_GetCheck (hButton)
 	IFZ hButton THEN RETURN
 	ret = SendMessageA (hButton, $$BM_GETCHECK, 0, 0)
-	IF ret = $$BST_CHECKED THEN RETURN $$TRUE ELSE RETURN $$FALSE
+	IF ret = $$BST_CHECKED THEN checked = $$TRUE ELSE checked = $$FALSE
+	RETURN checked
 END FUNCTION
 '
 ' #################################
@@ -2229,25 +2236,16 @@ FUNCTION WinXDate_GetCurrentTimeStamp$ ()
 
 	stamp$ = STRING$ (year)		' 4 digits
 
-	st$ = STRING$ (month)
-	IF month < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + "_" + st$
+	DIM arr[4]
+	arr[0] = month
+	arr[1] = day
+	arr[2] = hour
+	arr[3] = minute
+	arr[4] = second
 
-	st$ = STRING$ (day)
-	IF day < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + "_" + st$
-
-	st$ = STRING$ (hour)
-	IF hour < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + "_" + st$
-
-	st$ = STRING$ (minute)
-	IF minute < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + "_" + st$
-
-	st$ = STRING$ (second)
-	IF second < 10 THEN st$ = "0" + st$
-	stamp$ = stamp$ + "_" + st$
+	FOR i = 0 TO 4
+		stamp$ = stamp$ + "_" + RIGHT$ ("00" + STRING$ (arr[i]), 2)	' 2 digits
+	NEXT i
 
 	RETURN stamp$
 
@@ -2715,7 +2713,7 @@ FUNCTION WinXDialog_SysInfo (@msInfo$)
 
 END FUNCTION
 
-' Ends a directory path with \
+' Ends a directory path with $$PathSlash$
 '
 ' ----- Usage -----
 'dir$ = "  c:/Lonné  "
@@ -2728,6 +2726,26 @@ FUNCTION WinXDir_AppendSlash (@dir$)
 	IFZ dir$ THEN RETURN		' empty
 	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$
 
+END FUNCTION
+'
+' ##################################
+' #####  WinXDir_ClipEndSlash  #####
+' ##################################
+'
+' Clips off the trailing \ from directory path
+' Usage:
+' dir$ = "  c:/my dir   / "
+' FseDir_ClipEndSlash (@dir$) ' clip off the trailing \ from directory path
+' 'dir$ == "c:\\my dir"
+'
+FUNCTION WinXDir_ClipEndSlash (@dir$)
+	dir$ = WinXPath_Trim$ (dir$)
+	IF dir$ THEN
+		IF RIGHT$ (dir$) = $$PathSlash$ THEN
+			dir$ = RCLIP$ (dir$)		' drop the trailing slash
+			dir$ = WinXPath_Trim$ (dir$)		' clip off the trailing spaces
+		ENDIF
+	ENDIF
 END FUNCTION
 
 ' OUT			: dir$ - directory path
@@ -3981,14 +3999,33 @@ END FUNCTION
 FUNCTION WinXEnableDialogInterface (hWnd, enable)
 	BINDING binding
 
-	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
-
-	binding.useDialogInterface = enable
-	BINDING_Update (idBinding, binding)
-	RETURN $$TRUE		' success
+	bOK = $$FALSE
+	SELECT CASE hWnd
+		CASE 0
+		CASE ELSE
+			' get the binding
+			idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+			IFF BINDING_Get (idBinding, @binding) THEN EXIT SELECT
+			'
+			IF binding.useDialogInterface = enable THEN
+				bOK = $$TRUE
+				EXIT SELECT
+			ENDIF
+			'
+			style = GetWindowLongA (hWnd, $$GWL_STYLE)
+			IF binding.useDialogInterface THEN
+				' change if regular window
+				IF (style & $$WS_OVERLAPPED) = $$WS_OVERLAPPED THEN WinXSetStyle (hWnd, $$WS_POPUPWINDOW, 0, $$WS_OVERLAPPED, 0)
+			ELSE
+				' change if dialog
+				IF (style & $$WS_OVERLAPPED) != $$WS_OVERLAPPED THEN WinXSetStyle (hWnd, $$WS_POPUPWINDOW, 0, $$WS_OVERLAPPED, 0)
+			ENDIF
+			binding.useDialogInterface = enable
+			BINDING_Update (idBinding, binding)
+			bOK = $$TRUE
+			'
+	END SELECT
+	RETURN bOK
 END FUNCTION
 '
 ' ################################
@@ -5999,6 +6036,18 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	style = XWSStoWS (simpleStyle)
 
+	idMax = BINDING_Get_idMax () ' get BINDING item id MAX
+	IFZ idMax THEN
+		enable = $$FALSE
+	ELSE
+		' enable dialog style keyboard navigation amoung controls
+		enable = $$TRUE
+		SELECT CASE xwss
+			CASE $$XWSS_APP         : style = $$WS_POPUPWINDOW | $$WS_CAPTION | $$WS_SYSMENU
+			CASE $$XWSS_APPNORESIZE : style = $$WS_POPUPWINDOW | $$WS_CAPTION
+		END SELECT
+	ENDIF
+
 	hWindow = 0
 	IF hOwner THEN hWindow = CreateMdiChild (hOwner, title, style)		' MDI child window
 
@@ -6018,6 +6067,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 	' make a binding
 	binding.hWnd = hWindow
 	binding.hWndMDIParent = hOwner
+	binding.useDialogInterface = enable
 
 	lpWindowName = 0
 	dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
