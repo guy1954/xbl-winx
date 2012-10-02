@@ -621,9 +621,12 @@ DECLARE FUNCTION WinXScroll_Show (hWnd, horiz, vert)
 DECLARE FUNCTION WinXScroll_Update (hWnd, deltaX, deltaY)
 
 DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
+
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
+
 DECLARE FUNCTION WinXSetFont (hCtr, hFont)
 DECLARE FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
+
 DECLARE FUNCTION WinXSetMinSize (hWnd, w, h)
 DECLARE FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 DECLARE FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
@@ -669,8 +672,8 @@ DECLARE FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hIte
 DECLARE FUNCTION WinXTreeView_DeleteAllItems (hTV) ' clear the tree view
 DECLARE FUNCTION WinXTreeView_DeleteItem (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem) ' expand the tree view item
-DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, find$) ' Search for a label in tree view nodes
-DECLARE FUNCTION WinXTreeView_FindItemLabel (hTV, find$) ' find an exact string in tree labels
+DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, match$) ' Search for a label in tree view nodes
+DECLARE FUNCTION WinXTreeView_FindItemLabel (hTV, match$) ' find an exact string in tree labels
 DECLARE FUNCTION WinXTreeView_FreezeOnSelect (hTV)
 DECLARE FUNCTION WinXTreeView_GetCheckState (hTV, hItem) ' determine whether a node in a tree view control is checked
 DECLARE FUNCTION WinXTreeView_GetChildCount (hTV, hItem)
@@ -780,6 +783,7 @@ DECLARE FUNCTION printAbortProc (hdc, nCode)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 
 DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
+DECLARE FUNCTION GuiSetFont (hCtr, hFont, bRedraw) ' set control hCtr to logical font hFont
 '
 $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
@@ -4079,9 +4083,8 @@ FUNCTION WinXGetMinSize (hWnd, @w, @h)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
 	w = binding.minW
-	IF w < 130 THEN w = 130
 	h = binding.minH
-	IF h < 30 THEN h = 30
+
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -4160,13 +4163,22 @@ FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
 	bOK = $$FALSE
 	SELECT CASE TRUE
 		CASE hWnd = 0
-		CASE ELSE
-			ret = GetClientRect (hWnd, &r_rect)
-			IFZ ret THEN EXIT SELECT
 			'
+		CASE ELSE
 			' get the binding
 			idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 			IFF BINDING_Get (idBinding, @binding) THEN EXIT SELECT
+			'
+			ret = GetClientRect (hWnd, &r_rect)
+			IFZ ret THEN EXIT SELECT
+			w = r_rect.right - r_rect.left
+			h = r_rect.bottom - r_rect.top
+			'
+			' account for the caption's height
+			style = GetWindowLongA (hWnd, $$GWL_STYLE)
+			IF (style & $$WS_CAPTION) = $$WS_CAPTION THEN
+				h = h - GetSystemMetrics ($$SM_CYCAPTION)
+			ENDIF
 			'
 			' account for the toolbar's height
 			IF binding.hBar THEN
@@ -4594,6 +4606,7 @@ FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 	IFZ count THEN RETURN $$LB_ERR
 
 	r_index = -1
+	LEN_searchFor = LEN (searchFor$)
 	DO
 		indexStart = r_index
 		r_index = SendMessageA (hListBox, $$LB_FINDSTRING, indexStart, &searchFor$)
@@ -4601,7 +4614,7 @@ FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 		IF r_index = indexStart THEN RETURN $$LB_ERR		' prevent endless loop
 		'
 		item$ = WinXListBox_GetItem$ (hListBox, r_index)
-		IF LEFT$ (item$, LEN (searchFor$)) = searchFor$ THEN RETURN r_index		' found!
+		IF LEFT$ (item$, LEN_searchFor) = searchFor$ THEN RETURN r_index		' found!
 	LOOP
 	RETURN $$LB_ERR		' fail
 
@@ -5482,10 +5495,10 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 		bFound = $$FALSE
 		IF upp >= 0 THEN
 			find_lc$ = LCASE$ (fpath$)
-			findLen = LEN (find_lc$)
+			LEN_find = LEN (find_lc$)
 			'
 			FOR z = 0 TO upp
-				IF LEN (r_mruList$[z]) <> findLen THEN DO NEXT
+				IF LEN (r_mruList$[z]) <> LEN_find THEN DO NEXT
 				IF LCASE$ (r_mruList$[z]) = find_lc$ THEN
 					bFound = $$TRUE
 					EXIT FOR
@@ -5587,11 +5600,11 @@ SUB AddFile
 			'
 			bFound = $$FALSE
 			IF uppFile >= 0 THEN
-				find_lc$ = LCASE$ (fPath$)
-				findLen = LEN (find_lc$)
+				fPath_lc$ = LCASE$ (fPath$)
+				LEN_fPath = LEN (fPath_lc$)
 				FOR z = 0 TO uppFile
-					IF LEN (file$[z]) = findLen THEN
-						IF LCASE$ (file$[z]) = find_lc$ THEN
+					IF LEN (file$[z]) = LEN_fPath THEN
+						IF LCASE$ (file$[z]) = fPath_lc$ THEN
 							bFound = $$TRUE
 							EXIT FOR
 						ENDIF
@@ -6042,10 +6055,8 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 	ELSE
 		' enable dialog style keyboard navigation amoung controls
 		enable = $$TRUE
-		SELECT CASE xwss
-			CASE $$XWSS_APP         : style = $$WS_POPUPWINDOW | $$WS_CAPTION | $$WS_SYSMENU
-			CASE $$XWSS_APPNORESIZE : style = $$WS_POPUPWINDOW | $$WS_CAPTION
-		END SELECT
+		style = style & (~$$WS_OVERLAPPED)
+		style = style | $$WS_POPUPWINDOW
 	ENDIF
 
 	hWindow = 0
@@ -7493,16 +7504,11 @@ END FUNCTION
 ' ################################
 ' Sets the font for a control to the default GUI font
 ' hCtr = the handle to the control
-' hFont = the handle to the font
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetDefaultFont (hCtr)
-	IFZ hCtr THEN RETURN		' ignore a null handle
 
-	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-	IFZ hFont THEN RETURN
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)		' 0 = do not redraw
-	DeleteObject (hFont)		' release the default GUI font
-	RETURN $$TRUE		' success
+	RETURN GuiSetFont (hCtr, 0, $$FALSE) ' do not redraw
+
 END FUNCTION
 '
 ' #########################
@@ -7513,13 +7519,9 @@ END FUNCTION
 ' hFont = the handle to the font
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetFont (hCtr, hFont)
-	IFZ hCtr THEN RETURN		' ignore a null handle
-	IFZ hFont THEN
-		WinXSetDefaultFont (hCtr) ' use the default GUI font
-	ELSE
-		SendMessageA (hCtr, $$WM_SETFONT, hFont, 0)		' 0 = do not redraw
-	ENDIF
-	RETURN $$TRUE		' success
+
+	RETURN GuiSetFont (hCtr, hFont, $$FALSE) ' do not redraw
+
 END FUNCTION
 '
 ' ##################################
@@ -7530,16 +7532,9 @@ END FUNCTION
 ' hFont = the handle to the font
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
-	IFZ hCtr THEN RETURN		' ignore a null handle
 
-	IF hFont THEN
-		SendMessageA (hCtr, $$WM_SETFONT, hFont, 1)		' 1 = redraw
-	ELSE
-		hFontDefault = GetStockObject ($$DEFAULT_GUI_FONT)		' use the default GUI font
-		SendMessageA (hCtr, $$WM_SETFONT, hFontDefault, 1)		' 1 = redraw
-		DeleteObject (hFontDefault)		' release the default GUI font
-	ENDIF
-	RETURN $$TRUE		' success
+	RETURN GuiSetFont (hCtr, hFont, $$TRUE) ' redraw
+
 END FUNCTION
 '
 ' ############################
@@ -8537,14 +8532,14 @@ END FUNCTION
 ' hTV = the handle to the tree view
 ' hItem = the handle to the item to search from
 ' returns the node handle, 0 if error
-FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)
+FUNCTION WinXTreeView_FindItem (hTV, hItem, match$)
 
 	TV_ITEM tvi
 
 	IFZ hTV THEN RETURN
 
-	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN
+	match$ = TRIM$ (match$)
+	IFZ match$ THEN RETURN
 
 	hItemFound = 0
 	IFZ hItem THEN
@@ -8564,14 +8559,14 @@ FUNCTION WinXTreeView_FindItem (hTV, hItem, find$)
 
 		buf$ = CSTRING$ (&buf$)
 		buf$ = TRIM$ (buf$)
-		IF buf$ = find$ THEN RETURN hItem
+		IF buf$ = match$ THEN RETURN hItem
 
 		' Check whether we have child items.
 		IF (tvi.cChildren) THEN
 			' SendMessageA (hTV, $$TVM_EXPAND, $$TVE_EXPAND, hItem)
 			' .................. Recursively traverse child items ...................
 			hItemChild = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_CHILD, hItem)
-			hItemFound = WinXTreeView_FindItem (hTV, hItem, find$)
+			hItemFound = WinXTreeView_FindItem (hTV, hItem, match$)
 			' Did we find it?
 			IF hItemFound THEN EXIT DO		' found it
 		ENDIF
@@ -8589,14 +8584,14 @@ END FUNCTION
 ' find an exact string in tree labels
 ' hTV = the handle to the tree view
 ' returns the node handle, 0 if error
-FUNCTION WinXTreeView_FindItemLabel (hTV, find$)
+FUNCTION WinXTreeView_FindItemLabel (hTV, match$)
 
 	IFZ hTV THEN RETURN
 
-	find$ = TRIM$ (find$)
-	IFZ find$ THEN RETURN
+	match$ = TRIM$ (match$)
+	IFZ match$ THEN RETURN
 
-	hItemFound = WinXTreeView_FindItem (hTV, 0, find$)
+	hItemFound = WinXTreeView_FindItem (hTV, 0, match$)
 	RETURN hItemFound
 
 END FUNCTION
@@ -10650,7 +10645,30 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			RETURN retCode
 
 		CASE $$WM_SIZE
-			sizeWindow (hWnd, LOWORD (lParam), HIWORD (lParam))
+			w = LOWORD (lParam)
+			h = HIWORD (lParam)
+			'
+			IF w < binding.minW || h < binding.minH THEN
+				IF w < binding.minW THEN w = binding.minW
+				IF h < binding.minH THEN h = binding.minH
+			ENDIF
+			'
+			sizeWindow (hWnd, w, h) ' resize the window
+			'
+			bOK = WinXGetUsableRect (hWnd, @rect)
+			IF bOK THEN
+				w = rect.right - rect.left
+				h = rect.bottom - rect.top
+				'
+				' In conformance with conventions for the RECT structure, the
+				' bottom-right coordinates of the returned rectangle are
+				' exclusive. In other words, the pixel at (right, bottom) lies
+				' immediately outside the rectangle.
+				'
+				w = w - GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
+				h = h - GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
+			ENDIF
+			'
 			handled = $$TRUE
 
 		CASE $$WM_HSCROLL, $$WM_VSCROLL
@@ -11357,9 +11375,9 @@ END FUNCTION
 ' ########################
 ' Resizes a window
 ' hWnd = handle of the window to resize
-' winW and winH = the new width and height
+' w and h = the new width and height
 ' returns nothing of interest
-FUNCTION sizeWindow (hWnd, winW, winH)
+FUNCTION sizeWindow (hWnd, w, h)
 	BINDING binding
 	SCROLLINFO si
 	' Guy-01aug12-unused-WINDOWPLACEMENT WinPla
@@ -11370,21 +11388,24 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 	IFF BINDING_Get (idBinding, @binding) THEN RETURN
 
-	IF winW < binding.minW THEN winW = binding.minW
-	IF winH < binding.minH THEN winH = binding.minH
+	IF w < binding.minW || h < binding.minH THEN
+		IF w < binding.minW THEN w = binding.minW
+		IF h < binding.minH THEN h = binding.minH
+		SetWindowPos (hWnd, $$HWND_TOP, 0, 0, w, h, $$SWP_NOMOVE)
+	ENDIF
 
 	' now handle the tool bar
 	IF binding.hBar THEN
 		GetClientRect (binding.hBar, &rect)
-		hOld = rect.bottom - rect.top
-		SendMessageA (binding.hBar, $$WM_SIZE, winW, hOld)
+		height = rect.bottom - rect.top
+		SendMessageA (binding.hBar, $$WM_SIZE, w, height)
 	ENDIF
 
 	' handle the status bar
 	IF binding.hStatus THEN
 		GetClientRect (binding.hStatus, &rect)
-		hOld = rect.bottom - rect.top
-		SendMessageA (binding.hStatus, $$WM_SIZE, winW, hOld)
+		height = rect.bottom - rect.top
+		SendMessageA (binding.hStatus, $$WM_SIZE, w, height)
 		'
 		cPart = binding.statusParts + 1
 		IF cPart < 1 THEN cPart = 1
@@ -11394,7 +11415,7 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 		IF cPart > 1 THEN
 			' first, resize the partitions
 			FOR i = 0 TO uppPart
-				parts[i] = ((i + 1) * winW) / cPart
+				parts[i] = ((i + 1) * w) / cPart
 			NEXT i
 		ENDIF
 		'
@@ -11411,7 +11432,7 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	IF style & $$WS_HSCROLL THEN
 		si.cbSize = SIZE (SCROLLINFO)
 		si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
-		si.nPage = winW * binding.hScrollPageM + binding.hScrollPageC
+		si.nPage = w * binding.hScrollPageM + binding.hScrollPageC
 		SetScrollInfo (hWnd, $$SB_HORZ, &si, $$TRUE)
 		'
 		si.fMask = $$SIF_POS
@@ -11422,7 +11443,7 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	IF style & $$WS_VSCROLL THEN
 		si.cbSize = SIZE (SCROLLINFO)
 		si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
-		si.nPage = winH * binding.vScrollPageM + binding.vScrollPageC
+		si.nPage = h * binding.vScrollPageM + binding.vScrollPageC
 		SetScrollInfo (hWnd, $$SB_VERT, &si, $$TRUE)
 		'
 		si.fMask = $$SIF_POS
@@ -11446,7 +11467,7 @@ FUNCTION sizeWindow (hWnd, winW, winH)
 	ENDIF
 
 	retCode = 0
-	IF binding.dimControls THEN retCode = @binding.dimControls (hWnd, winW, winH)
+	IF binding.dimControls THEN retCode = @binding.dimControls (hWnd, w, h)
 
 	InvalidateRect (hWnd, 0, 0)
 
@@ -11461,6 +11482,38 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
+END FUNCTION
+'
+' ########################
+' #####  GuiSetFont  #####
+' ########################
+'
+' Sets a font to a control
+' - hCtr  = the control handle
+' - hFont = the logical font handle
+' - $$TRUE to redraw the control after setting the font
+'
+FUNCTION GuiSetFont (hCtr, hFont, bRedraw)
+	bOK = $$FALSE
+	SELECT CASE hCtr
+		CASE 0
+		CASE ELSE
+			hFontDefault = 0
+			IFZ hFont THEN
+				hFontDefault = GetStockObject ($$DEFAULT_GUI_FONT)
+				IFZ hFontDefault THEN EXIT SELECT
+				hFont = hFontDefault
+			ENDIF
+			'
+			' lParam = 0 => redraw
+			IF bRedraw THEN lParam = 1 ELSE lParam = 0
+			' $$WM_SETFONT does not return a value
+			SendMessageA (hCtr, $$WM_SETFONT, hFont, lParam)
+			IF hFontDefault THEN DeleteObject (hFontDefault)		' release the default GUI font
+			bOK = $$TRUE ' success
+			'
+	END SELECT
+	RETURN bOK
 END FUNCTION
 '
 '
