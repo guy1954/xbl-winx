@@ -377,8 +377,8 @@ $$UPP_MRU          = 19
 
 $$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
-
-
+'
+'
 DECLARE FUNCTION WinX ()
 DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
@@ -529,10 +529,10 @@ DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
 DECLARE FUNCTION WinXListView_AddCheckBoxes (hLV) ' add the check boxes to a list view
 DECLARE FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, label$, iSubItem)
 DECLARE FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
-DECLARE FUNCTION WinXListView_DeleteAllItems (hLV)
+DECLARE FUNCTION WinXListView_DeleteAllItems (hLV) ' clear the list view
 DECLARE FUNCTION WinXListView_DeleteColumn (hLV, iColumn)
 DECLARE FUNCTION WinXListView_DeleteItem (hLV, iItem)
-DECLARE FUNCTION WinXListView_FreezeOnSelect (hLV)
+DECLARE FUNCTION WinXListView_FreezeOnSelect (hLV) ' disable $$LVN_ITEMCHANGED
 DECLARE FUNCTION WinXListView_GetCheckState (hLV, iItem) ' determine whether an item in a list view control is checked
 DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
 DECLARE FUNCTION WinXListView_GetItemFromPoint (hLV, x, y)
@@ -546,12 +546,12 @@ DECLARE FUNCTION WinXListView_SetAllUnselected (hLV)
 DECLARE FUNCTION WinXListView_SetCheckState (hLV, iItem, checked) ' set the item's check state of a list view with check boxes
 DECLARE FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem) ' set the focus on item
 DECLARE FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, newText$)
-DECLARE FUNCTION WinXListView_SetSelection (hLV, iItems[])
+DECLARE FUNCTION WinXListView_SetSelection (hLV, iItems[]) ' multi-select these items
 DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetView (hLV, view)
 DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_Sort (hLV, iCol, desc)
-DECLARE FUNCTION WinXListView_UseOnSelect (hLV)
+DECLARE FUNCTION WinXListView_UseOnSelect (hLV) ' re-enable $$LVN_ITEMCHANGED
 
 DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' load the Most Recently Used file list from the .INI file
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
@@ -8383,6 +8383,11 @@ FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect,
 	TV_INSERTSTRUCT tvis
 
 	IFZ hTV THEN RETURN
+
+	IFZ hParent THEN
+		hParent = $$TVI_ROOT
+		hInsertAfter = $$TVI_LAST
+	ENDIF
 
 	tvis.hParent = hParent
 	tvis.hInsertAfter = hInsertAfter
