@@ -166,7 +166,7 @@ FUNCTION ADT ()
 
 	IF #bReentry THEN RETURN ' already initialized!
 
-	' in prevision of a static build
+	' in prevision of the static build
 	Xst ()		' initialize Xblite Standard Library
 
 	STRING_Init ()
