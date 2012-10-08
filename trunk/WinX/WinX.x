@@ -81,7 +81,7 @@ VERSION "0.6.0.15"
 '          Guy-08may12-added .onSelect handling on $$TCN_SELCHANGE
 ' 0.6.0.15-Guy-19jul12-full support for tree view dragNdrop and label editing.
 '          Guy-19jul12-added function WinXDisplayHelpFile (helpFile$): display the contents of helpFile$
-'          Guy-23jul12-coded callback for .onDrag and .onLabelEdit (see demo WinX_0_6_0_15_samples\treeview\treeview.x)
+'          Guy-23jul12-coded callback for .onDrag and .onLabelEdit (see demo WinX_0_6_0_15_samples\tree view\tree view.x)
 '          Guy-11sep12-WinXListBox_RemoveAllItems : remove all items from a list box
 '          Guy-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from an extended combo box
 '
@@ -377,6 +377,15 @@ $$UPP_MRU          = 19
 
 $$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
+
+' constants for WinXDialog_OpenFile$
+' multiSelect boolean
+$$OPN_MULTI_SELECT  = -1  ' multiple file name selection
+$$OPN_SINGLE_SELECT = 0   ' single selection
+
+' readOnly boolean
+$$OPN_READ_ONLY  = -1  ' open "Read Only" (with no lock)
+$$OPN_READ_WRITE = 0   ' open locking the selected file(s)
 '
 '
 DECLARE FUNCTION WinX ()
@@ -409,8 +418,8 @@ DECLARE FUNCTION WinXAni_Stop (hAni)
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
 
 DECLARE FUNCTION WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
-DECLARE FUNCTION WinXAutoSizer_SetInfo (hWnd, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, flags)
-DECLARE FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, DOUBLE space, DOUBLE size, flags)
+DECLARE FUNCTION WinXAutoSizer_SetInfo (hWnd, series, space#, size#, x#, y#, w#, h#, flags)
+DECLARE FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, space#, size#, flags)
 
 DECLARE FUNCTION WinXButton_GetCheck (hButton)
 DECLARE FUNCTION WinXButton_SetCheck (hButton, checked)
@@ -557,6 +566,7 @@ DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' loa
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
 DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the .INI file
 
+DECLARE FUNCTION WinXMask_found (mask, flags) ' flag(s) raized?
 DECLARE FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
 
 DECLARE FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
@@ -623,10 +633,8 @@ DECLARE FUNCTION WinXScroll_Update (hWnd, deltaX, deltaY)
 DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
 
 DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
-
 DECLARE FUNCTION WinXSetFont (hCtr, hFont)
 DECLARE FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
-
 DECLARE FUNCTION WinXSetMinSize (hWnd, w, h)
 DECLARE FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 DECLARE FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
@@ -698,6 +706,8 @@ DECLARE FUNCTION VOID WinXUpdate (hWnd)
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 
 DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
+'
+'
 END EXPORT
 '
 ' #######################
@@ -709,6 +719,7 @@ DeclareAccess(BINDING)
 DeclareAccess(SPLITTER)
 DeclareAccess(LINKEDLIST)
 DeclareAccess(AUTODRAWRECORD)
+
 
 DECLARE FUNCTION AUTOSIZER_Delete (id)
 DECLARE FUNCTION AUTOSIZER_Init ()
@@ -725,6 +736,8 @@ DECLARE FUNCTION BINDING_Ov_Delete (id) ' delete a binding from the binding tabl
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
 DECLARE FUNCTION CreateMdiChild (hClient, title$, style)
+
+DECLARE FUNCTION GuiSetFont (hCtr, hFont, bRedraw) ' set control hCtr to logical font hFont
 
 DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
@@ -783,7 +796,6 @@ DECLARE FUNCTION printAbortProc (hdc, nCode)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 
 DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
-DECLARE FUNCTION GuiSetFont (hCtr, hFont, bRedraw) ' set control hCtr to logical font hFont
 '
 $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
@@ -813,11 +825,11 @@ FUNCTION WinX ()
 
 	IF #bReentry THEN RETURN ' already initialized!
 
-	' in prevision of a static build
-	Xst ()		' initialize Xblite Standard Library
-	Xsx ()		' initialize Xblite Standard eXtended Library
-
-	ADT ()		' initialize the Abstract Data Types Library
+	' in prevision of the static build
+	Xst () ' initialize Xblite Standard Library
+	Xsx () ' initialize Xblite Standard eXtended Library
+	Xma () ' initialize Xblite Math Library
+	ADT () ' initialize Callum's Abstract Data Types Library
 
 	' initialize the specific common controls classes from the common
 	' control dynamic-link library
@@ -829,11 +841,11 @@ FUNCTION WinX ()
 	' $$ICC_DATE_CLASSES       : month picker, date picker, time picker, updown
 	' $$ICC_HOTKEY_CLASS       : hotkey
 	' $$ICC_INTERNET_CLASSES   : WIN32_IE >= 0x0400
-	' $$ICC_LISTVIEW_CLASSES   : listview, header
+	' $$ICC_LISTVIEW_CLASSES   : list view, header
 	' $$ICC_PAGESCROLLER_CLASS : page scroller (WIN32_IE >= 0x0400)
 	' $$ICC_PROGRESS_CLASS     : progress
 	' $$ICC_TAB_CLASSES        : tab, tooltips
-	' $$ICC_TREEVIEW_CLASSES   : treeview, tooltips
+	' $$ICC_TREEVIEW_CLASSES   : tree view, tooltips
 	' $$ICC_UPDOWN_CLASS       : updown
 	' $$ICC_USEREX_CLASSES     : comboex
 	' $$ICC_WIN95_CLASSES      : everything else
@@ -925,7 +937,7 @@ END FUNCTION
 ' Adds an accelerator to an accelerator array
 ' r_accel[] = an array of accelerators
 ' cmd = the command the accelerator sends to WM_COMMAND
-' key = the VK key code
+' key = the Vrtual Key code
 ' control, alt, shit = $$TRUE if the modifier is down, $$FALSE otherwise
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAddAccelerator (ACCEL r_accel[], cmd, key, control, alt, shift)
@@ -939,9 +951,9 @@ FUNCTION WinXAddAccelerator (ACCEL r_accel[], cmd, key, control, alt, shift)
 	ENDIF
 
 	fVirt = $$FVIRTKEY
-	IF alt THEN fVirt = fVirt | $$FALT
+	IF alt     THEN fVirt = fVirt | $$FALT
 	IF control THEN fVirt = fVirt | $$FCONTROL
-	IF shift THEN fVirt = fVirt | $$FSHIFT
+	IF shift   THEN fVirt = fVirt | $$FSHIFT
 
 	r_accel[upp].fVirt = fVirt
 	r_accel[upp].key = key
@@ -1012,6 +1024,7 @@ END FUNCTION
 FUNCTION WinXAddButton (parent, STRING title, hImage, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
 	style = style | $$BS_PUSHBUTTON
+
 	IF hImage THEN
 		SELECT CASE LCASE$ (title)
 			CASE "icon"
@@ -1076,7 +1089,7 @@ FUNCTION WinXAddCheckButton (parent, STRING title, isFirst, pushlike, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
 	style = style | $$BS_AUTOCHECKBOX
 
-	IF isFirst THEN style = style | $$WS_GROUP
+	IF isFirst  THEN style = style | $$WS_GROUP
 	IF pushlike THEN style = style | $$BS_PUSHLIKE
 
 	hInst = GetModuleHandleA (0)
@@ -1119,12 +1132,13 @@ END FUNCTION
 ' class = the class name for the control - this will be in the control's documentation
 ' title = the initial text to appear in the control - not all controls use this parameter
 ' idCtr = the unique id to identify the control
-' v_style = the style of the control.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
+' flags = additional flags of the control.  You do not have to include $$WS_CHILD or $$WS_VISIBLE
 ' exStyle = the extended style of the control.  For most controls this will be 0
 ' returns the handle of the control, or 0 on fail
-FUNCTION WinXAddControl (parent, STRING class, STRING title, v_style, exStyle, idCtr)
+FUNCTION WinXAddControl (parent, STRING class, STRING title, flags, exStyle, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
-	style = style | v_style		' passed style
+
+	style = style | flags		' passed style flags
 
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (exStyle, &class, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1137,17 +1151,18 @@ END FUNCTION
 ' Adds a new edit control to the window
 ' parent = the parent window
 ' title = the initial text to display in the control
-' v_style = the style of the control ("v_" = passed by Value)
+' flags = additional style flags of the control
 ' idCtr = the unique id for this control
 ' returns a handle to the new edit control or 0 on fail
-FUNCTION WinXAddEdit (parent, STRING title, v_style, idCtr)
+FUNCTION WinXAddEdit (parent, STRING title, flags, idCtr)
 	IFZ idCtr THEN RETURN
 
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP | $$WS_BORDER
-	IF (style & $$ES_MULTILINE) = $$ES_MULTILINE THEN		' multiline edit box
+
+	IF WinXMask_found (style, $$ES_MULTILINE) THEN		' multiline edit box
 		style = style | $$WS_VSCROLL | $$WS_HSCROLL
 	ENDIF
-	style = style | v_style		' passed style
+	style = style | flags		' passed style flags
 
 	hInst = GetModuleHandleA (0)
 	hEdit = CreateWindowExA ($$WS_EX_CLIENTEDGE, &$$EDIT, &title, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1202,7 +1217,7 @@ FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 	' $$LBS_NOTIFY: enables $$WM_COMMAND's notification code ($$LBN_SELCHANGE)
 	style = style | $$LBS_NOTIFY		' $$LBS_STANDARD only does not allow dragNdrop
 
-	IF sort THEN style = style | $$LBS_SORT
+	IF sort        THEN style = style | $$LBS_SORT
 	IF multiSelect THEN style = style | $$LBS_EXTENDEDSEL
 
 	hInst = GetModuleHandleA (0)
@@ -1221,7 +1236,7 @@ END FUNCTION
 ' returns the handle to the new window or 0 on fail
 FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
 
-	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP ' multi-selection
+	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP ' multi-selection by default
 	IF editable THEN style = style | $$LVS_EDITLABELS
 
 	' Guy-21sep10-don't keep a zero view, since it make the list view go berserk
@@ -1230,14 +1245,18 @@ FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, 
 
 	hInst = GetModuleHandleA (0)
 	hLV = CreateWindowExA (0, &$$WC_LISTVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
-	IFZ hLV THEN RETURN
-
-	IF hilLargeIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
-	IF hilSmallIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
-
-	' set the list view's extended style mask
-	exStyle = $$LVS_EX_FULLROWSELECT | $$LVS_EX_LABELTIP
-	SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
+	SELECT CASE hLV
+		CASE 0 ' fail
+			'
+		CASE ELSE
+			IF hilLargeIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_NORMAL, hilLargeIcons)
+			IF hilSmallIcons THEN SendMessageA (hLV, $$LVM_SETIMAGELIST, $$LVSIL_SMALL, hilSmallIcons)
+			'
+			' set the list view's extended style mask
+			exStyle = $$LVS_EX_FULLROWSELECT | $$LVS_EX_LABELTIP
+			SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
+			'
+	END SELECT
 
 	RETURN hLV
 END FUNCTION
@@ -1278,7 +1297,7 @@ FUNCTION WinXAddRadioButton (parent, STRING title, isFirst, pushlike, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
 	style = style | $$BS_AUTORADIOBUTTON
 
-	IF isFirst THEN style = style | $$WS_GROUP
+	IF isFirst  THEN style = style | $$WS_GROUP
 	IF pushlike THEN style = style | $$BS_PUSHLIKE
 
 	hInst = GetModuleHandleA (0)
@@ -1293,9 +1312,10 @@ END FUNCTION
 ' #####  WinXAddSpinner  #####
 ' ############################
 FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, uppVal, lowVal, curVal, idCtr)
+	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
 
 	' $$UDS_ARROWKEYS  : Arrow keys
-	style = $$WS_CHILD | $$WS_VISIBLE | $$UDS_ARROWKEYS ' arrow keys
+	style = style | $$UDS_ARROWKEYS ' arrow keys
 
 	hCtr = 0
 	SELECT CASE TRUE
@@ -1334,12 +1354,12 @@ END FUNCTION
 ' parent = the parent window to add this control to
 ' title = the text for the static control
 ' hImage = the image to use, or 0 if no image
-' v_style = the style of the static control
+' flags = additional style flags of the static control
 ' idCtr = the unique id for this control
 ' returns a handle to the control or 0 on error
-FUNCTION WinXAddStatic (parent, STRING title, hImage, v_style, idCtr)
+FUNCTION WinXAddStatic (parent, STRING title, hImage, flags, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE
-	style = style | v_style		' passed style
+	style = style | flags		' passed style flags
 
 	IF hImage THEN
 		SELECT CASE LCASE$ (title)
@@ -1386,7 +1406,9 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 
 	' get the parent window's style
 	window_style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	IF (window_style & $$WS_SIZEBOX) = $$WS_SIZEBOX THEN style = style | $$SBARS_SIZEGRIP
+  	IF WinXMask_found (window_style, $$WS_SIZEBOX) THEN
+		style = style | $$SBARS_SIZEGRIP
+	ENDIF
 
 	' make the status bar
 	hInst = GetModuleHandleA (0)
@@ -1458,9 +1480,9 @@ FUNCTION WinXAddTabs (parent, multiline, idCtr)
 	' add $$WS_CLIPSIBLINGS style to the parent control if missing
 	IF parent THEN
 		parent_style = GetWindowLongA (parent, $$GWL_STYLE)
-		IF (parent_style & $$WS_CLIPSIBLINGS) <> $$WS_CLIPSIBLINGS THEN		' is missing
-			parent_style = parent_style | $$WS_CLIPSIBLINGS
-			SetWindowLongA (parent, $$GWL_STYLE, parent_style)
+		add = $$WS_CLIPSIBLINGS
+		IFF WinXMask_found (parent_style, add) THEN		' is missing
+			WinXSetStyle (parent, add, 0, 0, 0)
 		ENDIF
 	ENDIF
 
@@ -1562,7 +1584,7 @@ FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 	style = style | $$TBS_AUTOTICKS
 
 	IF enableSelection THEN style = style | $$TBS_ENABLESELRANGE
-	IF posToolTip THEN style = style | $$TBS_TOOLTIPS
+	IF posToolTip      THEN style = style | $$TBS_TOOLTIPS
 
 	hInst = GetModuleHandleA (0)
 	hTracker = CreateWindowExA (0, &$$TRACKBAR_CLASS, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1582,7 +1604,6 @@ END FUNCTION
 ' idCtr = the unique id constant for this control
 ' returns the handle to the tree view or 0 on fail
 FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
-
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
 
 	' $$TVS_LINESATROOT : Lines at root
@@ -1591,7 +1612,7 @@ FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
 	style = style | $$TVS_HASBUTTONS | $$TVS_HASLINES | $$TVS_LINESATROOT
 
 	IFF draggable THEN style = style | $$TVS_DISABLEDRAGDROP
-	IF editable THEN style = style | $$TVS_EDITLABELS
+	IF editable   THEN style = style | $$TVS_EDITLABELS
 
 	hInst = GetModuleHandleA (0)
 	hTV = CreateWindowExA (0, &$$WC_TREEVIEW, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
@@ -1682,7 +1703,7 @@ END FUNCTION
 ' ###################################
 ' Sets info for the autosizer to use when sizing your controls
 ' hCtr = the handle to the control to resize
-' series = the series to place the control in, -1 for hWnd's series
+' series = the series to place the control in, -1 for the window's series
 ' space = the space from the previous control
 ' size = the size of this control
 ' x, y, w, h = the size and position of the control on the current window
@@ -2059,35 +2080,42 @@ END FUNCTION
 FUNCTION WinXClip_PutString (Stri$)
 	SHARED g_hClipMem		' to copy to the clipboard
 
+	bOK = $$FALSE
 	' open the clipboard
-	IFZ OpenClipboard (0) THEN RETURN
-	EmptyClipboard ()		' remove the current contents of the clipboard
+	ret = OpenClipboard (0)
+	SELECT CASE ret
+		CASE 0 ' can't open the clipboard
+		CASE ELSE
+			EmptyClipboard ()		' remove the current contents of the clipboard
+			'
+			' Guy-07dec11-avoid memory leak
+			IF g_hClipMem THEN
+				GlobalFree (g_hClipMem)
+				g_hClipMem = 0		' don't free twice
+			ENDIF
+			'
+			' allocate memory
+			g_hClipMem = GlobalAlloc ($$GMEM_MOVEABLE | $$GMEM_ZEROINIT, (LEN (Stri$) + 1))
+			IFZ g_hClipMem THEN EXIT SELECT
+			'
+			' lock the object into memory
+			pMem = GlobalLock (g_hClipMem)
+			IFZ pMem THEN EXIT SELECT
+			'
+			' move the string into the memory we locked
+			RtlMoveMemory (pMem, &Stri$, LEN (Stri$))
+			'
+			' don't send clipboard locked memory
+			GlobalUnlock (g_hClipMem)
+			'
+			' put text in the clipboard
+			SetClipboardData ($$CF_TEXT, g_hClipMem)		' copy the text into the clipboard
+			CloseClipboard ()
+			bOK = $$TRUE		' success
+			'
+	END SELECT
 
-	' Guy-07dec11-avoid memory leak
-	IF g_hClipMem THEN
-		GlobalFree (g_hClipMem)
-		g_hClipMem = 0		' don't free twice
-	ENDIF
-
-	' allocate memory
-	g_hClipMem = GlobalAlloc ($$GMEM_MOVEABLE | $$GMEM_ZEROINIT, (LEN (Stri$) + 1))
-	IFZ g_hClipMem THEN RETURN
-
-	' lock the object into memory
-	pMem = GlobalLock (g_hClipMem)
-	IFZ pMem THEN RETURN
-
-	' move the string into the memory we locked
-	RtlMoveMemory (pMem, &Stri$, LEN (Stri$))
-
-	' don't send clipboard locked memory
-	GlobalUnlock (g_hClipMem)
-
-	' put text in the clipboard
-	SetClipboardData ($$CF_TEXT, g_hClipMem)		' copy the text into the clipboard
-	CloseClipboard ()
-
-	RETURN $$TRUE		' success
+	RETURN bOK
 END FUNCTION
 '
 ' ##################################
@@ -2128,7 +2156,7 @@ FUNCTION WinXComboBox_GetEditText$ (hCombo)
 	ret$ = ""
 	IF hCombo THEN
 		style = GetWindowLongA (hCombo, $$GWL_STYLE)
-		IF (style & $$CBS_DROPDOWNLIST) = $$CBS_DROPDOWNLIST THEN
+		IF WinXMask_found (style, $$CBS_DROPDOWNLIST) THEN
 			' not editable
 			index = SendMessageA (hCombo, $$CB_GETCURSEL, 0, 0)
 			IF index >= 0 THEN ret$ = WinXComboBox_GetItem$ (hCombo, index)
@@ -2363,16 +2391,21 @@ END FUNCTION
 ' ##################################
 ' #####  WinXDialog_OpenFile$  #####
 ' ##################################
+'
 ' Displays an OpenFile dialog box
 ' parent       = the handle to the window to own this dialog
 ' title$       = the title for the dialog
 ' extensions$  = a string containing the file extensions the dialog supports
-' initialName$ = the filename to initialize the dialog with
-' multiSelect  = $$TRUE to enable selection of multiple file names,
-' .              $$FALSE for single file name selection
-' readOnly     = $$TRUE to allow to open "Read Only" (no lock) the selected file(s)
-' .              (shows the check box "Read Only" and checks it initially)
-' returns the opened files or "" on cancel or error
+' initialName$ = the filename to initialise the dialog with
+' multiSelect  = $$OPN_MULTI_SELECT to enable selection of multiple file names, $$OPN_SINGLE_SELECT for single file name selection
+' readOnly     = $$OPN_READ_ONLY to allow to open "Read Only" (no lock) the selected file(s)
+' (shows the check box "Read Only" and checks it initially)
+'
+' returns a list of opened files, or "" on cancel or error
+'
+' Usage:
+'path$ = WinXDialog_OpenFile$ (#winMain, "Select an Icon", "Icon Files (*.ico)|*.ico|", "C:\\", $$OPN_SINGLE_SELECT, $$OPN_READ_ONLY)
+'
 FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly)
 
 	OPENFILENAME ofn
@@ -2528,7 +2561,9 @@ END FUNCTION
 'END FUNCTION
 '
 FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
+
 	IF cancel THEN flags = $$MB_YESNOCANCEL ELSE flags = $$MB_YESNO
+
 	SELECT CASE defaultButton
 		CASE 1 : flags = flags | $$MB_DEFBUTTON2
 		CASE 2 : flags = flags | $$MB_DEFBUTTON3
@@ -2820,7 +2855,7 @@ FUNCTION WinXDir_Exists (dir$)
 	XstGetFileAttributes (@dirToFind$, @attrib)
 
 	' check if dirToFind$ is really directory
-	IF (attrib & $$FileDirectory) = $$FileDirectory THEN RETURN $$TRUE		' success directory exists
+	IF WinXMask_found (attrib, $$FileDirectory) THEN RETURN $$TRUE		' success directory exists
 
 END FUNCTION
 '
@@ -4016,14 +4051,18 @@ FUNCTION WinXEnableDialogInterface (hWnd, enable)
 				EXIT SELECT
 			ENDIF
 			'
-			style = GetWindowLongA (hWnd, $$GWL_STYLE)
-			IF binding.useDialogInterface THEN
-				' change if regular window
-				IF (style & $$WS_OVERLAPPED) = $$WS_OVERLAPPED THEN WinXSetStyle (hWnd, $$WS_POPUPWINDOW, 0, $$WS_OVERLAPPED, 0)
+			' toggle dialog <=> window
+			IF enable THEN
+				' dialog => set $$WS_POPUPWINDOW
+				add = $$WS_POPUPWINDOW
+				sub = $$WS_OVERLAPPED
 			ELSE
-				' change if dialog
-				IF (style & $$WS_OVERLAPPED) != $$WS_OVERLAPPED THEN WinXSetStyle (hWnd, $$WS_POPUPWINDOW, 0, $$WS_OVERLAPPED, 0)
+				' window => set $$WS_OVERLAPPED
+				add = $$WS_OVERLAPPED
+				sub = $$WS_POPUPWINDOW
 			ENDIF
+			WinXSetStyle (hWnd, add, 0, sub, 0)
+			'
 			binding.useDialogInterface = enable
 			BINDING_Update (idBinding, binding)
 			bOK = $$TRUE
@@ -4176,7 +4215,7 @@ FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
 			'
 			' account for the caption's height
 			style = GetWindowLongA (hWnd, $$GWL_STYLE)
-			IF (style & $$WS_CAPTION) = $$WS_CAPTION THEN
+			IF WinXMask_found (style, $$WS_CAPTION) THEN
 				h = h - GetSystemMetrics ($$SM_CYCAPTION)
 			ENDIF
 			'
@@ -4601,7 +4640,7 @@ FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 	IFZ hListBox THEN RETURN $$LB_ERR
 	IFZ searchFor$ THEN RETURN $$LB_ERR
 
-	' get count of items in listbox
+	' get count of items in list box
 	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
 	IFZ count THEN RETURN $$LB_ERR
 
@@ -4693,9 +4732,9 @@ END FUNCTION
 FUNCTION WinXListBox_RemoveItem (hListBox, index)
 	IFZ hListBox THEN RETURN $$LB_ERR		' fail
 
-	' get count of items in listbox
+	' get count of items in list box
 	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
-	IFZ count THEN RETURN $$LB_ERR		' empty listbox
+	IFZ count THEN RETURN $$LB_ERR		' empty list box
 
 	IF index < 0 THEN index = count - 1
 	RETURN SendMessageA (hListBox, $$LB_DELETESTRING, index, 0)
@@ -4727,7 +4766,7 @@ FUNCTION WinXListBox_SetSelection (hListBox, index[])
 	IFZ index[] THEN RETURN
 
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
-	IF (style & $$LBS_EXTENDEDSEL) = $$LBS_EXTENDEDSEL THEN
+	IF WinXMask_found (style, $$LBS_EXTENDEDSEL) THEN
 		' first, deselect everything
 		SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
 		'
@@ -4766,7 +4805,7 @@ FUNCTION WinXListView_AddCheckBoxes (hLV)
 
 	' add the check boxes if they are missing
 	exStyle = SendMessageA (hLV, $$LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0)
-	IF (exStyle & $$LVS_EX_CHECKBOXES) <> $$LVS_EX_CHECKBOXES THEN
+	IFF WinXMask_found (exStyle, $$LVS_EX_CHECKBOXES) THEN
 		exStyle = exStyle | $$LVS_EX_CHECKBOXES
 		SendMessageA (hLV, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
 	ENDIF
@@ -4828,7 +4867,9 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 	' set the item
 	lvi.mask = $$LVIF_TEXT
 	IF iIcon > -1 THEN lvi.mask = lvi.mask | $$LVIF_IMAGE
+
 	IF iItem > -1 THEN lvi.iItem = iItem ELSE lvi.iItem = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+
 	lvi.iSubItem = 0
 	lvi.pszText = &s$[0]
 	lvi.iImage = iIcon
@@ -4863,14 +4904,14 @@ FUNCTION WinXListView_DeleteAllItems (hLV)
 	bSkipOld = LOCK_Get_skipOnSelect (id)
 	IFF bSkipOld THEN
 		LOCK_Set_skipOnSelect (id, $$TRUE)		' freeze .onSelect
-		SendMessageA (hLV, $$WM_SETREDRAW, 0, 0)		' don't redraw listview
+		SendMessageA (hLV, $$WM_SETREDRAW, 0, 0)		' don't redraw list view
 	ENDIF
 
 	ret = SendMessageA (hLV, $$LVM_DELETEALLITEMS, 0, 0)
 
 	IFF bSkipOld THEN
 		LOCK_Set_skipOnSelect (id, $$FALSE)
-		SendMessageA (hLV, $$WM_SETREDRAW, 1, 0)		' redraw listview
+		SendMessageA (hLV, $$WM_SETREDRAW, 1, 0)		' redraw list view
 		' hWnd = GetParent (hLV)
 		' UpdateWindow (hWnd)
 	ENDIF
@@ -4995,6 +5036,7 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_cell$[])
 	DIM r_cell$[uppSubItem]
 
 	bOK = $$FALSE
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	SELECT CASE TRUE
 		CASE count < 1
@@ -5025,6 +5067,7 @@ END FUNCTION
 FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
 	count = 0
+	' get count of items in list view
 	IF hLV THEN count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 
 	slot_add = -1
@@ -5086,7 +5129,7 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 
 	IFZ hLV THEN RETURN
 
-	' get count of items in listview
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IFZ count THEN RETURN		' empty
 
@@ -5146,7 +5189,7 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 
 	IFZ hLV THEN RETURN
 
-	' get count of items in listview
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IFZ count THEN RETURN		' empty
 
@@ -5233,7 +5276,7 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN
 
-	' get count of items in listview
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IFZ count THEN RETURN		' empty
 
@@ -5303,7 +5346,7 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	IFZ hLV THEN RETURN
 
 	SetFocus (hLV)
-	' get count of items in listview
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IFZ count THEN RETURN		' empty
 
@@ -5351,7 +5394,7 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN
 
-	' get count of items in listview
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IFZ count THEN RETURN		' empty
 
@@ -5381,12 +5424,12 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListView_SetView (hLV, view)
 
-	IFZ hLV THEN RETURN
+	IF hLV THEN
+		sub = $$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT
+		WinXSetStyle (hLV, view, 0, sub, 0)
+		RETURN $$TRUE		' success
+	ENDIF
 
-	style = GetWindowLongA (hLV, $$GWL_STYLE)
-	style = (style & NOT ($$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT)) | view
-	SetWindowLongA (hLV, $$GWL_STYLE, style)
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' ##########################################
@@ -5400,7 +5443,7 @@ FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 
 	IFZ hLV THEN RETURN
 
-	' get count of items in listview
+	' get count of items in list view
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 	IFZ count THEN RETURN		' empty
 
@@ -5622,6 +5665,29 @@ END SUB
 
 END FUNCTION
 '
+'
+' ############################
+' #####  WinXMask_found  #####
+' ############################
+'
+' Is(are) flag(s) raized?
+FUNCTION WinXMask_found (mask, flags)
+
+	state = $$FALSE
+	SELECT CASE flags
+		CASE 0
+			IFZ mask THEN state = $$TRUE
+			'
+		CASE ELSE
+			IF mask THEN
+				IF (mask & flags) = flags THEN state = $$TRUE
+			ENDIF
+			'
+	END SELECT
+	RETURN state
+
+END FUNCTION
+'
 ' #############################
 ' #####  WinXMenu_Attach  #####
 ' #############################
@@ -5691,12 +5757,14 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	LINKEDLIST autoDrawList
 
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
+
 	hInst = GetModuleHandleA (0)
 	hWnd = CreateWindowExA (exStyle, &#WinXclass$, &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
 
 	' make a binding
 	binding.hWnd = hWnd
 	style = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
+
 	hInst = GetModuleHandleA (0)
 	binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, 0, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hWnd, 0, hInst, 0)
 	binding.msgHandlers = handler_New ()
@@ -6001,7 +6069,8 @@ FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisabl
 
 	WinXSetDefaultFont (hToolbar)		'give it a nice font
 
-	SendMessageA (hToolbar, $$TB_SETEXTENDEDSTYLE, 0, $$TBSTYLE_EX_MIXEDBUTTONS | $$TBSTYLE_EX_DOUBLEBUFFER | $$TBSTYLE_EX_DRAWDDARROWS)
+	exStyle = $$TBSTYLE_EX_MIXEDBUTTONS | $$TBSTYLE_EX_DOUBLEBUFFER | $$TBSTYLE_EX_DRAWDDARROWS
+	SendMessageA (hToolbar, $$TB_SETEXTENDEDSTYLE, 0, exStyle)
 	SendMessageA (hToolbar, $$TB_SETIMAGELIST, 0, hilMain)
 	SendMessageA (hToolbar, $$TB_SETHOTIMAGELIST, 0, hilHot)
 	SendMessageA (hToolbar, $$TB_SETDISABLEDIMAGELIST, 0, hilGray)
@@ -6051,7 +6120,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	idMax = BINDING_Get_idMax () ' get BINDING item id MAX
 	IFZ idMax THEN
-		enable = $$FALSE
+		enable = $$FALSE ' this is the main window
 	ELSE
 		' enable dialog style keyboard navigation amoung controls
 		enable = $$TRUE
@@ -6346,7 +6415,9 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 		printDlg.hwndOwner = parent
 		printDlg.hDevMode = printInfo.hDevMode
 		printDlg.hDevNames = printInfo.hDevNames
+		'
 		printDlg.flags = printInfo.printSetupFlags | $$PD_RETURNDC | $$PD_USEDEVMODECOPIESANDCOLLATE
+		'
 		IF rangeMin = 0 THEN
 			printDlg.flags = printDlg.flags | $$PD_SELECTION
 			printDlg.nFromPage = minPage
@@ -6362,6 +6433,7 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 				printDlg.nToPage = maxPage
 			ENDIF
 		ENDIF
+		'
 		printDlg.nMinPage = minPage
 		printDlg.nMaxPage = maxPage
 
@@ -6369,11 +6441,11 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			IFZ printInfo.hDevMode THEN printInfo.hDevMode = printDlg.hDevMode
 			IFZ printInfo.hDevNames THEN printInfo.hDevNames = printDlg.hDevNames
 			printInfo.printSetupFlags = printDlg.flags
-			IF printDlg.flags & $$PD_PAGENUMS THEN
+			IF WinXMask_found (printDlg.flags, $$PD_PAGENUMS) THEN
 				rangeMin = printDlg.nFromPage		'range
 				rangeMax = printDlg.nToPage
 			ELSE
-				IF printDlg.flags & $$PD_SELECTION THEN
+				IF WinXMask_found (printDlg.flags, $$PD_SELECTION) THEN
 					rangeMin = 0		'selection
 				ELSE
 					rangeMax = -1		'all pages
@@ -6438,12 +6510,17 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXProgress_SetMarquee (hProg, enable)
 	IF enable THEN
-		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) | $$PBS_MARQUEE)
-		SendMessageA (hProg, $$PBM_SETMARQUEE, 1, 50)
+		add = $$PBS_MARQUEE ' add flag
+		sub = 0
+		state = 1 ' set ON
 	ELSE
-		SetWindowLongA (hProg, $$GWL_STYLE, GetWindowLongA (hProg, $$GWL_STYLE) & (~$$PBS_MARQUEE))
-		SendMessageA (hProg, $$PBM_SETMARQUEE, $$FALSE, 50)
+		add = 0
+		sub = $$PBS_MARQUEE ' remove flag
+		state = 0 ' set off
 	ENDIF
+
+	WinXSetStyle (hProg, add, 0, sub, 0)
+	SendMessageA (hProg, $$PBM_SETMARQUEE, state, 50)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -7455,10 +7532,16 @@ END FUNCTION
 ' vert = $$TRUE to enable the vertical scrollbar, $$FALSE otherwise
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXScroll_Show (hWnd, horiz, vert)
-	style = GetWindowLongA (hWnd, $$GWL_STYLE)
-	IF horiz THEN style = style | $$WS_HSCROLL ELSE style = style & (~$$WS_HSCROLL)
-	IF vert THEN style = style | $$WS_VSCROLL ELSE style = style & (~$$WS_VSCROLL)
-	SetWindowLongA (hWnd, $$GWL_STYLE, style)
+
+	flag = $$WS_HSCROLL ' to add if horizontal, or to remove
+	IF horiz THEN add = flag ELSE sub = flag
+
+	flag = $$WS_VSCROLL ' to add if vertical, or to remove
+	IF vert THEN add = add | flag ELSE sub = sub | flag
+
+	WinXSetStyle (hWnd, add, 0, sub, 0)
+
+	' refresh
 	SetWindowPos (hWnd, 0, 0, 0, 0, 0, $$SWP_NOMOVE | $$SWP_NOSIZE | $$SWP_NOZORDER | $$SWP_FRAMECHANGED)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -7595,10 +7678,10 @@ END FUNCTION
 ' #####  WinXSetStyle  #####
 ' ##########################
 ' Changes the window style of a window or a control
-' hWnd = the handle to the window the change the style of
-' add = the styles to add
+' hWnd  = the handle to the window the change the style of
+' add   = the styles to add
 ' addEx = the extended styles to add
-' sub = the styles to remove
+' sub   = the styles to remove
 ' subEx = the extended styles to remove
 ' returns $$TRUE on success or $$FALSE on fail
 '
@@ -7606,70 +7689,88 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 
 	IFZ hWnd THEN RETURN
 
-	bOK = $$TRUE
-	IF add <> sub THEN		' if add and sub are equal, don't change style
-		'
-		style = GetWindowLongA (hWnd, $$GWL_STYLE)
-		styleNew = style
-		'
-		' add before subtracting
-		IF add THEN
-			IFZ styleNew THEN
-				styleNew = add
-			ELSE
-				' add only if not there
-				IF (styleNew & add) <> add THEN styleNew = styleNew | add
-			ENDIF
-		ENDIF
-		'
-		' subtract sub from styleNew
-		SELECT CASE TRUE
-			CASE sub = 0 ' nothing to subtract
-			CASE styleNew = 0 ' nothing to subtract from
-			CASE ELSE : IF (styleNew & sub) = sub THEN styleNew = styleNew & (~sub)
-		END SELECT
-		'
-		' update the control only for a style change
-		IF styleNew <> style THEN
-			SetWindowLongA (hWnd, $$GWL_STYLE, styleNew)
-			'
-			' Guy-18mar12-added $$ES_READONLY handling
-			IF add = $$ES_READONLY THEN SendMessageA (hWnd, $$EM_SETREADONLY, 1, 0)
-			IF sub = $$ES_READONLY THEN SendMessageA (hWnd, $$EM_SETREADONLY, 0, 0)
-			'
-			styleUpd = GetWindowLongA (hWnd, $$GWL_STYLE)
-			IF styleUpd <> styleNew THEN bOK = $$FALSE		' fail
-		ENDIF
-		'
-	ENDIF
+	bOK = $$TRUE		' assume success
 
-	IF addEx <> subEx THEN
-		'
-		styleEx = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-		styleExNew = styleEx
-		'
-		' add before subtracting
-		IF addEx THEN
-			IFZ styleExNew THEN
-				styleExNew = addEx
-			ELSE
-				IF (styleExNew & addEx) <> addEx THEN styleExNew = styleExNew | addEx
+	SELECT CASE TRUE
+		CASE add = sub		' do nothing
+			'
+		CASE ELSE
+			nIndex = $$GWL_STYLE		' style
+			styleOld = GetWindowLongA (hWnd, nIndex)
+			'
+			' add before subtracting
+			style = styleOld
+			IF add THEN
+				' add only if not there
+				IF (style & add) <> add THEN style = style | add
 			ENDIF
-		ENDIF
-		'
-		SELECT CASE TRUE
-			CASE subEx = 0 ' nothing to subtract
-			CASE styleExNew = 0 ' nothing to subtract from
-			CASE ELSE : IF (styleExNew & subEx) = subEx THEN styleExNew = styleExNew & (~subEx)
-		END SELECT
-		'
-		IF styleExNew <> styleEx THEN
-			SetWindowLongA (hWnd, $$GWL_EXSTYLE, styleExNew)
-			styleExUpd = GetWindowLongA (hWnd, $$GWL_EXSTYLE)
-			IF styleExUpd <> styleExNew THEN bOK = $$FALSE		' fail
-		ENDIF
-		'
-	ENDIF
+			'
+			' subtract sub from style
+			IF sub THEN
+				' subtract only if present
+				IF (style & sub) = sub THEN style = style & (~sub)
+			ENDIF
+			'
+			' update the control only for a styleOld change
+			IF style = styleOld THEN EXIT SELECT
+			'
+			SetWindowLongA (hWnd, nIndex, style)
+			'
+			' Guy-18mar12-add or remove $$ES_READONLY flag with:
+			' SendMessageA (handle, $$EM_SETREADONLY, On/off, 0)
+			state = -1
+			IF WinXMask_found (add, $$ES_READONLY) THEN state = 1		' read only
+			IF WinXMask_found (sub, $$ES_READONLY) THEN state = 0		' unprotected
+			'
+			SELECT CASE state
+				CASE 0, 1
+					SendMessageA (hWnd, $$EM_SETREADONLY, state, 0)
+					'
+			END SELECT
+			'
+			' check update
+			update = GetWindowLongA (hWnd, nIndex)
+			IF update <> style THEN bOK = $$FALSE		' fail
+			'
+	END SELECT
+
+	SELECT CASE TRUE
+		CASE addEx = subEx		' do nothing
+			'
+		CASE ELSE
+			nIndex = $$GWL_EXSTYLE		' extended style
+			exStyleOld = GetWindowLongA (hWnd, nIndex)
+			'
+			' add before subtracting
+			exStyle = exStyleOld
+			IF addEx THEN
+				IF (styleEx & addEx) <> addEx THEN styleEx = styleEx | addEx
+			ENDIF
+			'
+			IF subEx THEN
+				IF (styleEx & subEx) = subEx THEN styleEx = styleEx & (~subEx)
+			ENDIF
+			'
+			IF exStyle <> exStyleOld THEN
+				' list view's extended style mask is set using:
+				' SendMessageA (handle, $$LVM_SETEXTENDEDLISTVIEWSTYLE, ...
+				lenBuf = 128
+				buf$ = NULL$ (lenBuf)
+				ret = GetClassNameA (hWnd, &buf$, lenBuf)
+				class$ = TRIM$ (CSTRING$ (&buf$))
+				SELECT CASE class$
+					CASE $$WC_LISTVIEW   : SendMessageA (hWnd, $$LVM_SETEXTENDEDLISTVIEWSTYLE, 0, exStyle)
+					CASE $$WC_TABCONTROL : SendMessageA (hWnd, $$TB_SETEXTENDEDSTYLE, 0, exStyle)
+					CASE ELSE : SetWindowLongA (hWnd, nIndex, exStyle)
+				END SELECT
+				'
+				' check update
+				update = GetWindowLongA (hWnd, nIndex)
+				IF update <> exStyle THEN bOK = $$FALSE		' fail
+			ENDIF
+			'
+	END SELECT
+
 	RETURN bOK
 END FUNCTION
 '
@@ -7902,7 +8003,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	IFF dock THEN
 		splitterInfo.dock = $$DOCK_DISABLED
 	ELSE
-		IF (autoSizerList[series].direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
+		IF WinXMask_found (autoSizerList[series].direction, $$DIR_REVERSE) THEN
 			splitterInfo.dock = $$DOCK_BACKWARD
 		ELSE
 			splitterInfo.dock = $$DOCK_FORWARD
@@ -8202,8 +8303,8 @@ FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, STRING toolti
 	bt.idCommand = commandId
 	bt.fsState = $$TBSTATE_ENABLED
 
-	style = $$BTNS_AUTOSIZE
-	IF mutex THEN style = style | $$BTNS_CHECKGROUP ELSE style = style | $$BTNS_CHECK
+	IF mutex THEN style = $$BTNS_CHECKGROUP ELSE style = $$BTNS_CHECK
+	style = style | $$BTNS_AUTOSIZE
 	bt.fsStyle = style
 
 	IF tooltipText THEN bt.iString = &tooltipText
@@ -8242,7 +8343,9 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_ToggleButton (hToolbar, idButton, on)
 	state = SendMessageA (hToolbar, $$TB_GETSTATE, idButton, 0)
-	IF on THEN state = state | $$TBSTATE_CHECKED ELSE state = state & (~$$TBSTATE_CHECKED)
+
+	flag = $$TBSTATE_CHECKED
+	IF on THEN state = state | flag ELSE state = state & (~flag)
 	' Guy-13jan11-SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
 	ret = SendMessageA (hToolbar, $$TB_SETSTATE, idButton, state)
 	IFZ ret THEN RETURN
@@ -8359,10 +8462,11 @@ FUNCTION WinXTreeView_AddCheckBoxes (hTV)
 
 	' add the check boxes if they are missing
 	style = GetWindowLongA (hTV, $$GWL_STYLE)
-	IFZ (style & $$TVS_CHECKBOXES) <> $$TVS_CHECKBOXES THEN
-		style = style | $$TVS_CHECKBOXES
-		SetWindowLongA (hTV, $$GWL_STYLE, style)
+	add = $$TVS_CHECKBOXES
+	IFF WinXMask_found (style, add) THEN
+		WinXSetStyle (hTV, add, 0, 0, 0)
 	ENDIF
+
 	RETURN $$TRUE		' success
 
 END FUNCTION
@@ -8474,6 +8578,7 @@ FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
 
 	IFZ hTV THEN RETURN
 
+	' get count of items in tree view
 	count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
 	IFZ count THEN RETURN $$TRUE		' success
 
@@ -9162,7 +9267,7 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	IFZ nNumWindows THEN RETURN ' none!
 
 	currPos = 0
-	IF (autoSizerList[id].direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
+	IF WinXMask_found (autoSizerList[id].direction, $$DIR_REVERSE) THEN
 		SELECT CASE autoSizerList[id].direction & 0x00000003
 			CASE $$DIR_HORIZ
 				currPos = w
@@ -9338,6 +9443,38 @@ FUNCTION CreateMdiChild (hClient, STRING title, style)
 	hMdi = CreateWindowExA (exStyle, &#WinXclass$, pTitle, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
 	RETURN hMdi
 
+END FUNCTION
+'
+' ########################
+' #####  GuiSetFont  #####
+' ########################
+'
+' Sets a font to a control
+' - hCtr  = the control handle
+' - hFont = the logical font handle
+' - $$TRUE to redraw the control after setting the font
+'
+FUNCTION GuiSetFont (hCtr, hFont, bRedraw)
+	bOK = $$FALSE
+	SELECT CASE hCtr
+		CASE 0
+		CASE ELSE
+			hFontDefault = 0
+			IFZ hFont THEN
+				hFontDefault = GetStockObject ($$DEFAULT_GUI_FONT)
+				IFZ hFontDefault THEN EXIT SELECT
+				hFont = hFontDefault
+			ENDIF
+			'
+			' lParam = 0 => redraw
+			IF bRedraw THEN lParam = 1 ELSE lParam = 0
+			' $$WM_SETFONT does not return a value
+			SendMessageA (hCtr, $$WM_SETFONT, hFont, lParam)
+			IF hFontDefault THEN DeleteObject (hFontDefault)		' release the default GUI font
+			bOK = $$TRUE ' success
+			'
+	END SELECT
+	RETURN bOK
 END FUNCTION
 '
 ' ##############################
@@ -9633,7 +9770,7 @@ FUNCTION SPLITTER_Proc (hSplitter, wMsg, wParam, lParam)
 				END SELECT
 
 				IFZ delta THEN RETURN
-				IF (splitterInfo.direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
+				IF WinXMask_found (splitterInfo.direction, $$DIR_REVERSE) THEN
 					autoSizerBlock.size = autoSizerBlock.size - delta
 					IF splitterInfo.min && autoSizerBlock.size < splitterInfo.min THEN
 						autoSizerBlock.size = splitterInfo.min
@@ -9820,12 +9957,12 @@ END FUNCTION
 ' returns a window style.
 FUNCTION XWSStoWS (xwss)
 	SELECT CASE xwss
-		CASE $$XWSS_APP : style = $$WS_OVERLAPPEDWINDOW
-		CASE $$XWSS_APPNORESIZE : style = $$WS_OVERLAPPED | $$WS_CAPTION | $$WS_SYSMENU | $$WS_MINIMIZEBOX
-		CASE $$XWSS_POPUP : style = $$WS_POPUPWINDOW | $$WS_CAPTION
+		CASE $$XWSS_APP          : style = $$WS_OVERLAPPEDWINDOW
+		CASE $$XWSS_APPNORESIZE  : style = $$WS_OVERLAPPED | $$WS_CAPTION | $$WS_SYSMENU | $$WS_MINIMIZEBOX
+		CASE $$XWSS_POPUP        : style = $$WS_POPUPWINDOW | $$WS_CAPTION
 		CASE $$XWSS_POPUPNOTITLE : style = $$WS_POPUPWINDOW
-		CASE $$XWSS_NOBORDER : style = $$WS_POPUP
-		CASE ELSE : style = 0
+		CASE $$XWSS_NOBORDER     : style = $$WS_POPUP
+		CASE ELSE                : style = 0
 	END SELECT
 	RETURN style
 END FUNCTION
@@ -9932,7 +10069,8 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 			IF autoSizerBlock.space <= 1 THEN autoSizerBlock.space = autoSizerBlock.space * nh
 
 			IF autoSizerBlock.flags & $$SIZER_SIZERELREST THEN
-				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN rest = currPos ELSE rest = nh - currPos
+				IF WinXMask_found (direction, $$DIR_REVERSE) THEN rest = currPos ELSE rest = nh - currPos
+				'
 				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
 				autoSizerBlock.size = autoSizerBlock.size - autoSizerBlock.space
 			ELSE
@@ -9953,22 +10091,22 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 				boxH = boxH - 8
 				autoSizerBlock.h = autoSizerBlock.h - 8
 
-				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN h = boxY - boxH - 8 ELSE h = boxY + boxH
+				IF WinXMask_found (direction, $$DIR_REVERSE) THEN h = boxY - boxH - 8 ELSE h = boxY + boxH
 				MoveWindow (autoSizerBlock.hSplitter, boxX, h, boxW, 8, 0)
 				InvalidateRect (autoSizerBlock.hSplitter, 0, 1)		' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTER_Get (iSplitter, @splitterInfo)
-				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nh - currPos - autoSizerBlock.space
+				IF WinXMask_found (direction, $$DIR_REVERSE) THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nh - currPos - autoSizerBlock.space
 				SPLITTER_Update (iSplitter, splitterInfo)
 			ENDIF
 
-			IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN boxY = boxY - boxH
+			IF WinXMask_found (direction, $$DIR_REVERSE) THEN boxY = boxY - boxH
 		CASE $$DIR_HORIZ
 			IF autoSizerBlock.space <= 1 THEN autoSizerBlock.space = autoSizerBlock.space * nw
 
 			IF autoSizerBlock.flags & $$SIZER_SIZERELREST THEN
-				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN rest = currPos ELSE rest = nw - currPos
+				IF WinXMask_found (direction, $$DIR_REVERSE) THEN rest = currPos ELSE rest = nw - currPos
 				IF autoSizerBlock.size <= 1 THEN autoSizerBlock.size = autoSizerBlock.size * rest ELSE autoSizerBlock.size = rest - autoSizerBlock.size
 				autoSizerBlock.size = autoSizerBlock.size - autoSizerBlock.space
 			ELSE
@@ -9988,17 +10126,18 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 				boxW = boxW - 8
 				autoSizerBlock.w = autoSizerBlock.w - 8
 
-				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN h = boxX - boxW - 8 ELSE h = boxX + boxW
+				IF WinXMask_found (direction, $$DIR_REVERSE) THEN h = boxX - boxW - 8 ELSE h = boxX + boxW
+
 				MoveWindow (autoSizerBlock.hSplitter, h, boxY, 8, boxH, 0)
 				InvalidateRect (autoSizerBlock.hSplitter, 0, 1)		' erase
 
 				iSplitter = GetWindowLongA (autoSizerBlock.hSplitter, $$GWL_USERDATA)
 				SPLITTER_Get (iSplitter, @splitterInfo)
-				IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nw - currPos - autoSizerBlock.space
+				IF WinXMask_found (direction, $$DIR_REVERSE) THEN splitterInfo.maxSize = currPos - autoSizerBlock.space ELSE splitterInfo.maxSize = nw - currPos - autoSizerBlock.space
 				SPLITTER_Update (iSplitter, splitterInfo)
 			ENDIF
 
-			IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN boxX = boxX - boxW
+			IF WinXMask_found (direction, $$DIR_REVERSE) THEN boxX = boxX - boxW
 	END SELECT
 
 	' adjust the width and height as necessary
@@ -10041,7 +10180,7 @@ FUNCTION autoSizerInfo_add (AUTOSIZER autoSizerBlock, direction, x0, y0, nw, nh,
 		ENDIF
 	ENDIF
 
-	IF (direction & $$DIR_REVERSE) = $$DIR_REVERSE THEN
+	IF WinXMask_found (direction, $$DIR_REVERSE) THEN
 		RETURN currPos - autoSizerBlock.space - autoSizerBlock.size
 	ELSE
 		RETURN currPos + autoSizerBlock.space + autoSizerBlock.size
@@ -10744,7 +10883,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			IF binding.onFocusChange THEN RETURN @binding.onFocusChange (hWnd, $$FALSE)
 
 		CASE $$WM_SETCURSOR
-			IF binding.hCursor && LOWORD (lParam) = $$HTCLIENT THEN
+			IF binding.hCursor && (LOWORD (lParam) = $$HTCLIENT) THEN
 				SetCursor (binding.hCursor)
 				RETURN $$TRUE
 			ENDIF
@@ -11487,38 +11626,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	GetClientRect (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	RETURN WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
-END FUNCTION
-'
-' ########################
-' #####  GuiSetFont  #####
-' ########################
-'
-' Sets a font to a control
-' - hCtr  = the control handle
-' - hFont = the logical font handle
-' - $$TRUE to redraw the control after setting the font
-'
-FUNCTION GuiSetFont (hCtr, hFont, bRedraw)
-	bOK = $$FALSE
-	SELECT CASE hCtr
-		CASE 0
-		CASE ELSE
-			hFontDefault = 0
-			IFZ hFont THEN
-				hFontDefault = GetStockObject ($$DEFAULT_GUI_FONT)
-				IFZ hFontDefault THEN EXIT SELECT
-				hFont = hFontDefault
-			ENDIF
-			'
-			' lParam = 0 => redraw
-			IF bRedraw THEN lParam = 1 ELSE lParam = 0
-			' $$WM_SETFONT does not return a value
-			SendMessageA (hCtr, $$WM_SETFONT, hFont, lParam)
-			IF hFontDefault THEN DeleteObject (hFontDefault)		' release the default GUI font
-			bOK = $$TRUE ' success
-			'
-	END SELECT
-	RETURN bOK
 END FUNCTION
 '
 '
