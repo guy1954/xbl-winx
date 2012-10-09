@@ -303,9 +303,15 @@ END TYPE
 '
 '
 EXPORT
-
-'Now the WinX specific stuff
-
+'
+' WinX - A Win32 abstraction for XBlite
+' (C) Callum Lowcay 2007-2008 - Licensed under the GNU LGPL
+'     Evolutions: Guy Lonne 2009-2012.
+'
+' ******************************************
+' *****  WinX Library COMPOSITE TYPES  *****
+' ******************************************
+'
 ' Red/Green/Blue/Alpha
 TYPE WINX_RGBA
 	UBYTE	.blue
@@ -313,34 +319,33 @@ TYPE WINX_RGBA
 	UBYTE	.red
 	UBYTE	.alpha
 END TYPE
-
-
+'
 $$CHANNEL_RED   = 2
 $$CHANNEL_GREEN	= 1
 $$CHANNEL_BLUE	= 0
 $$CHANNEL_ALPHA	= 3
-
+'
 'Simplified window styles
 $$XWSS_APP					= 0x00000000
 $$XWSS_APPNORESIZE	=	0x00000001
 $$XWSS_POPUP				= 0x00000002
 $$XWSS_POPUPNOTITLE	= 0x00000003
 $$XWSS_NOBORDER			= 0x00000004
-
+'
 'mouse buttons
 $$MBT_LEFT		= 1
 $$MBT_MIDDLE	= 2
 $$MBT_RIGHT	= 3
-
+'
 'font styles
 $$FONT_BOLD					= 0x00000001
 $$FONT_ITALIC				= 0x00000002
 $$FONT_UNDERLINE		= 0x00000004
 $$FONT_STRIKEOUT		= 0x00000008
-
+'
 'file types
 $$FILETYPE_WINBMP		= 1
-
+'
 'AutoSizer flags (autoSizerBlock.flags)
 $$SIZER_FLAGS_NONE  = 0x0
 $$SIZER_SIZERELREST	= 0x00000001
@@ -350,45 +355,55 @@ $$SIZER_SERIES			= 0x00000008
 $$SIZER_WCOMPLEMENT	= 0x00000010
 $$SIZER_HCOMPLEMENT	= 0x00000020
 $$SIZER_SPLITTER		= 0x00000040
-
+'
 $$CONTROL			= 0
 $$DIR_VERT		= 1
 $$DIR_HORIZ		= 2
 $$DIR_REVERSE	= 0x80000000
-
+'
 $$UNIT_LINE		= 0
 $$UNIT_PAGE		= 1
 $$UNIT_END		= 2
-
+'
+'drag and drop operations
 'drag states
 $$DRAG_START		= 0
 $$DRAG_DRAGGING	= 1
 $$DRAG_DONE			= 2
-
+'
 'edit states
 $$EDIT_START		= 0
 $$EDIT_DONE			= 1
-
+'
 $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
-
+'
 ' Most Recently Used
 $$MRU_SECTION$     = "Recent files"
 $$UPP_MRU          = 19
-
+'
 $$WINX_CLASS$ = "WinX"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
-
+'
 ' constants for WinXDialog_OpenFile$
-' multiSelect boolean
+' $$TRUE/$$FALSE values for boolean multiSelect
 $$OPN_MULTI_SELECT  = -1  ' multiple file name selection
 $$OPN_SINGLE_SELECT = 0   ' single selection
-
-' readOnly boolean
+'
+' $$TRUE/$$FALSE values for boolean readOnly
 $$OPN_READ_ONLY  = -1  ' open "Read Only" (with no lock)
 $$OPN_READ_WRITE = 0   ' open locking the selected file(s)
 '
 '
-DECLARE FUNCTION WinX ()
+'
+' ************************************
+' *****  WinX Library Functions  *****
+' ************************************
+'
+'
+DECLARE FUNCTION WinX () ' initialization
+'
+'
+' Add control
 DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr)
@@ -411,32 +426,43 @@ DECLARE FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, tim
 DECLARE FUNCTION WinXAddTooltip (hCtr, tip$)
 DECLARE FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
 DECLARE FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
-
+'
+' Animation
 DECLARE FUNCTION WinXAni_Play (hAni)
 DECLARE FUNCTION WinXAni_Stop (hAni)
-
+'
+' Accelerators
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
-
+'
+' Auto-Sizer
 DECLARE FUNCTION WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
 DECLARE FUNCTION WinXAutoSizer_SetInfo (hWnd, series, space#, size#, x#, y#, w#, h#, flags)
 DECLARE FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, space#, size#, flags)
-
+DECLARE FUNCTION WinXNewAutoSizerSeries (direction)
+'
+' Check box or Radio button
 DECLARE FUNCTION WinXButton_GetCheck (hButton)
 DECLARE FUNCTION WinXButton_SetCheck (hButton, checked)
-
+'
+' Calendar
 DECLARE FUNCTION WinXCalendar_GetSelection (hCal, SYSTEMTIME @time)
 DECLARE FUNCTION WinXCalendar_SetSelection (hCal, SYSTEMTIME time)
-
+'
+' WinX Cleanup
 DECLARE FUNCTION WinXCleanUp () ' optional cleanup
-DECLARE FUNCTION WinXClear (hWnd)
-
+'
+' Graphics
+DECLARE FUNCTION WinXClear (hWnd) ' clear all the graphics in a window
+'
+' Clipboard
 DECLARE FUNCTION WinXClip_GetImage ()
 DECLARE FUNCTION WinXClip_GetString$ ()
 DECLARE FUNCTION WinXClip_IsImage ()
 DECLARE FUNCTION WinXClip_IsString ()
 DECLARE FUNCTION WinXClip_PutImage (hImage)
 DECLARE FUNCTION WinXClip_PutString (Stri$)
-
+'
+' Combo box
 DECLARE FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
 DECLARE FUNCTION WinXComboBox_GetEditText$ (hCombo)
 DECLARE FUNCTION WinXComboBox_GetItem$ (hCombo, index)
@@ -445,9 +471,11 @@ DECLARE FUNCTION WinXComboBox_RemoveAllItems (hCombo)
 DECLARE FUNCTION WinXComboBox_RemoveItem (hCombo, index)
 DECLARE FUNCTION WinXComboBox_SetEditText (hCombo, text$)
 DECLARE FUNCTION WinXComboBox_SetSelection (hCombo, index)
-
+'
+' Time-Stamp
 DECLARE FUNCTION WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stamp
-
+'
+' Standard Windows dialogs
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity)
 DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
@@ -455,7 +483,8 @@ DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 DECLARE FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwritePrompt) ' display a SaveFile dialog box
 DECLARE FUNCTION WinXDialog_SysInfo (@msInfo$) ' run Microsoft program "System Information"
-
+'
+' Directory path
 DECLARE FUNCTION WinXDir_AppendSlash (@dir$) ' end directory path dir$ with $$PathSlash$
 DECLARE FUNCTION WinXDir_ClipEndSlash (@dir$) ' remove the trailing \ from directory path
 DECLARE FUNCTION WinXDir_Create (dir$) ' create directory dir$
@@ -463,10 +492,32 @@ DECLARE FUNCTION WinXDir_Exists (dir$) ' determine if directory dir$ exists
 DECLARE FUNCTION WinXDir_GetXBasicDir$ () ' get the complete path of XBasic's directory
 DECLARE FUNCTION WinXDir_GetXblDir$ () ' get the complete path of XBLite's directory
 DECLARE FUNCTION WinXDir_GetXblProgramDir$ () ' get xblite's program dir
-
+'
+DECLARE FUNCTION WinXFolder_GetDir$ (nFolder) ' get the path for a Windows special folder
+'
+' Window
 DECLARE FUNCTION WinXDisplay (hWnd)
+DECLARE FUNCTION WinXDoEvents () ' event loop
+DECLARE FUNCTION WinXEnableDialogInterface (hWnd, enable) ' enable/disable a dialog-type interface
+DECLARE FUNCTION WinXGetMinSize (hWnd, @w, @h)
+DECLARE FUNCTION WinXGetPlacement (hWnd, @minMax, RECT @restored)
+DECLARE FUNCTION WinXGetUsableRect (hWnd, RECT @rect)
+DECLARE FUNCTION WinXHide (hWnd)
+DECLARE FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
+DECLARE FUNCTION WinXSetMinSize (hWnd, w, h)
+DECLARE FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
+'
+DECLARE FUNCTION WinXSetWindowColor (hWnd, color)
+DECLARE FUNCTION WinXSetWindowColour (hWnd, colour)
+'
+DECLARE FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
+DECLARE FUNCTION WinXShow (hWnd)
+DECLARE FUNCTION VOID WinXUpdate (hWnd)
+'
+' Help file
 DECLARE FUNCTION WinXDisplayHelpFile (helpFile$) ' display the contents of helpFile$
-DECLARE FUNCTION WinXDoEvents ()
+'
+' Drawing
 DECLARE FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 DECLARE FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 DECLARE FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
@@ -477,20 +528,18 @@ DECLARE FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 DECLARE FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 DECLARE FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 DECLARE FUNCTION WinXDrawText (hWnd, hFont, text$, x, y, backCol, forCol)
-
+'
 DECLARE FUNCTION WinXDraw_CopyImage (hImage)
 DECLARE FUNCTION WinXDraw_CreateImage (w, h)
 DECLARE FUNCTION WinXDraw_DeleteImage (hImage)
 DECLARE FUNCTION WinXDraw_GetColor (parent, initialColor)
 DECLARE FUNCTION WinXDraw_GetColour (parent, initialColour)
-DECLARE FUNCTION WinXDraw_GetFontDialog (parent, LOGFONT @logFont, @color) ' display the get font dialog box
-DECLARE FUNCTION WinXDraw_GetFontHeight (hFont, @ascent, @descenct)
+'
 DECLARE FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE @data[])
 DECLARE FUNCTION WinXDraw_GetImageInfo (hImage, @w, @h, @pBits)
 DECLARE FUNCTION WINX_RGBA WinXDraw_GetImagePixel (hImage, x, y)
 DECLARE FUNCTION WinXDraw_GetTextWidth (hFont, text$, maxWidth)
 DECLARE FUNCTION WinXDraw_LoadImage (fileName$, fileType)
-DECLARE FUNCTION LOGFONT WinXDraw_MakeLogFont (font$, height, style)
 DECLARE FUNCTION DOUBLE WinXDraw_PixelsPerPoint ()
 DECLARE FUNCTION WinXDraw_PremultiplyImage (hImage)
 DECLARE FUNCTION WinXDraw_ResizeImage (hImage, w, h)
@@ -499,32 +548,42 @@ DECLARE FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 DECLARE FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE @data[])
 DECLARE FUNCTION WinXDraw_SetImagePixel (hImage, x, y, color)
 DECLARE FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
-
-DECLARE FUNCTION WinXEnableDialogInterface (hWnd, enable)
-
-DECLARE FUNCTION WinXFolder_GetDir$ (nFolder) ' get the path for a Windows special folder
-
-DECLARE FUNCTION WinXGetMinSize (hWnd, @w, @h)
-DECLARE FUNCTION WinXGetMousePos (hWnd, @x, @y)
-DECLARE FUNCTION WinXGetPlacement (hWnd, @minMax, RECT @restored)
+'
+DECLARE FUNCTION WinXUndo (hWnd, idCtr) ' undo a drawing operation
+'
+' Font
+DECLARE FUNCTION LOGFONT WinXDraw_MakeLogFont (font$, height, style)
+DECLARE FUNCTION WinXDraw_GetFontDialog (parent, LOGFONT @logFont, @color) ' display the get font dialog box
+DECLARE FUNCTION WinXDraw_GetFontHeight (hFont, @ascent, @descenct)
+DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
+DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
+DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
+DECLARE FUNCTION WinXSetFont (hCtr, hFont)
+DECLARE FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
+'
 DECLARE FUNCTION WinXGetText$ (hWnd)
-DECLARE FUNCTION WinXGetUsableRect (hWnd, RECT @rect)
-
+DECLARE FUNCTION WinXSetText (hWnd, text$)
+'
+' Group box
 DECLARE FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
-
-DECLARE FUNCTION WinXHide (hWnd)
-
+'
+' INI file
 DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an .INI file
 DECLARE FUNCTION WinXIni_DeleteSection (iniPath$, section$) ' delete section from .INI file
 DECLARE FUNCTION WinXIni_LoadKeyList (iniPath$, section$, @key$[]) ' load all key names of a given section
 DECLARE FUNCTION WinXIni_LoadSectionList (iniPath$, @section$[]) ' load all section names
 DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from .INI file
 DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the .INI file
-
+'
+' Keyboard
 DECLARE FUNCTION WinXIsKeyDown (key)
+'
+' Mouse
+DECLARE FUNCTION WinXGetMousePos (hWnd, @x, @y)
 DECLARE FUNCTION WinXIsMousePressed (button)
-DECLARE FUNCTION WinXKillFont (@hFont) ' release a font created by WinXNewFont
-
+DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
+'
+' List box
 DECLARE FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
 DECLARE FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
@@ -534,7 +593,8 @@ DECLARE FUNCTION WinXListBox_RemoveAllItems (hListBox)
 DECLARE FUNCTION WinXListBox_RemoveItem (hListBox, index)
 DECLARE FUNCTION WinXListBox_SetCaret (hListBox, item)
 DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
-
+'
+' List view
 DECLARE FUNCTION WinXListView_AddCheckBoxes (hLV) ' add the check boxes to a list view
 DECLARE FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, label$, iSubItem)
 DECLARE FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
@@ -561,35 +621,37 @@ DECLARE FUNCTION WinXListView_SetView (hLV, view)
 DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_Sort (hLV, iCol, desc)
 DECLARE FUNCTION WinXListView_UseOnSelect (hLV) ' re-enable $$LVN_ITEMCHANGED
-
+'
+' Most Recently Used list
 DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' load the Most Recently Used file list from the .INI file
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
 DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the .INI file
-
+'
 DECLARE FUNCTION WinXMask_found (mask, flags) ' flag(s) raized?
 DECLARE FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
-
+'
 DECLARE FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
-DECLARE FUNCTION WinXNewAutoSizerSeries (direction)
 DECLARE FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
-DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut) ' create a new logical font
 DECLARE FUNCTION WinXNewMenu (menu$, firstID, isPopup)
 DECLARE FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, rgbTrans, toolTips, customisable)
 DECLARE FUNCTION WinXNewToolbarUsingIls (hilMain, hilGray, hilHot, toolTips, customisable)
-DECLARE FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
-
+'
+' File path
 DECLARE FUNCTION WinXPath_Trim$ (path$) ' trim file path path$
-
+'
+' Print
 DECLARE FUNCTION WinXPrint_DevUnitsPerInch (hPrinter, @w, @h)
 DECLARE FUNCTION WinXPrint_Done (hPrinter)
 DECLARE FUNCTION DOUBLE WinXPrint_LogUnitsPerPoint (hPrinter, cyLog, cyPhys)
 DECLARE FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pageNum, pageCount)
 DECLARE FUNCTION WinXPrint_PageSetup (parent)
 DECLARE FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPhys, fileName$, showDialog, parent)
-
+'
+' Progess bar
 DECLARE FUNCTION WinXProgress_SetMarquee (hProg, enable)
 DECLARE FUNCTION WinXProgress_SetPos (hProg, DOUBLE pos)
-
+'
+' Callback register
 DECLARE FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 DECLARE FUNCTION WinXRegMessageHandler (hWnd, wMsg, FUNCADDR FnMsgHandler)
 DECLARE FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
@@ -614,14 +676,16 @@ DECLARE FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 DECLARE FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 DECLARE FUNCTION WinXRegOnSelect (hWnd, FUNCADDR FnOnSelect)
 DECLARE FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
-
+'
+' Windows registry
 DECLARE FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
 DECLARE FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result)
 DECLARE FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
 DECLARE FUNCTION WinXRegistry_WriteBin (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, buf$)
 DECLARE FUNCTION WinXRegistry_WriteInt (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, int)
 DECLARE FUNCTION WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, buf$)
-
+'
+' Scroll bar
 DECLARE FUNCTION WinXScroll_GetPos (hWnd, direction, @pos)
 DECLARE FUNCTION WinXScroll_Scroll (hWnd, direction, unitType, scrollingDirection)
 DECLARE FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
@@ -629,50 +693,46 @@ DECLARE FUNCTION WinXScroll_SetPos (hWnd, direction, pos)
 DECLARE FUNCTION WinXScroll_SetRange (hWnd, direction, min, max)
 DECLARE FUNCTION WinXScroll_Show (hWnd, horiz, vert)
 DECLARE FUNCTION WinXScroll_Update (hWnd, deltaX, deltaY)
-
-DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
-
-DECLARE FUNCTION WinXSetDefaultFont (hCtr) ' use the default GUI font
-DECLARE FUNCTION WinXSetFont (hCtr, hFont)
-DECLARE FUNCTION WinXSetFontAndRedraw (hCtr, hFont)
-DECLARE FUNCTION WinXSetMinSize (hWnd, w, h)
-DECLARE FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
+'
+'
 DECLARE FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
-DECLARE FUNCTION WinXSetText (hWnd, text$)
-DECLARE FUNCTION WinXSetWindowColor (hWnd, color)
-DECLARE FUNCTION WinXSetWindowColour (hWnd, colour)
-DECLARE FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
-DECLARE FUNCTION WinXShow (hWnd)
-
+'
+' Splitter
 DECLARE FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
 DECLARE FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 DECLARE FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
-
+'
+' Status bar
 DECLARE FUNCTION WinXStatus_GetText$ (hWnd, part)
 DECLARE FUNCTION WinXStatus_SetText (hWnd, part, text$)
-
+'
+' Tabs
 DECLARE FUNCTION WinXTabs_AddTab (hTabs, label$, index)
 DECLARE FUNCTION WinXTabs_DeleteTab (hTabs, iTab)
 DECLARE FUNCTION WinXTabs_GetAutosizerSeries (hTabs, iTab)
 DECLARE FUNCTION WinXTabs_GetCurrentTab (hTabs)
 DECLARE FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
-
+'
+' Time picker
 DECLARE FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid)
 DECLARE FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
-
+'
+' Tool bar
 DECLARE FUNCTION WinXToolbar_AddButton (hToolbar, commandId, iImage, tooltipText$, optional, moveable)
 DECLARE FUNCTION WinXToolbar_AddControl (hToolbar, hCtr, w)
 DECLARE FUNCTION WinXToolbar_AddSeparator (hToolbar)
 DECLARE FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, tooltipText$, mutex, optional, moveable)
 DECLARE FUNCTION WinXToolbar_EnableButton (hToolbar, iButton, enable)
 DECLARE FUNCTION WinXToolbar_ToggleButton (hToolbar, iButton, on)
-
+'
+' Track bar
 DECLARE FUNCTION WinXTracker_GetPos (hTracker)
 DECLARE FUNCTION WinXTracker_SetLabels (hTracker, leftLabel$, rightLabel$)
 DECLARE FUNCTION WinXTracker_SetPos (hTracker, newPos)
 DECLARE FUNCTION WinXTracker_SetRange (hTracker, USHORT min, USHORT max, ticks)
 DECLARE FUNCTION WinXTracker_SetSelRange (hTracker, USHORT start, USHORT end)
-
+'
+' Tree view
 DECLARE FUNCTION WinXTreeView_AddCheckBoxes (hTV) ' add the check boxes to a tree view
 DECLARE FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect, item$)
 DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem) ' collapse the tree view item
@@ -699,12 +759,9 @@ DECLARE FUNCTION WinXTreeView_SetItemData (hTV, hItem, data) ' Set the lParam da
 DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
 DECLARE FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
-
-DECLARE FUNCTION WinXUndo (hWnd, idCtr)
-DECLARE FUNCTION VOID WinXUpdate (hWnd)
-
+'
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
-
+'
 DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
 '
 '
@@ -825,11 +882,12 @@ FUNCTION WinX ()
 
 	IF #bReentry THEN RETURN ' already initialized!
 
-	' in prevision of the static build
-	Xst () ' initialize Xblite Standard Library
-	Xsx () ' initialize Xblite Standard eXtended Library
-	Xma () ' initialize Xblite Math Library
-	ADT () ' initialize Callum's Abstract Data Types Library
+	' in prevision of a static build
+	Xst ()		' initialize Xblite Standard Library
+	Xsx ()		' initialize Xblite Standard eXtended Library
+	Xma ()		' initialize Xblite Math Library
+
+	ADT ()		' initialize the Abstract Data Types Library
 
 	' initialize the specific common controls classes from the common
 	' control dynamic-link library
@@ -937,7 +995,7 @@ END FUNCTION
 ' Adds an accelerator to an accelerator array
 ' r_accel[] = an array of accelerators
 ' cmd = the command the accelerator sends to WM_COMMAND
-' key = the Vrtual Key code
+' key = the VK key code
 ' control, alt, shit = $$TRUE if the modifier is down, $$FALSE otherwise
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAddAccelerator (ACCEL r_accel[], cmd, key, control, alt, shift)
@@ -4597,7 +4655,7 @@ END FUNCTION
 ' returns the index of the string in the list or -1 on fail
 '
 ' ----- Usage -----
-'index = WinXListBox_AddItem (hListBox, -1, item$)
+'index = WinXListBox_AddItem (hListBox, -1, item$) ' add last
 'IF index < 0 THEN
 '	msg$ = "WinXListBox_AddItem: Can't add item " + item$
 '	XstAlert (msg$)
@@ -4682,6 +4740,9 @@ END FUNCTION
 ' hListBox = the list box to get the items from
 ' r_idxSel[] = the array to place the indexes of selected items into
 ' returns r_cSel, the number of selected items
+' Usage:
+'cSel = WinXListBox_GetSelection (hListBox, @index[])
+'
 FUNCTION WinXListBox_GetSelection (hListBox, r_idxSel[])
 
 	DIM r_idxSel[]
@@ -4729,6 +4790,14 @@ END FUNCTION
 ' hListBox = the list box to remove from
 ' index = the index of the item to remove, -1 to remove the last item
 ' returns the number of strings remaining in the list or -1 if index is out of range
+'
+' Usage:
+'ret = WinXListBox_RemoveItem (hListBox, index[0])
+'IF ret = $$LB_ERR THEN
+'	msg$ = "Can't delete item at index" + STR$ (index[0])
+'	XstAlert (msg$)
+'ENDIF
+'
 FUNCTION WinXListBox_RemoveItem (hListBox, index)
 	IFZ hListBox THEN RETURN $$LB_ERR		' fail
 
