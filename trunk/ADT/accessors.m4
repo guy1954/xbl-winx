@@ -27,6 +27,7 @@ FUNCTION $1_Delete (id)
 		$1_arrayUM[slot] = $$FALSE		' delete $1 item
 		RETURN $$TRUE		' OK!
 	ENDIF
+
 END FUNCTION
 '
 ' Gets data of a $1 item using its id
@@ -53,6 +54,7 @@ FUNCTION $1_Get (id`,' $1 $1_item)
 		ENDIF
 	ENDIF
 	$1_item = $1_Nil		' can't get $1 item
+
 END FUNCTION
 '
 ' Gets $1 item id max
@@ -65,8 +67,10 @@ END FUNCTION
 'NEXT id
 '
 FUNCTION $1_Get_idMax ()
+
 	SHARED $1_idMax
 	RETURN $1_idMax
+
 END FUNCTION
 
 ' Initializes the $1 class
@@ -86,6 +90,7 @@ FUNCTION $1_Init ()
 		NEXT i
 	ENDIF
 	$1_idMax = 0
+
 END FUNCTION
 '
 ' Adds a $1 item to $1 pool
@@ -134,6 +139,7 @@ FUNCTION $1_New ($1 $1_item)
 		id = slot + 1
 	ENDIF
 	RETURN id		' return id
+
 END FUNCTION
 '
 ' Updates the data of a $1 item using its id
@@ -157,6 +163,7 @@ FUNCTION $1_Update (id`,' $1 $1_item)
 			RETURN $$TRUE		' OK!
 		ENDIF
 	ENDIF
+
 END FUNCTION
 )
 

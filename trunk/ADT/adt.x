@@ -23,11 +23,19 @@ VERSION "0.2"
 m4_include(`accessors.m4')
 
 EXPORT
-
+'
+' ADT - Abstract Data Types library for XBlite
+' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
+'
+' *********************************
+' *****  ADT COMPOSITE TYPES  *****
+' *********************************
+'
 TYPE LINKEDNODE
 	XLONG	.iNext
 	XLONG	.iData
 END TYPE
+'
 TYPE LINKEDWALK
 	XLONG	.first
 	XLONG	.iPrev
@@ -35,48 +43,56 @@ TYPE LINKEDWALK
 	XLONG	.iNext
 	XLONG	.last
 END TYPE
+'
 TYPE LINKEDLIST
 	XLONG	.iHead
 	XLONG	.iTail
 	XLONG	.cItems
 END TYPE
-
+'
 TYPE BINNODE
 	XLONG	.iKey
 	XLONG	.iLeft
 	XLONG	.iRight
 	XLONG	.iData
 END TYPE
-
+'
 TYPE BINWALK
 	XLONG		.order
 	XLONG		.nextItem
 	BINNODE	.node
 END TYPE
-
+'
 '	XLONG		.order
 $$ADT_PREORDER	= 0
 $$ADT_INORDER		= 1
 $$ADT_POSTORDER	= 2
-
+'
 TYPE BINTREE
 	XLONG	.iHead
 	FUNCADDR	.comparator(XLONG, XLONG) ' (id_1, id_2)
 	FUNCADDR	.keyDeleter(XLONG) ' (indexDelete)
 END TYPE
-
+'
 ' The stack pointer is maintained implicitly by the linked list
 TYPE STACK
 	LINKEDLIST	.list
 END TYPE
-
+'
 ' Associative arrays are implemented with bin trees
 TYPE ASSOCARRAY
 	BINTREE	.tree
 END TYPE
-
-DECLARE FUNCTION ADT ()
-
+'
+'
+'
+' ***********************************
+' *****  ADT Library Functions  *****
+' ***********************************
+'
+'
+DECLARE FUNCTION ADT () ' initialization
+'
 ' Linked Lists
 DECLARE FUNCTION LinkedList_Init (LINKEDLIST @list)
 DECLARE FUNCTION LinkedList_Append (LINKEDLIST @list, iData)
@@ -93,18 +109,17 @@ DECLARE FUNCTION LinkedList_DeleteItem (LINKEDLIST @list, index)
 DECLARE FUNCTION LinkedList_DeleteAll (LINKEDLIST @list)
 DECLARE FUNCTION LinkedList_Map (LINKEDLIST list, FUNCADDR callBack, @result)
 DECLARE FUNCTION LinkedList_Uninit (LINKEDLIST @list)
-
+'
 ' Stacks
 DECLARE FUNCTION Stack_Init (STACK @stack)
 DECLARE FUNCTION Stack_Uninit (STACK @stack)
 DECLARE FUNCTION Stack_Push (STACK @stack, iData)
 DECLARE FUNCTION Stack_Pop (STACK @stack, @iData)
 DECLARE FUNCTION Stack_Peek (STACK stack, @iData)
-
+'
 ' Bin Trees
 ' User functions FnCompareNodeKeys(id_1, id_2) and FnDeleteTreeNode(indexDelete)
 DECLARE FUNCTION BinTree_Init (BINTREE @tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
-
 DECLARE FUNCTION BinTree_Add (BINTREE @tree, iKey, iData)
 DECLARE FUNCTION BinTree_Remove (BINTREE @tree, iKey, @iData)
 DECLARE FUNCTION BinTree_Find (BINTREE tree, iKey, @iData)
@@ -112,12 +127,12 @@ DECLARE FUNCTION BinTree_Uninit (BINTREE @tree)
 DECLARE FUNCTION BinTree_StartTraversal (BINTREE tree, order)
 DECLARE FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 DECLARE FUNCTION BinTree_EndTraversal (traverse)
-
+'
 ' Needed for coding the body of User functions
 ' - FnCompareNodeKeys(id_1, id_2)
 ' - and FnDeleteTreeNode(indexDelete)
 DeclareAccess(BINNODE)
-
+'
 ' Associative arrays
 DECLARE FUNCTION AssocArray_Insert (ASSOCARRAY @array, key$, iData)
 DECLARE FUNCTION AssocArray_Delete (ASSOCARRAY @array, key$, @iData)
@@ -137,19 +152,19 @@ DECLARE FUNCTION STRING_Get_idMax () ' get STRING item id max
 DECLARE FUNCTION STRING_Get_idMin () ' get STRING item id min
 DECLARE FUNCTION STRING_New (STRING_item$) ' add STRING_item$ to STRING pool
 DECLARE FUNCTION STRING_Update (id, STRING_item$) ' update value of a STRING item using its id
-
+'
 DECLARE FUNCTION IntCompare (a, b)
 DECLARE FUNCTION StringCompare (a, b)
 DECLARE FUNCTION IStringCompare (a, b)
-
+'
 END EXPORT
-
+'
 DECLARE FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 DECLARE FUNCTION BinTree_RealAdd (FUNCADDR FnCompareNodeKeys, iNode, iKey, iData)
 DECLARE FUNCTION BinTree_RealUninit (iNode, FUNCADDR FnDeleteTreeNode)
 DECLARE FUNCTION BinTree_RealFind (FUNCADDR FnCompareNodeKeys, @iParentNode, iKey, @iData)
 DECLARE FUNCTION BinTree_RealRemove (FUNCADDR FnDeleteTreeNode, iNode, iParentNode)
-
+'
 DeclareAccess(LINKEDNODE)
 DeclareAccess(LINKEDWALK)
 'Declare_Access(BINNODE)
@@ -166,7 +181,7 @@ FUNCTION ADT ()
 
 	IF #bReentry THEN RETURN ' already initialized!
 
-	' in prevision of the static build
+	' in prevision of a static build
 	Xst ()		' initialize Xblite Standard Library
 
 	STRING_Init ()
