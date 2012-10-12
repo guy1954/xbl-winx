@@ -780,7 +780,7 @@ DeclareAccess(AUTODRAWRECORD)
 
 DECLARE FUNCTION AUTOSIZER_Delete (id)
 DECLARE FUNCTION AUTOSIZER_Init ()
-DECLARE FUNCTION AUTOSIZER_New (id, AUTOSIZER autoSizerBlock)
+DECLARE FUNCTION AUTOSIZER_Add_info_block (id, AUTOSIZER autoSizerBlock)
 DECLARE FUNCTION AUTOSIZER_Ov_New (direction)
 DECLARE FUNCTION AUTOSIZER_Show (id, visible)
 DECLARE FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
@@ -1768,7 +1768,7 @@ END FUNCTION
 ' sizer_flags = a set of AutoSizer flags
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE x, DOUBLE y, DOUBLE w, DOUBLE h, sizer_flags)
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 
 	BINDING binding
 	AUTOSIZER autoSizerBlock
@@ -1777,7 +1777,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 
 	IFZ hCtr THEN RETURN
 
-	IF series = -1 THEN
+	IF series = -1 THEN ' the window's series
 		' get the binding
 		hWnd = GetParent (hCtr)
 		IFZ hWnd THEN RETURN
@@ -1804,7 +1804,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 		bOK = autoSizerInfo_update (series, (idBlock - 1), autoSizerBlock)
 	ELSE
 		' make a new block
-		idBlock = AUTOSIZER_New (series, autoSizerBlock) + 1
+		idBlock = AUTOSIZER_Add_info_block (series, autoSizerBlock) + 1
 		IFF idBlock THEN RETURN
 		IFZ SetPropA (hCtr, &$$AutoSizerInfo$, idBlock) THEN RETURN
 
@@ -1812,7 +1812,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 		IF autoSizerBlock.flags & $$SIZER_SPLITTER THEN
 			splitterInfo.group = series
 			splitterInfo.id = idBlock - 1
-			splitterInfo.direction = autoSizerList[series].direction
+			splitterInfo.direction = AUTOSIZER_list[series].direction
 
 			autoSizerInfo_get (series, (idBlock - 1), @autoSizerBlock)
 
@@ -7946,15 +7946,15 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SPLITTER splitterInfo
 
-	IFF series >= 0 && series <= UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[series].inUse THEN RETURN
+	IFF series >= 0 && series <= UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[series].inUse THEN RETURN
 
 	' Walk the list untill we find the autodraw record we need
 	found = $$FALSE
-	i = autoSizerList[series].iHead
+	i = AUTOSIZER_list[series].iHead
 	DO WHILE i > -1
 		IF AUTOSIZER_ragged[series, i].hwnd = hCtr THEN
 			found = $$TRUE
@@ -7989,16 +7989,16 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_SetPos (series, hCtr, position, docked)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SPLITTER splitterInfo
 	RECT rect
 
-	IFF series >= 0 && series <= UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[series].inUse THEN RETURN
+	IFF series >= 0 && series <= UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[series].inUse THEN RETURN
 
 	' Walk the list until we find the autosizer record we need
 	found = $$FALSE
-	i = autoSizerList[series].iHead
+	i = AUTOSIZER_list[series].iHead
 	DO WHILE i > -1
 		IF AUTOSIZER_ragged[series, i].hwnd = hCtr THEN
 			found = $$TRUE
@@ -8044,16 +8044,16 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SPLITTER splitterInfo
 
 	IFZ hCtr THEN RETURN
-	IFF series >= 0 && series <= UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[series].inUse THEN RETURN
+	IFF series >= 0 && series <= UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[series].inUse THEN RETURN
 
 	' Walk the list until we find the autodraw record we need
 	found = $$FALSE
-	i = autoSizerList[series].iHead
+	i = AUTOSIZER_list[series].iHead
 	DO WHILE i > -1
 		IF AUTOSIZER_ragged[series, i].hwnd = hCtr THEN
 			found = $$TRUE
@@ -8072,7 +8072,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	IFF dock THEN
 		splitterInfo.dock = $$DOCK_DISABLED
 	ELSE
-		IF WinXMask_found (autoSizerList[series].direction, $$DIR_REVERSE) THEN
+		IF WinXMask_found (AUTOSIZER_list[series].direction, $$DIR_REVERSE) THEN
 			splitterInfo.dock = $$DOCK_BACKWARD
 		ELSE
 			splitterInfo.dock = $$DOCK_FORWARD
@@ -9159,20 +9159,20 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION AUTOSIZER_Delete (id)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SHARED AUTOSIZER_idMax
 
-	AUTOSIZER autoSizerInfoLocal[]
+	AUTOSIZER kid_list[]
 
-	upper_slot = UBOUND (autoSizerList[])
+	upper_slot = UBOUND (AUTOSIZER_list[])
 
 	slot = id
 
 	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF autoSizerList[slot].inUse THEN RETURN
+	IFF AUTOSIZER_list[slot].inUse THEN RETURN
 
-	autoSizerList[id].inUse = $$FALSE
-	SWAP AUTOSIZER_ragged[id,], autoSizerInfoLocal[]
+	AUTOSIZER_list[id].inUse = $$FALSE
+	SWAP AUTOSIZER_ragged[id,], kid_list[]
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -9182,103 +9182,124 @@ END FUNCTION
 ' ############################
 FUNCTION AUTOSIZER_Init ()
 	SHARED AUTOSIZER AUTOSIZER_ragged[]
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SHARED AUTOSIZER_idMax
 
 	DIM AUTOSIZER_ragged[0, 0]
-	DIM autoSizerList[0]
+	DIM AUTOSIZER_list[0]
 	AUTOSIZER_idMax = 0
 END FUNCTION
 '
-' ###########################
-' #####  AUTOSIZER_New  #####
-' ###########################
+' ######################################
+' #####  AUTOSIZER_Add_info_block  #####
+' ######################################
+'
 ' Adds a new autosizer info block
-' item = the auto sizer block to add
-' returns the idCtr of the auto sizer block or -1 on fail
-FUNCTION AUTOSIZER_New (id, AUTOSIZER item)
+' info_block = the auto sizer block to add
+' returns the index of the auto sizer block or -1 on fail
+FUNCTION AUTOSIZER_Add_info_block (slot, AUTOSIZER info_block)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SHARED AUTOSIZER_idMax
 
-	AUTOSIZER autoSizerInfoLocal[]
+	AUTOSIZER kid_list[]
 
-	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN -1		' fail
-	IFF autoSizerList[id].inUse THEN RETURN -1		' fail
+	index_info_block = -1
+	SELECT CASE TRUE
+		CASE (slot >= 0) && (slot <= (AUTOSIZER_idMax - 1))
+			IF slot > UBOUND (AUTOSIZER_list[]) THEN EXIT SELECT ' this should never happen!
+			IFF AUTOSIZER_list[slot].inUse THEN EXIT SELECT		' deleted
+			'
+			kid_upper = UBOUND (AUTOSIZER_ragged[slot,])
+			' look for an empty kid slot
+			FOR index = 0 TO kid_upper
+				IFZ AUTOSIZER_ragged[slot, index].hwnd THEN
+					index_info_block = index
+					EXIT FOR
+				ENDIF
+			NEXT index
+			'
+			IF index_info_block = -1 THEN
+				' no empty kid slot to re-use
+				INC kid_upper
+				SWAP kid_list[], AUTOSIZER_ragged[slot,]
+				upp = (kid_upper * 2) - 1 ' oversized
+				REDIM kid_list[upp]
+				SWAP kid_list[], AUTOSIZER_ragged[slot,]
+				index_info_block = kid_upper
+			ENDIF
+			IF index_info_block < 0 THEN EXIT SELECT ' this should never happen!
+			'
+			AUTOSIZER_ragged[slot, index_info_block] = info_block
+			'
+			AUTOSIZER_ragged[slot, index_info_block].iNext = -1 ' Make this the last info_block
+			'
+			IF AUTOSIZER_list[slot].iTail = -1 THEN
+				' Make this the first info_block
+				AUTOSIZER_list[slot].iHead = index_info_block
+				AUTOSIZER_list[slot].iTail = index_info_block
+				AUTOSIZER_ragged[slot, index_info_block].iPrev = -1
+			ELSE
+				' add to the end of the list
+				AUTOSIZER_ragged[slot, index_info_block].iPrev = AUTOSIZER_list[slot].iTail
+				AUTOSIZER_ragged[slot, AUTOSIZER_list[slot].iTail].iNext = index_info_block
+				AUTOSIZER_list[slot].iTail = index_info_block
+			ENDIF
+			'
+	END SELECT
 
-	slot = -1
-	upp = UBOUND (AUTOSIZER_ragged[id,])
-	FOR index = 0 TO upp
-		IFZ AUTOSIZER_ragged[id, index].hwnd THEN
-			slot = index
-			EXIT FOR
-		ENDIF
-	NEXT index
-
-	IF slot = -1 THEN
-		slot = UBOUND (AUTOSIZER_ragged[id,]) + 1
-		SWAP autoSizerInfoLocal[], AUTOSIZER_ragged[id,]
-		REDIM autoSizerInfoLocal[ ((UBOUND (autoSizerInfoLocal[]) + 1) * 2) - 1]
-		SWAP autoSizerInfoLocal[], AUTOSIZER_ragged[id,]
-	ENDIF
-
-	AUTOSIZER_ragged[id, slot] = item
-
-	AUTOSIZER_ragged[id, slot].iNext = -1
-
-	IF autoSizerList[id].iTail = -1 THEN
-		' Make this the first item
-		autoSizerList[id].iHead = slot
-		autoSizerList[id].iTail = slot
-		AUTOSIZER_ragged[id, slot].iPrev = -1
-	ELSE
-		' add to the end of the list
-		AUTOSIZER_ragged[id, slot].iPrev = autoSizerList[id].iTail
-		AUTOSIZER_ragged[id, autoSizerList[id].iTail].iNext = slot
-		autoSizerList[id].iTail = slot
-	ENDIF
-
-	RETURN slot
+	RETURN index_info_block
 END FUNCTION
 '
 ' ##############################
 ' #####  AUTOSIZER_Ov_New  #####
 ' ##############################
+'
 ' Adds a new group of auto sizer info blocks
 ' returns the index of the new group or -1 on fail
 FUNCTION AUTOSIZER_Ov_New (direction)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SHARED AUTOSIZER_idMax
 
-	AUTOSIZER autoSizerInfoLocal[]
+	AUTOSIZER kid_list[]
+
+	IFZ AUTOSIZER_list[] THEN AUTOSIZER_Init ()
 
 	slot = -1
-	upper_slot = UBOUND (autoSizerList[])
+	upper_slot = UBOUND (AUTOSIZER_list[])
+
+	' since AUTOSIZER_ragged[] is oversized
+	' look for an empty spot after AUTOSIZER_idMax
 	FOR i = AUTOSIZER_idMax TO upper_slot
-		IFF autoSizerList[i].inUse THEN
+		IFF AUTOSIZER_list[i].inUse THEN
+			' empty spot
 			slot = i
+			AUTOSIZER_idMax = slot + 1
 			EXIT FOR
 		ENDIF
 	NEXT i
 
 	IF slot = -1 THEN
+		' empty spot not found => expand AUTOSIZER_ragged[]
 		upper_slot = ((upper_slot + 1) * 2) - 1
-		REDIM autoSizerList[upper_slot]
-		REDIM AUTOSIZER_ragged[upper_slot,]
+		REDIM AUTOSIZER_ragged[upper_slot, ]
+		REDIM AUTOSIZER_list[upper_slot]
 		slot = AUTOSIZER_idMax
 		INC AUTOSIZER_idMax
 	ELSE
 		AUTOSIZER_idMax = slot + 1
 	ENDIF
 
-	autoSizerList[slot].inUse = $$TRUE
-	autoSizerList[slot].direction = direction
-	autoSizerList[slot].iHead = -1
-	autoSizerList[slot].iTail = -1
-
-	DIM autoSizerInfoLocal[0]
-	SWAP autoSizerInfoLocal[], AUTOSIZER_ragged[slot,]
+	IF slot >= 0 THEN
+		AUTOSIZER_list[slot].inUse = $$TRUE
+		AUTOSIZER_list[slot].direction = direction
+		AUTOSIZER_list[slot].iHead = -1
+		AUTOSIZER_list[slot].iTail = -1
+		'
+		DIM kid_list[0]
+		SWAP kid_list[], AUTOSIZER_ragged[slot,]
+	ENDIF
 
 	RETURN slot
 END FUNCTION
@@ -9292,14 +9313,14 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION AUTOSIZER_Show (id, visible)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 
-	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[id].inUse THEN RETURN
+	IF id < 0 || id > UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[id].inUse THEN RETURN
 
 	IF visible THEN command = $$SW_SHOWNA ELSE command = $$SW_HIDE
 
-	index = autoSizerList[id].iHead
+	index = AUTOSIZER_list[id].iHead
 	DO WHILE index > -1
 		IF AUTOSIZER_ragged[id, index].hwnd THEN
 			ShowWindow (AUTOSIZER_ragged[id, index].hwnd, command)
@@ -9321,14 +9342,14 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 
-	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[id].inUse THEN RETURN
+	IF id < 0 || id > UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[id].inUse THEN RETURN
 
 	' Guy-13jan11-compute nNumWindows for later call BeginDeferWindowPos (nNumWindows)
 	nNumWindows = 0
-	index = autoSizerList[id].iHead
+	index = AUTOSIZER_list[id].iHead
 	DO WHILE index > -1
 		IF AUTOSIZER_ragged[id, index].hwnd THEN INC nNumWindows
 		index = AUTOSIZER_ragged[id, index].iNext
@@ -9336,8 +9357,8 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	IFZ nNumWindows THEN RETURN ' none!
 
 	currPos = 0
-	IF WinXMask_found (autoSizerList[id].direction, $$DIR_REVERSE) THEN
-		SELECT CASE autoSizerList[id].direction & 0x00000003
+	IF WinXMask_found (AUTOSIZER_list[id].direction, $$DIR_REVERSE) THEN
+		SELECT CASE AUTOSIZER_list[id].direction & 0x00000003
 			CASE $$DIR_HORIZ
 				currPos = w
 			CASE $$DIR_VERT
@@ -9349,10 +9370,10 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	' #hWinPosInfo = BeginDeferWindowPos (10)
 
 	#hWinPosInfo = BeginDeferWindowPos (nNumWindows)
-	index = autoSizerList[id].iHead
+	index = AUTOSIZER_list[id].iHead
 	DO WHILE index > -1
 		IF AUTOSIZER_ragged[id, index].hwnd THEN
-			currPos = autoSizerInfo_add (AUTOSIZER_ragged[id, index], autoSizerList[id].direction, x0, y0, w, h, currPos)
+			currPos = autoSizerInfo_add (AUTOSIZER_ragged[id, index], AUTOSIZER_list[id].direction, x0, y0, w, h, currPos)
 		ENDIF
 		index = AUTOSIZER_ragged[id, index].iNext
 	LOOP
@@ -10264,24 +10285,24 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION autoSizerInfo_delete (id, index)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 
-	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[id].inUse THEN RETURN
+	IF id < 0 || id > UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[id].inUse THEN RETURN
 	IF index < 0 || index > UBOUND (AUTOSIZER_ragged[id,]) THEN RETURN
 	IFZ AUTOSIZER_ragged[id, index].hwnd THEN RETURN
 
 	AUTOSIZER_ragged[id, index].hwnd = 0
 
-	IF index = autoSizerList[id].iHead THEN
-		autoSizerList[id].iHead = AUTOSIZER_ragged[id, index].iNext
+	IF index = AUTOSIZER_list[id].iHead THEN
+		AUTOSIZER_list[id].iHead = AUTOSIZER_ragged[id, index].iNext
 		AUTOSIZER_ragged[id, AUTOSIZER_ragged[id, index].iNext].iPrev = -1
-		IF autoSizerList[id].iHead = -1 THEN autoSizerList[id].iTail = -1
+		IF AUTOSIZER_list[id].iHead = -1 THEN AUTOSIZER_list[id].iTail = -1
 	ELSE
-		IF index = autoSizerList[id].iTail THEN
-			AUTOSIZER_ragged[id, autoSizerList[id].iTail].iNext = -1
-			autoSizerList[id].iTail = AUTOSIZER_ragged[id, index].iPrev
-			IF autoSizerList[id].iTail = -1 THEN autoSizerList[id].iHead = -1
+		IF index = AUTOSIZER_list[id].iTail THEN
+			AUTOSIZER_ragged[id, AUTOSIZER_list[id].iTail].iNext = -1
+			AUTOSIZER_list[id].iTail = AUTOSIZER_ragged[id, index].iPrev
+			IF AUTOSIZER_list[id].iTail = -1 THEN AUTOSIZER_list[id].iHead = -1
 		ELSE
 			AUTOSIZER_ragged[id, AUTOSIZER_ragged[id, index].iNext].iPrev = AUTOSIZER_ragged[id, index].iPrev
 			AUTOSIZER_ragged[id, AUTOSIZER_ragged[id, index].iPrev].iNext = AUTOSIZER_ragged[id, index].iNext
@@ -10300,10 +10321,10 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION autoSizerInfo_get (id, index, AUTOSIZER item)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 
-	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[id].inUse THEN RETURN
+	IF id < 0 || id > UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[id].inUse THEN RETURN
 	IF index < 0 || index > UBOUND (AUTOSIZER_ragged[id,]) THEN RETURN
 	IFZ AUTOSIZER_ragged[id, index].hwnd THEN RETURN
 
@@ -10320,10 +10341,10 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION autoSizerInfo_update (id, index, AUTOSIZER item)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD autoSizerList[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
 
-	IF id < 0 || id > UBOUND (autoSizerList[]) THEN RETURN
-	IFF autoSizerList[id].inUse THEN RETURN
+	IF id < 0 || id > UBOUND (AUTOSIZER_list[]) THEN RETURN
+	IFF AUTOSIZER_list[id].inUse THEN RETURN
 	IF index < 0 || index > UBOUND (AUTOSIZER_ragged[id,]) THEN RETURN
 	IFZ AUTOSIZER_ragged[id, index].hwnd THEN RETURN
 
