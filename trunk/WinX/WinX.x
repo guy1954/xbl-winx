@@ -381,7 +381,7 @@ $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
 $$MRU_SECTION$     = "Recent files"
 $$UPP_MRU          = 19
 '
-$$WINX_CLASS$ = "WinX"
+$$WINX_CLASS$ = "WinXMainClass"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 '
 ' constants for WinXDialog_OpenFile$
@@ -931,24 +931,6 @@ FUNCTION WinX ()
 
 	initPrintInfo ()
 
-	' Guy-09feb12-build a unique WinX's main window class: "WinXssmmhhddmm" (second, minute, hour, day, month)
-	XstGetLocalDateAndTime (@year, @month, @day, @weekDay, @hour, @minute, @second, @nanos) ' get today's date
-
-	DIM num[4]
-	num[0] = second
-	num[1] = minute
-	num[2] = hour
-	num[3] = day
-	num[4] = month
-
-	stamp$ = $$WINX_CLASS$
-	FOR i = 0 TO 4
-		IF num[i] < 10 THEN stamp$ = stamp$ + "0"
-		stamp$ = stamp$ + STRING$ (num[i])
-	NEXT i
-
-	#WinXclass$ = stamp$
-
 	' set hIcon with WinX's application icon
 	hLib = LoadLibraryA (&"WinX.dll")
 	IFZ hLib THEN
@@ -967,7 +949,7 @@ FUNCTION WinX ()
 	wc.hIcon = hWinXIcon
 	wc.hCursor = LoadCursorA (0, $$IDC_ARROW)
 	wc.hbrBackground = $$COLOR_BTNFACE + 1
-	wc.lpszClassName = &#WinXclass$
+	wc.lpszClassName = &$$WINX_CLASS$
 
 	ret = RegisterClassA (&wc)
 	IFZ ret THEN RETURN $$TRUE		' fail
@@ -1942,20 +1924,6 @@ FUNCTION WinXCleanUp ()
 			' NOTE: DestroyWindow causes the deletion of current binding's slot
 		NEXT slot
 	ENDIF
-
-	' unregister WinX main window class
-	' 1. destroy any window that would still use this now obsolete window class
-	hWnd = FindWindowA (&#WinXclass$, 0)
-	DO WHILE hWnd
-		ShowWindow (hWnd, $$SW_HIDE)
-		ret = DestroyWindow (hWnd)
-		IFZ ret THEN EXIT DO		' prevent forever looping
-		hWnd = FindWindowA (&#WinXclass$, 0)
-	LOOP
-
-	' 2. unregister it!
-	hInst = GetModuleHandleA (0)
-	UnregisterClassA (&#WinXclass$, hInst)
 
 END FUNCTION
 '
@@ -5828,7 +5796,7 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	style = $$WS_CHILD | $$WS_VISIBLE | style		' passed style
 
 	hInst = GetModuleHandleA (0)
-	hWnd = CreateWindowExA (exStyle, &#WinXclass$, &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
+	hWnd = CreateWindowExA (exStyle, &$$WINX_CLASS$, &title, style, 0, 0, 0, 0, hParent, idCtr, hInst, 0)
 
 	' make a binding
 	binding.hWnd = hWnd
@@ -6203,7 +6171,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 	IFZ hWindow THEN
 		IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
 		hInst = GetModuleHandleA (0)
-		hWindow = CreateWindowExA (exStyle, &#WinXclass$, lpWindowName, style, 0, 0, 0, 0, hOwner, menu, hInst, 0)
+		hWindow = CreateWindowExA (exStyle, &$$WINX_CLASS$, lpWindowName, style, 0, 0, 0, 0, hOwner, menu, hInst, 0)
 	ENDIF
 	IFZ hWindow THEN RETURN
 
@@ -9530,7 +9498,7 @@ FUNCTION CreateMdiChild (hClient, STRING title, style)
 	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
 	IFZ hInst THEN hInst = GetModuleHandleA (0)
 
-	hMdi = CreateWindowExA (exStyle, &#WinXclass$, pTitle, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
+	hMdi = CreateWindowExA (exStyle, &$$WINX_CLASS$, pTitle, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
 	RETURN hMdi
 
 END FUNCTION
@@ -11241,35 +11209,30 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			RETURN
 
 		CASE $$WM_CLOSE		' closed by User
+			retCode = 0
 			IF binding.onClose THEN
 				' a non-zero RETURNed code cancels WinX's default closing
 				retCode = @binding.onClose (hWnd)
 			ENDIF
-			IFZ retCode THEN
-				IF idBinding = 1 THEN
-					WinXCleanUp ()
-					PostQuitMessage ($$WM_QUIT)		' Guy-10may12-Quit the application
-				ELSE
-					DestroyWindow (hWnd)		' triggers $$WM_DESTROY below
-				ENDIF
-			ENDIF
+			IFZ retCode THEN DestroyWindow (hWnd)		' triggers $$WM_DESTROY below
 			handled = $$TRUE
 
 		CASE $$WM_DESTROY		' being destroyed
 			ChangeClipboardChain (hWnd, binding.hWndNextClipViewer)
-			' clear the binding
 			BINDING_Ov_Delete (idBinding)
 			handled = $$TRUE
 
 	END SELECT
 
-	IF retCode THEN RETURN retCode		' handled with a return code
-	IF handled THEN RETURN		' handled
+	SELECT CASE retCode
+		CASE 0    : IF handled THEN RETURN ' handled (no return code)
+		CASE ELSE : RETURN retCode		' handled with a return code
+	END SELECT
 
-	' IF binding.hWndMDIParent THEN
-	' ' Send the message to the MDI frame window procedure
-	' RETURN DefFrameProcA (hWnd, binding.hWndMDIParent, wMsg, wParam, lParam)
-	' ENDIF
+	IF binding.hWndMDIParent THEN
+		' Send the message to the MDI frame window procedure
+		RETURN DefFrameProcA (hWnd, binding.hWndMDIParent, wMsg, wParam, lParam)
+	ENDIF
 
 	RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
 
