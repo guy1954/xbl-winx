@@ -308,9 +308,10 @@ EXPORT
 ' (C) Callum Lowcay 2007-2008 - Licensed under the GNU LGPL
 '     Evolutions: Guy Lonne 2009-2012.
 '
-' ******************************************
-' *****  WinX Library COMPOSITE TYPES  *****
-' ******************************************
+' *****************************
+' *****   CONSTANTS and   *****
+' *****  COMPOSITE TYPES  *****
+' *****************************
 '
 ' Red/Green/Blue/Alpha
 TYPE WINX_RGBA
@@ -326,110 +327,107 @@ $$CHANNEL_BLUE	= 0
 $$CHANNEL_ALPHA	= 3
 '
 'Simplified window styles
-$$XWSS_APP					= 0x00000000
-$$XWSS_APPNORESIZE	=	0x00000001
-$$XWSS_POPUP				= 0x00000002
-$$XWSS_POPUPNOTITLE	= 0x00000003
-$$XWSS_NOBORDER			= 0x00000004
+$$XWSS_APP          = 0x00000000
+$$XWSS_APPNORESIZE  =	0x00000001
+$$XWSS_POPUP        = 0x00000002
+$$XWSS_POPUPNOTITLE = 0x00000003
+$$XWSS_NOBORDER     = 0x00000004
 '
 'mouse buttons
-$$MBT_LEFT		= 1
-$$MBT_MIDDLE	= 2
-$$MBT_RIGHT	= 3
+$$MBT_LEFT   = 1
+$$MBT_MIDDLE = 2
+$$MBT_RIGHT	 = 3
 '
 'font styles
-$$FONT_BOLD					= 0x00000001
-$$FONT_ITALIC				= 0x00000002
-$$FONT_UNDERLINE		= 0x00000004
-$$FONT_STRIKEOUT		= 0x00000008
+$$FONT_BOLD      = 0x00000001
+$$FONT_ITALIC    = 0x00000002
+$$FONT_UNDERLINE = 0x00000004
+$$FONT_STRIKEOUT = 0x00000008
 '
 'file types
-$$FILETYPE_WINBMP		= 1
+$$FILETYPE_WINBMP = 1
 '
 'AutoSizer flags (autoSizerBlock.flags)
 $$SIZER_FLAGS_NONE  = 0x0
-$$SIZER_SIZERELREST	= 0x00000001
-$$SIZER_XRELRIGHT		= 0x00000002
-$$SIZER_YRELBOTTOM	= 0x00000004
-$$SIZER_SERIES			= 0x00000008
-$$SIZER_WCOMPLEMENT	= 0x00000010
-$$SIZER_HCOMPLEMENT	= 0x00000020
-$$SIZER_SPLITTER		= 0x00000040
+$$SIZER_SIZERELREST = 0x00000001
+$$SIZER_XRELRIGHT   = 0x00000002
+$$SIZER_YRELBOTTOM  = 0x00000004
+$$SIZER_SERIES      = 0x00000008
+$$SIZER_WCOMPLEMENT = 0x00000010
+$$SIZER_HCOMPLEMENT = 0x00000020
+$$SIZER_SPLITTER    = 0x00000040
 '
-$$CONTROL			= 0
-$$DIR_VERT		= 1
-$$DIR_HORIZ		= 2
+$$DIR_VERT    = 1
+$$DIR_HORIZ   = 2
 $$DIR_REVERSE	= 0x80000000
 '
-$$UNIT_LINE		= 0
-$$UNIT_PAGE		= 1
-$$UNIT_END		= 2
+$$UNIT_LINE = 0
+$$UNIT_PAGE = 1
+$$UNIT_END  = 2
 '
 'drag and drop operations
 'drag states
-$$DRAG_START		= 0
-$$DRAG_DRAGGING	= 1
-$$DRAG_DONE			= 2
+$$DRAG_START    = 0
+$$DRAG_DRAGGING = 1
+$$DRAG_DONE     = 2
 '
 'edit states
-$$EDIT_START		= 0
-$$EDIT_DONE			= 1
+$$EDIT_START = 0
+$$EDIT_DONE  = 1
 '
 $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
 '
 ' Most Recently Used
-$$MRU_SECTION$     = "Recent files"
-$$UPP_MRU          = 19
+$$MRU_SECTION$ = "Recent files"
+$$UPP_MRU      = 19
 '
 $$WINX_CLASS$ = "WinXMainClass"
 $$WINX_SPLITTER_CLASS$ = "WinXSplitterClass"
 '
 ' constants for WinXDialog_OpenFile$
 ' $$TRUE/$$FALSE values for boolean multiSelect
-$$OPN_MULTI_SELECT  = -1  ' multiple file name selection
-$$OPN_SINGLE_SELECT = 0   ' single selection
+$$OPN_MULTI_SELECT  = -1	' multiple file name selection
+$$OPN_SINGLE_SELECT =  0	' single selection
 '
 ' $$TRUE/$$FALSE values for boolean readOnly
-$$OPN_READ_ONLY  = -1  ' open "Read Only" (with no lock)
-$$OPN_READ_WRITE = 0   ' open locking the selected file(s)
+$$OPN_READ_ONLY  = -1	' open "Read Only" (with no lock)
+$$OPN_READ_WRITE =  0	' open locking the selected file(s)
 '
 '
-'
-' ************************************
-' *****  WinX Library Functions  *****
-' ************************************
-'
-'
-DECLARE FUNCTION WinX () ' initialization
+' *************************
+' *****   FUNCTIONS   *****
+' *************************
 '
 '
-' Add control
-DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
+DECLARE FUNCTION WinX () ' To be called first
+'
+'
+DECLARE FUNCTION WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift) ' add an accelerator key
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
-DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr)
-DECLARE FUNCTION WinXAddButton (parent, title$, hImage, idCtr)
-DECLARE FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr)
-DECLARE FUNCTION WinXAddCheckButton (parent, title$, isFirst, pushlike, idCtr)
-DECLARE FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr)
+DECLARE FUNCTION WinXAddAnimation (parent, file$, idCtr) ' add an animation file
+DECLARE FUNCTION WinXAddButton (parent, title$, hImage, idCtr) ' add a push button
+DECLARE FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr) ' add a calendar control
+DECLARE FUNCTION WinXAddCheckButton (parent, title$, isFirst, pushlike, idCtr) ' add a check box
+DECLARE FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, idCtr) ' add a combo box
 DECLARE FUNCTION WinXAddControl (parent, class$, title$, style, exStyle, idCtr) ' add a custom control
-DECLARE FUNCTION WinXAddEdit (parent, title$, style, idCtr)
-DECLARE FUNCTION WinXAddGroupBox (parent, label$, idCtr)
-DECLARE FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
-DECLARE FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr)
-DECLARE FUNCTION WinXAddProgressBar (parent, smooth, idCtr)
-DECLARE FUNCTION WinXAddRadioButton (parent, title$, isFirst, pushlike, idCtr)
+DECLARE FUNCTION WinXAddEdit (parent, title$, style, idCtr) ' add an edit control
+DECLARE FUNCTION WinXAddGroupBox (parent, label$, idCtr) ' add a group box
+DECLARE FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr) ' add a list box
+DECLARE FUNCTION WinXAddListView (parent, hilLargeIcons, hilSmallIcons, editable, view, idCtr) ' add a list view control
+DECLARE FUNCTION WinXAddProgressBar (parent, smooth, idCtr) ' add a progress bar
+DECLARE FUNCTION WinXAddRadioButton (parent, title$, isFirst, pushlike, idCtr) ' add a radio button
 DECLARE FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, uppVal, lowVal, curVal, idCtr) ' add spinner control
-DECLARE FUNCTION WinXAddStatic (parent, title$, hImage, style, idCtr)
-DECLARE FUNCTION WinXAddStatusBar (hWnd, initialStatus$, idCtr)
-DECLARE FUNCTION WinXAddTabs (parent, multiline, idCtr)
-DECLARE FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr)
-DECLARE FUNCTION WinXAddTooltip (hCtr, tip$)
-DECLARE FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr)
-DECLARE FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr)
+DECLARE FUNCTION WinXAddStatic (parent, title$, hImage, style, idCtr) ' add a text box
+DECLARE FUNCTION WinXAddStatusBar (hWnd, initialStatus$, idCtr) ' add a status bar
+DECLARE FUNCTION WinXAddTabs (parent, multiline, idCtr) ' add a tabstip control
+DECLARE FUNCTION WinXAddTimePicker (hParent, format, SYSTEMTIME initialTime, timeValid, idCtr) ' add a time picker control
+DECLARE FUNCTION WinXAddTooltip (hCtr, tip$) ' add a tooltip to a control
+DECLARE FUNCTION WinXAddTrackBar (parent, enableSelection, posToolTip, idCtr) ' add a track bar
+DECLARE FUNCTION WinXAddTreeView (parent, hImages, editable, draggable, idCtr) ' add a tree view control
 '
 ' Animation
-DECLARE FUNCTION WinXAni_Play (hAni)
-DECLARE FUNCTION WinXAni_Stop (hAni)
+DECLARE FUNCTION WinXAni_Play (hAni) ' start playing the animation
+DECLARE FUNCTION WinXAni_Stop (hAni) ' stop playing the animation
 '
 ' Accelerators
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach an accelerator table to a window
@@ -441,8 +439,8 @@ DECLARE FUNCTION WinXAutoSizer_SetSimpleInfo (hWnd, series, space#, size#, flags
 DECLARE FUNCTION WinXNewAutoSizerSeries (direction)
 '
 ' Check box or Radio button
-DECLARE FUNCTION WinXButton_GetCheck (hButton)
-DECLARE FUNCTION WinXButton_SetCheck (hButton, checked)
+DECLARE FUNCTION WinXButton_GetCheck (hButton) ' get check state
+DECLARE FUNCTION WinXButton_SetCheck (hButton, checked) ' set check state
 '
 ' Calendar
 DECLARE FUNCTION WinXCalendar_GetSelection (hCal, SYSTEMTIME @time)
@@ -477,7 +475,7 @@ DECLARE FUNCTION WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stam
 '
 ' Standard Windows dialogs
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity)
-DECLARE FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
+DECLARE FUNCTION WinXDialog_Message (hWnd, msg$, title$, icon$, hInst) ' display message dialog box
 DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
 DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly) ' display an OpenFile dialog box
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
@@ -568,12 +566,12 @@ DECLARE FUNCTION WinXSetText (hWnd, text$)
 DECLARE FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
 '
 ' INI file
-DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an .INI file
-DECLARE FUNCTION WinXIni_DeleteSection (iniPath$, section$) ' delete section from .INI file
+DECLARE FUNCTION WinXIni_Delete (iniPath$, section$, key$) ' delete information from an INI file
+DECLARE FUNCTION WinXIni_DeleteSection (iniPath$, section$) ' delete section from INI file
 DECLARE FUNCTION WinXIni_LoadKeyList (iniPath$, section$, @key$[]) ' load all key names of a given section
 DECLARE FUNCTION WinXIni_LoadSectionList (iniPath$, @section$[]) ' load all section names
-DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from .INI file
-DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the .INI file
+DECLARE FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$) ' read data from INI file
+DECLARE FUNCTION WinXIni_Write (iniPath$, section$, key$, value$) ' write in the INI file
 '
 ' Keyboard
 DECLARE FUNCTION WinXIsKeyDown (key)
@@ -623,9 +621,9 @@ DECLARE FUNCTION WinXListView_Sort (hLV, iCol, desc)
 DECLARE FUNCTION WinXListView_UseOnSelect (hLV) ' re-enable $$LVN_ITEMCHANGED
 '
 ' Most Recently Used list
-DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' load the Most Recently Used file list from the .INI file
+DECLARE FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @mruList$[]) ' load the Most Recently Used file list from the INI file
 DECLARE FUNCTION WinXMRU_MakeKey$ (id)
-DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the .INI file
+DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the INI file
 '
 DECLARE FUNCTION WinXMask_found (mask, flags) ' flag(s) raized?
 DECLARE FUNCTION WinXMenu_Attach (subMenu, newParent, idCtr)
@@ -742,7 +740,7 @@ DECLARE FUNCTION WinXTreeView_DeleteItem (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem) ' expand the tree view item
 DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, match$) ' Search for a label in tree view nodes
 DECLARE FUNCTION WinXTreeView_FindItemLabel (hTV, match$) ' find an exact string in tree labels
-DECLARE FUNCTION WinXTreeView_FreezeOnSelect (hTV)
+DECLARE FUNCTION WinXTreeView_FreezeOnSelect (hTV) ' disable $$TVN_SELCHANGED
 DECLARE FUNCTION WinXTreeView_GetCheckState (hTV, hItem) ' determine whether a node in a tree view control is checked
 DECLARE FUNCTION WinXTreeView_GetChildCount (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_GetChildItem (hTV, hItem)
@@ -758,7 +756,7 @@ DECLARE FUNCTION WinXTreeView_SetCheckState (hTV, hItem, checked) ' set the item
 DECLARE FUNCTION WinXTreeView_SetItemData (hTV, hItem, data) ' Set the lParam data member of the TreeView item
 DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
 DECLARE FUNCTION WinXTreeView_SetSelection (hTV, hItem)
-DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV)
+DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV) ' re-enable $$TVN_SELCHANGED
 '
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 '
@@ -781,7 +779,7 @@ DeclareAccess(AUTODRAWRECORD)
 DECLARE FUNCTION AUTOSIZER_Delete (id)
 DECLARE FUNCTION AUTOSIZER_Init ()
 DECLARE FUNCTION AUTOSIZER_Add_info_block (id, AUTOSIZER autoSizerBlock)
-DECLARE FUNCTION AUTOSIZER_Ov_New (direction)
+DECLARE FUNCTION AUTOSIZER_Real_New (direction)
 DECLARE FUNCTION AUTOSIZER_Show (id, visible)
 DECLARE FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 
@@ -798,14 +796,11 @@ DECLARE FUNCTION GuiSetFont (hCtr, hFont, bRedraw) ' set control hCtr to logical
 
 DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
-
 DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 
 DECLARE FUNCTION VOID RefreshParentWindow (hCtr)
 
 DECLARE FUNCTION SPLITTER_Proc (hWnd, wMsg, wParam, lParam)
-
-DECLARE FUNCTION VOID TellDialogError (parent, title$) ' display WinXDialog_'s run-time error message
 
 DECLARE FUNCTION XWSStoWS (xwss)
 
@@ -853,6 +848,8 @@ DECLARE FUNCTION printAbortProc (hdc, nCode)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 
 DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
+
+DECLARE FUNCTION VOID WapiTellDialogError (parent, title$) ' display WinXDialog_'s run-time error message
 '
 $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
@@ -1234,7 +1231,7 @@ FUNCTION WinXAddGroupBox (parent, STRING label, idCtr)
 
 	SetPropA (hGroup, &$$LeftSubSizer$, &groupBox_SizeContents ())
 
-	vertical = AUTOSIZER_Ov_New ($$DIR_VERT)
+	vertical = AUTOSIZER_Real_New ($$DIR_VERT)
 	IF vertical >= 0 THEN SetPropA (hGroup, &$$AutoSizer$, vertical)
 	RETURN hGroup
 END FUNCTION
@@ -1725,7 +1722,7 @@ END FUNCTION
 ' hWnd = the window to get the series for
 ' returns the index of the window's main series, -1 on fail
 '
-' ----- Usage -----
+' Usage:
 'serHoriz = WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
 FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 	BINDING binding
@@ -2156,10 +2153,12 @@ END FUNCTION
 ' iSelImage = the index of the image displayed when this item is selected
 ' returns the index of the new item, or -1 on fail
 FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
-	COMBOBOXEXITEM cbexi
+	COMBOBOXEXITEM cbexi ' extended combo box structure
 
 	IFZ hCombo THEN RETURN -1
+
 	cbexi.mask = $$CBEIF_IMAGE | $$CBEIF_INDENT | $$CBEIF_SELECTEDIMAGE | $$CBEIF_TEXT
+	IF index < 0 THEN index = -1 ' to add to the end
 	cbexi.iItem = index
 	cbexi.pszText = &item$
 	cbexi.cchTextMax = LEN (item$)
@@ -2168,7 +2167,7 @@ FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
 	cbexi.iIndent = indent
 
 	indexAdd = SendMessageA (hCombo, $$CBEM_INSERTITEM, 0, &cbexi)
-	IF indexAdd < 0 THEN RETURN -1		' fail
+	IF indexAdd < 0 THEN RETURN -1		' Can't add item item$
 	RETURN indexAdd
 END FUNCTION
 '
@@ -2203,7 +2202,7 @@ END FUNCTION
 ' index = the zero-based index of the item to get
 ' returns the text of the item, or "" on fail
 FUNCTION WinXComboBox_GetItem$ (hCombo, index)
-	COMBOBOXEXITEM cbexi
+	COMBOBOXEXITEM cbexi ' extended combo box structure
 
 	IFZ hCombo THEN RETURN ""
 	item$ = NULL$ (4095)
@@ -2275,7 +2274,7 @@ END FUNCTION
 ' #######################################
 ' Selects an item in a extended combo box
 ' hCombo = the handle to the extended combo box
-' index = the index of the item to select.  -1 to deselect everything
+' index = the index of the item to select.  -1 to unselect everything
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXComboBox_SetSelection (hCombo, index)
 	IFZ hCombo THEN RETURN
@@ -2337,15 +2336,16 @@ END FUNCTION
 ' ################################
 ' #####  WinXDialog_Message  #####
 ' ################################
+'
 ' Displays a simple message dialog box
 ' hWnd = the handle to the owner window, 0 for none
 ' text$ = the text to display
 ' title$ = the title for the dialog
-' icon$ = name of the icon to use
+' icon$ = name of the icon to use, "0" for the application icon
 ' hMod = the handle to the module from which the icon comes, 0 for this module
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' ----- Usage -----
+' Usage:
 'WinXDialog_Message (#dlgAUD, "Not wanted", "Wanted?", "0", hInst)
 ' --> SHARED hInst ' is needed by WinXDialog_Message for the icon "0"
 '
@@ -2378,7 +2378,7 @@ END FUNCTION
 ' initDirIDL = the Windows' special folder to initialize the dialog with
 ' returns the directory path or "" on cancel or error
 '
-' ----- Usage -----
+' Usage:
 'dir$ = WinXDialog_OpenDir$ (#winMain, "", $$CSIDL_PERSONAL) ' My Documents' folder
 '
 FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows directory picker dialog
@@ -2441,6 +2441,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	initFN$ = ""
 	initExt$ = ""
 
+	' parse initialName$ to compute initDir$, initFN$, initExt$
 	initialName$ = WinXPath_Trim$ (initialName$)
 	SELECT CASE TRUE
 		CASE LEN (initialName$) = 0
@@ -2457,6 +2458,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 			'
 	END SELECT
 
+	' compute ofn.lpstrInitialDir
 	initDir$ = WinXPath_Trim$ (initDir$)
 	IF initDir$ THEN
 		' clip off a final $$PathSlash$
@@ -2488,57 +2490,57 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 	IF RIGHT$ (fileFilter$) <> "|" THEN fileFilter$ = fileFilter$ + "|"		' add a final terminator
 
 	' replace all separators "|" by the zero-character
-	pos = INSTR (fileFilter$, "|")		' first separator '|'
-	DO WHILE pos
-		fileFilter${pos - 1} = '\0'		' replace '|' by zero-character
-		pos = INSTR (fileFilter$, "|", pos + 1)		' next separator '|'
-	LOOP
+	'XstTranslateChars (@fileFilter$, "|", "\0")
+	' faster than XstTranslateChars
+	FOR i = LEN (fileFilter$) - 1 TO 0 STEP -1
+		IF fileFilter${i} = '|' THEN fileFilter${i} = 0
+	NEXT i
 
 	ofn.lpstrFilter = &fileFilter$
 	ofn.nFilterIndex = 1
 
+	IF initExt$ THEN
+		' look for the extension to compute ofn.nFilterIndex
+		pos = RINSTRI (extensions$, initExt$)
+		IF pos THEN
+			source$ = LEFT$ (extensions$, pos)
+			count = XstTally (source$, "|")
+			ofn.nFilterIndex = 1 + (count / 2)
+		ENDIF
+	ENDIF
+
 	' initialize the return file name buffer buf$
 	initFN$ = WinXPath_Trim$ (initFN$)
 	length = LEN (initFN$)
-	SELECT CASE length
-		CASE 0 : buf$ = NULL$ ($$MAX_PATH)
-		CASE $$MAX_PATH : buf$ = initFN$
-		CASE ELSE
-			IF length > $$MAX_PATH THEN
-				buf$ = LEFT$ (initFN$, $$MAX_PATH)
-			ELSE
-				buf$ = initFN$ + NULL$ ($$MAX_PATH - LEN (initFN$))
-			END IF
-	END SELECT
+	IF length < $$MAX_PATH THEN
+		buf$ = initFN$ + NULL$ ($$MAX_PATH - length)
+	ELSE
+		buf$ = initFN$
+	ENDIF
 
 	ofn.lpstrFile = &buf$
-	ofn.nMaxFile = $$MAX_PATH
+	ofn.nMaxFile = LEN (buf$)
 	ofn.lStructSize = SIZE (OPENFILENAME)		' length of the structure (in bytes)
 
 	IF title$ THEN ofn.lpstrTitle = &title$		' dialog title
 
 	' set dialog flags
-	' Guy-28oct09-ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER | $$OFN_HIDEREADONLY ' hide the check box "Read Only"
 	ofn.flags = $$OFN_FILEMUSTEXIST | $$OFN_EXPLORER
+
 	IF multiSelect THEN ofn.flags = ofn.flags | $$OFN_ALLOWMULTISELECT
-	' Guy-28oct09-allow to open "Read Only" (no lock) the selected file(s).
-	IF readOnly THEN
-		' show the check box "Read Only"
-		ofn.flags = ofn.flags | $$OFN_READONLY		' causes the check box "Read Only" to be checked initially
-	ELSE
-		ofn.flags = ofn.flags | $$OFN_HIDEREADONLY		' hide the check box "Read Only"
-	ENDIF
+
+	' Guy-28oct09-readOnly allows to open "Read Only" (no lock) the selected file(s).
+	' $$OFN_READONLY: show the check box "Read Only" (initially checked)
+	IF readOnly THEN fReadOnly = $$OFN_READONLY ELSE fReadOnly = $$OFN_HIDEREADONLY
+	ofn.flags = ofn.flags | fReadOnly
 
 	ofn.lpstrDefExt = &initExt$
 	ofn.hwndOwner = parent		' owner's handle
 	ofn.hInstance = GetModuleHandleA (0)
 
-	' ==================================================
-	' IFZ GetOpenFileNameA (&ofn) THEN RETURN ""
 	ret = GetOpenFileNameA (&ofn)		' fire off dialog
-	' ==================================================
 	IFZ ret THEN		' fail
-		TellDialogError (parent, title$)
+		WapiTellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -2574,7 +2576,7 @@ END FUNCTION
 ' defaultButton = the zero-based index of the default button
 ' returns the idCtr of the button the User selected
 '
-' ----- Usage -----
+' Usage:
 'FUNCTION winMain_OnClose (hWnd)
 '	text$ = "Are you sure you want to quit the application?"
 '	title$ = "Exit " + PROGRAM$ (0)
@@ -2697,7 +2699,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 
 	ret = GetSaveFileNameA (&ofn)
 	IFZ ret THEN
-		TellDialogError (parent, title$)
+		WapiTellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -2713,7 +2715,7 @@ END FUNCTION
 ' OUT			: msInfo$	- execution path
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' ----- Usage -----
+' Usage:
 '' run Microsoft program "System Information"
 'bOK = WinXDialog_SysInfo (@msInfo$)
 'IFF bOK THEN
@@ -2780,7 +2782,7 @@ END FUNCTION
 
 ' Ends a directory path with $$PathSlash$
 '
-' ----- Usage -----
+' Usage:
 'dir$ = "  c:/Lonné  "
 'WinXDir_AppendSlash (@dir$) ' end directory path with \
 ' --> correct result: "  c:/Lonné  " ==> "c:\\Lonné\\"
@@ -2788,8 +2790,9 @@ END FUNCTION
 FUNCTION WinXDir_AppendSlash (@dir$)
 
 	dir$ = WinXPath_Trim$ (dir$)
-	IFZ dir$ THEN RETURN		' empty
-	IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$
+	IF dir$ THEN
+		IF RIGHT$ (dir$) <> $$PathSlash$ THEN dir$ = dir$ + $$PathSlash$
+	ENDIF
 
 END FUNCTION
 '
@@ -2817,7 +2820,7 @@ END FUNCTION
 
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' ----- Usage -----
+' Usage:
 'bOK = WinXDir_Exists (dir$)
 'IFF bOK THEN
 '	' create a missing directory
@@ -2892,7 +2895,7 @@ END FUNCTION
 ' Gets the complete path of XBasic's directory
 ' returns "" on fail
 '
-' ----- Usage -----
+' Usage:
 'xbasicDir$ = WinXDir_GetXBasicDir$ () ' get XBasic's dir
 ' --> eg. C:\xb\
 '
@@ -2948,7 +2951,7 @@ END FUNCTION
 ' Gets the complete path of xblite's directory
 ' returns "" on fail
 '
-' ----- Usage -----
+' Usage:
 'xblDir$ = WinXDir_GetXblDir$ () ' get xblite's dir
 ' --> eg. C:\xblite\
 '
@@ -3000,7 +3003,7 @@ END FUNCTION
 ' Gets the complete path of xblite's programs' directory
 ' returns "" on fail
 '
-' ----- Usage -----
+' Usage:
 'xblPgmDir$ = WinXDir_GetXblProgramDir$ () ' get XBLite's program dir
 ' --> eg. C:\xblite\programs\
 '
@@ -3054,7 +3057,7 @@ END FUNCTION
 ' helpFile$ = the application help file
 ' returns $$TRUE on success
 '
-' ----- Usage -----
+' Usage:
 'runPath$ = XstGetProgramFileName$ ()
 'XstDecomposePathname (runPath$, @runDir$, "", "", "", "")
 'WinXDir_AppendSlash (@runDir$)	' end directory path with \
@@ -4104,7 +4107,7 @@ END FUNCTION
 ' nFolder = the Windows' special folder
 ' returns the qualified path, or "" on error
 '
-' ----- Usage -----
+' Usage:
 '' get the qualified path of folder "My Documents"
 'dir$ = WinXFolder_GetDir$ ($$CSIDL_PERSONAL)
 '
@@ -4213,7 +4216,7 @@ END FUNCTION
 ' r_rect = the variable to hold the rect structure
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' ----- Usage -----
+' Usage:
 'bOK = WinXGetUsableRect (hWnd, @rect)
 '
 FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
@@ -4299,10 +4302,10 @@ END FUNCTION
 ' #####  WinXIni_Delete  #####
 ' ############################
 ' [WinXIni_Delete]
-' Description = delete an information from an .INI file
+' Description = Deletes an information from an INI file
 ' Function    = WinXIni_Delete (iniPath$, section$, key$)
 ' ArgCount    = 3
-' iniPath$    = the .INI file path
+' iniPath$    = the INI file path
 ' section$    = the passed section
 ' key$        = the key to delete
 ' Return      = $$FALSE = failure, $$TRUE = success
@@ -4310,28 +4313,36 @@ END FUNCTION
 '
 FUNCTION WinXIni_Delete (iniPath$, section$, key$)
 
+	bOK = $$FALSE
+
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN
+	SELECT CASE LEN (iniPath$)
+		CASE 0
+		CASE ELSE
+			bErr = XstFileExists (iniPath$)
+			IF bErr THEN EXIT SELECT		' file NOT found
+			'
+			section$ = WinXPath_Trim$ (section$)
+			IFZ section$ THEN EXIT SELECT
+			key$ = WinXPath_Trim$ (key$)
+			IFZ key$ THEN EXIT SELECT
+			'
+			' passing addr value$ == 0 causes the key deletion
+			SetLastError (0)
+			ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
+			IF ret THEN bOK = $$TRUE		' success
+			'
+	END SELECT
 
-	IFZ section$ THEN RETURN
-
-	key$ = WinXPath_Trim$ (key$)
-	IFZ key$ THEN RETURN
-
-	' passing argument lpString set to zero causes the key deletion
-	SetLastError (0)
-	ret = WritePrivateProfileStringA (&section$, &key$, 0, &iniPath$)
-	IFZ ret THEN RETURN
-
-	RETURN $$TRUE		' success
+	RETURN bOK
 
 END FUNCTION
 '
 ' ###################################
 ' #####  WinXIni_DeleteSection  #####
 ' ###################################
-' Description = delete an information from an .INI file
-' iniPath$    = the .INI file path
+' Description = Deletes an entire section from an INI file
+' iniPath$    = the INI file path
 ' section$    = the passed section
 ' key$        = the key to delete
 ' Return      = $$FALSE = failure, $$TRUE = sucess
@@ -4339,16 +4350,26 @@ END FUNCTION
 
 FUNCTION WinXIni_DeleteSection (iniPath$, section$)
 
+	bOK = $$FALSE
+
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN
+	SELECT CASE LEN (iniPath$)
+		CASE 0
+		CASE ELSE
+			bErr = XstFileExists (iniPath$)
+			IF bErr THEN EXIT SELECT		' file NOT found
+			'
+			section$ = WinXPath_Trim$ (section$)
+			IFZ section$ THEN EXIT SELECT
+			'
+			' passing addr key$ == 0 and addr value$ == 0 causes the key deletion
+			SetLastError (0)
+			ret = WritePrivateProfileStringA (&section$, 0, 0, &iniPath$)
+			IF ret THEN bOK = $$TRUE		' success
+			'
+	END SELECT
 
-	IFZ section$ THEN RETURN
-
-	' passing key$=0 and value$=0 causes the section deletion
-	ret = WritePrivateProfileStringA (&section$, 0, 0, &iniPath$)
-	IFZ ret THEN RETURN
-
-	RETURN $$TRUE		' success
+	RETURN bOK
 
 END FUNCTION
 '
@@ -4357,7 +4378,7 @@ END FUNCTION
 ' #################################
 ' Loads all key names of a given section
 '
-FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
+FUNCTION WinXIni_LoadKeyList (iniPath$, section$, @r_asKey$[])
 
 	' reset the returned array
 	DIM r_asKey$[]
@@ -4365,15 +4386,15 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 	iniPath$ = WinXPath_Trim$ (iniPath$)
 	IFZ iniPath$ THEN RETURN
 
-	bracketed$ = "[" + WinXPath_Trim$ (curSec$) + "]"		'  [section]
+	bracketed$ = "[" + WinXPath_Trim$ (section$) + "]"
 	IF bracketed$ = "[]" THEN RETURN		' fail
 
-	' open read the .INI file
+	' open read the INI file
 	fileNumber = OPEN (iniPath$, $$RD)
 	IF fileNumber < 3 THEN RETURN		' error
 
-	' look for the section curSec$
-	bSecFound = $$FALSE		' assume section curSec$ not found
+	' look for the section section$
+	bSecFound = $$FALSE		' assume section section$ not found
 	IFF EOF (fileNumber) THEN
 		DO
 			line$ = INFILE$ (fileNumber)
@@ -4387,7 +4408,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 			'
 			' trying section line$ == bracketed$
 			IF line$ = bracketed$ THEN
-				bSecFound = $$TRUE		' section curSec$ found
+				bSecFound = $$TRUE		' section section$ found
 				EXIT DO
 			ENDIF
 			'
@@ -4395,7 +4416,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 	ENDIF
 
 	IFF bSecFound THEN
-		' section curSec$ not found
+		' section section$ not found
 		CLOSE (fileNumber)
 		RETURN $$TRUE
 	ENDIF
@@ -4411,7 +4432,7 @@ FUNCTION WinXIni_LoadKeyList (iniPath$, curSec$, @r_asKey$[])
 		IFZ line$ THEN DO DO		' skip an empty line
 		IF LEFT$ (line$) = ";" THEN DO DO		'  ' skip a comment
 		'
-		IF LEFT$ (line$) = "[" THEN EXIT DO		' end of section curSec$
+		IF LEFT$ (line$) = "[" THEN EXIT DO		' end of section section$
 		'
 		' Parsing key line line$, e.g. key=value
 		pos = INSTR (line$, "=", 1)
@@ -4450,7 +4471,7 @@ END FUNCTION
 '
 FUNCTION WinXIni_LoadSectionList (iniPath$, @r_asSec$[])
 
-	' open read the .INI file
+	' open read the INI file
 	fileNumber = OPEN (iniPath$, $$RD)
 	IF fileNumber < 3 THEN
 		' reset the returned array
@@ -4503,10 +4524,10 @@ END FUNCTION
 ' #####  WinXIni_Read$  #####
 ' ###########################
 ' [WinXIni_Read$]
-' Description = read an information from an .INI file
+' Description = Reads an information from an INI file
 ' Function    = WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 ' ArgCount    = 4
-' iniPath$    = the .INI file path
+' iniPath$    = the INI file path
 ' section$    = the passed section
 ' key$        = the key to read from
 ' defVal$     = a default value
@@ -4515,25 +4536,31 @@ END FUNCTION
 '
 FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 
+	ret$ = defVal$
+
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN defVal$
+	SELECT CASE LEN (iniPath$)
+		CASE 0
+		CASE ELSE
+			bErr = XstFileExists (iniPath$)
+			IF bErr THEN EXIT SELECT		' file NOT found
+			'
+			section$ = WinXPath_Trim$ (section$)
+			IFZ section$ THEN EXIT SELECT
+			'
+			key$ = WinXPath_Trim$ (key$)
+			IFZ key$ THEN EXIT SELECT
+			'
+			' read from the INI file
+			bufSize = 4095
+			buf$ = NULL$ (bufSize)
+			SetLastError (0)
+			cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
+			IF cCh THEN ret$ = LEFT$ (buf$, cCh)
+			'
+	END SELECT
 
-	bErr = XstFileExists (iniPath$)
-	IF bErr THEN RETURN defVal$		' file NOT found
-
-	IFZ section$ THEN RETURN defVal$
-
-	' read from the .INI file
-	' bufSize = $$MAX_PATH
-	bufSize = 4095
-	buf$ = NULL$ (bufSize)
-	SetLastError (0)
-	cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
-	IFZ cCh THEN RETURN defVal$		' default value returned
-
-	' value$ = CSTRING$ (&buf$)
-	value$ = LEFT$ (buf$, cCh)
-	RETURN value$
+	RETURN ret$
 
 END FUNCTION
 '
@@ -4541,10 +4568,10 @@ END FUNCTION
 ' #####  WinXIni_Write  #####
 ' ###########################
 ' [WinXIni_Write]
-' Description = write an information into an .INI file
+' Description = Writes an information into an INI file
 ' Function    = WinXIni_Write (iniPath$, section$, key$, value$)
 ' ArgCount    = 4
-' iniPath$    = the .INI file path
+' iniPath$    = the INI file path
 ' section$    = the passed section
 ' key$        = the information's key
 ' value$      = the information
@@ -4553,18 +4580,31 @@ END FUNCTION
 '
 FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 
+	bOK = $$FALSE
+
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN
+	SELECT CASE LEN (iniPath$)
+		CASE 0
+		CASE ELSE
+			bErr = XstFileExists (iniPath$)
+			IF bErr THEN EXIT SELECT		' file NOT found
+			'
+			section$ = WinXPath_Trim$ (section$)
+			IFZ section$ THEN EXIT SELECT
+			'
+			key$ = WinXPath_Trim$ (key$)
+			IFZ key$ THEN EXIT SELECT
+			'
+			value$ = WinXPath_Trim$ (value$)
+			IFZ value$ THEN EXIT SELECT
+			'
+			SetLastError (0)
+			ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
+			IF ret THEN bOK = $$TRUE
+			'
+	END SELECT
 
-	IFZ section$ THEN RETURN
-
-	key$ = WinXPath_Trim$ (key$)
-	IFZ key$ THEN RETURN
-
-	ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
-	IFZ ret THEN RETURN
-
-	RETURN $$TRUE		' success
+	RETURN bOK
 
 END FUNCTION
 '
@@ -4622,7 +4662,7 @@ END FUNCTION
 ' item$ = the string to add to the list
 ' returns the index of the string in the list or -1 on fail
 '
-' ----- Usage -----
+' Usage:
 'index = WinXListBox_AddItem (hListBox, -1, item$) ' add last
 'IF index < 0 THEN
 '	msg$ = "WinXListBox_AddItem: Can't add item " + item$
@@ -4799,31 +4839,40 @@ END FUNCTION
 ' index[] = an array of item indexes to select
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXListBox_SetSelection (hListBox, index[])
+
 	IFZ hListBox THEN RETURN
 	IFZ index[] THEN RETURN
+	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
+	IFZ count THEN RETURN
 
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
-	IF WinXMask_found (style, $$LBS_EXTENDEDSEL) THEN
-		' first, deselect everything
-		SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
-		'
-		upp = UBOUND (index[])
-		FOR i = 0 TO upp
+	SELECT CASE style & $$LBS_EXTENDEDSEL
+		CASE $$LBS_EXTENDEDSEL		' multi-selections
+			' first, unselect everything
+			SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
+			'
+			upp = UBOUND (index[])
+			FOR i = 0 TO upp
+				IF index[i] < 0 THEN DO NEXT
+				IF index[i] >= count THEN DO NEXT
+				SetLastError (0)
+				ret = SendMessageA (hListBox, $$LB_SETSEL, 1, index[i])
+				IF ret < 0 THEN RETURN
+			NEXT i
+			'
+		CASE ELSE		' mono-selection
+			IF index[0] >= count THEN RETURN
+			idx = index[0]
+			IF idx < 0 THEN idx = -1 ' unselect
 			SetLastError (0)
-			ret = SendMessageA (hListBox, $$LB_SETSEL, 1, index[i])
-			IF ret < 0 THEN RETURN
-		NEXT i
-	ELSE
-		' single selection
-		SetLastError (0)
-		ret = SendMessageA (hListBox, $$LB_SETCURSEL, index[0], 0)
-		' index[0] == -1 means "deselect previous selection"
-		IF (ret < 0) && (index[0] <> -1) THEN RETURN
-		'
-		' Guy-21jun11-the list box is scrolled, if necessary, to bring the selected item into view
-		SetLastError (0)
-		SendMessageA (hListBox, $$LB_SETTOPINDEX, index[0], 0)
-	ENDIF
+			ret = SendMessageA (hListBox, $$LB_SETCURSEL, idx, 0)
+			IF (ret < 0) && (idx <> -1) THEN RETURN
+			'
+			' Guy-21jun11-the list box is scrolled, if necessary, to bring the selected item into view
+			SetLastError (0)
+			SendMessageA (hListBox, $$LB_SETTOPINDEX, index[0], 0)
+			'
+	END SELECT
 
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -5052,7 +5101,7 @@ END FUNCTION
 ' r_cell$[] = the array to store the result
 ' returns $$TRUE on success or $$FALSE on fail
 '
-' ----- Usage -----
+' Usage:
 ' retrieve the first 2 columns of the 1st item
 'bOK = WinXListView_GetItemText (hLV, 0, 1, @text$[])
 '
@@ -5288,6 +5337,10 @@ FUNCTION WinXListView_SetCheckState (hLV, iItem, checked)
 	IFZ hLV THEN RETURN
 	IF iItem < 0 THEN RETURN
 
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	IFZ count THEN RETURN
+	IF iItem >= count THEN RETURN
+
 	IF checked THEN
 		lvi.state = 0x2000		' on
 	ELSE
@@ -5381,41 +5434,41 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 	LVITEM lvi
 
 	IFZ hLV THEN RETURN
-
-	SetFocus (hLV)
-	' get count of items in list view
+	IFZ iItems[] THEN RETURN
 	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IFZ count THEN RETURN		' empty
+	IFZ count THEN RETURN
 
-	' unselect all
-	lvi.state = ~$$LVIS_SELECTED
-	lvi.stateMask = $$LVIS_SELECTED
-	SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+'	SetFocus (hLV)
 
-'	upp = UBOUND (iItems[])
-'	FOR i = 0 TO upp
-'		iItem = iItems[i]
-'		IF iItem >= 0 && iItem < count THEN
-'			lvi.state = $$LVIS_SELECTED
-'			lvi.stateMask = $$LVIS_SELECTED
-'			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
-'		ENDIF
-'	NEXT i
-
-	IF iItems[] THEN
-		upp = UBOUND (iItems[])
-		FOR i = 0 TO upp
-			idx = iItems[i]
-			IF idx < 0 THEN DO NEXT
-			'
-			IF idx >= count THEN idx = count - 1 ' Guy-25jul12-select last item
+	style = GetWindowLongA (hLV, $$GWL_STYLE)
+	SELECT CASE style & $$LVS_SINGLESEL
+		CASE $$LVS_SINGLESEL		' mono-selection
+			IF iItems[0] >= count THEN RETURN
+			idx = iItems[0]
+			IF idx < 0 THEN idx = -1 ' unselect
 			lvi.state = $$LVIS_SELECTED
 			lvi.stateMask = $$LVIS_SELECTED
 			SendMessageA (hLV, $$LVM_SETITEMSTATE, idx, &lvi)
-		NEXT i
-	ENDIF
+			'
+		CASE ELSE		' multi-selections
+			' first, unselect everything
+			lvi.state = ~$$LVIS_SELECTED
+			lvi.stateMask = $$LVIS_SELECTED
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, -1, &lvi)
+			'
+			upp = UBOUND (iItems[])
+			FOR i = 0 TO upp
+				IF iItems[i] < 0 THEN DO NEXT
+				IF iItems[i] >= count THEN DO NEXT
+				'
+				lvi.state = $$LVIS_SELECTED
+				lvi.stateMask = $$LVIS_SELECTED
+				SendMessageA (hLV, $$LVM_SETITEMSTATE, iItems[i], &lvi)
+			NEXT i
+			'
+	END SELECT
 
-	SetFocus (hLV)
+'	SetFocus (hLV)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -5533,80 +5586,88 @@ END FUNCTION
 ' #####################################
 ' #####  WinXMRU_LoadListFromIni  #####
 ' #####################################
-' Loads the Most Recently Used file list from the .INI file
+'
+' Loads the Most Recently Used file list from the INI file
 ' Returns $$FALSE = failure, $$TRUE = success
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 
-	' reset the returned array
-	DIM r_mruList$[]
+	bOK = $$FALSE
 
 	iniPath$ = WinXPath_Trim$ (iniPath$)
-	IFZ iniPath$ THEN RETURN
-
-	' create ini file if it does not exist
-	key$ = WinXMRU_MakeKey$ (0)		' $$MRU_SECTION$ entry
-	value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-	IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
-
-	DIM r_mruList$[$$UPP_MRU]
-	upp = -1
-
-	' add real file pathNew$ to r_mruList$[0]
-	pathNew$ = WinXPath_Trim$ (pathNew$)
-	IF pathNew$ THEN
-		bErr = XstFileExists (pathNew$)
-		IFF bErr THEN
-			upp = 0
-			r_mruList$[0] = pathNew$
-		ENDIF
-	ENDIF
-
-	' load the MRU projects list into r_mruList$[]
-	FOR id = 1 TO $$UPP_MRU + 1
-		key$ = WinXMRU_MakeKey$ (id)
-		fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-		fpath$ = WinXPath_Trim$ (fpath$)
-		IFZ fpath$ THEN DO NEXT		' empty => skip it!
-		'
-		bErr = XstFileExists (fpath$)
-		IF bErr THEN DO NEXT		' fpath$ does not exist => skip it!
-		'
-		' don't add fpath$ if already in r_mruList$[]
-		bFound = $$FALSE
-		IF upp >= 0 THEN
-			find_lc$ = LCASE$ (fpath$)
-			LEN_find = LEN (find_lc$)
+	SELECT CASE LEN (iniPath$)
+		CASE 0
+		CASE ELSE
+			' create ini file if it does not exist
+			key$ = WinXMRU_MakeKey$ (0)		' $$MRU_SECTION$ entry
+			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+			IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
 			'
-			FOR z = 0 TO upp
-				IF LEN (r_mruList$[z]) <> LEN_find THEN DO NEXT
-				IF LCASE$ (r_mruList$[z]) = find_lc$ THEN
-					bFound = $$TRUE
-					EXIT FOR
+			DIM r_mruList$[$$UPP_MRU]
+			upp = -1
+			'
+			' add real file pathNew$ to r_mruList$[0]
+			pathNew$ = WinXPath_Trim$ (pathNew$)
+			IF pathNew$ THEN
+				bErr = XstFileExists (pathNew$)
+				IFF bErr THEN
+					upp = 0
+					r_mruList$[0] = pathNew$
 				ENDIF
-			NEXT z
-		ENDIF
-		IF bFound THEN DO NEXT		' already in r_mruList$[] => skip it!
-		'
-		IF upp >= $$UPP_MRU THEN EXIT FOR		' r_mruList$[] is full
-		'
-		INC upp
-		r_mruList$[upp] = fpath$
-	NEXT id
+			ENDIF
+			'
+			' load the MRU projects list into r_mruList$[]
+			FOR id = 1 TO $$UPP_MRU + 1
+				key$ = WinXMRU_MakeKey$ (id)
+				fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
+				fpath$ = WinXPath_Trim$ (fpath$)
+				IFZ fpath$ THEN DO NEXT		' empty => skip it!
+				'
+				bErr = XstFileExists (fpath$)
+				IF bErr THEN DO NEXT		' fpath$ does not exist => skip it!
+				'
+				' don't add fpath$ if already in r_mruList$[]
+				bFound = $$FALSE
+				IF upp >= 0 THEN
+					find_lc$ = LCASE$ (fpath$)
+					LEN_find = LEN (find_lc$)
+					'
+					FOR z = 0 TO upp
+						IF LEN (r_mruList$[z]) <> LEN_find THEN DO NEXT
+						IF LCASE$ (r_mruList$[z]) = find_lc$ THEN
+							bFound = $$TRUE
+							EXIT FOR
+						ENDIF
+					NEXT z
+				ENDIF
+				IF bFound THEN DO NEXT		' already in r_mruList$[] => skip it!
+				'
+				IF upp >= $$UPP_MRU THEN EXIT FOR		' r_mruList$[] is full
+				'
+				INC upp
+				r_mruList$[upp] = fpath$
+			NEXT id
+			'
+			IF upp < 0 THEN
+				DIM r_mruList$[]
+			ELSE
+				IF UBOUND (r_mruList$[]) <> upp THEN REDIM r_mruList$[upp]
+			ENDIF
+			bOK = $$TRUE		' success
+			'
+	END SELECT
 
-	IF upp < 0 THEN
-		DIM r_mruList$[]
-	ELSE
-		IF UBOUND (r_mruList$[]) <> upp THEN REDIM r_mruList$[upp]
-	ENDIF
-	RETURN $$TRUE		' success
+	IFF bOK THEN DIM r_mruList$[] ' reset the returned array
+
+	RETURN bOK
+
 END FUNCTION
 '
 ' ##############################
 ' #####  WinXMRU_MakeKey$  #####
 ' ##############################
+' Computes a key to store a file path in the MRU list
 FUNCTION WinXMRU_MakeKey$ (id)
-	key$ = "File"
-	IF id < 1 THEN key$ = key$ + " 0" ELSE key$ = key$ + STR$ (id)
+	IF id > 0 THEN key$ = "File" + STR$ (id) ELSE key$ = "File 0" ' dummy value
 	RETURN key$
 END FUNCTION
 '
@@ -5648,7 +5709,7 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
 		IF uppFile < 0 THEN DIM r_mruList$[] ELSE DIM r_mruList$[uppFile]
 	ENDIF
 
-	' save the Most Recently Used project list in the .INI file
+	' save the Most Recently Used project list in the INI file
 	' and copy path array into r_mruList$[]
 	uppMru = -1
 	FOR iFile = 0 TO $$UPP_MRU
@@ -5782,7 +5843,7 @@ END FUNCTION
 ' direction = $$DIR_VERT or $$DIR_HORIZ
 ' returns the handle of the new autosizer series
 FUNCTION WinXNewAutoSizerSeries (direction)
-	RETURN AUTOSIZER_Ov_New (direction)
+	RETURN AUTOSIZER_Real_New (direction)
 END FUNCTION
 '
 ' ################################
@@ -5807,7 +5868,7 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	binding.msgHandlers = handler_New ()
 	LinkedList_Init (@autoDrawList)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDrawList)
-	binding.autoSizerInfo = AUTOSIZER_Ov_New ($$DIR_VERT)
+	binding.autoSizerInfo = AUTOSIZER_Real_New ($$DIR_VERT)
 
 	SetWindowLongA (hWnd, $$GWL_USERDATA, BINDING_New (binding))
 
@@ -6196,7 +6257,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 	LinkedList_Init (@autoDrawList)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDrawList)
 
-	binding.autoSizerInfo = AUTOSIZER_Ov_New ($$DIR_VERT)
+	binding.autoSizerInfo = AUTOSIZER_Real_New ($$DIR_VERT)
 
 	SetWindowLongA (binding.hWnd, $$GWL_USERDATA, BINDING_New (binding))
 
@@ -6245,7 +6306,7 @@ END FUNCTION
 ' ############################
 ' Trims a path, directory or file
 '
-' ----- Usage -----
+' Usage:
 '
 'dir$ = "  c:/Lonné  "
 ' ------------------------the direct way----------------------------
@@ -6258,37 +6319,41 @@ END FUNCTION
 '
 FUNCTION WinXPath_Trim$ (path$)
 
-	IFZ path$ THEN RETURN ""		' empty
-	upp = LEN (path$) - 1
-
-	' search the last non-space character, its index is iLast
-	iLast = -1
-	FOR i = upp TO 0 STEP -1
-		IF (path${i} >= 33) && (path${i} <= 253) THEN
-			iLast = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-	IF iLast = -1 THEN RETURN ""		' empty directory path => return a null string
-
-	' search the 1st non-space character, its index is iFirst
-	FOR i = 0 TO iLast
-		IF (path${i} >= 33) && (path${i} <= 253) THEN
-			iFirst = i
-			EXIT FOR
-		ENDIF
-	NEXT i
-
-	length = iLast - iFirst + 1
-	IFZ length THEN RETURN ""		' empty
-
-	' trim off leading and trailing spaces
-	trimmed$ = MID$ (path$, iFirst + 1, length)
-
-	' make sure there are only Windows PathSlashes
-	IF INSTR (trimmed$, "/") THEN XstTranslateChars (@trimmed$, "/", $$PathSlash$)
-
-	RETURN trimmed$
+	ret$ = ""
+	SELECT CASE LEN (path$)
+		CASE 0
+		CASE ELSE
+			upp = LEN (path$) - 1
+			'
+			' search the last non-space character, its index is iLast
+			iLast = -1
+			FOR i = upp TO 0 STEP -1
+				IF (path${i} >= 33) && (path${i} <= 253) THEN
+					iLast = i
+					EXIT FOR
+				ENDIF
+			NEXT i
+			IF iLast = -1 THEN EXIT SELECT		' empty directory path => return a null string
+			'
+			' search the 1st non-space character, its index is iFirst
+			FOR i = 0 TO iLast
+				IF (path${i} >= 33) && (path${i} <= 253) THEN
+					iFirst = i
+					EXIT FOR
+				ENDIF
+			NEXT i
+			'
+			length = iLast - iFirst + 1
+			IFZ length THEN EXIT SELECT		' empty
+			'
+			' trim off leading and trailing spaces
+			ret$ = MID$ (path$, iFirst + 1, length)
+			'
+			' make sure there are only Windows PathSlashes
+			IF INSTR (ret$, "/") THEN XstTranslateChars (@ret$, "/", $$PathSlash$)
+			'
+	END SELECT
+	RETURN ret$
 
 END FUNCTION
 '
@@ -8126,13 +8191,13 @@ END FUNCTION
 ' insertAfter = the index to insert at, -1 for to append
 ' returns the index of the tab, -1 on fail
 FUNCTION WinXTabs_AddTab (hTabs, STRING label, index)
-	TC_ITEM tci
+	TC_ITEM tci ' tab control structure
 
 	IFZ hTabs THEN RETURN -1
 	tci.mask = $$TCIF_PARAM | $$TCIF_TEXT
 	tci.pszText = &label
 	tci.cchTextMax = LEN (label)
-	tci.lParam = AUTOSIZER_Ov_New ($$DIR_VERT)
+	tci.lParam = AUTOSIZER_Real_New ($$DIR_VERT)
 
 	IF index < 0 THEN index = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
 
@@ -8172,7 +8237,7 @@ END FUNCTION
 ' iTab = the index of the tab to get the autosizer series for
 ' returns the idCtr of the autosizer series or -1 on fail
 FUNCTION WinXTabs_GetAutosizerSeries (hTabs, iTab)
-	TC_ITEM tci
+	TC_ITEM tci ' tab control structure
 
 	tci.mask = $$TCIF_PARAM
 	IFZ SendMessageA (hTabs, $$TCM_GETITEM, iTab, &tci) THEN RETURN -1		' fail
@@ -8746,6 +8811,7 @@ END FUNCTION
 ' #########################################
 ' #####  WinXTreeView_FreezeOnSelect  #####
 ' #########################################
+' disable $$TVN_SELCHANGED
 FUNCTION WinXTreeView_FreezeOnSelect (hTV)
 
 	IFZ hTV THEN RETURN
@@ -9024,6 +9090,7 @@ END FUNCTION
 ' ######################################
 ' #####  WinXTreeView_UseOnSelect  #####
 ' ######################################
+' re-enable $$TVN_SELCHANGED
 FUNCTION WinXTreeView_UseOnSelect (hTV)
 
 	IFZ hTV THEN RETURN
@@ -9079,9 +9146,9 @@ END FUNCTION
 ' hWnd = the handle to the window
 FUNCTION VOID WinXUpdate (hWnd)
 	BINDING binding
-	RECT rect
-	' WinXGetUsableRect (hWnd, @rect)
-	' InvalidateRect (hWnd, &rect, 1) ' erase
+	'RECT rect
+	'WinXGetUseableRect (hWnd, @rect)
+	'InvalidateRect (hWnd, &rect, 1)
 
 	' get the binding
 	IFZ hWnd THEN RETURN
@@ -9175,7 +9242,7 @@ FUNCTION AUTOSIZER_Add_info_block (slot, AUTOSIZER info_block)
 	index_info_block = -1
 	SELECT CASE TRUE
 		CASE (slot >= 0) && (slot <= (AUTOSIZER_idMax - 1))
-			IF slot > UBOUND (AUTOSIZER_list[]) THEN EXIT SELECT ' this should never happen!
+			IF slot > UBOUND (AUTOSIZER_list[]) THEN EXIT SELECT ' unlikely!
 			IFF AUTOSIZER_list[slot].inUse THEN EXIT SELECT		' deleted
 			'
 			kid_upper = UBOUND (AUTOSIZER_ragged[slot,])
@@ -9196,7 +9263,7 @@ FUNCTION AUTOSIZER_Add_info_block (slot, AUTOSIZER info_block)
 				SWAP kid_list[], AUTOSIZER_ragged[slot,]
 				index_info_block = kid_upper
 			ENDIF
-			IF index_info_block < 0 THEN EXIT SELECT ' this should never happen!
+			IF index_info_block < 0 THEN EXIT SELECT ' unlikely!
 			'
 			AUTOSIZER_ragged[slot, index_info_block] = info_block
 			'
@@ -9219,13 +9286,13 @@ FUNCTION AUTOSIZER_Add_info_block (slot, AUTOSIZER info_block)
 	RETURN index_info_block
 END FUNCTION
 '
-' ##############################
-' #####  AUTOSIZER_Ov_New  #####
-' ##############################
+' ################################
+' #####  AUTOSIZER_Real_New  #####
+' ################################
 '
 ' Adds a new group of auto sizer info blocks
 ' returns the index of the new group or -1 on fail
-FUNCTION AUTOSIZER_Ov_New (direction)
+FUNCTION AUTOSIZER_Real_New (direction)
 	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
 	SHARED SIZELISTHEAD AUTOSIZER_list[]
 	SHARED AUTOSIZER_idMax
@@ -9980,7 +10047,7 @@ SUB SetSizeCursor
 END SUB
 END FUNCTION
 
-FUNCTION VOID TellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
+FUNCTION VOID WapiTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
 
 	' call CommDlgExtendedError to get error code
 	extErr = CommDlgExtendedError ()
@@ -10730,6 +10797,7 @@ END FUNCTION
 ' The main window procedure
 ' parameters and return are as usual
 FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
+
 	' for drag and drop
 	SHARED g_drag_button
 	SHARED g_drag_hCtr		' if tree view, its property "Disable Drag And Drop" must NOT be set
@@ -11395,15 +11463,15 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 
 		CASE $$TVN_BEGINLABELEDIT		'  sent as notification
 			' the program sent a message $$TVM_EDITLABEL
-			p_nmtvdi = &nmtvdi
-			XLONGAT (&&nmtvdi) = lParam
 			IFZ binding.onLabelEdit THEN
 				retCode = 0
 			ELSE
+				p_nmtvdi = &nmtvdi
+				XLONGAT (&&nmtvdi) = lParam
 				r_edit_start = @binding.onLabelEdit (nmtvdi.hdr.idFrom, $$EDIT_START, nmtvdi.item.hItem, 0, "")
 				IFZ r_edit_start THEN retCode = 1 ELSE retCode = 0
+				XLONGAT (&&nmtvdi) = p_nmtvdi
 			ENDIF
-			XLONGAT (&&nmtvdi) = p_nmtvdi
 
 		CASE $$TVN_ENDLABELEDIT
 			p_nmtvdi = &nmtvdi
@@ -11451,6 +11519,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				GOSUB CreateDraggingImage
 				SetCapture (hWnd)		' snap mouse & window
 			ENDIF
+
 			XLONGAT (&&nmtv) = p_nmtv
 
 		CASE $$TCN_SELCHANGE
@@ -11485,15 +11554,15 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 
 		CASE $$LVN_BEGINLABELEDIT '  sent as notification
 			' the program sent a message $$LVM_EDITLABEL
-			p_nmlvdi = &nmlvdi
-			XLONGAT (&&nmlvdi) = lParam
 			IFZ binding.onLabelEdit THEN
 				retCode = 0
 			ELSE
+				p_nmlvdi = &nmlvdi
+				XLONGAT (&&nmlvdi) = lParam
 				r_edit_start = @binding.onLabelEdit (nmlvdi.hdr.idFrom, $$EDIT_START, nmlvdi.item.iItem, nmlvdi.item.iSubItem, "")
 				IFZ r_edit_start THEN retCode = 1 ELSE retCode = 0
+				XLONGAT (&&nmlvdi) = p_nmlvdi
 			ENDIF
-			XLONGAT (&&nmlvdi) = p_nmlvdi
 
 		CASE $$LVN_ENDLABELEDIT
 			p_nmlvdi = &nmlvdi
@@ -11508,12 +11577,12 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			XLONGAT (&&nmlvdi) = p_nmlvdi
 
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
-			p_nmtv = &nmtv		' tree view structure
-			XLONGAT (&&nmtv) = lParam
 			IF binding.onSelect THEN
+				p_nmtv = &nmtv		' tree view structure
+				XLONGAT (&&nmtv) = lParam
 				IFF binding.skipOnSelect THEN retCode = @binding.onSelect (idCtr, notifyCode, lParam)
+				XLONGAT (&&nmtv) = p_nmtv
 			ENDIF
-			XLONGAT (&&nmtv) = p_nmtv
 
 	END SELECT		' notifyCode
 
