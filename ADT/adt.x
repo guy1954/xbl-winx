@@ -27,9 +27,10 @@ EXPORT
 ' ADT - Abstract Data Types library for XBlite
 ' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
 '
-' *********************************
-' *****  ADT COMPOSITE TYPES  *****
-' *********************************
+' *****************************
+' *****   CONSTANTS and   *****
+' *****  COMPOSITE TYPES  *****
+' *****************************
 '
 TYPE LINKEDNODE
 	XLONG	.iNext
@@ -86,12 +87,12 @@ END TYPE
 '
 '
 '
-' ***********************************
-' *****  ADT Library Functions  *****
-' ***********************************
+' *************************
+' *****   FUNCTIONS   *****
+' *************************
 '
 '
-DECLARE FUNCTION ADT () ' initialization
+DECLARE FUNCTION ADT () ' To be called first
 '
 ' Linked Lists
 DECLARE FUNCTION LinkedList_Init (LINKEDLIST @list)
@@ -118,8 +119,11 @@ DECLARE FUNCTION Stack_Pop (STACK @stack, @iData)
 DECLARE FUNCTION Stack_Peek (STACK stack, @iData)
 '
 ' Bin Trees
-' User functions FnCompareNodeKeys(id_1, id_2) and FnDeleteTreeNode(indexDelete)
+' User functions:
+' - FnCompareNodeKeys(idKey_1, idKey_2) = User comparator function for sorting keys
+' - FnDeleteTreeNode(indexDelete) = User delete function
 DECLARE FUNCTION BinTree_Init (BINTREE @tree, FUNCADDR FnCompareNodeKeys, FUNCADDR FnDeleteTreeNode)
+'
 DECLARE FUNCTION BinTree_Add (BINTREE @tree, iKey, iData)
 DECLARE FUNCTION BinTree_Remove (BINTREE @tree, iKey, @iData)
 DECLARE FUNCTION BinTree_Find (BINTREE tree, iKey, @iData)
@@ -128,9 +132,6 @@ DECLARE FUNCTION BinTree_StartTraversal (BINTREE tree, order)
 DECLARE FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 DECLARE FUNCTION BinTree_EndTraversal (traverse)
 '
-' Needed for coding the body of User functions
-' - FnCompareNodeKeys(id_1, id_2)
-' - and FnDeleteTreeNode(indexDelete)
 DeclareAccess(BINNODE)
 '
 ' Associative arrays
@@ -1003,36 +1004,39 @@ FUNCTION StringCompare (a, b)
 	upp_a = LEN (a$) - 1
 	upp_b = LEN (b$) - 1
 
-	upp = MIN (upp_a, upp_b)
-	IF upp > -1 THEN
+	' compare the characters up to the smaller length (but not zero)
+	upperMin = MIN (upp_a, upp_b)
+	IF upperMin > -1 THEN
 		' non-empty strings
-		FOR i = 0 TO upp
-			IF a${i} <> b${i} THEN
-				IF a${i} > b${i} THEN
-					RETURN 1		' a$ > b$
-				ELSE
-					RETURN -1		' a$ < b$
-				ENDIF
+		FOR i = 0 TO upperMin
+			IF a${i} = b${i} THEN DO NEXT
+			'
+			IF a${i} > b${i} THEN
+				RETURN 1		' a$ > b$
+			ELSE
+				RETURN -1		' a$ < b$
 			ENDIF
 		NEXT i
 	ENDIF
 
-	IF upp_a = upp_b THEN RETURN 0		' a$ == b$
-
-	IF upp_a > upp_b THEN
-		' a$ is longer than b$
-		' either a$ > b$ or a$ == b$ if a$ contains only trailing spaces
-		FOR i = upp + 1 TO upp_a
-			IF a${i} <> ' ' THEN RETURN 1		' a$ > b$
-		NEXT i
-	ELSE
-		' b$ is longer than a$
-		' either a$ < b$ or a$ == b$ if b$ contains only trailing spaces
-		FOR i = upp + 1 TO upp_b
-			IF b${i} <> ' ' THEN RETURN -1		' a$ < b$
-		NEXT i
-	ENDIF
-
+	SELECT CASE TRUE
+		CASE upp_a = upp_b
+			'
+		CASE upp_a > upp_b
+			' a$ is longer than b$
+			FOR i = upperMin + 1 TO upp_a
+				IF a${i} <> ' ' THEN RETURN 1		' a$ > b$
+			NEXT i
+			' a$ contains only trailing spaces
+			'
+		CASE ELSE
+			' b$ is longer than a$
+			FOR i = upperMin + 1 TO upp_b
+				IF b${i} <> ' ' THEN RETURN -1		' a$ < b$
+			NEXT i
+			' b$ contains only trailing spaces
+			'
+	END SELECT
 	RETURN 0		' a$ == b$
 
 END FUNCTION
@@ -1374,19 +1378,18 @@ FUNCTION STRING_Init ()
 	SHARED STRING_arrayUM[]		' a usage map so we can see which array elements are in use
 	SHARED STRING_idMax
 
+	STRING_idMax = 0
 	IFZ STRING_array$[] THEN
 		DIM STRING_array$[7]
 		DIM STRING_arrayUM[7]
 	ELSE
-		' re-use existing STRING_array$[]
+		' reset an existing STRING_array$[]
 		upper_slot = UBOUND (STRING_arrayUM[])
 		FOR i = 0 TO upper_slot
 			STRING_array$[i] = ""
 			STRING_arrayUM[i] = $$FALSE		' logical deletion
 		NEXT i
 	ENDIF
-	STRING_idMax = 0
-
 END FUNCTION
 '
 ' Deletes a item of STRING_item
@@ -1495,17 +1498,15 @@ FUNCTION STRING_Get (id, @STRING_item$)
 	SHARED STRING_arrayUM[]		' usage map
 	SHARED STRING_idMax
 
-	bOK = $$FALSE
-	STRING_item$ = ""
-
 	slot = id - 1
 	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
 		IF STRING_arrayUM[slot] THEN
-			STRING_item$ = STRING_array$[slot]		' get item
-			bOK = $$TRUE
+			' get item
+			STRING_item$ = STRING_array$[slot]
+			RETURN $$TRUE
 		ENDIF
 	ENDIF
-	RETURN bOK
+	STRING_item$ = ""
 END FUNCTION
 '
 ' Gets STRING item count
@@ -1585,14 +1586,13 @@ FUNCTION STRING_New (STRING_item$)
 	slot = -1
 	upper_slot = UBOUND (STRING_arrayUM[])
 
-	' since STRING_array$[] is oversized
+	' since STRING_array$[] is oversized,
 	' look for an empty spot after STRING_idMax
 	IF STRING_idMax <= upper_slot THEN
 		FOR i = STRING_idMax TO upper_slot
 			IFF STRING_arrayUM[i] THEN
-				' squat the empty spot
+				' use this empty spot
 				slot = i
-				STRING_idMax = slot + 1
 				EXIT FOR
 			ENDIF
 		NEXT i
@@ -1604,15 +1604,12 @@ FUNCTION STRING_New (STRING_item$)
 		REDIM STRING_array$[upper_slot]
 		REDIM STRING_arrayUM[upper_slot]
 		slot = STRING_idMax
-		INC STRING_idMax
 	ENDIF
 
-	id = 0
-	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
-		STRING_array$[slot] = STRING_item$
-		STRING_arrayUM[slot] = $$TRUE
-		id = slot + 1
-	ENDIF
+	STRING_array$[slot] = STRING_item$
+	STRING_arrayUM[slot] = $$TRUE
+	id = slot + 1
+	STRING_idMax = id
 	RETURN id
 END FUNCTION
 '
@@ -1630,20 +1627,15 @@ FUNCTION STRING_Update (id, STRING_item$)
 	SHARED STRING_arrayUM[] ' usage map
 	SHARED STRING_idMax
 
-	bOK = $$FALSE
-	SELECT CASE TRUE
-		CASE (id >= 1) && (id <= STRING_idMax)
-			slot = id - 1
-			IF slot <= UBOUND (STRING_arrayUM[]) THEN EXIT SELECT ' this should never happen!
-			'
-			IF STRING_arrayUM[slot] THEN
-				STRING_array$[slot] = STRING_item$
-				bOK = $$TRUE
-			ENDIF
-			'
-	END SELECT
-	RETURN bOK
+	slot = id - 1
+	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
+		IF STRING_arrayUM[slot] THEN
+			STRING_array$[slot] = STRING_item$
+			RETURN $$TRUE
+		ENDIF
+	ENDIF
 END FUNCTION
+
 DefineAccess(LINKEDNODE)
 DefineAccess(LINKEDWALK)
 DefineAccess(BINNODE)

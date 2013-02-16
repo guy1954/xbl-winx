@@ -16,17 +16,17 @@ FUNCTION $1_Init ()
 	SHARED $1_arrayUM[] ' usage map so we can see which array elements are in use
 	SHARED $1_idMax
 
+	$1_idMax = 0
 	IFZ $1_array[] THEN
 		DIM $1_array[7]
 		DIM $1_arrayUM[7]
 	ELSE
-		' re-use existing $1_array[]
+		' reset an existing $1_array[]
 		upper_slot = UBOUND ($1_arrayUM[])
 		FOR slot = 0 TO upper_slot
 			$1_arrayUM[slot] = $$FALSE		' logical deletion
 		NEXT slot
 	ENDIF
-	$1_idMax = 0
 END FUNCTION
 '
 ' Deletes a $1 item accessed by its id
@@ -64,24 +64,22 @@ FUNCTION $1_Get (id`,' $1 $1_item)
 
 	$1 $1_Nil
 
-	bOK = $$FALSE
 	slot = id - 1
 	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
 		IF $1_arrayUM[slot] THEN
 			$1_item = $1_array[slot]		' get $1 item
-				bOK = $$TRUE
+			RETURN $$TRUE		' OK!
 		ENDIF
 	ENDIF
-	IFF bOK THEN $1_item = $1_Nil		' can't get $1 item
-	RETURN bOK
-
+	$1_item = $1_Nil		' can't get $1 item
 END FUNCTION
 '
 FUNCTION $1_Get_count ()
 	SHARED $1_arrayUM[]
 
 	count = 0
-	FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+	upper_slot = UBOUND ($1_arrayUM[])
+	FOR slot = 0 TO upper_slot
 		IF $1_arrayUM[slot] THEN INC count
 	NEXT slot
 	RETURN count
@@ -123,9 +121,9 @@ FUNCTION $1_New ($1 $1_item)
 	IF $1_idMax <= upper_slot THEN
 		FOR i = $1_idMax TO upper_slot
 			IFF $1_arrayUM[i] THEN
-				' squat the empty spot
+				' use this empty spot
 				slot = i
-				$1_idMax = slot + 1
+				$1_idMax = i + 1
 				EXIT FOR
 			ENDIF
 		NEXT i
@@ -163,19 +161,13 @@ FUNCTION $1_Update (id`,' $1 $1_item)
 	SHARED $1_arrayUM[] ' usage map
 	SHARED $1_idMax
 
-	bOK = $$FALSE
-	SELECT CASE TRUE
-		CASE (id >= 1) && (id <= $1_idMax)
-			slot = id - 1
-			IF slot > UBOUND ($1_arrayUM[]) THEN EXIT SELECT ' this should never happen!
-			'
-			IF $1_arrayUM[slot] THEN
-				$1_array[slot] = $1_item		' update $1 item
-				bOK = $$TRUE
-			ENDIF
-			'
-	END SELECT
-	RETURN bOK
+	slot = id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		IF $1_arrayUM[slot] THEN
+			$1_array[slot] = $1_item		' update $1 item
+			RETURN $$TRUE		' OK!
+		ENDIF
+	ENDIF
 END FUNCTION
 )
 
