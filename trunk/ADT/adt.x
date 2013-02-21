@@ -143,7 +143,6 @@ DECLARE FUNCTION AssocArray_Init (ASSOCARRAY @array)
 '
 ' === STRING class ===
 '
-DECLARE FUNCTION STRING_Init () ' initialize the STRING class
 DECLARE FUNCTION STRING_Delete (id) ' delete a STRING item accessed by its id
 DECLARE FUNCTION STRING_Find (match$) ' find exact match of match$
 DECLARE FUNCTION STRING_FindIns (match$) ' find match$ insensitive
@@ -151,6 +150,7 @@ DECLARE FUNCTION STRING_Get (id, @STRING_item$) ' get value by STRING item id
 DECLARE FUNCTION STRING_Get_count () ' get item count
 DECLARE FUNCTION STRING_Get_idMax () ' get STRING item id max
 DECLARE FUNCTION STRING_Get_idMin () ' get STRING item id min
+DECLARE FUNCTION STRING_Init () ' initialize the STRING class
 DECLARE FUNCTION STRING_New (STRING_item$) ' add STRING_item$ to STRING pool
 DECLARE FUNCTION STRING_Update (id, STRING_item$) ' update value of a STRING item accessed by its id
 '
@@ -1371,43 +1371,34 @@ END FUNCTION
 '
 ' === STRING class ===
 '
-' Initializes the STRING class
-'
-FUNCTION STRING_Init ()
-	SHARED STRING_array$[]		' an array of STRING_item
-	SHARED STRING_arrayUM[]		' a usage map so we can see which array elements are in use
-	SHARED STRING_idMax
-
-	STRING_idMax = 0
-	IFZ STRING_array$[] THEN
-		DIM STRING_array$[7]
-		DIM STRING_arrayUM[7]
-	ELSE
-		' reset an existing STRING_array$[]
-		upper_slot = UBOUND (STRING_arrayUM[])
-		FOR i = 0 TO upper_slot
-			STRING_array$[i] = ""
-			STRING_arrayUM[i] = $$FALSE		' logical deletion
-		NEXT i
-	ENDIF
-END FUNCTION
-'
-' Deletes a item of STRING_item
+' Deletes a STRING_item$ accessed by its id
 ' id = the item to delete
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
 'bOK = STRING_Delete (id)
-'IFF bOK THEN XstAlert ("can't delete STRING item id " + STRING$ (id))
+'IFF bOK THEN XstAlert ("can't delete item id " + STRING$ (id))
 '
 FUNCTION STRING_Delete (id)
-	SHARED STRING_arrayUM[]		' usage map
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
 
-	slot = id - 1
-	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
-		STRING_arrayUM[slot] = $$FALSE		' delete item
-		RETURN $$TRUE		' OK!
-	ENDIF
+	bOK = $$FALSE
+	SELECT CASE TRUE
+		CASE (id < 1) || (id > STRING_idMax)
+		CASE ELSE
+			slot = id - 1
+			IF slot <= UBOUND (STRING_arrayUM[]) THEN
+				IF STRING_arrayUM[slot] THEN
+					STRING_arrayUM[slot] = $$FALSE		' delete STRING item
+					bOK = $$TRUE
+				ENDIF
+			ENDIF
+			'
+	END SELECT
+	RETURN bOK
+
 END FUNCTION
 '
 ' Finds a STRING item using its value
@@ -1420,30 +1411,36 @@ END FUNCTION
 '
 FUNCTION STRING_Find (match$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]		' usage map
+	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
+	idFound = 0
 	match$ = TRIM$ (match$)
 	LEN_match = LEN (match$)
-	IFZ LEN_match THEN RETURN
-
-	upper_slot = UBOUND (STRING_arrayUM[])
-	IF upper_slot >= STRING_idMax THEN upper_slot = STRING_idMax - 1
-
-	idFound = 0
-	FOR slot = 0 TO upper_slot
-		IFF STRING_arrayUM[slot] THEN DO NEXT
-		'
-		st$ = TRIM$ (STRING_array$[slot])
-		IF LEN (st$) <> LEN_match THEN DO NEXT
-		'
-		' find exact match
-		IF st$ = match$ THEN
-			idFound = slot + 1
-			EXIT FOR
-		ENDIF
-	NEXT slot
+	SELECT CASE LEN_match
+		CASE 0
+		CASE ELSE
+			IFZ STRING_arrayUM[] THEN EXIT SELECT
+			'
+			upper_slot = UBOUND (STRING_arrayUM[])
+			IF upper_slot >= STRING_idMax THEN upper_slot = STRING_idMax - 1
+			'
+			FOR slot = 0 TO upper_slot
+				IFF STRING_arrayUM[slot] THEN DO NEXT
+				'
+				st$ = TRIM$ (STRING_array$[slot])
+				IF LEN (st$) = LEN_match THEN
+					IF st$ = match$ THEN
+						' exact match
+						idFound = slot + 1
+						EXIT FOR
+					ENDIF
+				ENDIF
+			NEXT slot
+			'
+	END SELECT
 	RETURN idFound
+
 END FUNCTION
 '
 ' Finds case insensitive a STRING item using its value
@@ -1456,32 +1453,37 @@ END FUNCTION
 '
 FUNCTION STRING_FindIns (match$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]		' usage map
+	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	match$ = TRIM$ (match$)
-	LEN_match = LEN (match$)
-	IFZ LEN_match THEN RETURN
-
-	match_lc$ = LCASE$ (match$)
-
-	upper_slot = UBOUND (STRING_arrayUM[])
-	IF upper_slot >= STRING_idMax THEN upper_slot = STRING_idMax - 1
-
 	idFound = 0
-	FOR slot = 0 TO upper_slot
-		IFF STRING_arrayUM[slot] THEN DO NEXT
-		'
-		st$ = TRIM$ (STRING_array$[slot])
-		IF LEN (st$) <> LEN_match THEN DO NEXT
-		'
-		' find case insensitive
-		IF LCASE$ (st$) = match_lc$ THEN
-			idFound = slot + 1
-			EXIT FOR
-		ENDIF
-	NEXT slot
+	match_lc$ = LCASE$ (TRIM$ (match$))
+
+	LEN_match_lc = LEN (match_lc$)
+	SELECT CASE LEN_match_lc
+		CASE 0
+		CASE ELSE
+			IFZ STRING_arrayUM[] THEN EXIT SELECT
+			'
+			upper_slot = UBOUND (STRING_arrayUM[])
+			IF upper_slot >= STRING_idMax THEN upper_slot = STRING_idMax - 1
+			'
+			FOR slot = 0 TO upper_slot
+				IFF STRING_arrayUM[slot] THEN DO NEXT
+				'
+				low_case$ = LCASE$ (TRIM$ (STRING_array$[slot]))
+				IF LEN (low_case$) = LEN_match_lc THEN
+					IF low_case$ = match_lc$ THEN
+						' exact match case insensitive
+						idFound = slot + 1
+						EXIT FOR
+					ENDIF
+				ENDIF
+			NEXT slot
+			'
+	END SELECT
 	RETURN idFound
+
 END FUNCTION
 '
 ' Gets value of a STRING item accessed by its id
@@ -1490,23 +1492,31 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
-'bOK = STRING_Get (id, @STRING_item)
-'IFF bOK THEN XstAlert ("can't get STRING item id " + STRING$ (id))
+'bOK = STRING_Get (id, @STRING_item$)
+'IFF bOK THEN XstAlert ("can't get item id " + STRING$ (id))
 '
 FUNCTION STRING_Get (id, @STRING_item$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[]		' usage map
+	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	slot = id - 1
-	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
-		IF STRING_arrayUM[slot] THEN
-			' get item
-			STRING_item$ = STRING_array$[slot]
-			RETURN $$TRUE
-		ENDIF
-	ENDIF
+	bOK = $$FALSE
 	STRING_item$ = ""
+
+	SELECT CASE TRUE
+		CASE (id < 1) || (id > STRING_idMax)
+		CASE ELSE
+			slot = id - 1
+			IF slot <= UBOUND (STRING_arrayUM[]) THEN
+				IF STRING_arrayUM[slot] THEN
+					STRING_item$ = STRING_array$[slot]		' get item
+					bOK = $$TRUE
+				ENDIF
+			ENDIF
+			'
+	END SELECT
+	RETURN bOK
+
 END FUNCTION
 '
 ' Gets STRING item count
@@ -1522,27 +1532,39 @@ END FUNCTION
 'ENDIF
 '
 FUNCTION STRING_Get_count ()
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
 
 	count = 0
+
 	upper_slot = UBOUND (STRING_arrayUM[])
-	FOR slot = 0 TO upper_slot
-		IF STRING_arrayUM[slot] THEN INC count
-	NEXT slot
+	IF upper_slot >= STRING_idMax THEN upper_slot = STRING_idMax - 1
+
+	IF upper_slot >= 0 THEN
+		FOR slot = 0 TO upper_slot
+			IF STRING_arrayUM[slot] THEN INC count
+		NEXT slot
+	ENDIF
+
 	RETURN count
+
 END FUNCTION
 '
 ' Gets STRING item id max
 '
 ' Usage: walk thru the STRING pool
-'idMax = STRING_Get_idMax ()		' get STRING item id max
+'idMax = STRING_Get_idMax () ' get STRING item id max
 'FOR id = 1 TO idMax
 '	bOK = STRING_Get (id, @STRING_item$)
 '	IFF bOK THEN DO NEXT		' deleted
 'NEXT id
 '
 FUNCTION STRING_Get_idMax ()
+	SHARED STRING_array$[]
+	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
+
 	RETURN STRING_idMax
 END FUNCTION
 '
@@ -1556,17 +1578,47 @@ END FUNCTION
 'NEXT id
 '
 FUNCTION STRING_Get_idMin ()
+	SHARED STRING_array$[]
 	SHARED STRING_arrayUM[]
+	SHARED STRING_idMax
 
 	idMin = 0
 	upper_slot = UBOUND (STRING_arrayUM[])
-	FOR slot = 0 TO upper_slot
-		IF STRING_arrayUM[slot] THEN
-			idMin = slot + 1 ' first slot not deleted
-			EXIT FOR
-		ENDIF
-	NEXT slot
+	IF upper_slot >= STRING_idMax THEN upper_slot = STRING_idMax - 1
+
+	IF upper_slot >= 0 THEN
+		FOR slot = 0 TO upper_slot
+			IF STRING_arrayUM[slot] THEN
+				idMin = slot + 1 ' first slot not deleted
+				EXIT FOR
+			ENDIF
+		NEXT slot
+	ENDIF
+
 	RETURN idMin
+
+END FUNCTION
+'
+' Initializes the STRING class
+'
+FUNCTION STRING_Init ()
+	SHARED STRING_array$[]  ' an array of STRING_item$
+	SHARED STRING_arrayUM[] ' usage map so we can see which array elements are in use
+	SHARED STRING_idMax     ' last id
+
+	IFZ STRING_array$[] THEN
+		DIM STRING_array$[7]
+		DIM STRING_arrayUM[7]
+	ELSE
+		' re-use existing STRING_array$[]
+		upper_slot = UBOUND (STRING_arrayUM[])
+		FOR slot = 0 TO upper_slot
+			STRING_array$[slot] = ""
+			STRING_arrayUM[slot] = $$FALSE		' logical deletion
+		NEXT slot
+	ENDIF
+	STRING_idMax = 0
+
 END FUNCTION
 '
 ' Adds a STRING item to STRING pool
@@ -1574,11 +1626,11 @@ END FUNCTION
 '
 ' Usage:
 'id = STRING_New (STRING_item$)
-'IFZ id THEN ' can't add STRING item
+'IFZ id THEN XstAlert ("can't add item id")
 '
 FUNCTION STRING_New (STRING_item$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[] ' usage map
+	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
 	IFZ STRING_arrayUM[] THEN STRING_Init ()
@@ -1586,13 +1638,14 @@ FUNCTION STRING_New (STRING_item$)
 	slot = -1
 	upper_slot = UBOUND (STRING_arrayUM[])
 
-	' since STRING_array$[] is oversized,
+	' since STRING_array$[] is oversized
 	' look for an empty spot after STRING_idMax
 	IF STRING_idMax <= upper_slot THEN
 		FOR i = STRING_idMax TO upper_slot
 			IFF STRING_arrayUM[i] THEN
-				' use this empty spot
+				' squat the empty spot
 				slot = i
+				STRING_idMax = slot + 1
 				EXIT FOR
 			ENDIF
 		NEXT i
@@ -1604,13 +1657,17 @@ FUNCTION STRING_New (STRING_item$)
 		REDIM STRING_array$[upper_slot]
 		REDIM STRING_arrayUM[upper_slot]
 		slot = STRING_idMax
+		INC STRING_idMax
 	ENDIF
 
-	STRING_array$[slot] = STRING_item$
-	STRING_arrayUM[slot] = $$TRUE
-	id = slot + 1
-	STRING_idMax = id
+	id = 0
+	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
+		STRING_array$[slot] = STRING_item$
+		STRING_arrayUM[slot] = $$TRUE
+		id = slot + 1
+	ENDIF
 	RETURN id
+
 END FUNCTION
 '
 ' Updates the value of a STRING item accessed by its id
@@ -1620,20 +1677,28 @@ END FUNCTION
 '
 ' Usage:
 'bOK = STRING_Update (id, STRING_item$)
-'IFF bOK THEN ' can't update STRING item
+'IFF bOK THEN XstAlert ("can't update item id " + STRING$ (id))
 '
 FUNCTION STRING_Update (id, STRING_item$)
 	SHARED STRING_array$[]
-	SHARED STRING_arrayUM[] ' usage map
+	SHARED STRING_arrayUM[]
 	SHARED STRING_idMax
 
-	slot = id - 1
-	IF (slot >= 0) && (slot <= UBOUND (STRING_arrayUM[])) THEN
-		IF STRING_arrayUM[slot] THEN
-			STRING_array$[slot] = STRING_item$
-			RETURN $$TRUE
-		ENDIF
-	ENDIF
+	bOK = $$FALSE
+	SELECT CASE TRUE
+		CASE (id < 1) || (id > STRING_idMax)
+		CASE ELSE
+			slot = id - 1
+			IF slot <= UBOUND (STRING_arrayUM[]) THEN
+				IF STRING_arrayUM[slot] THEN
+					STRING_array$[slot] = STRING_item$		' update STRING item
+					bOK = $$TRUE
+				ENDIF
+			ENDIF
+			'
+	END SELECT
+	RETURN bOK
+
 END FUNCTION
 
 DefineAccess(LINKEDNODE)
