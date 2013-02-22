@@ -778,9 +778,10 @@ DeclareAccess(AUTODRAWRECORD)
 '
 ' === AUTOSIZER class ===
 '
+DECLARE FUNCTION AUTOSIZER_Add_info_block (id, AUTOSIZER autoSizerBlock)
+
 DECLARE FUNCTION AUTOSIZER_Delete (id)
 DECLARE FUNCTION AUTOSIZER_Init ()
-DECLARE FUNCTION AUTOSIZER_Add_info_block (id, AUTOSIZER autoSizerBlock)
 DECLARE FUNCTION AUTOSIZER_Real_New (direction)
 DECLARE FUNCTION AUTOSIZER_Show (id, visible)
 DECLARE FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
@@ -795,9 +796,11 @@ DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 DECLARE FUNCTION CreateMdiChild (hClient, title$, style)
 
 DECLARE FUNCTION GuiSetFont (hCtr, hFont, bRedraw) ' set control hCtr to logical font hFont
+DECLARE FUNCTION GuiTellDialogError (parent, title$) ' display a WinXDialog_'s run-time error message
 
 DECLARE FUNCTION LOCK_Get_id_hCtr (hCtr)
 DECLARE FUNCTION LOCK_Get_skipOnSelect (id)
+
 DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 
 DECLARE FUNCTION VOID RefreshParentWindow (hCtr)
@@ -850,8 +853,6 @@ DECLARE FUNCTION printAbortProc (hdc, nCode)
 DECLARE FUNCTION sizeWindow (hWnd, w, h)
 
 DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
-
-DECLARE FUNCTION VOID WapiTellDialogError (parent, title$) ' display WinXDialog_'s run-time error message
 '
 $$AutoSizer$     = "WinXAutoSizerSeries"
 $$AutoSizerInfo$ = "autoSizerInfoBlock"
@@ -1010,6 +1011,7 @@ END FUNCTION
 ' accel[] = an array of accelerators
 ' returns a handle to the new accelerator table or 0 on fail
 FUNCTION WinXAddAcceleratorTable (ACCEL accel[])
+
 	IFZ accel[] THEN RETURN
 	cEntries = UBOUND (accel[]) + 1
 	hAccel = CreateAcceleratorTableA (&accel[0], cEntries)
@@ -1473,52 +1475,48 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	' make the status bar
 	hInst = GetModuleHandleA (0)
 	hCtr = CreateWindowExA (0, &$$STATUSCLASSNAME, 0, style, 0, 0, 0, 0, hWnd, idCtr, hInst, 0)
+	IFZ hCtr THEN RETURN
 
-	SELECT CASE hCtr
-		CASE 0
-		CASE ELSE
-			' now prepare the parts
-			IFZ INSTR (initialStatus, ",") THEN
-				DIM s$[0]
-				s$[0] = initialStatus
-			ELSE
-				XstParseStringToStringArray (initialStatus, ",", @s$[])
-			ENDIF
-			'
-			' create array parts[] for holding the right edge cooordinates
-			uppPart = UBOUND (s$[])
-			DIM parts[uppPart]
-			'
-			' calculate the right edge coordinate for each part, and
-			' copy the coordinates to the array
-			GetClientRect (hCtr, &rect)
-			'
-			cPart = uppPart + 1		' number of right edge cooordinates
-			w = rect.right - rect.left
-			FOR i = 0 TO uppPart
-				parts[i] = ((i + 1) * w) / cPart
-			NEXT i
-			parts[uppPart] = -1		' extend to the right edge of the window
-			'
-			' set the part info
-			SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
-			'
-			' and finally, set the text
-			FOR i = 0 TO uppPart
-				SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
-			NEXT i
-			'
-			' WinXSetDefaultFont (hCtr)
-			hFont = GetStockObject ($$DEFAULT_GUI_FONT)
-			WinXSetFont (hCtr, hFont)		' redraw
-			DeleteObject (hFont)		' release the font
-			'
-			' and update the binding
-			binding.hStatus = hCtr
-			binding.statusParts = uppPart
-			BINDING_Update (idBinding, binding)
-			'
-	END SELECT
+	' now prepare the parts
+	IFZ INSTR (initialStatus, ",") THEN
+		DIM s$[0]
+		s$[0] = initialStatus
+	ELSE
+		XstParseStringToStringArray (initialStatus, ",", @s$[])
+	ENDIF
+
+	' create array parts[] for holding the right edge cooordinates
+	uppPart = UBOUND (s$[])
+	DIM parts[uppPart]
+
+	' calculate the right edge coordinate for each part, and
+	' copy the coordinates to the array
+	GetClientRect (hCtr, &rect)
+
+	cPart = uppPart + 1		' number of right edge cooordinates
+	w = rect.right - rect.left
+	FOR i = 0 TO uppPart
+		parts[i] = ((i + 1) * w) / cPart
+	NEXT i
+	parts[uppPart] = -1		' extend to the right edge of the window
+
+	' set the part info
+	SendMessageA (hCtr, $$SB_SETPARTS, cPart, &parts[0])
+
+	' and finally, set the text
+	FOR i = 0 TO uppPart
+		SendMessageA (hCtr, $$SB_SETTEXT, i, &s$[i])
+	NEXT i
+
+	' WinXSetDefaultFont (hCtr)
+	hFont = GetStockObject ($$DEFAULT_GUI_FONT)
+	WinXSetFont (hCtr, hFont)		' redraw
+	DeleteObject (hFont)		' release the font
+
+	' and update the binding
+	binding.hStatus = hCtr
+	binding.statusParts = uppPart
+	BINDING_Update (idBinding, binding)
 
 	RETURN hCtr
 END FUNCTION
@@ -1758,8 +1756,9 @@ FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 	' get the binding
 	IFZ hWnd THEN RETURN -1		' fail
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IF BINDING_Get (idBinding, @binding) THEN RETURN binding.autoSizerInfo
-	RETURN -1		' fail
+	IFF BINDING_Get (idBinding, @binding) THEN RETURN -1 ' fail
+
+	RETURN binding.autoSizerInfo
 END FUNCTION
 '
 ' ###################################
@@ -1783,8 +1782,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 
 	IFZ hCtr THEN RETURN
 
-	IF series = -1 THEN
-		' -1 == the window's series
+	IF series = -1 THEN ' the window's series
 		' get the binding
 		hWnd = GetParent (hCtr)
 		IFZ hWnd THEN RETURN
@@ -1954,10 +1952,9 @@ FUNCTION WinXCleanUp ()
 			ENDIF
 			'
 			ret = ShowWindow (hWnd, $$SW_HIDE)		' Guy-01feb10-prevent from crashing
-			IF ret THEN
-				' $$WM_DESTROY causes the deletion of current binding's slot
-				DestroyWindow (hWnd) ' destroy the window
-			ENDIF
+			'
+			' $$WM_DESTROY causes the deletion of current binding's slot
+			IF ret THEN DestroyWindow (hWnd)
 		NEXT slot
 	ENDIF
 
@@ -2441,7 +2438,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
-'WinXDialog_Message (#dlgAUD, "Not wanted", "Wanted?", "0", hInst)
+'WinXDialog_Message (#dlgCRUD, "Not wanted", "Wanted?", "0", hInst)
 ' --> SHARED hInst ' is needed by WinXDialog_Message for the icon "0"
 '
 FUNCTION WinXDialog_Message (hWnd, text$, title$, icon$, hMod)
@@ -2635,7 +2632,7 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 
 	ret = GetOpenFileNameA (&ofn)		' fire off dialog
 	IFZ ret THEN		' fail
-		WapiTellDialogError (parent, title$)
+		GuiTellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -2794,7 +2791,7 @@ FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwr
 
 	ret = GetSaveFileNameA (&ofn)
 	IFZ ret THEN
-		WapiTellDialogError (parent, title$)
+		GuiTellDialogError (parent, title$)
 		RETURN ""		' fail
 	ENDIF
 
@@ -3452,7 +3449,7 @@ END FUNCTION
 ' hWnd = the window to draw the ellipse on
 ' hPen and hBrush = the handles to the pen and brush to use
 ' x1, y1, x2, y2 = the coordinates of the ellipse
-' returns the id of the ellipse
+' returns the AUTODRAWRECORD id of the ellipse
 FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	AUTODRAWRECORD record
 	BINDING binding
@@ -3497,7 +3494,7 @@ END FUNCTION
 ' Draws a rectangle
 ' hPen and hBrush = the handles to the pen and brush to use
 ' x1, y1, x2, y2 = the coordinates of the rectangle
-' returns the id of the filled rectangle
+' returns the AUTODRAWRECORD id of the filled rectangle
 FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	AUTODRAWRECORD record
 	BINDING binding
@@ -3545,7 +3542,7 @@ END FUNCTION
 ' x, y, w, h = the x, h, w, and h of the bitmap to blit
 ' xSrc, ySrc = the x, y coordinates on the image to blit from
 ' blend = $$TRUE if the image has been premultiplied for alpha blending
-' returns the handle to the operation or 0 on fail
+' returns the AUTODRAWRECORD id of the operation
 FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 	AUTODRAWRECORD record
 	BINDING binding
@@ -3590,7 +3587,7 @@ END FUNCTION
 ' hWnd = the handle to the window to draw to
 ' hPen = a handle to a pen to draw the line with
 ' x1, y1, x2, y2 = the coordinates of the line
-' returns the id of the line
+' returns the AUTODRAWRECORD id of the line
 FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 	AUTODRAWRECORD record
 	BINDING binding
@@ -3674,7 +3671,7 @@ END FUNCTION
 ' text = the text to print
 ' x, y = the coordintates to print the text at
 ' backCol, forCol = the colors for the text
-' returns the id of the element or 0 on fail
+' returns the AUTODRAWRECORD id of the element or 0 on fail
 FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 	AUTODRAWRECORD record
 	BINDING binding
@@ -3970,7 +3967,7 @@ FUNCTION WinXDraw_GetTextWidth (hFont, STRING text, maxWidth)
 	GetTextExtentExPointA (hDC, &text, LEN (text), maxWidth, &fit, 0, &size)
 	DeleteDC (hDC)
 
-	' maxWidth == -1 if there is no maximum width
+	' maxWidth == -1 for no maximum width
 	IF (maxWidth = -1) || (fit >= LEN (text)) THEN r_w = size.cx ELSE r_w = - fit
 	RETURN r_w
 
@@ -4147,9 +4144,6 @@ FUNCTION WinXDraw_SaveImage (hImage, STRING fileName, fileType)
 
 	SELECT CASE fileType
 		CASE $$FILETYPE_WINBMP
-			fileNumber = OPEN (fileName, $$WRNEW)
-			IF fileNumber < 3 THEN RETURN ' can't open file
-
 			bmfh.bfType = 0x4D42
 			bmfh.bfSize = SIZE (BITMAPFILEHEADER) + SIZE (BITMAPINFOHEADER) + (bmp.widthBytes * bmp.height)
 			bmfh.bfOffBits = SIZE (BITMAPFILEHEADER) + SIZE (BITMAPINFOHEADER)
@@ -4160,6 +4154,9 @@ FUNCTION WinXDraw_SaveImage (hImage, STRING fileName, fileType)
 			bmih.biPlanes = bmp.planes
 			bmih.biBitCount = bmp.bitsPixel
 			bmih.biCompression = $$BI_RGB
+
+			fileNumber = OPEN (fileName, $$WRNEW)
+			IF fileNumber < 3 THEN RETURN ' can't open file
 
 			WRITE[fileNumber], bmfh
 			WRITE[fileNumber], bmih
@@ -4861,8 +4858,6 @@ END FUNCTION
 ' key = the ascii code of the key or a VK code for special keys
 ' returns $$TRUE if the key is pressed and $$FALSE if it is not
 FUNCTION WinXIsKeyDown (key)
-
-	' Guy-17feb13-ensure key is valid
 	IFZ key THEN RETURN
 
 	' Have to check the high order bit, and since GetKeyState returns a short that might not be
@@ -9544,45 +9539,6 @@ FUNCTION WinXVersion$ ()
 	RETURN (version$)
 END FUNCTION
 '
-' ##############################
-' #####  AUTOSIZER_Delete  #####
-' ##############################
-' Deletes a group of auto sizer info blocks
-' id = the Group id to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AUTOSIZER_Delete (id)
-	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
-	SHARED SIZELISTHEAD AUTOSIZER_list[]
-	SHARED AUTOSIZER_idMax
-
-	AUTOSIZER kid_list[]
-
-	upper_slot = UBOUND (AUTOSIZER_list[])
-
-	slot = id
-
-	IF (slot < 0) || (slot > upper_slot) THEN RETURN
-	IFF AUTOSIZER_list[slot].inUse THEN RETURN
-
-	AUTOSIZER_list[id].inUse = $$FALSE
-	SWAP AUTOSIZER_ragged[id,], kid_list[]
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ############################
-' #####  AUTOSIZER_Init  #####
-' ############################
-FUNCTION AUTOSIZER_Init ()
-	SHARED AUTOSIZER AUTOSIZER_ragged[]
-	SHARED SIZELISTHEAD AUTOSIZER_list[]
-	SHARED AUTOSIZER_idMax
-
-	DIM AUTOSIZER_ragged[0, 0]
-	DIM AUTOSIZER_list[0]
-	AUTOSIZER_idMax = 0
-END FUNCTION
-'
 ' ######################################
 ' #####  AUTOSIZER_Add_info_block  #####
 ' ######################################
@@ -9642,6 +9598,45 @@ FUNCTION AUTOSIZER_Add_info_block (slot, AUTOSIZER info_block)
 	END SELECT
 
 	RETURN index_info_block
+END FUNCTION
+'
+' ##############################
+' #####  AUTOSIZER_Delete  #####
+' ##############################
+' Deletes a group of auto sizer info blocks
+' id = the Group id to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION AUTOSIZER_Delete (id)
+	SHARED AUTOSIZER AUTOSIZER_ragged[]		'info for the autosizer
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
+	SHARED AUTOSIZER_idMax
+
+	AUTOSIZER kid_list[]
+
+	upper_slot = UBOUND (AUTOSIZER_list[])
+
+	slot = id
+
+	IF (slot < 0) || (slot > upper_slot) THEN RETURN
+	IFF AUTOSIZER_list[slot].inUse THEN RETURN
+
+	AUTOSIZER_list[id].inUse = $$FALSE
+	SWAP AUTOSIZER_ragged[id,], kid_list[]
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ############################
+' #####  AUTOSIZER_Init  #####
+' ############################
+FUNCTION AUTOSIZER_Init ()
+	SHARED AUTOSIZER AUTOSIZER_ragged[]
+	SHARED SIZELISTHEAD AUTOSIZER_list[]
+	SHARED AUTOSIZER_idMax
+
+	DIM AUTOSIZER_ragged[0, 0]
+	DIM AUTOSIZER_list[0]
+	AUTOSIZER_idMax = 0
 END FUNCTION
 '
 ' ################################
@@ -9959,6 +9954,39 @@ FUNCTION GuiSetFont (hCtr, hFont, bRedraw)
 			'
 	END SELECT
 	RETURN bOK
+
+END FUNCTION
+'
+' ################################
+' #####  GuiTellDialogError  #####
+' ################################
+' display a WinXDialog_'s run-time error message
+FUNCTION GuiTellDialogError (parent, title$)
+
+	' call CommDlgExtendedError to get error code
+	extErr = CommDlgExtendedError ()
+	SELECT CASE extErr
+		CASE 0
+			msg$ = "Cancel pressed, no error"
+			RETURN		' don't display msg$
+			'
+		CASE $$CDERR_DIALOGFAILURE : msg$ = "Can't create the dialog box"
+		CASE $$CDERR_FINDRESFAILURE : msg$ = "Resource missing"
+		CASE $$CDERR_NOHINSTANCE : msg$ = "Instance handle missing"
+		CASE $$CDERR_INITIALIZATION : msg$ = "Can't initialize. Possibly out of memory"
+		CASE $$CDERR_NOHOOK : msg$ = "Hook procedure missing"
+		CASE $$CDERR_LOCKRESFAILURE : msg$ = "Can't lock a resource"
+		CASE $$CDERR_NOTEMPLATE : msg$ = "Template missing"
+		CASE $$CDERR_LOADRESFAILURE : msg$ = "Can't load a resource"
+		CASE $$CDERR_STRUCTSIZE : msg$ = "Internal error - invalid struct size"
+		CASE $$CDERR_LOADSTRFAILURE : msg$ = "Can't load a string"
+		CASE $$CDERR_MEMALLOCFAILURE : msg$ = "Can't allocate memory for internal dialog structures"
+		CASE $$CDERR_MEMLOCKFAILURE : msg$ = "Can't lock memory"
+		CASE ELSE : msg$ = "Error " + STRING$ (extErr)
+	END SELECT
+
+	MessageBoxA (parent, &msg$, &title$, $$MB_ICONSTOP)
+	RETURN $$TRUE ' an error really occurred!
 
 END FUNCTION
 '
@@ -10405,33 +10433,6 @@ SUB SetSizeCursor
 		SetCursor (LoadCursorA (0, $$IDC_SIZENS))		' horizontal bar
 	ENDIF
 END SUB
-END FUNCTION
-
-FUNCTION VOID WapiTellDialogError (parent, title$)		' display WinXDialog_'s run-time error message
-
-	' call CommDlgExtendedError to get error code
-	extErr = CommDlgExtendedError ()
-	SELECT CASE extErr
-		CASE 0
-			' err$ = "Cancel pressed, no error"
-			RETURN		' success
-			'
-		CASE $$CDERR_DIALOGFAILURE : err$ = "Dialog box could not be created"
-		CASE $$CDERR_FINDRESFAILURE : err$ = "Failed to find a resource"
-		CASE $$CDERR_NOHINSTANCE : err$ = "Instance handle missing"
-		CASE $$CDERR_INITIALIZATION : err$ = "Failure during initialization. Possibly out of memory"
-		CASE $$CDERR_NOHOOK : err$ = "Hook procedure missing"
-		CASE $$CDERR_LOCKRESFAILURE : err$ = "Failed to lock a resource"
-		CASE $$CDERR_NOTEMPLATE : err$ = "Template missing"
-		CASE $$CDERR_LOADRESFAILURE : err$ = "Failed to load a resource"
-		CASE $$CDERR_STRUCTSIZE : err$ = "Internal error - invalid struct size"
-		CASE $$CDERR_LOADSTRFAILURE : err$ = "Failed to load a string"
-		CASE $$CDERR_MEMALLOCFAILURE : err$ = "Unable to allocate memory for internal dialog structures"
-		CASE $$CDERR_MEMLOCKFAILURE : err$ = "Unable to lock memory"
-		CASE ELSE : err$ = "Unknown error " + STRING$ (extErr)
-	END SELECT
-	MessageBoxA (parent, &err$, &title$, $$MB_ICONSTOP)
-
 END FUNCTION
 '
 ' ######################
