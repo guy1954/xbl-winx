@@ -585,6 +585,7 @@ DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
 ' List box
 DECLARE FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
+DECLARE FUNCTION WinXListBox_Find (hListBox, match$) ' find exact match
 DECLARE FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 DECLARE FUNCTION WinXListBox_GetItem$ (hListBox, index)
 DECLARE FUNCTION WinXListBox_GetSelection (hListBox, @index[])
@@ -4961,6 +4962,28 @@ FUNCTION WinXListBox_EnableDragging (hListBox)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
+' ##############################
+' #####  WinXListBox_Find  #####
+' ##############################
+' Finds a listbox item using its value
+' hListBox = the handle to the list box containing the string
+' match$ = the string to search for
+' returns the index of the item r_index or $$LB_ERR on fail
+'
+' Usage:
+'index = WinXListBox_Find (hListBox, match$)
+'IF index < 0 THEN ' Can't find exact match
+'
+FUNCTION WinXListBox_Find (hListBox, match$)
+
+	r_index = -1
+	IF hListBox THEN
+		IF match$ THEN r_index = SendMessageA (hListBox, $$LB_FINDSTRINGEXACT, -1, &match$)
+	ENDIF
+	RETURN r_index
+
+END FUNCTION
+'
 ' ##################################
 ' #####  WinXListBox_GetIndex  #####
 ' ##################################
@@ -5097,6 +5120,10 @@ END FUNCTION
 ' hListBox = the handle to the list box to set the selection for
 ' index[] = an array of item indexes to select
 ' returns $$TRUE on success or $$FALSE on fail
+'
+' notes:
+' - index[i] > count - 1 (last): no selection
+' - idx < 0: idx = -1 (unselect for mono-selection)
 FUNCTION WinXListBox_SetSelection (hListBox, index[])
 
 	bOK = $$FALSE
