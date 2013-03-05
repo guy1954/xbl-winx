@@ -587,6 +587,7 @@ DECLARE FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
 DECLARE FUNCTION WinXListBox_Find (hListBox, match$) ' find exact match
 DECLARE FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
+DECLARE FUNCTION WinXListBox_GetNextIndex (hListBox, searchFor$, indexFrom)
 DECLARE FUNCTION WinXListBox_GetItem$ (hListBox, index)
 DECLARE FUNCTION WinXListBox_GetSelection (hListBox, @index[])
 DECLARE FUNCTION WinXListBox_RemoveAllItems (hListBox)
@@ -4976,7 +4977,7 @@ END FUNCTION
 '
 FUNCTION WinXListBox_Find (hListBox, match$)
 
-	r_index = -1
+	r_index = $$LB_ERR
 	IF hListBox THEN
 		IF match$ THEN r_index = SendMessageA (hListBox, $$LB_FINDSTRINGEXACT, -1, &match$)
 	ENDIF
@@ -4992,11 +4993,42 @@ END FUNCTION
 ' searchFor$ = the string to search for
 ' returns the index of the item r_index or $$LB_ERR on fail
 FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
-	IFZ hListBox THEN RETURN $$LB_ERR
-	IFZ searchFor$ THEN RETURN $$LB_ERR
 
-	r_index = SendMessageA (hListBox, $$LB_FINDSTRING, -1, &searchFor$)
+	r_index = $$LB_ERR
+	IF hListBox THEN
+		IF searchFor$ THEN r_index = SendMessageA (hListBox, $$LB_FINDSTRING, -1, &searchFor$)
+	ENDIF
 	RETURN r_index
+
+END FUNCTION
+'
+' ######################################
+' #####  WinXListBox_GetNextIndex  #####
+' ######################################
+' Gets the next index of a particular string
+' hListBox = the handle to the list box containing the string
+' searchFor$ = the string to search for
+' indexFrom = index to search from
+' returns the index of the item r_index or $$LB_ERR on fail
+'
+' Usage:
+'index = WinXListBox_GetIndex (hListBox, searchFor$)
+'DO WHILE index >= 0
+'	' process item[index]
+'	index = WinXListBox_GetNextIndex (hListBox, searchFor$, index)
+'LOOP
+'
+FUNCTION WinXListBox_GetNextIndex (hListBox, searchFor$, indexFrom)
+
+	r_index = $$LB_ERR
+	IF hListBox THEN
+		IF searchFor$ THEN
+			IF indexFrom < -1 THEN indexFrom = -1
+			r_index = SendMessageA (hListBox, $$LB_FINDSTRING, indexFrom, &searchFor$)
+		ENDIF
+	ENDIF
+	RETURN r_index
+
 END FUNCTION
 '
 ' ##################################
