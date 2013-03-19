@@ -761,6 +761,7 @@ DECLARE FUNCTION WinXTreeView_SetItemLabel (hTV, hItem, label$)
 DECLARE FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_UseOnSelect (hTV) ' re-enable $$TVN_SELCHANGED
 '
+DECLARE FUNCTION WinXPath_Create (path$) ' make sure the file is created
 DECLARE FUNCTION WinXUser_GetName$ () ' retrieve the UserName with which the User is logged into the network
 '
 DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
@@ -791,7 +792,8 @@ DECLARE FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 DECLARE FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDest, hdcSrc, nXOriginSrc, nYOriginSrc, nWidthSrc, nHeightSrc, BLENDFUNCTION blendFunction)
 DECLARE FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
 
-DECLARE FUNCTION BINDING_Ov_Delete (id) ' delete a binding from the binding table
+DECLARE FUNCTION BINDING_Ov_Delete (id) ' delete a BINDING item accessed by its id
+DECLARE FUNCTION BINDING_Ov_Get (hWnd, @id, BINDING @BINDING_item) ' get data of a BINDING item accessed by its id
 
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 
@@ -1462,9 +1464,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 	RECT rect
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	style = $$WS_CHILD | $$WS_VISIBLE
 
@@ -1605,10 +1605,7 @@ FUNCTION WinXAddTooltip (hCtr, tip$)
 
 	' get the binding
 	parent = GetParent (hCtr)
-	IFZ parent THEN RETURN
-
-	idBinding = GetWindowLongA (parent, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (parent, @idBinding, @binding) THEN RETURN
 
 	' is there any info on this control?
 	ti.cbSize = SIZE (TOOLINFO)
@@ -1733,9 +1730,7 @@ FUNCTION WinXAttachAccelerators (hWnd, hAccel)
 	IFZ hAccel THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.hAccelTable = hAccel
 	bOK = BINDING_Update (idBinding, binding)
@@ -1756,9 +1751,7 @@ FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 	BINDING binding
 
 	' get the binding
-	IFZ hWnd THEN RETURN -1		' fail
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN -1 ' fail
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN -1 ' fail
 
 	RETURN binding.autoSizerInfo
 END FUNCTION
@@ -1787,9 +1780,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 	IF series = -1 THEN ' the window's series
 		' get the binding
 		hWnd = GetParent (hCtr)
-		IFZ hWnd THEN RETURN
-		idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-		IFF BINDING_Get (idBinding, @binding) THEN RETURN
+		IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 		series = binding.autoSizerInfo
 	ENDIF
 
@@ -1973,9 +1964,7 @@ FUNCTION WinXClear (hWnd)
 	RECT rect
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	ret = GetClientRect (hWnd, &rect)
 	IFZ ret THEN RETURN
@@ -3133,8 +3122,8 @@ FUNCTION WinXDisplay (hWnd)
 	RECT rect
 
 	bPreviouslyVisible = $$FALSE
-	SELECT CASE TRUE
-		CASE hWnd = 0
+	SELECT CASE hWnd
+		CASE 0
 		CASE ELSE
 			bOK = WinXGetUsableRect (hWnd, @rect)
 			IF bOK THEN
@@ -3208,9 +3197,7 @@ FUNCTION WinXDoEvents ()
 			CASE ELSE
 				' deal with window messages
 				hWnd = GetActiveWindow ()
-				'
-				idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-				bOK = BINDING_Get (idBinding, @binding)
+				bOK = BINDING_Ov_Get (hWnd, @idBinding, @binding)
 				ret = 0
 				IF bOK THEN
 					' process accelerator keys for menu commands
@@ -3243,9 +3230,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 	IFZ hPen THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	halfW = (x2 - x1) / 2
 	halfH = (y2 - y1) / 2
@@ -3336,9 +3321,7 @@ FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 	IFZ hPen THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3378,9 +3361,7 @@ FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 	IFZ hPen THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3418,9 +3399,7 @@ FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 	IFZ hBrush THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	GetWindowRect (hWnd, &rect)
 	record.hUpdateRegion = CreateRectRgn (rect.left, rect.top, rect.right, rect.bottom)
@@ -3463,9 +3442,7 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	IFZ hBrush THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -3508,9 +3485,7 @@ FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	IFZ hBrush THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -3553,9 +3528,7 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 	IFZ hImage THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (x - 1, y - 1, x + w + 2, y + h + 2)
 	record.image.x = x
@@ -3598,9 +3571,7 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 	IFZ hPen THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -3638,9 +3609,7 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 	IFZ hPen THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -3684,9 +3653,7 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 	IFZ hFont THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	hDC = CreateCompatibleDC (0)
 	SelectObject (hDC, hFont)
@@ -4254,9 +4221,7 @@ FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 	IFZ hImage THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	hDC = CreateCompatibleDC (0)
 	hOld = SelectObject (hDC, hImage)
@@ -4277,37 +4242,33 @@ END FUNCTION
 FUNCTION WinXEnableDialogInterface (hWnd, enable)
 	BINDING binding
 
+	IF enable THEN enable = $$TRUE	' just in case!
+
 	bOK = $$FALSE
 	SELECT CASE hWnd
 		CASE 0
 		CASE ELSE
 			' get the binding
-			idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-			IFF BINDING_Get (idBinding, @binding) THEN EXIT SELECT
+			IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN EXIT SELECT
 			'
-			IF binding.useDialogInterface = enable THEN
+			IF binding.useDialogInterface <> enable THEN
+				' toggle dialog <=> window
+				IF enable THEN
+					' dialog interface => set $$WS_POPUPWINDOW
+					WinXSetStyle (hWnd, $$WS_POPUPWINDOW, 0, $$WS_OVERLAPPED, 0)
+				ELSE
+					' set $$WS_OVERLAPPED
+					WinXSetStyle (hWnd, $$WS_OVERLAPPED, 0, $$WS_POPUPWINDOW, 0)
+				ENDIF
+				'
+				binding.useDialogInterface = enable
+				BINDING_Update (idBinding, binding)
 				bOK = $$TRUE
-				EXIT SELECT
 			ENDIF
-			'
-			' toggle dialog <=> window
-			IF enable THEN
-				' dialog => set $$WS_POPUPWINDOW
-				add = $$WS_POPUPWINDOW
-				sub = $$WS_OVERLAPPED
-			ELSE
-				' window => set $$WS_OVERLAPPED
-				add = $$WS_OVERLAPPED
-				sub = $$WS_POPUPWINDOW
-			ENDIF
-			WinXSetStyle (hWnd, add, 0, sub, 0)
-			'
-			binding.useDialogInterface = enable
-			BINDING_Update (idBinding, binding)
-			bOK = $$TRUE
 			'
 	END SELECT
 	RETURN bOK
+
 END FUNCTION
 '
 ' ################################
@@ -4356,9 +4317,7 @@ FUNCTION WinXGetMinSize (hWnd, @w, @h)
 	h = 0
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	w = binding.minW
 	h = binding.minH
@@ -4458,8 +4417,7 @@ FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
 			'
 		CASE ELSE
 			' get the binding
-			idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-			IFF BINDING_Get (idBinding, @binding) THEN EXIT SELECT
+			IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN EXIT SELECT
 			'
 			ret = GetClientRect (hWnd, &r_rect)
 			IFZ ret THEN EXIT SELECT
@@ -6257,7 +6215,8 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	binding.autoDrawInfo = LINKEDLIST_New (autoDrawList)
 	binding.autoSizerInfo = AUTOSIZER_Real_New ($$DIR_VERT)
 
-	SetWindowLongA (hWnd, $$GWL_USERDATA, BINDING_New (binding))
+	idBinding = BINDING_New (binding)
+	SetWindowLongA (hWnd, $$GWL_USERDATA, idBinding)
 
 	' and we're done
 	RETURN hWnd
@@ -6588,7 +6547,7 @@ END FUNCTION
 ' Description = create a new window
 ' Function    = hWnd = WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
 ' ArgCount    = 9
-' Arg1				= STRING title : The title for the new window
+' Arg1				= title$ : The title for the new window
 ' Arg2				= x : the x position for the new window, -1 for centre
 ' Arg3				= y : the y position for the new window, -1 for centre
 ' Arg4				= w : the width of the client area of the new window
@@ -6602,7 +6561,7 @@ END FUNCTION
 ' - $$XWSS_APP: A standard window
 ' - $$XWSS_APPNORESIZE: Same as the standard window, but cannot be resized or maximised
 ' - $$XWSS_POPUP: A popup window, cannot be minimised
-' - $$XWSS_POPUPNOTITLE: A popup window with no title bar
+' - $$XWSS_POPUPNOTITLE: A popup window with no title$ bar
 ' - $$XWSS_NOBORDER: A window with no border, useful for full screen apps
 ' See Also    =
 ' Examples    = 'Make a simple window
@@ -6611,7 +6570,7 @@ END FUNCTION
 ' 'Make a child window
 ' #hChild = WinXNewWindow (#hOwner, "My child window", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 '
-FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyle, exStyle, icon, menu)
+FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, icon, menu)
 	BINDING binding
 	RECT ownerRect
 	LINKEDLIST autoDrawList
@@ -6620,23 +6579,51 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	style = XWSStoWS (simpleStyle)
 
-	idMax = BINDING_Get_idMax () ' get BINDING item id MAX
-	IFZ idMax THEN
-		enable = $$FALSE ' this is the main window
-	ELSE
-		' enable dialog style keyboard navigation amoung controls
-		enable = $$TRUE
-		style = style & (~$$WS_OVERLAPPED)
-		style = style | $$WS_POPUPWINDOW
-	ENDIF
+	winX = x
+	winY = y
+	winW = w
+	winH = h
+
+	' position the new window
+	IF winW < 0 THEN winW = 0
+	IF winH < 0 THEN winH = 0
+
+	IF winX = -1 THEN winX = (GetSystemMetrics ($$SM_CXSCREEN) - winW) / 2		' center horizontal
+	IF winX < 0 THEN winX = 0
+
+	IF winY = -1 THEN winY = (GetSystemMetrics ($$SM_CYSCREEN) - winH) / 2		' center vertical
+	IF winY < 0 THEN winY = 0
 
 	hWindow = 0
-	IF hOwner THEN hWindow = CreateMdiChild (hOwner, title, style)		' MDI child window
+	IF hOwner THEN
+		hWindow = CreateMdiChild (hOwner, title$, style)		' MDI child window
+		'
+		' child window: position the child window inside its owner
+		' Guy-18jun12-GetWindowRect (hOwner, &ownerRect)
+		WinXGetUsableRect (hOwner, @ownerRect)
+		'
+		corr = GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
+		ownerRect.left = ownerRect.left + corr
+		ownerRect.right = ownerRect.right - (2 * corr)
+		'
+		corr = GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
+		ownerRect.top = ownerRect.top + corr
+		ownerRect.bottom = ownerRect.bottom - (2 * corr)
+		'
+		IF winX < ownerRect.left THEN winX = ownerRect.left
+		IF winY < ownerRect.top THEN winY = ownerRect.top
+		'
+		child_right = winX + winW
+		IF child_right > ownerRect.right THEN winW = ownerRect.right - winX
+		'
+		child_bottom = winY + winH
+		IF child_bottom > ownerRect.bottom THEN winH = ownerRect.bottom - winY
+	ENDIF
 
 	IFZ hWindow THEN
-		IFZ title THEN lpWindowName = 0 ELSE lpWindowName = &title
+		IFZ title$ THEN lpWindowName = 0 ELSE lpWindowName = &title$
 		hInst = GetModuleHandleA (0)
-		hWindow = CreateWindowExA (exStyle, &$$WINX_CLASS$, lpWindowName, style, 0, 0, 0, 0, hOwner, menu, hInst, 0)
+		hWindow = CreateWindowExA (exStyle, &$$WINX_CLASS$, lpWindowName, style, winX, winY, winW, winH, hOwner, menu, hInst, 0)
 	ENDIF
 	IFZ hWindow THEN RETURN
 
@@ -6649,7 +6636,6 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 	' make a binding
 	binding.hWnd = hWindow
 	binding.hWndMDIParent = hOwner
-	binding.useDialogInterface = enable
 
 	lpWindowName = 0
 	dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
@@ -6663,46 +6649,21 @@ FUNCTION WinXNewWindow (hOwner, STRING title, winX, winY, winW, winH, simpleStyl
 
 	binding.autoSizerInfo = AUTOSIZER_Real_New ($$DIR_VERT)
 
-	SetWindowLongA (binding.hWnd, $$GWL_USERDATA, BINDING_New (binding))
+	SELECT CASE simpleStyle
+		CASE $$XWSS_POPUP, $$XWSS_POPUPNOTITLE
+			binding.useDialogInterface = $$TRUE
+			'
+		CASE ELSE
+			binding.useDialogInterface = $$FALSE
+			'
+	END SELECT
 
-	' position the new window
-	x = winX
-	y = winY
-	w = winW
-	h = winH
-
-	IF w < 0 THEN w = 0
-	IF h < 0 THEN h = 0
-
-	IF x = -1 THEN x = (GetSystemMetrics ($$SM_CXSCREEN) - w) / 2		' center horizontal
-	IF y = -1 THEN y = (GetSystemMetrics ($$SM_CYSCREEN) - h) / 2		' center vertical
-
-	IF hOwner THEN
-		' child window: position the child window inside its owner
-		' Guy-18jun12-GetWindowRect (hOwner, &ownerRect)
-		WinXGetUsableRect (hOwner, @ownerRect)
-		'
-		corr = GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
-		ownerRect.left = ownerRect.left + corr
-		ownerRect.right = ownerRect.right - (2 * corr)
-		'
-		corr = GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
-		ownerRect.top = ownerRect.top + corr
-		ownerRect.bottom = ownerRect.bottom - (2 * corr)
-		'
-		IF x < ownerRect.left THEN x = ownerRect.left
-		IF y < ownerRect.top THEN y = ownerRect.top
-		'
-		child_right = x + w
-		IF child_right > ownerRect.right THEN w = ownerRect.right - x
-		'
-		child_bottom = y + h
-		IF child_bottom > ownerRect.bottom THEN h = ownerRect.bottom - y
-	ENDIF
-	MoveWindow (hWindow, x, y, w, h, 0)
+	idBinding = BINDING_New (binding)
+	SetWindowLongA (binding.hWnd, $$GWL_USERDATA, idBinding)
 
 	' and we're done
 	RETURN hWindow
+
 END FUNCTION
 '
 ' ############################
@@ -6814,9 +6775,7 @@ FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pag
 	RECT rect
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	' get the clipping rect for the printer
 	rect.left = (GetDeviceCaps (hPrinter, $$LOGPIXELSX) * g_oPrinter.marginLeft) \ 1000
@@ -7065,9 +7024,7 @@ FUNCTION WinXRegControlSizer (hWnd, FUNCADDR FnControlSizer)
 	IFZ FnControlSizer THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	' set the function
 	binding.dimControls = FnControlSizer ' (hWnd, w, h)
@@ -7105,9 +7062,7 @@ FUNCTION WinXRegMessageHandler (hWnd, wMsg, FUNCADDR FnMsgHandler)
 	IFZ FnMsgHandler THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	IFZ binding.msgHandlers THEN binding.msgHandlers = handler_New ()		' unlikely
 
@@ -7135,9 +7090,7 @@ FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 	IFZ FnOnCalendarSelect THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onCalendarSelect = FnOnCalendarSelect ' (idcal, time)
 	BINDING_Update (idBinding, binding)
@@ -7157,9 +7110,7 @@ FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
 	IFZ FnOnChar THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onChar = FnOnChar ' (hWnd, char)
 	BINDING_Update (idBinding, binding)
@@ -7179,9 +7130,7 @@ FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR FnOnClipChange)
 	IFZ FnOnClipChange THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.hWndNextClipViewer = SetClipboardViewer (hWnd)
 
@@ -7200,9 +7149,7 @@ FUNCTION WinXRegOnClose (hWnd, FUNCADDR FnOnClose)
 	IFZ FnOnClose THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onClose = FnOnClose ' (hWnd)
 	BINDING_Update (idBinding, binding)
@@ -7222,9 +7169,7 @@ FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
 	IFZ FnOnColumnClick THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onColumnClick = FnOnColumnClick ' (idCtr, iColumn)
 	BINDING_Update (idBinding, binding)
@@ -7244,9 +7189,7 @@ FUNCTION WinXRegOnCommand (hWnd, FUNCADDR FnOnCommand)
 	IFZ FnOnCommand THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onCommand = FnOnCommand ' (idCtr, notifyCode, hCtr)
 	BINDING_Update (idBinding, binding)
@@ -7264,9 +7207,7 @@ FUNCTION WinXRegOnDrag (hWnd, FUNCADDR FnOnDrag)
 	IFZ FnOnDrag THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onDrag = FnOnDrag ' (idCtr, drag_const, drag_item_start, drag_running_item, drag_x, drag_y)
 	BINDING_Update (idBinding, binding)
@@ -7286,9 +7227,7 @@ FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 	IFZ FnOnDropFiles THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	DragAcceptFiles (hWnd, 1)
 	binding.onDropFiles = FnOnDropFiles ' (hWnd, x, y, @files$[])
@@ -7309,9 +7248,7 @@ FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 	IFZ FnOnEnterLeave THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onEnterLeave = FnOnEnterLeave ' (hWnd, mouseInWindow)
 	BINDING_Update (idBinding, binding)
@@ -7331,9 +7268,7 @@ FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR FnOnFocusChange)
 	IFZ FnOnFocusChange THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onFocusChange = FnOnFocusChange ' (hWnd, hasFocus)
 	BINDING_Update (idBinding, binding)
@@ -7353,9 +7288,7 @@ FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
 	IFZ FnOnItem THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onItem = FnOnItem ' (idCtr, event, VK)
 	BINDING_Update (idBinding, binding)
@@ -7375,9 +7308,7 @@ FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown)
 	IFZ FnOnKeyDown THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onKeyDown = FnOnKeyDown ' (hWnd, VK)
 	BINDING_Update (idBinding, binding)
@@ -7397,9 +7328,7 @@ FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp)
 	IFZ FnOnKeyUp THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onKeyUp = FnOnKeyUp ' (hWnd, VK)
 	BINDING_Update (idBinding, binding)
@@ -7416,9 +7345,7 @@ FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR FnOnLabelEdit)
 	IFZ FnOnLabelEdit THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onLabelEdit = FnOnLabelEdit ' (idCtr, edit_const, edit_item, edit_sub_item, newLabel$)
 	BINDING_Update (idBinding, binding)
@@ -7438,9 +7365,7 @@ FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR FnOnMouseDown)
 	IFZ FnOnMouseDown THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onMouseDown = FnOnMouseDown ' (hWnd, MBT_const, x, y)
 	BINDING_Update (idBinding, binding)
@@ -7460,9 +7385,7 @@ FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR FnOnMouseMove)
 	IFZ FnOnMouseMove THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onMouseMove = FnOnMouseMove ' (hWnd, x, y)
 	BINDING_Update (idBinding, binding)
@@ -7482,9 +7405,7 @@ FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR FnOnMouseUp)
 	IFZ FnOnMouseUp THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onMouseUp = FnOnMouseUp ' (hWnd, MBT_const, x, y)
 	BINDING_Update (idBinding, binding)
@@ -7504,9 +7425,7 @@ FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR FnOnMouseWheel)
 	IFZ FnOnMouseWheel THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onMouseWheel = FnOnMouseWheel ' (hWnd, delta, x, y)
 	BINDING_Update (idBinding, binding)
@@ -7535,9 +7454,7 @@ FUNCTION WinXRegOnPaint (hWnd, FUNCADDR FnOnPaint)
 	IFZ FnOnPaint THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	' set the paint function
 	binding.paint = FnOnPaint ' (hWnd, hdc)
@@ -7559,9 +7476,7 @@ FUNCTION WinXRegOnScroll (hWnd, FUNCADDR FnOnScroll)
 	IFZ FnOnScroll THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onScroll = FnOnScroll ' (pos, hWnd, direction)
 	BINDING_Update (idBinding, binding)
@@ -7583,9 +7498,7 @@ FUNCTION WinXRegOnSelect (hWnd, FUNCADDR FnOnSelect)
 	IFZ FnOnSelect THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onSelect = FnOnSelect ' (idCtr, event, parameter)
 	BINDING_Update (idBinding, binding)
@@ -7605,9 +7518,7 @@ FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR FnOnTrackerPos)
 	IFZ FnOnTrackerPos THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.onTrackerPos = FnOnTrackerPos ' (idCtr, pos)
 	BINDING_Update (idBinding, binding)
@@ -7941,9 +7852,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 	SCROLLINFO si
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	GetClientRect (hWnd, &rect)
 
@@ -8079,9 +7988,7 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 	BINDING binding
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	binding.hCursor = hCursor
 	BINDING_Update (idBinding, binding)
@@ -8140,9 +8047,7 @@ FUNCTION WinXSetMinSize (hWnd, w, h)
 	IFZ hWnd THEN RETURN
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	IF w < 0 THEN w = 0
 	IF h < 0 THEN h = 0
@@ -8302,9 +8207,7 @@ FUNCTION WinXSetWindowColor (hWnd, color)
 	BINDING binding
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	IF binding.backCol THEN DeleteObject (binding.backCol)
 	binding.backCol = CreateSolidBrush (color)
@@ -8348,9 +8251,7 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 	SendMessageA (hToolbar, $$TB_SETPARENT, hWnd, 0)
 
 	' get the binding
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFZ idBinding THEN RETURN
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	' and update the binding
 	binding.hBar = hToolbar
@@ -8530,9 +8431,7 @@ FUNCTION WinXStatus_GetText$ (hWnd, part)
 	BINDING binding
 
 	' get the binding
-	IFZ hWnd THEN RETURN ""		' fail
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN ""		' fail
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN ""		' fail
 
 	IF part > binding.statusParts THEN RETURN ""		' fail
 
@@ -8559,8 +8458,7 @@ FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 		CASE 0
 		CASE ELSE
 			' get the binding
-			idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-			IFF BINDING_Get (idBinding, @binding) THEN EXIT SELECT
+			IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN EXIT SELECT
 			IFZ binding.hStatus THEN EXIT SELECT
 			'
 			' validate argument part (zero-based partition)
@@ -9527,9 +9425,7 @@ FUNCTION WinXUndo (hWnd, idCtr)
 	LINKEDLIST autoDrawList
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	' LINKEDLIST_Get (binding.autoDrawInfo, @autoDrawList)
 	' LinkedList_GetItem (autoDrawList, idCtr, @iData)
@@ -9563,9 +9459,7 @@ FUNCTION VOID WinXUpdate (hWnd)
 	'InvalidateRect (hWnd, &rect, 1)
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	' PRINT binding.hUpdateRegion
 	InvalidateRgn (hWnd, binding.hUpdateRegion, 1)		' erase
@@ -9574,7 +9468,57 @@ FUNCTION VOID WinXUpdate (hWnd)
 	BINDING_Update (idBinding, binding)
 
 END FUNCTION
+'
+' #############################
+' #####  WinXPath_Create  #####
+' #############################
+'
+' make sure a file is created
+' Usage:
+'bErr = XstFileExists (path$)
+'IF bErr THEN WinXPath_Create (path$)
+'
+' Returns:
+' - an error flag: $$TRUE = erreur, $$FALSE = OK!
+'
+' Parameter list:
+' - path$: file path
+'
+FUNCTION WinXPath_Create (path$)
 
+	bOK = $$FALSE
+
+	path$ = WinXPath_Trim$ (path$)
+	IF path$ THEN
+		bCreate = $$FALSE
+		'
+		' create file's directory if it does not exist
+		XstDecomposePathname (path$, @dir$, "", "", "", "")
+		IFF WinXDir_Exists (dir$) THEN
+			bCreate = $$TRUE
+			WinXDir_Create (dir$)
+		ELSE
+			bErr = XstFileExists (path$)
+			IF bErr THEN bCreate = $$TRUE
+		ENDIF
+		'
+		IF bCreate THEN
+			' create file
+			fileNumber = OPEN (path$, $$WRNEW)
+			CLOSE (fileNumber)
+		ENDIF
+		'
+		bErr = XstFileExists (path$)
+		IFF bErr THEN bOK = $$TRUE ' file exists
+	ENDIF
+
+	RETURN bOK
+
+END FUNCTION
+'
+' ###############################
+' #####  WinXUser_GetName$  #####
+' ###############################
 ' Retrieves the UserName with which the User is logged into the network
 FUNCTION WinXUser_GetName$ ()
 
@@ -9867,35 +9811,55 @@ END FUNCTION
 ' ###############################
 ' Deletes a binding from the binding table
 ' "overloading" BINDING_Delete
-' idDelete = the id of the binding to delete
+' id = the id of the BINDING_item to delete
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BINDING_Ov_Delete (idDelete)
-	BINDING binding
+FUNCTION BINDING_Ov_Delete (id)
+	BINDING BINDING_item
 	LINKEDLIST list
 
-	bOK = BINDING_Get (idDelete, @binding)
+	bOK = BINDING_Get (@id, @BINDING_item)
 	IFF bOK THEN RETURN
 
-	IFZ binding.hWnd THEN RETURN
+	IFZ BINDING_item.hWnd THEN RETURN
 
 	' destroy accelerator table
-	IF binding.hAccelTable THEN DestroyAcceleratorTable (binding.hAccelTable)
-	binding.hAccelTable = 0
+	IF BINDING_item.hAccelTable THEN DestroyAcceleratorTable (BINDING_item.hAccelTable)
+	BINDING_item.hAccelTable = 0
 
 	' delete the auto draw info
-	autoDraw_clear (binding.autoDrawInfo)
-	LINKEDLIST_Get (binding.autoDrawInfo, @list)
+	autoDraw_clear (BINDING_item.autoDrawInfo)
+	LINKEDLIST_Get (BINDING_item.autoDrawInfo, @list)
 	LinkedList_Uninit (@list)
-	LINKEDLIST_Delete (binding.autoDrawInfo)
+	LINKEDLIST_Delete (BINDING_item.autoDrawInfo)
 
 	' delete the message handlers
-	handler_Delete (binding.msgHandlers)
+	handler_Delete (BINDING_item.msgHandlers)
 
 	' delete the auto sizer info
-	AUTOSIZER_Delete (binding.autoSizerInfo)
+	AUTOSIZER_Delete (BINDING_item.autoSizerInfo)
 
-	bOK = BINDING_Delete (idDelete)
+	bOK = BINDING_Delete (id)
 	RETURN bOK
+END FUNCTION
+'
+' Gets data of a BINDING item accessed by its id
+' "overloading" BINDING_Get
+'
+' hWnd = handle of the window
+' id = returned id of BINDING item
+' BINDING_item = returned data
+' returns $$TRUE on success or $$FALSE on fail
+'
+FUNCTION BINDING_Ov_Get (hWnd, @id, BINDING BINDING_item)
+
+	bOK = $$FALSE
+	id = 0
+	IF hWnd THEN
+		id = GetWindowLongA (hWnd, $$GWL_USERDATA)
+		bOK = BINDING_Get (id, @BINDING_item)
+	ENDIF
+	RETURN bOK
+
 END FUNCTION
 '
 ' ############################
@@ -10057,6 +10021,7 @@ FUNCTION LOCK_Get_id_hCtr (hCtr)
 	IFZ hCtr THEN RETURN
 
 	hWnd = GetParent (hCtr)
+	IFZ hWnd THEN RETURN
 
 	' get the binding
 	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
@@ -10070,7 +10035,7 @@ END FUNCTION
 FUNCTION LOCK_Get_skipOnSelect (id)
 	BINDING binding
 
-	bOK = BINDING_Get (id, @binding)
+	bOK = BINDING_Ov_Get (hWnd, @id, @binding)
 	IF bOK THEN
 		IF binding.onSelect THEN
 			IF binding.skipOnSelect THEN RETURN $$TRUE
@@ -10084,7 +10049,7 @@ END FUNCTION
 FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 	BINDING binding
 
-	bOK = BINDING_Get (id, @binding)
+	bOK = BINDING_Ov_Get (hWnd, @id, @binding)
 	IFF bOK THEN RETURN
 
 	IF bSkip THEN bool = $$TRUE ELSE bool = $$FALSE
@@ -11281,11 +11246,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	retCode = 0
 
 	' get the binding
-	idBinding = 0
-	IF hWnd THEN
-		idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-		BINDING_Get (idBinding, @binding)
-	ENDIF
+	BINDING_Ov_Get (hWnd, @idBinding, @binding)
 
 	' call any associated message handler
 	IF binding.msgHandlers THEN handled = handler_Call (binding.msgHandlers, @retCode, hWnd, wMsg, wParam, lParam)
@@ -11295,13 +11256,33 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 		CASE $$WM_CREATE	' created by calling CreateWindowExA
 			IF binding.onCreate THEN @binding.onCreate (hWnd)
 			RETURN
-
+			'
+		CASE $$WM_CLOSE
+			GOSUB ClosedByUser
+			'
 		CASE $$WM_COMMAND
-			IF binding.onCommand THEN RETURN @binding.onCommand (LOWORD (wParam), HIWORD (wParam), lParam)
-
+			notifyCode = HIWORD (wParam)
+			idCtr      = LOWORD (wParam)
+			hCtr       = lParam
+			'
+			IF binding.onCommand THEN
+				retCode = @binding.onCommand (idCtr, notifyCode, hCtr)
+				IF retCode THEN handled = $$TRUE
+			ENDIF
+			'
+			IFF handled THEN
+				SELECT CASE idCtr
+					CASE $$IDCANCEL
+						IF notifyCode = $$BN_CLICKED THEN
+							GOSUB ClosedByUser
+						ENDIF ' clicked
+						'
+				END SELECT
+			ENDIF
+			'
 		CASE $$WM_NOTIFY
 			RETURN onNotify (hWnd, wParam, lParam, binding)
-
+			'
 		CASE $$WM_DRAWCLIPBOARD
 			IF binding.hWndNextClipViewer THEN SendMessageA (binding.hWndNextClipViewer, $$WM_DRAWCLIPBOARD, wParam, lParam)
 			IF binding.onClipChange THEN RETURN @binding.onClipChange ()
@@ -11573,27 +11554,21 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			'	ENDIF
 			'ENDIF
 			' end deleted block-------------------------------------------------------
-
+			'
 		CASE $$WM_KEYDOWN
-			IF wParam THEN
-				IF binding.onKeyDown THEN
-					retCode = @binding.onKeyDown (hWnd, wParam)
-					' deleted-----------------------------------------------------------------
-'					IFZ lParam{BITFIELD(1, 30)} THEN ' bit 30 off
-'						' the key was up before the message is sent
-'						retCode = @binding.onKeyDown (hWnd, wParam)
-'					ENDIF
-					' end deleted block-------------------------------------------------------
-					RETURN retCode
-				ENDIF
+			IFZ wParam THEN EXIT SELECT
+			'
+			IF binding.onKeyDown THEN
+				retCode = @binding.onKeyDown (hWnd, wParam)
+				handled = $$TRUE
 			ENDIF
-
+			'
 		CASE $$WM_KEYUP
 			IF binding.onKeyUp THEN RETURN @binding.onKeyUp (hWnd, wParam)
-
+			'
 		CASE $$WM_CHAR
 			IF binding.onChar THEN RETURN @binding.onChar (hWnd, wParam)
-
+			'
 		CASE g_DL_msg
 			IF g_DL_msg <> 0 THEN
 				RtlMoveMemory (&dli, lParam, SIZE (DRAGLISTINFO))
@@ -11739,13 +11714,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			RETURN
 			'
 		CASE $$WM_CLOSE		' closed by User
-			retCode = 0
-			IF binding.onClose THEN
-				' a non-zero RETURNed code cancels WinX's default closing
-				retCode = @binding.onClose (hWnd)
-			ENDIF
-			IFZ retCode THEN DestroyWindow (hWnd)		' triggers $$WM_DESTROY below
-			handled = $$TRUE
+			GOSUB ClosedByUser
 			'
 		CASE $$WM_DESTROY		' being destroyed
 			ChangeClipboardChain (hWnd, binding.hWndNextClipViewer)
@@ -11765,6 +11734,20 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	ENDIF
 
 	RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
+
+SUB ClosedByUser
+
+	IFZ binding.onClose THEN
+		retCode = 0
+	ELSE
+		' a non-zero retCode will cancel WinX's default closing
+		retCode = @binding.onClose (hWnd)
+	ENDIF
+
+	IFZ retCode THEN DestroyWindow (hWnd)
+	handled = $$TRUE
+
+END SUB
 
 SUB CreateDraggingImage
 	' create the dragging image
@@ -12111,9 +12094,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	RECT rect
 
 	' get the binding
-	IFZ hWnd THEN RETURN
-	idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-	IFF BINDING_Get (idBinding, @binding) THEN RETURN
+	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
 	IF w < binding.minW || h < binding.minH THEN
 		IF w < binding.minW THEN w = binding.minW
