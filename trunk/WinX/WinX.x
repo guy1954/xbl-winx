@@ -93,6 +93,7 @@ VERSION "0.6.0.15"
 ' ---Note: import gdi32 BEFORE shell32 and user32
 	IMPORT "gdi32"      ' Graphic Device Interface
 	IMPORT "shell32"    ' interface to the operating system
+	IMPORT "ole32"      ' for CoTaskMemFree
 	IMPORT "user32"     ' Windows management
 	IMPORT "advapi32"   ' advanced API: security, services, registry ...
 '
@@ -477,7 +478,8 @@ DECLARE FUNCTION WinXDate_GetCurrentTimeStamp$ () ' compute a (date & time) stam
 ' Standard Windows dialogs
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity)
 DECLARE FUNCTION WinXDialog_Message (hWnd, msg$, title$, icon$, hInst) ' display message dialog box
-DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL) ' standard Windows directory picker dialog
+DECLARE FUNCTION WinXDialog_OpenDir$ (parent, title$, initFolder$) ' standard Windows directory picker dialog
+DECLARE FUNCTION WinXDialog_OpenDirProc (hWnd, wMsg, wParam, lParam) ' callback procedure
 DECLARE FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiSelect, readOnly) ' display an OpenFile dialog box
 DECLARE FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 DECLARE FUNCTION WinXDialog_SaveFile$ (parent, title$, extensions$, initialName$, overwritePrompt) ' display a SaveFile dialog box
@@ -2458,42 +2460,78 @@ END FUNCTION
 ' Displays a BrowseForFolder dialog box
 ' parent = the handle to the window to own this dialog
 ' title$ = the title for the dialog
-' initDirIDL = the Windows' special folder to initialize the dialog with
+' initFolder$ = a folder to initialize the dialog with
 ' returns the directory path or "" on cancel or error
 '
 ' Usage:
-'dir$ = WinXDialog_OpenDir$ (#winMain, "", $$CSIDL_PERSONAL) ' My Documents' folder
+'dir$ = WinXDialog_OpenDir$ (#winMain, "Choose Directory", "C:\\")
+'IFZ dir$ THEN RETURN ' cancel
 '
-FUNCTION WinXDialog_OpenDir$ (parent, title$, initDirIDL)		' standard Windows directory picker dialog
+FUNCTION STRING WinXDialog_OpenDir$ (parent, title$, initFolder$)
 
 	BROWSEINFO bi
 
-	IF initDirIDL < $$CSIDL_DESKTOP || initDirIDL > $$CSIDL_ADMINTOOLS THEN initDirIDL = $$CSIDL_DESKTOP
-
-	' if no title, get the path for a Windows special folder
-	IFZ TRIM$ (title$) THEN title$ = WinXFolder_GetDir$ (initDirIDL)
-
 	bi.hWndOwner = parent
-	bi.pIDLRoot = initDirIDL
 	bi.lpszTitle = &title$
-	bi.ulFlags = $$BIF_RETURNONLYFSDIRS + $$BIF_DONTGOBELOWDOMAIN
+	bi.ulFlags = $$BIF_RETURNONLYFSDIRS OR $$BIF_DONTGOBELOWDOMAIN
+	bi.lpfnCallback = &WinXDialog_OpenDirProc ()
+	IF initFolder$ THEN bi.lParam = &initFolder$
 
 	' show the selection dialog
-	oldErr = SetErrorMode ($$SEM_FAILCRITICALERRORS)		'D.-16apr08-fixed "no disk drive" error
+	oldErr = SetErrorMode ($$SEM_FAILCRITICALERRORS)
 	pidl = SHBrowseForFolderA (&bi)
 	SetErrorMode (oldErr)
 
 	IFZ pidl THEN RETURN ""		' fail: memory block not allocated
 
-	' get the chosen directory path
 	buf$ = NULL$ ($$MAX_PATH)
+
+	' get the chosen directory path
 	ret = SHGetPathFromIDListA (pidl, &buf$)
+	CoTaskMemFree (pidl)
 	IFZ ret THEN RETURN ""		' fail
 
-	directory$ = CSTRING$ (&buf$)
-	WinXDir_AppendSlash (@directory$)		' append a \ to indicate a directory vs a file
+	dir$ = CSTRING$ (&buf$)
+	WinXDir_AppendSlash (@dir$)
+	RETURN dir$
 
-	RETURN directory$
+END FUNCTION
+'
+' ###################################
+' #####	WinXDialog_OpenDirProc ()	#####
+' ###################################
+'
+' Browse for folder dialog procedure
+'
+FUNCTION WinXDialog_OpenDirProc (hWnd, wMsg, wParam, lParam)
+
+	IF wMsg = $$BFFM_INITIALIZED THEN
+		IF lParam THEN SendMessageA (hWnd, $$BFFM_SETSELECTIONA, 1, lParam)
+	ELSE
+		IF wMsg = $$BFFM_SELCHANGED THEN
+			buf$ = NULL$ ($$MAX_PATH)
+			SHGetPathFromIDListA (wParam, &buf$)
+			file$ = CSTRING$ (&buf$)
+			IF file$ THEN
+				XstGetFileAttributes (file$, @attributes)
+			ELSE
+				SendMessageA (hWnd, $$BFFM_ENABLEOK, 0, 0)
+				RETURN
+			END IF
+
+			IF !wParam || !(attributes AND $$FileDirectory) || MID$ (file$, 2, 1) <> ":" THEN
+				SendMessageA (hWnd, $$BFFM_ENABLEOK, 0, 0)
+				MessageBeep ($$MB_ICONEXCLAMATION)
+			ELSE
+				IF (attributes AND $$FileSystem) && RIGHT$ (file$, 2) <> ":\\" THEN
+					' exclude system folders, allow root directories
+					SendMessageA (hWnd, $$BFFM_ENABLEOK, 0, 0)
+					MessageBeep ($$MB_ICONEXCLAMATION)
+				END IF
+			END IF
+
+		END IF
+	END IF
 
 END FUNCTION
 '
@@ -3154,7 +3192,7 @@ END FUNCTION
 '
 'helpFile$ = runDir$ + PROGRAM$ (0) + ".chm"
 'bOK = WinXDisplayHelpFile (helpFile$)
-'IFF bOK THEN XstAlert ("Can't display the contents help file " + helpFile$)
+'IFF bOK THEN XstAlert ("WinXDisplayHelpFile: Can't display help file " + helpFile$)
 '
 FUNCTION WinXDisplayHelpFile (helpFile$)
 
@@ -5012,10 +5050,10 @@ END FUNCTION
 ' ######################################
 ' #####  WinXListBox_GetSelection  #####
 ' ######################################
-' Gets the selected items in a list box
+' Gets the selected item(s) in a list box
 ' hListBox = the list box to get the items from
 ' r_idxSel[] = the array to place the indexes of selected items into
-' returns r_cSel, the number of selected items
+' returns the number of selected items, or 0 if fail
 ' Usage:
 'cSel = WinXListBox_GetSelection (hListBox, @index[])
 '
@@ -5075,7 +5113,7 @@ END FUNCTION
 ' Usage:
 'ret = WinXListBox_RemoveItem (hListBox, index[0])
 'IF ret = $$LB_ERR THEN
-'	msg$ = "Can't delete item at index" + STR$ (index[0])
+'	msg$ = "WinXListBox_RemoveItem: Can't delete item at index" + STR$ (index[0])
 '	XstAlert (msg$)
 'ENDIF
 '
@@ -5389,7 +5427,7 @@ END FUNCTION
 ' ######################################
 ' #####  WinXListView_GetItemText  #####
 ' ######################################
-' Gets the text for a list view item
+' Gets the text from a list view item
 ' hLV = the handle to the list view
 ' iItem = the zero-based index of the item
 ' uppSubItem = the upper index of sub items to get
@@ -5443,12 +5481,15 @@ END FUNCTION
 ' #######################################
 ' #####  WinXListView_GetSelection  #####
 ' #######################################
-' Gets the current selection
+' Gets the selected item(s) in a list view
 ' r_iItems[] = the array in which to store the indexes of selected items
 ' returns the number of selected items, or 0 if fail
+' Usage:
+'cSel = WinXListView_GetSelection (hLV, @iItems[])
+'
 FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 
-	r_cSelItem = 0
+	r_cSel = 0
 	SELECT CASE hLV
 		CASE 0
 		CASE ELSE
@@ -5456,9 +5497,9 @@ FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 			count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
 			IFZ count THEN EXIT SELECT
 			'
-			r_cSelItem = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-			IF r_cSelItem THEN
-				upper_slot = r_cSelItem - 1
+			r_cSel = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
+			IF r_cSel THEN
+				upper_slot = r_cSel - 1
 				DIM r_iItems[upper_slot]
 				'
 				' now iterate over all the items to locate the selected ones
@@ -5477,9 +5518,9 @@ FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 			'
 	END SELECT
 
-	IFZ r_cSelItem THEN DIM r_iItems[]		' reset the returned array
+	IFZ r_cSel THEN DIM r_iItems[]		' reset the returned array
 
-	RETURN r_cSelItem
+	RETURN r_cSel
 
 END FUNCTION
 '
@@ -10035,11 +10076,10 @@ END FUNCTION
 FUNCTION LOCK_Get_skipOnSelect (id)
 	BINDING binding
 
+	hWnd = GetActiveWindow ()
 	bOK = BINDING_Ov_Get (hWnd, @id, @binding)
 	IF bOK THEN
-		IF binding.onSelect THEN
-			IF binding.skipOnSelect THEN RETURN $$TRUE
-		ENDIF
+		IF binding.skipOnSelect THEN RETURN $$TRUE
 	ENDIF
 END FUNCTION
 '
@@ -10049,16 +10089,20 @@ END FUNCTION
 FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 	BINDING binding
 
+	hWnd = GetActiveWindow ()
 	bOK = BINDING_Ov_Get (hWnd, @id, @binding)
-	IFF bOK THEN RETURN
+	IF bOK THEN
+		IF bSkip THEN bSkip = $$TRUE
+		IF binding.skipOnSelect = bSkip THEN
+			' already set
+			bOK = $$TRUE
+		ELSE
+			' update the binding
+			binding.skipOnSelect = bSkip
+			bOK = BINDING_Update (id, binding)
+		ENDIF
+	ENDIF
 
-	IF bSkip THEN bool = $$TRUE ELSE bool = $$FALSE
-
-	IF binding.skipOnSelect = bool THEN RETURN $$TRUE		' already set
-
-	' update the binding
-	binding.skipOnSelect = bool
-	bOK = BINDING_Update (id, binding)
 	RETURN bOK
 
 END FUNCTION
@@ -12021,11 +12065,13 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 			XLONGAT (&&nmlvdi) = p_nmlvdi
 
 		CASE $$TVN_SELCHANGED, $$LVN_ITEMCHANGED
+			IF binding.skipOnSelect THEN EXIT SELECT
+			'
+			IFZ binding.onSelect THEN EXIT SELECT
+			'
 			p_nmtv = &nmtv		' tree view structure
 			XLONGAT (&&nmtv) = lParam
-			IF binding.onSelect THEN
-				IFF binding.skipOnSelect THEN retCode = @binding.onSelect (idCtr, notifyCode, lParam)
-			ENDIF
+			retCode = @binding.onSelect (idCtr, notifyCode, lParam)
 			XLONGAT (&&nmtv) = p_nmtv
 
 	END SELECT		' notifyCode
