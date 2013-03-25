@@ -93,7 +93,6 @@ VERSION "0.6.0.15"
 ' ---Note: import gdi32 BEFORE shell32 and user32
 	IMPORT "gdi32"      ' Graphic Device Interface
 	IMPORT "shell32"    ' interface to the operating system
-	IMPORT "ole32"      ' for CoTaskMemFree
 	IMPORT "user32"     ' Windows management
 	IMPORT "advapi32"   ' advanced API: security, services, registry ...
 '
@@ -2488,7 +2487,12 @@ FUNCTION STRING WinXDialog_OpenDir$ (parent, title$, initFolder$)
 
 	' get the chosen directory path
 	ret = SHGetPathFromIDListA (pidl, &buf$)
-	CoTaskMemFree (pidl)
+
+	' free memory block pidl with CoTaskMemFree (pidl)
+	DIM args[0]
+	args[0] = pidl
+	XstCall ("CoTaskMemFree", "ole32", @args[])
+
 	IFZ ret THEN RETURN ""		' fail
 
 	dir$ = CSTRING$ (&buf$)
@@ -2948,19 +2952,20 @@ END FUNCTION
 ' #####  WinXDir_Create  #####
 ' ############################
 '
-' Creates a directory making sure that the directory is created
-' OUT			: dir$ - directory path
+' make sure a directory is created
+'
+' Parameter list:
+' - dir$: directory path
 '
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
 'bOK = WinXDir_Exists (dir$)
 'IFF bOK THEN
-'	' create a missing directory
 '	bOK = WinXDir_Create (dir$)
 '	IFF bOK THEN
 '		msg$ = "WinXDir_Create: Can't create missing directory " + dir$
-'		WinXDialog_Error (msg$, "Create Directory", 3) ' 3 = unrecoverable error
+'		WinXDialog_Error (msg$, "Create Directory", 2)
 '	ENDIF
 'ENDIF
 '
@@ -5958,6 +5963,8 @@ END FUNCTION
 ' #####################################
 '
 ' Loads the Most Recently Used file list from the INI file
+' (creates the ini file if it does not exist).
+'
 ' Returns $$FALSE = failure, $$TRUE = success
 FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 
@@ -5968,19 +5975,34 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 		CASE 0
 		CASE ELSE
 			' create ini file if it does not exist
+			bErr = XstFileExists (iniPath$)
+			IF bErr THEN
+				bOK = WinXPath_Create (iniPath$)
+				IFF bOK THEN EXIT SELECT ' can't create missing file iniPath$
+			ENDIF
+			'
 			key$ = WinXMRU_MakeKey$ (0)		' $$MRU_SECTION$ entry
 			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
 			IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
 			'
 			DIM r_mruList$[$$UPP_MRU]
-			upp = -1
+			iAdd = -1
 			'
-			' add real file pathNew$ to r_mruList$[0]
+			' trim path pathNew$ and check it can be found
 			pathNew$ = WinXPath_Trim$ (pathNew$)
+			XstTranslateChars (@pathNew$, "/", "\\")
 			IF pathNew$ THEN
-				bErr = XstFileExists (pathNew$)
+				XstDecomposePathname (pathNew$, "", "", @fFN$, "", "")
+				IFZ fFN$ THEN
+					bOK = WinXDir_Exists (pathNew$) ' pathNew$ is a directory
+					bErr = NOT bOK
+				ELSE
+					bErr = XstFileExists (pathNew$) ' pathNew$ is a file
+				ENDIF
 				IFF bErr THEN
-					upp = 0
+					' pathNew$ exists =>
+					' add actual file pathNew$ to r_mruList$[0]
+					iAdd = 0
 					r_mruList$[0] = pathNew$
 				ENDIF
 			ENDIF
@@ -5988,20 +6010,28 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 			' load the MRU projects list into r_mruList$[]
 			FOR id = 1 TO $$UPP_MRU + 1
 				key$ = WinXMRU_MakeKey$ (id)
-				fpath$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-				fpath$ = WinXPath_Trim$ (fpath$)
-				IFZ fpath$ THEN DO NEXT		' empty => skip it!
+				find$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
 				'
-				bErr = XstFileExists (fpath$)
-				IF bErr THEN DO NEXT		' fpath$ does not exist => skip it!
+				find$ = WinXPath_Trim$ (find$)
+				IFZ find$ THEN DO NEXT		' empty => skip it!
 				'
-				' don't add fpath$ if already in r_mruList$[]
+				XstTranslateChars (@find$, "/", "\\")
+				XstDecomposePathname (find$, "", "", @fFN$, "", "")
+				IFZ fFN$ THEN
+					bOK = WinXDir_Exists (find$) ' find$ is a directory
+					bErr = NOT bOK
+				ELSE
+					bErr = XstFileExists (find$) ' find$ is a file
+				ENDIF
+				IF bErr THEN DO NEXT		' find$ does not exist => skip it!
+				'
+				' don't add find$ if already in r_mruList$[]
 				bFound = $$FALSE
-				IF upp >= 0 THEN
-					find_lc$ = LCASE$ (fpath$)
+				IF iAdd >= 0 THEN
+					find_lc$ = LCASE$ (find$)
 					LEN_find = LEN (find_lc$)
 					'
-					FOR z = 0 TO upp
+					FOR z = 0 TO iAdd
 						IF LEN (r_mruList$[z]) <> LEN_find THEN DO NEXT
 						IF LCASE$ (r_mruList$[z]) = find_lc$ THEN
 							bFound = $$TRUE
@@ -6011,16 +6041,16 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 				ENDIF
 				IF bFound THEN DO NEXT		' already in r_mruList$[] => skip it!
 				'
-				IF upp >= $$UPP_MRU THEN EXIT FOR		' r_mruList$[] is full
+				IF iAdd >= $$UPP_MRU THEN EXIT FOR		' r_mruList$[] is full
 				'
-				INC upp
-				r_mruList$[upp] = fpath$
+				INC iAdd
+				r_mruList$[iAdd] = find$
 			NEXT id
 			'
-			IF upp < 0 THEN
+			IF iAdd < 0 THEN
 				DIM r_mruList$[]
 			ELSE
-				IF UBOUND (r_mruList$[]) <> upp THEN REDIM r_mruList$[upp]
+				IF UBOUND (r_mruList$[]) <> iAdd THEN REDIM r_mruList$[iAdd]
 			ENDIF
 			bOK = $$TRUE		' success
 			'
@@ -9515,15 +9545,21 @@ END FUNCTION
 ' #############################
 '
 ' make sure a file is created
-' Usage:
-'bErr = XstFileExists (path$)
-'IF bErr THEN WinXPath_Create (path$)
-'
-' Returns:
-' - an error flag: $$TRUE = erreur, $$FALSE = OK!
 '
 ' Parameter list:
 ' - path$: file path
+'
+' returns $$TRUE on success or $$FALSE on fail
+'
+' Usage:
+'bErr = XstFileExists (path$)
+'IF bErr THEN
+'	bOK = WinXPath_Create (path$)
+'	IFF bOK THEN
+'		msg$ = "WinXPath_Create: Can't create missing file " + path$
+'		WinXDialog_Error (msg$, "Create File", 2)
+'	ENDIF
+'ENDIF
 '
 FUNCTION WinXPath_Create (path$)
 
