@@ -2628,8 +2628,10 @@ FUNCTION WinXDialog_OpenFile$ (parent, title$, extensions$, initialName$, multiS
 		' look for the extension to compute ofn.nFilterIndex
 		pos = RINSTRI (extensions$, initExt$)
 		IF pos THEN
-			source$ = LEFT$ (extensions$, pos)
-			count = XstTally (source$, "|")
+			count = 0
+			FOR i = pos - 1 TO 0 STEP -1
+				IF extensions${i} = '|' THEN INC count
+			NEXT i
 			ofn.nFilterIndex = 1 + (count / 2)
 		ENDIF
 	ENDIF
@@ -4497,10 +4499,11 @@ END FUNCTION
 ' #############################################
 ' Gets the auto sizer series for a group box
 ' hGB = the handle to the group box
-' returns the series on success or 0 on fail
+' returns the series on success or -1 on fail
 FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
-	IFZ hGB THEN RETURN
+	IFZ hGB THEN RETURN -1
 	r_series = GetPropA (hGB, &$$AutoSizer$)
+	IF r_series < -1 THEN RETURN -1
 	RETURN r_series
 END FUNCTION
 '
@@ -4802,7 +4805,7 @@ FUNCTION WinXIni_Read$ (iniPath$, section$, key$, defVal$)
 			buf$ = NULL$ (bufSize)
 			SetLastError (0)
 			cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
-			IF cCh THEN ret$ = LEFT$ (buf$, cCh)
+			IF cCh > 0 THEN ret$ = LEFT$ (buf$, cCh)
 			'
 	END SELECT
 
@@ -4822,7 +4825,7 @@ END FUNCTION
 ' key$        = the information's key
 ' value$      = the information
 ' Return      = $$FALSE = failure, $$TRUE = success
-' Examples    = WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, fPath$)
+' Examples    = bOK = WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, fPath$)
 '
 FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 
@@ -4846,7 +4849,19 @@ FUNCTION WinXIni_Write (iniPath$, section$, key$, value$)
 			'
 			SetLastError (0)
 			ret = WritePrivateProfileStringA (&section$, &key$, &value$, &iniPath$)
-			IF ret THEN bOK = $$TRUE
+			'
+			' ----------------------------------------
+			' re-read from the INI file
+			defVal$ = ""
+			bufSize = 4095
+			buf$ = NULL$ (bufSize)
+			SetLastError (0)
+			cCh = GetPrivateProfileStringA (&section$, &key$, &defVal$, &buf$, bufSize, &iniPath$)
+			IF cCh THEN
+				ret$ = WinXPath_Trim$ (buf$)
+				IF ret$ = value$ THEN bOK = $$TRUE
+			ENDIF
+			' ----------------------------------------
 			'
 	END SELECT
 
@@ -5983,14 +5998,16 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 			'
 			key$ = WinXMRU_MakeKey$ (0)		' $$MRU_SECTION$ entry
 			value$ = WinXIni_Read$ (iniPath$, $$MRU_SECTION$, key$, "")
-			IF value$ <> "-" THEN WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
+			IF value$ <> "-" THEN
+				bOK = WinXIni_Write (iniPath$, $$MRU_SECTION$, key$, "-")
+				IFF bOK THEN EXIT SELECT ' can't add $$MRU_SECTION$ entry
+			ENDIF
 			'
 			DIM r_mruList$[$$UPP_MRU]
 			iAdd = -1
 			'
 			' trim path pathNew$ and check it can be found
 			pathNew$ = WinXPath_Trim$ (pathNew$)
-			XstTranslateChars (@pathNew$, "/", "\\")
 			IF pathNew$ THEN
 				XstDecomposePathname (pathNew$, "", "", @fFN$, "", "")
 				IFZ fFN$ THEN
@@ -6015,7 +6032,6 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 				find$ = WinXPath_Trim$ (find$)
 				IFZ find$ THEN DO NEXT		' empty => skip it!
 				'
-				XstTranslateChars (@find$, "/", "\\")
 				XstDecomposePathname (find$, "", "", @fFN$, "", "")
 				IFZ fFN$ THEN
 					bOK = WinXDir_Exists (find$) ' find$ is a directory
@@ -8616,8 +8632,10 @@ END FUNCTION
 FUNCTION WinXTabs_GetAutosizerSeries (hTabs, iTab)
 	TC_ITEM tci ' tab control structure
 
+	IF hTabs THEN RETURN -1
 	tci.mask = $$TCIF_PARAM
 	IFZ SendMessageA (hTabs, $$TCM_GETITEM, iTab, &tci) THEN RETURN -1		' fail
+	IF tci.lParam < -1 THEN RETURN -1
 	RETURN tci.lParam
 END FUNCTION
 '
