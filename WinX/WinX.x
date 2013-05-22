@@ -9301,22 +9301,25 @@ END FUNCTION
 FUNCTION WinXTreeView_GetItemLabel$ (hTV, hItem)
 	TVITEM tvi
 
-	IFZ hTV THEN RETURN ""		' fail
-	IFZ hItem THEN RETURN ""		' fail
+	SetLastError (0)
+	ret$ = ""
+	SELECT CASE hTV
+		CASE 0
+		CASE ELSE
+			IFZ hItem THEN EXIT SELECT		' fail
+			' 
+			tvi.mask = $$TVIF_TEXT | $$TVIF_HANDLE
+			tvi.hItem = hItem
+			tvi.cchTextMax = $$MAX_PATH
+			szBuf$ = NULL$ ($$MAX_PATH)
+			tvi.pszText = &szBuf$
+			' 
+			ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
+			IF ret THEN ret$ = CSTRING$ (&szBuf$)
+			' 
+	END SELECT
+	RETURN ret$
 
-	bufSize = $$MAX_PATH
-	buf$ = NULL$ (bufSize)
-
-	tvi.mask = $$TVIF_HANDLE | $$TVIF_TEXT		' item text attribute
-	tvi.hItem = hItem		' the selected item
-	tvi.pszText = &buf$		'  pointer to the buffer
-	tvi.cchTextMax = bufSize		'  size of the text to retrieve
-
-	ret = SendMessageA (hTV, $$TVM_GETITEM, 0, &tvi)
-	IFZ ret THEN RETURN ""		' fail
-
-	text$ = CSTRING$ (&buf$)
-	RETURN text$
 END FUNCTION
 '
 ' ######################################
