@@ -60,16 +60,18 @@ FUNCTION $1_Delete (id)
 			IFF $1_arrayUM[slot] THEN EXIT SELECT
 			' 
 			$1_arrayUM[slot] = $$FALSE		' mark $1 item as deleted
-			IF id = $1_idMax THEN
-				FOR z = upper_slot TO slot + 1 STEP -1
+			IF id >= $1_idMax THEN
+				$1_idMax = 0
+				FOR z = upper_slot TO 0 STEP -1
 					IFF $1_arrayUM[z] THEN
 						$1_idMax = z + 1
 						EXIT FOR
 					ENDIF
 				NEXT z
 			ENDIF
-			IF id = $1_idMin THEN
-				FOR z = slot + 1 TO upper_slot
+			IF id <= $1_idMin THEN
+				$1_idMin = 0
+				FOR z = 0 TO upper_slot
 					IFF $1_arrayUM[z] THEN
 						$1_idMin = z + 1
 						EXIT FOR
