@@ -1390,13 +1390,13 @@ FUNCTION STRING_Init ()
 	ENDIF
 END FUNCTION
 '
-' Deletes a item accessed by its id
+' Deletes a STRING item accessed by its id
 ' id = id of the item to delete
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
 'bOK = STRING_Delete (id)
-'IFF bOK THEN XstAlert ("STRING_Delete: Can't delete item id " + STRING$ (id))
+'IFF bOK THEN XstAlert ("STRING_Delete: Can't delete STRING item id " + STRING$ (id))
 '
 FUNCTION STRING_Delete (id)
 	SHARED STRING_array$[]
@@ -1493,14 +1493,14 @@ FUNCTION STRING_FindIns (match$)
 	RETURN idFound
 END FUNCTION
 '
-' Gets data of a item accessed by its id
+' Gets data of a STRING item accessed by its id
 ' id = id of item
 ' STRING_item$ = returned data
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
 'bOK = STRING_Get (id, @STRING_item$)
-'IFF bOK THEN XstAlert ("STRING_Get: Can't get item id " + STRING$ (id))
+'IFF bOK THEN XstAlert ("STRING_Get: Can't get STRING item id " + STRING$ (id))
 '
 FUNCTION STRING_Get (id, STRING_item$)
 	SHARED STRING_array$[]
@@ -1535,7 +1535,7 @@ FUNCTION STRING_Get_count ()
 	RETURN count
 END FUNCTION
 '
-' Gets item id max
+' Gets STRING item id max
 '
 FUNCTION STRING_Get_idMax ()
 	SHARED STRING_arrayUM[]
@@ -1552,7 +1552,7 @@ FUNCTION STRING_Get_idMax ()
 	RETURN STRING_idMax
 END FUNCTION
 '
-' Gets item id min
+' Gets STRING item id min
 '
 FUNCTION STRING_Get_idMin ()
 	SHARED STRING_arrayUM[]
@@ -1569,7 +1569,7 @@ FUNCTION STRING_Get_idMin ()
 	RETURN STRING_idMin
 END FUNCTION
 '
-' Adds a item to pool
+' Adds a STRING item to pool
 ' returns id on success or 0 on fail
 '
 ' Usage:
@@ -1610,14 +1610,14 @@ FUNCTION STRING_New (STRING_item$)
 	RETURN id
 END FUNCTION
 '
-' Updates the data of a item accessed by its id
+' Updates the data of a STRING item accessed by its id
 ' id = id of item
 ' STRING_item$ = new data
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
 'bOK = STRING_Update (id, STRING_item$)
-'IFF bOK THEN XstAlert ("STRING_Update: Can't update item id " + STRING$ (id))
+'IFF bOK THEN XstAlert ("STRING_Update: Can't update STRING item id " + STRING$ (id))
 '
 FUNCTION STRING_Update (id, STRING_item$)
 	SHARED STRING_array$[]
