@@ -18,11 +18,7 @@ m4_define(`DefineAccess',`''
 FUNCTION $1_Init ()
 	SHARED $1 $1_array[] ' an array of $1 items
 	SHARED $1_arrayUM[] ' usage map so we can see which $1_array[] elements are in use
-	SHARED $1_idMax     ' last id
-	SHARED $1_idMin
 
-	$1_idMax = 0
-	$1_idMin = 0
 	IFZ $1_array[] THEN
 		upper_slot = 7
 		DIM $1_array[upper_slot]
@@ -47,37 +43,16 @@ END FUNCTION
 FUNCTION $1_Delete (id)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
-	SHARED $1_idMax
-	SHARED $1_idMin
 
 	bOK = $$FALSE
+	slot = id - 1
+	upper_slot = UBOUND ($1_arrayUM[])
 	SELECT CASE TRUE
-		CASE (id < $1_idMin || id > $1_idMax)
+		CASE (slot < 0 || slot > upper_slot)
 		CASE ELSE
-			slot = id - 1
-			upper_slot = UBOUND ($1_arrayUM[])
-			IF (slot < 0 || slot > upper_slot) THEN EXIT SELECT
 			IFF $1_arrayUM[slot] THEN EXIT SELECT
-			' 
+			'
 			$1_arrayUM[slot] = $$FALSE		' mark $1 item as deleted
-			IF id >= $1_idMax THEN
-				$1_idMax = 0
-				FOR z = upper_slot TO 0 STEP -1
-					IFF $1_arrayUM[z] THEN
-						$1_idMax = z + 1
-						EXIT FOR
-					ENDIF
-				NEXT z
-			ENDIF
-			IF id <= $1_idMin THEN
-				$1_idMin = 0
-				FOR z = 0 TO upper_slot
-					IFF $1_arrayUM[z] THEN
-						$1_idMin = z + 1
-						EXIT FOR
-					ENDIF
-				NEXT z
-			ENDIF
 			bOK = $$TRUE
 	END SELECT
 	RETURN bOK
@@ -95,20 +70,17 @@ END FUNCTION
 FUNCTION $1_Get (id`,' $1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
-	SHARED $1_idMax
-	SHARED $1_idMin
 
 	$1 $1_Nil
 
 	bOK = $$FALSE
+	slot = id - 1
+	upper_slot = UBOUND ($1_arrayUM[])
 	SELECT CASE TRUE
-		CASE (id < $1_idMin || id > $1_idMax)
+		CASE (slot < 0 || slot > upper_slot)
 		CASE ELSE
-			slot = id - 1
-			upper_slot = UBOUND ($1_arrayUM[])
-			IF (slot < 0 || slot > upper_slot) THEN EXIT SELECT
 			IFF $1_arrayUM[slot] THEN EXIT SELECT
-			' 
+			'
 			$1_item = $1_array[slot]		' get $1 item
 			bOK = $$TRUE
 	END SELECT
@@ -119,36 +91,48 @@ END FUNCTION
 ' Gets $1 item count
 '
 FUNCTION $1_Get_count ()
-	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
 
 	count = 0
 	IF $1_arrayUM[] THEN
-		FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
-			IF $1_arrayUM[slot] THEN INC count
-		NEXT slot
+		FOR z = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+			IF $1_arrayUM[z] THEN INC count
+		NEXT z
 	ENDIF
 	RETURN count
 END FUNCTION
 '
 ' Gets $1 item id max
 '
-' Usage: walk thru the $1 pool
-'idMax = $1_Get_idMax () ' get $1 item id max
-'FOR id = 1 TO idMax
-'	bOK = $1_Get (id`,' @$1_item)
-'	IFF bOK THEN DO NEXT		' deleted
-'NEXT id
-'
 FUNCTION $1_Get_idMax ()
-	SHARED $1_idMax
+	SHARED $1_arrayUM[]
+
+	$1_idMax = 0
+	IF $1_arrayUM[] THEN
+		FOR z = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+			IFF $1_arrayUM[z] THEN
+				$1_idMax = z + 1
+				EXIT FOR
+			ENDIF
+		NEXT z
+	ENDIF
 	RETURN $1_idMax
 END FUNCTION
 '
 ' Gets $1 item id min
 '
 FUNCTION $1_Get_idMin ()
-	SHARED $1_idMin
+	SHARED $1_arrayUM[]
+
+	IF $1_arrayUM[] THEN
+		upper_slot = UBOUND ($1_arrayUM[])
+		FOR z = 0 TO upper_slot
+			IFF $1_arrayUM[z] THEN
+				$1_idMin = z + 1
+				EXIT FOR
+			ENDIF
+		NEXT z
+	ENDIF
 	RETURN $1_idMin
 END FUNCTION
 '
@@ -162,37 +146,30 @@ END FUNCTION
 FUNCTION $1_New ($1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
-	SHARED $1_idMax
 
 	IFZ $1_arrayUM[] THEN $1_Init ()
 
-	slot = -1
 	upper_slot = UBOUND ($1_arrayUM[])
 
 	' since $1_array[] is oversized
-	' look for an empty spot after $1_idMax
-	IF $1_idMax <= upper_slot THEN
-		FOR i = $1_idMax TO upper_slot
-			IFF $1_arrayUM[i] THEN
-				' use this empty spot
-				slot = i
-				$1_idMax = i + 1
-				EXIT FOR
-			ENDIF
-		NEXT i
-	ENDIF
+	' look for an empty spot from the upper slot
+	slot = -1
+	FOR i = upper_slot TO 0 STEP -1
+		IF $1_arrayUM[i] THEN EXIT FOR
+		slot = i
+	NEXT i
 
 	IF slot = -1 THEN
+		slot = upper_slot + 1
 		' empty spot not found => expand $1_array[]
 		upper_slot = ((upper_slot + 1) * 2) - 1
 		REDIM $1_array[upper_slot]
 		REDIM $1_arrayUM[upper_slot]
-		slot = $1_idMax
-		INC $1_idMax
 	ENDIF
 
-	id = 0
-	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+	IF slot = -1 THEN
+		id = 0
+	ELSE
 		$1_array[slot] = $1_item
 		$1_arrayUM[slot] = $$TRUE
 		id = slot + 1
@@ -212,18 +189,15 @@ END FUNCTION
 FUNCTION $1_Update (id`,' $1 $1_item)
 	SHARED $1 $1_array[]
 	SHARED $1_arrayUM[]
-	SHARED $1_idMax
-	SHARED $1_idMin
 
 	bOK = $$FALSE
+	slot = id - 1
+	upper_slot = UBOUND ($1_arrayUM[])
 	SELECT CASE TRUE
-		CASE (id < $1_idMin || id > $1_idMax)
+		CASE (slot < 0 || slot > upper_slot)
 		CASE ELSE
-			slot = id - 1
-			upper_slot = UBOUND ($1_arrayUM[])
-			IF (slot < 0 || slot > upper_slot) THEN EXIT SELECT
 			IFF $1_arrayUM[slot] THEN EXIT SELECT
-			' 
+			'
 			$1_array[slot] = $1_item		' update $1 item
 			bOK = $$TRUE
 	END SELECT
