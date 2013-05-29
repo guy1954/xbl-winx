@@ -1418,16 +1418,18 @@ FUNCTION STRING_Delete (id)
 			IFF STRING_arrayUM[slot] THEN EXIT SELECT
 			'
 			STRING_arrayUM[slot] = $$FALSE		' mark STRING item as deleted
-			IF id = STRING_idMax THEN
-				FOR z = upper_slot TO slot + 1 STEP -1
+			IF id >= STRING_idMax THEN
+				STRING_idMax = 0
+				FOR z = upper_slot TO 0 STEP -1
 					IFF STRING_arrayUM[z] THEN
 						STRING_idMax = z + 1
 						EXIT FOR
 					ENDIF
 				NEXT z
 			ENDIF
-			IF id = STRING_idMin THEN
-				FOR z = slot + 1 TO upper_slot
+			IF id <= STRING_idMin THEN
+				STRING_idMin = 0
+				FOR z = 0 TO upper_slot
 					IFF STRING_arrayUM[z] THEN
 						STRING_idMin = z + 1
 						EXIT FOR
