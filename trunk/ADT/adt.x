@@ -3,6 +3,7 @@ VERSION "0.2"
 '
 ' ADT - Abstract Data Types library for XBlite
 ' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
+'     Guy Lonne 2009-2013.
 '
 ' Requires m4 macro processing to compile.
 ' Also requires the accessors.m4 file.  I sugest that you copy this to your XBlite include folder and set the
@@ -15,6 +16,7 @@ VERSION "0.2"
 '
 ' 0.2-Guy-25mar11-small changes in accessors.m4.
 '     Guy-04nov11-prevented adt.dll re-entry with SHARED variable #bReentry.
+'     Guy-30may13-re-coded accessors.m4.
 '
 '
 	IMPORT "xst"        ' xblite Standard Library
@@ -1543,7 +1545,7 @@ FUNCTION STRING_Get_idMax ()
 	STRING_idMax = 0
 	IF STRING_arrayUM[] THEN
 		FOR z = UBOUND (STRING_arrayUM[]) TO 0 STEP -1
-			IFF STRING_arrayUM[z] THEN
+			IF STRING_arrayUM[z] THEN
 				STRING_idMax = z + 1
 				EXIT FOR
 			ENDIF
@@ -1560,7 +1562,7 @@ FUNCTION STRING_Get_idMin ()
 	IF STRING_arrayUM[] THEN
 		upper_slot = UBOUND (STRING_arrayUM[])
 		FOR z = 0 TO upper_slot
-			IFF STRING_arrayUM[z] THEN
+			IF STRING_arrayUM[z] THEN
 				STRING_idMin = z + 1
 				EXIT FOR
 			ENDIF

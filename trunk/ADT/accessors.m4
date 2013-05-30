@@ -110,7 +110,7 @@ FUNCTION $1_Get_idMax ()
 	$1_idMax = 0
 	IF $1_arrayUM[] THEN
 		FOR z = UBOUND ($1_arrayUM[]) TO 0 STEP -1
-			IFF $1_arrayUM[z] THEN
+			IF $1_arrayUM[z] THEN
 				$1_idMax = z + 1
 				EXIT FOR
 			ENDIF
@@ -127,7 +127,7 @@ FUNCTION $1_Get_idMin ()
 	IF $1_arrayUM[] THEN
 		upper_slot = UBOUND ($1_arrayUM[])
 		FOR z = 0 TO upper_slot
-			IFF $1_arrayUM[z] THEN
+			IF $1_arrayUM[z] THEN
 				$1_idMin = z + 1
 				EXIT FOR
 			ENDIF
