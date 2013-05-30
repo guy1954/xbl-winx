@@ -3,7 +3,7 @@ VERSION "0.6.0.15"
 '
 ' WinX - *The* GUI library for XBlite
 ' (c) Callum Lowcay 2007-2008
-'     Guy Lonne 2009-2012.
+'     Guy Lonne 2009-2013.
 '
 ' The WinX GUI library is distributed under the
 ' terms and conditions of the GNU LGPL, see the file COPYING_LIB
@@ -85,6 +85,7 @@ VERSION "0.6.0.15"
 '          Guy-11sep12-WinXListBox_RemoveAllItems : remove all items from a list box
 '          Guy-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from an extended combo box
 '          Guy-17feb13-code tightening
+'          Guy-30may13-re-coded accessors.m4.
 '
 ' Win32API DLL headers
 '
@@ -307,7 +308,7 @@ EXPORT
 '
 ' WinX - A Win32 abstraction for XBlite
 ' (C) Callum Lowcay 2007-2008 - Licensed under the GNU LGPL
-'     Evolutions: Guy Lonne 2009-2012.
+'     Evolutions: Guy Lonne 2009-2013.
 '
 ' *****************************
 ' *****   CONSTANTS and   *****
