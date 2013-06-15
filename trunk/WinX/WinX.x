@@ -10021,7 +10021,8 @@ END FUNCTION
 ' #############################
 ' #####	CreateMdiChild ()	#####
 ' #############################
-' Create MDI child window
+'
+' Creates an MDI child window
 '
 ' binding.hWnd = CreateMdiChild (binding.hWndMDIParent, "", $$WS_MAXIMIZE)
 FUNCTION CreateMdiChild (hClient, STRING title, style)
@@ -12189,9 +12190,9 @@ END FUNCTION
 ' ########################
 ' Resizes a window
 ' hWnd = handle of the window to resize
-' w and h = the new width and height
+' wNew and hNew = the new width and height
 ' returns nothing of interest
-FUNCTION sizeWindow (hWnd, w, h)
+FUNCTION sizeWindow (hWnd, wNew, hNew)
 	BINDING binding
 	SCROLLINFO si
 	' Guy-01aug12-unused-WINDOWPLACEMENT WinPla
@@ -12200,24 +12201,24 @@ FUNCTION sizeWindow (hWnd, w, h)
 	' get the binding
 	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
-	IF w < binding.minW || h < binding.minH THEN
-		IF w < binding.minW THEN w = binding.minW
-		IF h < binding.minH THEN h = binding.minH
-		SetWindowPos (hWnd, $$HWND_TOP, 0, 0, w, h, $$SWP_NOMOVE)
+	IF wNew < binding.minW || hNew < binding.minH THEN
+		IF wNew < binding.minW THEN wNew = binding.minW
+		IF hNew < binding.minH THEN hNew = binding.minH
+		SetWindowPos (hWnd, $$HWND_TOP, 0, 0, wNew, hNew, $$SWP_NOMOVE)
 	ENDIF
 
 	' now handle the tool bar
 	IF binding.hBar THEN
 		GetClientRect (binding.hBar, &rect)
 		height = rect.bottom - rect.top
-		SendMessageA (binding.hBar, $$WM_SIZE, w, height)
+		SendMessageA (binding.hBar, $$WM_SIZE, wNew, height)
 	ENDIF
 
 	' handle the status bar
 	IF binding.hStatus THEN
 		GetClientRect (binding.hStatus, &rect)
 		height = rect.bottom - rect.top
-		SendMessageA (binding.hStatus, $$WM_SIZE, w, height)
+		SendMessageA (binding.hStatus, $$WM_SIZE, wNew, height)
 		'
 		cPart = binding.statusParts + 1
 		IF cPart < 1 THEN cPart = 1
@@ -12227,7 +12228,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 		IF cPart > 1 THEN
 			' first, resize the partitions
 			FOR i = 0 TO uppPart
-				parts[i] = ((i + 1) * w) / cPart
+				parts[i] = ((i + 1) * wNew) / cPart
 			NEXT i
 		ENDIF
 		'
@@ -12244,7 +12245,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	IF style & $$WS_HSCROLL THEN
 		si.cbSize = SIZE (SCROLLINFO)
 		si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
-		si.nPage = w * binding.hScrollPageM + binding.hScrollPageC
+		si.nPage = wNew * binding.hScrollPageM + binding.hScrollPageC
 		SetScrollInfo (hWnd, $$SB_HORZ, &si, $$TRUE)
 		'
 		si.fMask = $$SIF_POS
@@ -12255,7 +12256,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	IF style & $$WS_VSCROLL THEN
 		si.cbSize = SIZE (SCROLLINFO)
 		si.fMask = $$SIF_PAGE | $$SIF_DISABLENOSCROLL
-		si.nPage = h * binding.vScrollPageM + binding.vScrollPageC
+		si.nPage = hNew * binding.vScrollPageM + binding.vScrollPageC
 		SetScrollInfo (hWnd, $$SB_VERT, &si, $$TRUE)
 		'
 		si.fMask = $$SIF_POS
@@ -12266,12 +12267,12 @@ FUNCTION sizeWindow (hWnd, w, h)
 	IF binding.autoSizerInfo >= 0 THEN
 		' use the auto sizer
 		WinXGetUsableRect (hWnd, @rect)
-		x0 = rect.left - xoff
-		y0 = rect.top - yoff
+		x = rect.left - xoff
+		y = rect.top - yoff
 		w = rect.right - rect.left
 		h = rect.bottom - rect.top
 		'
-		AUTOSIZER_Size (binding.autoSizerInfo, x0, y0, w, h)
+		AUTOSIZER_Size (binding.autoSizerInfo, x, y, w, h)
 		IF binding.onScroll THEN
 			@binding.onScroll (xoff, hWnd, $$DIR_HORIZ)
 			@binding.onScroll (yoff, hWnd, $$DIR_VERT)
@@ -12279,7 +12280,7 @@ FUNCTION sizeWindow (hWnd, w, h)
 	ENDIF
 
 	retCode = 0
-	IF binding.dimControls THEN retCode = @binding.dimControls (hWnd, w, h)
+	IF binding.dimControls THEN retCode = @binding.dimControls (hWnd, wNew, hNew)
 
 	InvalidateRect (hWnd, 0, 0)
 
