@@ -86,6 +86,7 @@ VERSION "0.6.0.15"
 '          Guy-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from an extended combo box
 '          Guy-17feb13-code tightening
 '          Guy-30may13-re-coded accessors.m4.
+'          Guy-03jul13-ensured a fully qualified path is passed to ShellExecuteA.
 '
 ' Win32API DLL headers
 '
@@ -3207,10 +3208,16 @@ FUNCTION WinXDisplayHelpFile (helpFile$)
 	helpFile$ = WinXPath_Trim$ (helpFile$)
 	IFZ helpFile$ THEN RETURN
 
-	' check if helpFile$ exists
-	IF XstFileExists (helpFile$) THEN RETURN		' file NOT found
+	XstPathToAbsolutePath (helpFile$, @fullpath$) ' fully qualified path for ShellExecuteA
 
-	ret = ShellExecuteA ($$HWND_DESKTOP, &"open", &helpFile$, 0, 0, $$SW_SHOWNORMAL | $$SW_SHOWMAXIMIZED)
+	' check if fullpath$ exists
+	bErr = XstFileExists (fullpath$)
+	IF bErr THEN RETURN		' file NOT found
+
+	' ShellExecuteA performs an "open" operation on fullpath$
+	' fullpath$: fully qualified path to helpFile$
+	' $$SW_SHOWNORMAL: displaying the window for the first time
+	ret = ShellExecuteA ($$HWND_DESKTOP, &"open", &fullpath$, 0, 0, $$SW_SHOWNORMAL | $$SW_SHOWMAXIMIZED)
 	IF ret > 32 THEN RETURN $$TRUE		' success
 
 END FUNCTION
