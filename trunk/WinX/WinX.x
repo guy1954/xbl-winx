@@ -1942,7 +1942,7 @@ FUNCTION WinXCleanUp ()
 
 	' free global allocated memory
 	IF g_hClipMem THEN GlobalFree (g_hClipMem)
-	g_hClipMem = 0
+	g_hClipMem = 0 ' don't free twice
 
 	' delete the image list created by CreateDragImage
 	IF g_drag_image THEN ImageList_Destroy (g_drag_image)
@@ -4502,13 +4502,21 @@ FUNCTION WinXGetUsableRect (hWnd, RECT r_rect)
 			'
 			ret = GetClientRect (hWnd, &r_rect)
 			IFZ ret THEN EXIT SELECT
-			w = r_rect.right - r_rect.left
-			h = r_rect.bottom - r_rect.top
+			winWidth = r_rect.right - r_rect.left
+			winHeight = r_rect.bottom - r_rect.top
+			'
+			' In conformance with conventions for the RECT structure, the
+			' bottom-right coordinates of the returned rectangle are
+			' exclusive. In other words, the pixel at (right, bottom) lies
+			' immediately outside the rectangle.
+			'
+			winWidth = winWidth - GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
+			winHeight = winHeight - GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
 			'
 			' account for the caption's height
 			style = GetWindowLongA (hWnd, $$GWL_STYLE)
 			IF WinXMask_found (style, $$WS_CAPTION) THEN
-				h = h - GetSystemMetrics ($$SM_CYCAPTION)
+				winHeight = winHeight - GetSystemMetrics ($$SM_CYCAPTION)
 			ENDIF
 			'
 			' account for the toolbar's height
@@ -11589,31 +11597,20 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 			EndPaint (hWnd, &ps)
 			RETURN retCode
 
-		CASE $$WM_SIZE
-			w = LOWORD (lParam)
-			h = HIWORD (lParam)
-			'
-			IF w < binding.minW || h < binding.minH THEN
-				IF w < binding.minW THEN w = binding.minW
-				IF h < binding.minH THEN h = binding.minH
-			ENDIF
-			'
-			sizeWindow (hWnd, w, h) ' resize the window
-			'
-			bOK = WinXGetUsableRect (hWnd, @rect)
-			IF bOK THEN
-				w = rect.right - rect.left
-				h = rect.bottom - rect.top
-				'
-				' In conformance with conventions for the RECT structure, the
-				' bottom-right coordinates of the returned rectangle are
-				' exclusive. In other words, the pixel at (right, bottom) lies
-				' immediately outside the rectangle.
-				'
-				w = w - GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
-				h = h - GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
-			ENDIF
-			'
+		CASE $$WM_MOVE, $$WM_SIZE
+			IFZ hWnd THEN RETURN
+
+			SetLastError (0)
+			ret = GetWindowRect (hWnd, &rect)
+			IFZ ret THEN RETURN
+
+			winWidth = rect.right - rect.left
+			winHeight = rect.bottom - rect.top
+
+			IF winWidth < binding.minW THEN winWidth = binding.minW
+			IF winHeight < binding.minH THEN winHeight = binding.minH
+
+			sizeWindow (hWnd, winWidth, winHeight) ' resize the window
 			handled = $$TRUE
 
 		CASE $$WM_HSCROLL, $$WM_VSCROLL
