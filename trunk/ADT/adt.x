@@ -149,10 +149,10 @@ DECLARE FUNCTION STRING_Delete (id) ' delete a STRING item accessed by its id
 DECLARE FUNCTION STRING_Find (match$) ' find exact match of match$
 DECLARE FUNCTION STRING_FindIns (match$) ' find match$ insensitive
 DECLARE FUNCTION STRING_Get (id, @STRING_item$) ' get data of a STRING item accessed by its id
-DECLARE FUNCTION STRING_Get_count () ' get item count
+DECLARE FUNCTION STRING_Get_count () ' get the STRING pool's item count
 DECLARE FUNCTION STRING_Get_idMax () ' get STRING item id max
 DECLARE FUNCTION STRING_Get_idMin () ' get STRING item id min
-DECLARE FUNCTION STRING_Init () ' initialize the class
+DECLARE FUNCTION STRING_Init () ' initialize the STRING class
 DECLARE FUNCTION STRING_New (STRING_item$) ' add item to STRING pool
 DECLARE FUNCTION STRING_Update (id, STRING_item$) ' update data of a STRING item accessed by its id
 '
@@ -978,70 +978,301 @@ FUNCTION LinkedList_Walk (hWalk, @iData)
 	RETURN $$TRUE ' success
 END FUNCTION
 '
-' ###########################
-' #####  StringCompare  #####
-' ###########################
-' A comparator for strings
+' === STRING class ===
+'
+' Deletes a STRING item accessed by its id
+' id = id of the item to delete
+' returns bOK: $$TRUE on success or $$FALSE on fail
+'
+' Usage:
+'bOK = STRING_Delete (id)
+'IFF bOK THEN PRINT "STRING_Delete: Can't delete STRING item from STRING pool by its id = "; id
+'
+FUNCTION STRING_Delete (id)
+	SHARED STRING_pool$[] ' string pool
+	SHARED STRING_poolUM[]
 
-' Guy-21apr11-new version
-'FUNCTION StringCompare (a, b)
-'	STRING_Get (a, @a$)
-'	STRING_Get (b, @b$)
-
-'	FOR i = 0 TO MIN (UBOUND (a$), UBOUND (b$))
-'		IF a${i} < b${i} THEN RETURN -1
-'		IF a${i} > b${i} THEN RETURN 1
-'	NEXT
-'	IF UBOUND (a$) < UBOUND (b$) THEN RETURN -1
-'	IF UBOUND (a$) > UBOUND (b$) THEN RETURN 1
-
-'	RETURN 0
-'END FUNCTION
-
-FUNCTION StringCompare (a, b)
-
-	STRING_Get (a, @a$)
-	STRING_Get (b, @b$)
-
-	upp_a = LEN (a$) - 1
-	upp_b = LEN (b$) - 1
-
-	' compare the characters up to the smaller length (but not zero)
-	upperMin = MIN (upp_a, upp_b)
-	IF upperMin > -1 THEN
-		' non-empty strings
-		FOR i = 0 TO upperMin
-			IF a${i} = b${i} THEN DO NEXT
-			'
-			IF a${i} > b${i} THEN
-				RETURN 1		' a$ > b$
-			ELSE
-				RETURN -1		' a$ < b$
-			ENDIF
-		NEXT i
+	bOK = $$FALSE
+	slot = id - 1
+	upper_slot = UBOUND (STRING_poolUM[])
+	IF (slot >= 0 && slot <= upper_slot) THEN
+		IF STRING_poolUM[slot] THEN
+			' empty the slot
+			STRING_pool$[slot] = ""
+			STRING_poolUM[slot] = $$FALSE
+			bOK = $$TRUE
+		ENDIF
 	ENDIF
+	RETURN bOK
+END FUNCTION
+'
+' Finds a STRING item using its value
+' match$ = the value to search for
+' returns r_idFound on success or 0 on fail
+'
+' Usage:
+'' find exact match of match$
+'idFound = STRING_Find (match$)
+'IFZ idFound THEN ' Can't find STRING item
+'
+FUNCTION STRING_Find (match$)
+	SHARED STRING_pool$[] ' string pool
+	SHARED STRING_poolUM[]
 
-	SELECT CASE TRUE
-		CASE upp_a = upp_b
-			'
-		CASE upp_a > upp_b
-			' a$ is longer than b$
-			FOR i = upperMin + 1 TO upp_a
-				IF a${i} <> ' ' THEN RETURN 1		' a$ > b$
-			NEXT i
-			' a$ contains only trailing spaces
-			'
+	r_idFound = 0
+	match$ = TRIM$ (match$)
+	LEN_match = LEN (match$)
+
+	SELECT CASE LEN_match
+		CASE 0
 		CASE ELSE
-			' b$ is longer than a$
-			FOR i = upperMin + 1 TO upp_b
-				IF b${i} <> ' ' THEN RETURN -1		' a$ < b$
-			NEXT i
-			' b$ contains only trailing spaces
+			IFZ STRING_poolUM[] THEN EXIT SELECT
+			'
+			upper_slot = UBOUND (STRING_poolUM[])
+			FOR slot = 0 TO upper_slot
+				IFF STRING_poolUM[slot] THEN DO NEXT ' skip deleted spots
+				'
+				st$ = TRIM$ (STRING_pool$[slot])
+				IFZ st$ THEN DO NEXT ' skip empty spots
+				'
+				' test for an exact match
+				IF LEN (st$) = LEN_match THEN
+					IF st$ = match$ THEN
+						' found an exact match
+						r_idFound = slot + 1
+						EXIT FOR
+					ENDIF
+				ENDIF
+			NEXT slot
 			'
 	END SELECT
-	RETURN 0		' a$ == b$
-
+	RETURN r_idFound
 END FUNCTION
+'
+' Finds case insensitive a STRING item using its value
+' match$ = the value to search for
+' returns r_idFound on success or 0 on fail
+'
+' Usage:
+'' find match$ (case insensitive)
+'idFound = STRING_FindIns (match$)
+'IFZ idFound THEN ' Can't find (case insensitive) STRING item
+'
+FUNCTION STRING_FindIns (match$)
+	SHARED STRING_pool$[] ' string pool
+	SHARED STRING_poolUM[]
+
+	r_idFound = 0
+	match$ = TRIM$ (match$)
+	LEN_match = LEN (match$)
+	match_lc$ = LCASE$ (match$)
+
+	SELECT CASE LEN_match
+		CASE 0
+		CASE ELSE
+			IFZ STRING_poolUM[] THEN EXIT SELECT
+			'
+			upper_slot = UBOUND (STRING_poolUM[])
+			FOR slot = 0 TO upper_slot
+				IFF STRING_poolUM[slot] THEN DO NEXT ' skip deleted spots
+				'
+				st$ = TRIM$ (STRING_pool$[slot])
+				IFZ st$ THEN DO NEXT ' skip empty spots
+				'
+				' test case insensitive
+				IF LEN (st$) = LEN_match THEN
+					IF LCASE$ (st$) = match_lc$ THEN
+						' found a match case insensitive
+						r_idFound = slot + 1
+						EXIT FOR
+					ENDIF
+				ENDIF
+			NEXT slot
+			'
+	END SELECT
+	RETURN r_idFound
+END FUNCTION
+'
+' Gets data of a STRING item accessed by its id
+' id = id of item
+' r_STRING_item$ = returned data
+' returns bOK: $$TRUE on success or $$FALSE on fail
+'
+' Usage:
+'bOK = STRING_Get (id, @r_STRING_item$)
+'IFF bOK THEN PRINT "STRING_Get: Can't get STRING item from STRING pool by its id = "; id
+'
+FUNCTION STRING_Get (id, r_STRING_item$)
+	SHARED STRING_pool$[] ' string pool
+	SHARED STRING_poolUM[]
+
+	bOK = $$FALSE
+	r_STRING_item$ = ""
+	slot = id - 1
+	upper_slot = UBOUND (STRING_poolUM[])
+	IF (slot >= 0 && slot <= upper_slot) THEN
+		IF STRING_poolUM[slot] THEN
+			r_STRING_item$ = STRING_pool$[slot]
+			bOK = $$TRUE
+		ENDIF
+	ENDIF
+	RETURN bOK
+END FUNCTION
+'
+' Gets the STRING pool's item count
+'
+' Usage:
+'count = STRING_Get_count () ' get the STRING pool's item count
+'
+FUNCTION STRING_Get_count ()
+	SHARED STRING_poolUM[]
+
+	r_count = 0
+	IF STRING_poolUM[] THEN
+		upper_slot = UBOUND (STRING_poolUM[])
+		FOR slot = 0 TO upper_slot
+			IF STRING_poolUM[slot] THEN INC r_count
+		NEXT slot
+	ENDIF
+	RETURN r_count
+END FUNCTION
+'
+' Gets STRING item id max
+'
+' Usage:
+'idMax = STRING_Get_idMax ()
+'FOR id = 1 TO idMax
+'
+FUNCTION STRING_Get_idMax ()
+	SHARED STRING_poolUM[]
+
+	r_idMax = 0
+	IF STRING_poolUM[] THEN
+		upper_slot = UBOUND (STRING_poolUM[])
+		FOR slot = upper_slot TO 0 STEP -1
+			IF STRING_poolUM[slot] THEN
+				r_idMax = slot + 1
+				EXIT FOR
+			ENDIF
+		NEXT slot
+	ENDIF
+	RETURN r_idMax
+END FUNCTION
+'
+' Gets STRING item id min
+'
+' Usage:
+'idMin = STRING_Get_idMin ()
+'idMax = STRING_Get_idMax ()
+'FOR id = idMin TO idMax
+'
+FUNCTION STRING_Get_idMin ()
+	SHARED STRING_poolUM[]
+
+	r_idMin = 0
+	IF STRING_poolUM[] THEN
+		upper_slot = UBOUND (STRING_poolUM[])
+		FOR slot = 0 TO upper_slot
+			IF STRING_poolUM[slot] THEN
+				r_idMin = slot + 1
+				EXIT FOR
+			ENDIF
+		NEXT slot
+	ENDIF
+	RETURN r_idMin
+END FUNCTION
+'
+' Initializes the STRING class
+'
+FUNCTION STRING_Init ()
+	SHARED STRING_pool$[] ' an array of items
+	SHARED STRING_poolUM[] ' usage map so we can see which STRING_pool$[] elements are in use
+
+	IFZ STRING_pool$[] THEN
+		upper_slot = 7
+		DIM STRING_pool$[upper_slot]
+		DIM STRING_poolUM[upper_slot]
+	ELSE
+		' reset an existing STRING_pool$[]
+		upper_slot = UBOUND (STRING_poolUM[])
+		FOR slot = 0 TO upper_slot
+			' empty the slot
+			STRING_pool$[slot] = ""
+			STRING_poolUM[slot] = $$FALSE
+		NEXT slot
+	ENDIF
+END FUNCTION
+'
+' Adds a new STRING item to STRING pool
+' returns r_idNew on success or 0 on fail
+'
+' Usage:
+'idNew = STRING_New (STRING_item$)
+'IFZ idNew THEN PRINT "STRING_New: Can't add item = "; STRING_item$; " to STRING pool"
+'
+FUNCTION STRING_New (STRING_item$)
+	SHARED STRING_pool$[] ' string pool
+	SHARED STRING_poolUM[]
+
+	r_idNew = 0 ' invalid id
+
+	IFZ STRING_poolUM[] THEN STRING_Init ()
+
+	slotNew = -1 ' invalid slot
+
+	upper_slot = UBOUND (STRING_poolUM[])
+	FOR slot = 0 TO upper_slot
+		IFF STRING_poolUM[slot] THEN
+			' use/reuse this empty slot
+			slotNew = slot
+			EXIT FOR
+		ENDIF
+	NEXT slot
+
+	IF slotNew = -1 THEN
+		' empty slot not found => expand STRING_pool$[]
+		upp = ((upper_slot + 1) * 2) - 1
+		REDIM STRING_pool$[upp]
+		REDIM STRING_poolUM[upp]
+		slotNew = upper_slot + 1
+	ENDIF
+
+	IF slotNew >= 0 THEN
+		STRING_pool$[slotNew] = STRING_item$
+		STRING_poolUM[slotNew] = $$TRUE
+		r_idNew = slotNew + 1
+	ENDIF
+
+	RETURN r_idNew
+END FUNCTION
+'
+' Updates the data of a STRING item accessed by its id
+' id = id of item
+' STRING_item$ = new data
+' returns bOK: $$TRUE on success or $$FALSE on fail
+'
+' Usage:
+'bOK = STRING_Update (id, STRING_item$)
+'IFF bOK THEN PRINT "STRING_Update: Can't update STRING item in STRING pool by its id = "; id
+'
+FUNCTION STRING_Update (id, STRING_item$)
+	SHARED STRING_pool$[] ' string pool
+	SHARED STRING_poolUM[]
+
+	bOK = $$FALSE
+	slot = id - 1
+	upper_slot = UBOUND (STRING_poolUM[])
+	IF (slot >= 0 && slot <= upper_slot) THEN
+		IF STRING_poolUM[slot] THEN
+			STRING_pool$[slot] = STRING_item$
+			bOK = $$TRUE
+		ENDIF
+	ENDIF
+	RETURN bOK
+END FUNCTION
+'
+' === End of STRING class ===
+'
 '
 ' ########################
 ' #####  Stack_Init  #####
@@ -1113,6 +1344,71 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION Stack_Uninit (STACK stack)
 	RETURN LinkedList_Uninit (@stack.list)
+END FUNCTION
+'
+' ###########################
+' #####  StringCompare  #####
+' ###########################
+' A comparator for strings
+
+' Guy-21apr11-new version
+'FUNCTION StringCompare (a, b)
+'	STRING_Get (a, @a$)
+'	STRING_Get (b, @b$)
+
+'	FOR i = 0 TO MIN (UBOUND (a$), UBOUND (b$))
+'		IF a${i} < b${i} THEN RETURN -1
+'		IF a${i} > b${i} THEN RETURN 1
+'	NEXT
+'	IF UBOUND (a$) < UBOUND (b$) THEN RETURN -1
+'	IF UBOUND (a$) > UBOUND (b$) THEN RETURN 1
+
+'	RETURN 0
+'END FUNCTION
+
+FUNCTION StringCompare (a, b)
+
+	STRING_Get (a, @a$)
+	STRING_Get (b, @b$)
+
+	upp_a = LEN (a$) - 1
+	upp_b = LEN (b$) - 1
+
+	' compare the characters up to the smaller length (but not zero)
+	upperMin = MIN (upp_a, upp_b)
+	IF upperMin > -1 THEN
+		' non-empty strings
+		FOR i = 0 TO upperMin
+			IF a${i} = b${i} THEN DO NEXT
+			'
+			IF a${i} > b${i} THEN
+				RETURN 1		' a$ > b$
+			ELSE
+				RETURN -1		' a$ < b$
+			ENDIF
+		NEXT i
+	ENDIF
+
+	SELECT CASE TRUE
+		CASE upp_a = upp_b
+			'
+		CASE upp_a > upp_b
+			' a$ is longer than b$
+			FOR i = upperMin + 1 TO upp_a
+				IF a${i} <> ' ' THEN RETURN 1		' a$ > b$
+			NEXT i
+			' a$ contains only trailing spaces
+			'
+		CASE ELSE
+			' b$ is longer than a$
+			FOR i = upperMin + 1 TO upp_b
+				IF b${i} <> ' ' THEN RETURN -1		' a$ < b$
+			NEXT i
+			' b$ contains only trailing spaces
+			'
+	END SELECT
+	RETURN 0		' a$ == b$
+
 END FUNCTION
 '
 ' #############################
@@ -1369,272 +1665,6 @@ FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
 
 	iNode = iThis
 	RETURN $$TRUE ' success
-END FUNCTION
-'
-' === STRING class ===
-'
-' Deletes a STRING item accessed by its id
-' id = id of the item to delete
-' returns $$TRUE on success or $$FALSE on fail
-'
-' Usage:
-'bOK = STRING_Delete (id)
-'IFF bOK THEN PRINT "STRING_Delete: Can't delete STRING item from STRING pool by its id = "; id
-'
-FUNCTION STRING_Delete (id)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
-
-	bOK = $$FALSE
-	slot = id - 1
-	IF (slot >= 0 && slot <= UBOUND (STRING_poolUM[])) THEN
-		IF STRING_poolUM[slot] THEN
-			' empty the slot
-			STRING_pool$[slot] = ""
-			STRING_poolUM[slot] = $$FALSE
-			bOK = $$TRUE
-		ENDIF
-	ENDIF
-	RETURN bOK
-END FUNCTION
-'
-' Finds a STRING item using its value
-' match$ = the value to search for
-' returns id on success or 0 on fail
-'
-' Usage:
-'' find exact match of match$
-'idFound = STRING_Find (match$)
-'IFZ idFound THEN ' Can't find STRING item
-'
-FUNCTION STRING_Find (match$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
-	SHARED STRING_idMax
-
-	IFZ STRING_poolUM[] THEN STRING_Init ()
-
-	idFound = 0
-	match$ = TRIM$ (match$)
-	LEN_match = LEN (match$)
-	SELECT CASE LEN_match
-		CASE 0
-		CASE ELSE
-			FOR slot = UBOUND (STRING_poolUM[]) TO 0 STEP -1
-				IFF STRING_poolUM[slot] THEN DO NEXT ' skip empty spots
-				IFZ STRING_pool$[slot]  THEN DO NEXT ' skip empty spots
-				'
-				st$ = TRIM$ (STRING_pool$[slot])
-				IF LEN (st$) = LEN_match THEN
-					IF st$ = match$ THEN
-						' found an exact match
-						idFound = slot + 1
-						EXIT FOR
-					ENDIF
-				ENDIF
-			NEXT slot
-			'
-	END SELECT
-	RETURN idFound
-END FUNCTION
-'
-' Finds case insensitive a STRING item using its value
-' match$ = the value to search for
-' returns id on success or 0 on fail
-'
-' Usage:
-'' find match$ (case insensitive)
-'idFound = STRING_FindIns (match$)
-'IFZ idFound THEN ' Can't find (case insensitive) STRING item
-'
-FUNCTION STRING_FindIns (match$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
-	SHARED STRING_idMax
-
-	IFZ STRING_poolUM[] THEN STRING_Init ()
-
-	idFound = 0
-	match_lc$ = LCASE$ (TRIM$ (match$))
-
-	LEN_match_lc = LEN (match_lc$)
-	SELECT CASE LEN_match_lc
-		CASE 0
-		CASE ELSE
-			IFZ STRING_poolUM[] THEN EXIT SELECT
-			'
-			FOR slot = UBOUND (STRING_poolUM[]) TO 0 STEP -1
-				IFF STRING_poolUM[slot] THEN DO NEXT ' skip empty spots
-				IFZ STRING_pool$[slot]  THEN DO NEXT ' skip empty spots
-				'
-				low_case$ = LCASE$ (TRIM$ (STRING_pool$[slot]))
-				IF LEN (low_case$) = LEN_match_lc THEN
-					IF low_case$ = match_lc$ THEN
-						' found a match case insensitive
-						idFound = slot + 1
-						EXIT FOR
-					ENDIF
-				ENDIF
-			NEXT slot
-			'
-	END SELECT
-	RETURN idFound
-END FUNCTION
-'
-' Gets data of a STRING item accessed by its id
-' id = id of item
-' STRING_item$ = returned data
-' returns $$TRUE on success or $$FALSE on fail
-'
-' Usage:
-'bOK = STRING_Get (id, @STRING_item$)
-'IFF bOK THEN PRINT "STRING_Get: Can't get STRING item from STRING pool by its id = "; id
-'
-FUNCTION STRING_Get (id, STRING_item$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
-
-	bOK = $$FALSE
-	STRING_item$ = ""
-	slot = id - 1
-	IF (slot >= 0 && slot <= UBOUND (STRING_poolUM[])) THEN
-		IF STRING_poolUM[slot] THEN
-			STRING_item$ = STRING_pool$[slot]
-			bOK = $$TRUE
-		ENDIF
-	ENDIF
-	RETURN bOK
-END FUNCTION
-'
-' Gets item count
-'
-FUNCTION STRING_Get_count ()
-	SHARED STRING_poolUM[]
-
-	count = 0
-	IF STRING_poolUM[] THEN
-		FOR slot = UBOUND (STRING_poolUM[]) TO 0 STEP -1
-			IF STRING_poolUM[slot] THEN INC count
-		NEXT slot
-	ENDIF
-	RETURN count
-END FUNCTION
-'
-' Gets STRING item id max
-'
-FUNCTION STRING_Get_idMax ()
-	SHARED STRING_poolUM[]
-
-	STRING_idMax = 0
-	IF STRING_poolUM[] THEN
-		FOR slot = UBOUND (STRING_poolUM[]) TO 0 STEP -1
-			IF STRING_poolUM[slot] THEN
-				STRING_idMax = slot + 1
-				EXIT FOR
-			ENDIF
-		NEXT slot
-	ENDIF
-	RETURN STRING_idMax
-END FUNCTION
-'
-' Gets STRING item id min
-'
-FUNCTION STRING_Get_idMin ()
-	SHARED STRING_poolUM[]
-
-	IF STRING_poolUM[] THEN
-		upper_slot = UBOUND (STRING_poolUM[])
-		FOR slot = 0 TO upper_slot
-			IF STRING_poolUM[slot] THEN
-				STRING_idMin = slot + 1
-				EXIT FOR
-			ENDIF
-		NEXT slot
-	ENDIF
-	RETURN STRING_idMin
-END FUNCTION
-'
-' Initializes the class
-'
-FUNCTION STRING_Init ()
-	SHARED STRING_pool$[] ' an array of items
-	SHARED STRING_poolUM[] ' usage map so we can see which STRING_pool$[] elements are in use
-
-	IFZ STRING_pool$[] THEN
-		upper_slot = 7
-		DIM STRING_pool$[upper_slot]
-		DIM STRING_poolUM[upper_slot]
-	ELSE
-		' reset an existing STRING_pool$[]
-		FOR slot = UBOUND (STRING_poolUM[]) TO 0 STEP -1
-			' empty the slot
-			STRING_pool$[slot] = ""
-			STRING_poolUM[slot] = $$FALSE
-		NEXT slot
-	ENDIF
-END FUNCTION
-'
-' Adds a STRING item to STRING pool
-' returns id on success or 0 on fail
-'
-' Usage:
-'id_new = STRING_New (STRING_item$)
-'IFZ id_new THEN PRINT "STRING_New: Can't add item = "; STRING_item$; " to STRING pool"
-'
-FUNCTION STRING_New (STRING_item$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
-
-	IFZ STRING_poolUM[] THEN STRING_Init ()
-
-	slot_new = -1
-
-	upper_slot = UBOUND (STRING_poolUM[])
-	FOR slot = 0 TO upper_slot
-		IFF STRING_poolUM[slot] THEN
-			' use/reuse this empty slot
-			slot_new = slot
-			EXIT FOR
-		ENDIF
-	NEXT slot
-
-	IF slot_new = -1 THEN
-		' empty slot_new not found => expand STRING_pool$[]
-		upp = ((upper_slot + 1) * 2) - 1
-		REDIM STRING_pool$[upp]
-		REDIM STRING_poolUM[upp]
-		slot_new = upper_slot + 1
-	ENDIF
-
-	IF slot_new >= 0 THEN
-		STRING_pool$[slot_new] = STRING_item$
-		STRING_poolUM[slot_new] = $$TRUE
-	ENDIF
-	RETURN (slot_new + 1)
-END FUNCTION
-'
-' Updates the data of a STRING item accessed by its id
-' id = id of item
-' STRING_item$ = new data
-' returns $$TRUE on success or $$FALSE on fail
-'
-' Usage:
-'bOK = STRING_Update (id, STRING_item$)
-'IFF bOK THEN PRINT "STRING_Update: Can't update STRING item in STRING pool by its id = "; id
-'
-FUNCTION STRING_Update (id, STRING_item$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
-
-	bOK = $$FALSE
-	slot = id - 1
-	IF (slot >= 0 && slot <= UBOUND (STRING_poolUM[])) THEN
-		IF STRING_poolUM[slot] THEN
-			STRING_pool$[slot] = STRING_item$
-			bOK = $$TRUE
-		ENDIF
-	ENDIF
-	RETURN bOK
 END FUNCTION
 
 DefineAccess(LINKEDNODE)
