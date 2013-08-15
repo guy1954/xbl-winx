@@ -1,5 +1,5 @@
 PROGRAM	"WinX"
-VERSION "0.6.0.15"
+VERSION "0.6.0.16"
 '
 ' WinX - *The* GUI library for XBlite
 ' (c) Callum Lowcay 2007-2008
@@ -41,7 +41,7 @@ VERSION "0.6.0.15"
 ' - WinXTreeView_RemoveCheckBox: remove the check box
 ' - WinXTreeView_GetRootItem   : get the handle of the tree view root
 ' - WinXTreeView_FindItemLabel : find an exact string in tree labels
-' - WinXTreeView_DeleteAllItems: clear the tree view
+' - WinXTreeView_Clear         : clear out the contents of the tree view
 ' - WinXTreeView_ExpandItem    : expand a tree view item (GL-26jan09)
 ' - WinXTreeView_CollapseItem  : collapse a tree view item
 '
@@ -82,12 +82,14 @@ VERSION "0.6.0.15"
 ' 0.6.0.15-GL-19jul12-full support for tree view dragNdrop and label editing.
 '          GL-19jul12-added function WinXDisplayHelpFile (helpFile$): display the contents of helpFile$
 '          GL-23jul12-coded callback for .onDrag and .onLabelEdit (see demo WinX_0_6_0_15_samples\tree view\tree view.x)
-'          GL-11sep12-WinXListBox_RemoveAllItems : remove all items from a list box
-'          GL-11sep12-WinXComboBox_RemoveAllItems:    "    "    "   from an extended combo box
+'          GL-11sep12-WinXListBox_Clear : clear out the contents of the list box
+'          GL-11sep12-WinXComboBox_Clear:    "    "    "     "   "  extended combo box
 '          GL-17feb13-code tightening
 '          GL-30may13-re-coded accessors.m4.
 '          GL-03jul13-ensured a fully qualified path is passed to ShellExecuteA.
 '          GL-04jul13-(binding.useDialogInterface == $$TRUE) now enables Esc only on a dialog.
+' 0.6.0.16-GL-13aug13-Added similar selection functions for list box, list view and tree view
+'                     to share code between list controls.
 '
 ' Win32API DLL headers
 '
@@ -466,10 +468,11 @@ DECLARE FUNCTION WinXClip_PutString (Stri$)
 '
 ' Combo box
 DECLARE FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
+DECLARE FUNCTION WinXComboBox_Clear (hCombo) ' clear out the contents of the combo box
+DECLARE FUNCTION WinXComboBox_DeleteItem (hCombo, index)
 DECLARE FUNCTION WinXComboBox_GetEditText$ (hCombo)
 DECLARE FUNCTION WinXComboBox_GetItem$ (hCombo, index)
 DECLARE FUNCTION WinXComboBox_GetSelection (hCombo)
-DECLARE FUNCTION WinXComboBox_RemoveAllItems (hCombo)
 DECLARE FUNCTION WinXComboBox_RemoveItem (hCombo, index)
 DECLARE FUNCTION WinXComboBox_SetEditText (hCombo, text$)
 DECLARE FUNCTION WinXComboBox_SetSelection (hCombo, index)
@@ -588,22 +591,26 @@ DECLARE FUNCTION WinXSetCursor (hWnd, hCursor)
 '
 ' List box
 DECLARE FUNCTION WinXListBox_AddItem (hListBox, index, item$)
+DECLARE FUNCTION WinXListBox_Clear (hListBox) ' clear out the contents of the list box
+DECLARE FUNCTION WinXListBox_DeleteAllSelections (hListBox, @r_index[]) ' delete all selected items in a list box
+DECLARE FUNCTION WinXListBox_DeleteItem (hListBox, index)
 DECLARE FUNCTION WinXListBox_EnableDragging (hListBox)
 DECLARE FUNCTION WinXListBox_Find (hListBox, match$) ' find exact match
 DECLARE FUNCTION WinXListBox_GetIndex (hListBox, searchFor$)
 DECLARE FUNCTION WinXListBox_GetNextIndex (hListBox, searchFor$, indexFrom)
 DECLARE FUNCTION WinXListBox_GetItem$ (hListBox, index)
-DECLARE FUNCTION WinXListBox_GetSelection (hListBox, @index[])
-DECLARE FUNCTION WinXListBox_RemoveAllItems (hListBox)
+DECLARE FUNCTION WinXListBox_GetSelection (hListBox)
+DECLARE FUNCTION WinXListBox_GetAllSelections (hListBox, @index[])
 DECLARE FUNCTION WinXListBox_RemoveItem (hListBox, index)
-DECLARE FUNCTION WinXListBox_SetCaret (hListBox, item)
-DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index[])
+DECLARE FUNCTION WinXListBox_SetCaret (hListBox, index)
+DECLARE FUNCTION WinXListBox_SetSelection (hListBox, index)
+DECLARE FUNCTION WinXListBox_SetAllSelections (hListBox, index[])
 '
 ' List view
 DECLARE FUNCTION WinXListView_AddCheckBoxes (hLV) ' add the check boxes to a list view
 DECLARE FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, label$, iSubItem)
 DECLARE FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
-DECLARE FUNCTION WinXListView_DeleteAllItems (hLV) ' clear the list view
+DECLARE FUNCTION WinXListView_Clear (hLV) ' clear out the contents of the list view
 DECLARE FUNCTION WinXListView_DeleteColumn (hLV, iColumn)
 DECLARE FUNCTION WinXListView_DeleteItem (hLV, iItem)
 DECLARE FUNCTION WinXListView_FreezeOnSelect (hLV) ' disable $$LVN_ITEMCHANGED
@@ -611,7 +618,8 @@ DECLARE FUNCTION WinXListView_GetCheckState (hLV, iItem) ' determine whether an 
 DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
 DECLARE FUNCTION WinXListView_GetItemFromPoint (hLV, x, y)
 DECLARE FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @text$[])
-DECLARE FUNCTION WinXListView_GetSelection (hLV, @iItems[])
+DECLARE FUNCTION WinXListView_GetAllSelections (hLV, @iItems[])
+DECLARE FUNCTION WinXListView_GetSelection (hLV)
 DECLARE FUNCTION WinXListView_RemoveCheckBox (hLV, iItem) ' removes the check box of a list view item
 DECLARE FUNCTION WinXListView_SetAllChecked (hLV)
 DECLARE FUNCTION WinXListView_SetAllSelected (hLV)
@@ -620,7 +628,8 @@ DECLARE FUNCTION WinXListView_SetAllUnselected (hLV)
 DECLARE FUNCTION WinXListView_SetCheckState (hLV, iItem, checked) ' set the item's check state of a list view with check boxes
 DECLARE FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem) ' set the focus on item
 DECLARE FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, newText$)
-DECLARE FUNCTION WinXListView_SetSelection (hLV, iItems[]) ' multi-select these items
+DECLARE FUNCTION WinXListView_SetAllSelections (hLV, iItems[]) ' multi-select these items
+DECLARE FUNCTION WinXListView_SetSelection (hLV, iItem) ' select this item
 DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 DECLARE FUNCTION WinXListView_SetView (hLV, view)
 DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
@@ -742,7 +751,7 @@ DECLARE FUNCTION WinXTreeView_AddCheckBoxes (hTV) ' add the check boxes to a tre
 DECLARE FUNCTION WinXTreeView_AddItem (hTV, hParent, hInsertAfter, iImage, iImageSelect, item$)
 DECLARE FUNCTION WinXTreeView_CollapseItem (hTV, hItem) ' collapse the tree view item
 DECLARE FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
-DECLARE FUNCTION WinXTreeView_DeleteAllItems (hTV) ' clear the tree view
+DECLARE FUNCTION WinXTreeView_Clear (hTV) ' clear out the contents of the tree view
 DECLARE FUNCTION WinXTreeView_DeleteItem (hTV, hItem)
 DECLARE FUNCTION WinXTreeView_ExpandItem (hTV, hItem) ' expand the tree view item
 DECLARE FUNCTION WinXTreeView_FindItem (hTV, hItem, match$) ' Search for a label in tree view nodes
@@ -2262,6 +2271,56 @@ FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
 	RETURN indexAdd
 END FUNCTION
 '
+' ################################
+' #####  WinXComboBox_Clear  #####
+' ################################
+' Clears out the extended combo box's contents
+' and resets the content of its edit control.
+' hCombo = the handle to the extended combo box
+' returns $$TRUE on success or $$FALSE on fail
+' bOK = WinXComboBox_Clear (hCombo)
+'
+FUNCTION WinXComboBox_Clear (hCombo)
+	SetLastError (0)
+	IFZ hCombo THEN RETURN
+	SendMessageA (hCombo, $$CB_RESETCONTENT, 0, 0)
+	RETURN $$TRUE
+END FUNCTION
+'
+' #####################################
+' #####  WinXComboBox_DeleteItem  #####
+' #####################################
+' Deletes an item from an extended combo box
+' hCombo = the handle to the extended combo box
+' index = the zero-based index of the item to delete
+' returns $$TRUE on success, or $$FALSE on fail
+'
+' Usage:
+'ret = WinXComboBox_DeleteItem (hCombo, index)
+'IF ret = $$LB_ERR THEN
+'	msg$ = "WinXComboBox_DeleteItem: Can't delete item at index " + STRING$ (index)
+'	XstAlert (msg$)
+'ENDIF
+'
+FUNCTION WinXComboBox_DeleteItem (hCombo, index)
+
+	bOK = $$FALSE
+	SetLastError (0)
+	SELECT CASE hCombo
+		CASE 0
+		CASE ELSE
+			IF index < 0 THEN EXIT SELECT
+			count = SendMessageA (hCombo, $$CB_GETCOUNT, 0, 0)
+			IF index >= count THEN EXIT SELECT
+			'
+			SendMessageA (hCombo, $$CBEM_DELETEITEM, index, 0)
+			bOK = $$TRUE
+			'
+	END SELECT
+	RETURN bOK
+
+END FUNCTION
+'
 ' ######################################
 ' #####  WinXComboBox_GetEditText  #####
 ' ######################################
@@ -2324,23 +2383,10 @@ FUNCTION WinXComboBox_GetSelection (hCombo)
 	RETURN SendMessageA (hCombo, $$CB_GETCURSEL, 0, 0)
 END FUNCTION
 '
-' #########################################
-' #####  WinXComboBox_RemoveAllItems  #####
-' #########################################
-' removes all items from a extended combo box
-' hCombo = the handle to the extended combo box
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXComboBox_RemoveAllItems (hCombo)
-	SetLastError (0)
-	IFZ hCombo THEN RETURN
-	SendMessageA (hCombo, $$CB_RESETCONTENT, 0, 0)
-	RETURN $$TRUE
-END FUNCTION
-'
 ' #####################################
 ' #####  WinXComboBox_RemoveItem  #####
 ' #####################################
-' removes an item from a extended combo box
+' removes an item from an extended combo box
 ' hCombo = the handle to the extended combo box
 ' index = the zero-based index of the item to delete
 ' returns the number of items remaining in the list, or -1 on fail
@@ -2371,7 +2417,7 @@ END FUNCTION
 ' #######################################
 ' #####  WinXComboBox_SetSelection  #####
 ' #######################################
-' Selects an item in a extended combo box
+' Selects an item in an extended combo box
 ' hCombo = the handle to the extended combo box
 ' index = the index of the item to select.  -1 to unselect everything
 ' returns $$TRUE on success or $$FALSE on fail
@@ -4084,10 +4130,12 @@ FUNCTION LOGFONT WinXDraw_MakeLogFont (STRING font, height, style)
 
 	r_logFont.height = height
 	r_logFont.width = 0
-	IF style & $$FONT_BOLD THEN r_logFont.weight = $$FW_BOLD ELSE r_logFont.weight = $$FW_NORMAL
-	IF style & $$FONT_ITALIC THEN r_logFont.italic = 1 ELSE r_logFont.italic = 0
-	IF style & $$FONT_UNDERLINE THEN r_logFont.underline = 1 ELSE r_logFont.underline = 0
-	IF style & $$FONT_STRIKEOUT THEN r_logFont.strikeOut = 1 ELSE r_logFont.strikeOut = 0
+
+	IF style & $$FONT_BOLD      THEN r_logFont.weight = $$FW_BOLD ELSE r_logFont.weight = $$FW_NORMAL
+	IF style & $$FONT_ITALIC    THEN r_logFont.italic = 1         ELSE r_logFont.italic = 0
+	IF style & $$FONT_UNDERLINE THEN r_logFont.underline = 1      ELSE r_logFont.underline = 0
+	IF style & $$FONT_STRIKEOUT THEN r_logFont.strikeOut = 1      ELSE r_logFont.strikeOut = 0
+
 	r_logFont.charSet = $$DEFAULT_CHARSET
 	r_logFont.outPrecision = $$OUT_DEFAULT_PRECIS
 	r_logFont.clipPrecision = $$CLIP_DEFAULT_PRECIS
@@ -5005,6 +5053,106 @@ FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 
 END FUNCTION
 '
+' ###############################
+' #####  WinXListBox_Clear  #####
+' ###############################
+' Clears out the list box's contents.
+' hListBox = the handle to the list box
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListBox_Clear (hListBox)
+	SetLastError (0)
+	IFZ hListBox THEN RETURN
+	SendMessageA (hListBox, $$LB_RESETCONTENT, 0, 0)
+	RETURN $$TRUE
+END FUNCTION
+'
+'
+' #############################################
+' #####  WinXListBox_DeleteAllSelections  #####
+' #############################################
+' Deletes all selected items in a list box
+' hListBox : the handle to the list box
+' r_index[]: -1 if deleted, the index of all items NOT deleted
+' returns $$TRUE on success, or $$FALSE on fail
+'
+' Usage:
+'bOK = WinXListBox_DeleteAllSelections (hListBox, @index[])
+'IFF bOK THEN
+' FOR i = 0 TO UBOUND (index[])
+'		IF index[i] >= 0 THEN
+'			msg$ = "WinXListBox_DeleteAllSelections: Can't delete item at index " + STRING$ (index[i])
+'			XstAlert (msg$)
+'		ENDIF
+' NEXT i
+'ENDIF
+'
+FUNCTION WinXListBox_DeleteAllSelections (hListBox, r_index[])
+
+	DIM r_index[]
+	SetLastError (0)
+
+	bOK = $$TRUE ' assume all good!
+	SELECT CASE hListBox
+		CASE 0
+		CASE ELSE
+			count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
+			IF count < 1 THEN EXIT SELECT
+			'
+			cSel = WinXListBox_GetAllSelections (hListBox, @r_index[])
+			IF cSel < 1 THEN EXIT SELECT
+			'
+			' The deletions are performed from last item to first
+			' in order to preserve the index's order.
+			FOR i = UBOUND (r_index[]) TO 0 STEP -1
+				countNew = SendMessageA (hListBox, $$LB_DELETESTRING, r_index[i], 0)
+				DEC count
+				IF countNew = count THEN
+					r_index[i] = -1 ' deleted
+				ELSE
+					bOK = $$FALSE ' fail
+					EXIT FOR
+				ENDIF
+			NEXT i
+			'
+	END SELECT
+	RETURN bOK
+
+END FUNCTION
+'
+' ####################################
+' #####  WinXListBox_DeleteItem  #####
+' ####################################
+' Deletes an item from a list box
+' hListBox = the handle to the list box
+' index = the zero-based index of the item to delete
+' returns $$TRUE on success, or $$FALSE on fail
+'
+' Usage:
+'bOK = WinXListBox_DeleteItem (hListBox, index)
+'IFF bOK THEN
+'	msg$ = "WinXListBox_DeleteItem: Can't delete item at index " + STRING$ (index)
+'	XstAlert (msg$)
+'ENDIF
+'
+FUNCTION WinXListBox_DeleteItem (hListBox, index)
+
+	bOK = $$FALSE
+	SetLastError (0)
+	SELECT CASE hListBox
+		CASE 0
+		CASE ELSE
+			IF index < 0 THEN EXIT SELECT
+			count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
+			IF index >= count THEN EXIT SELECT
+			'
+			SendMessageA (hListBox, $$LB_DELETESTRING, index, 0)
+			bOK = $$TRUE
+			'
+	END SELECT
+	RETURN bOK
+
+END FUNCTION
+'
 ' ########################################
 ' #####  WinXListBox_EnableDragging  #####
 ' ########################################
@@ -5119,14 +5267,33 @@ END FUNCTION
 ' ######################################
 ' #####  WinXListBox_GetSelection  #####
 ' ######################################
+'
+'index = WinXListBox_GetSelection (hListBox)
+'IF index < 0 THEN XstAlert("No item is selected")
+'
+FUNCTION WinXListBox_GetSelection (hListBox)
+
+	r_index = -1
+	IF hListBox THEN
+		cSel = WinXListBox_GetAllSelections (hListBox, @index[])
+		IF cSel >= 1 THEN r_index = index[0]
+	ENDIF
+	RETURN r_index
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXListBox_GetAllSelections  #####
+' ##########################################
 ' Gets the selected item(s) in a list box
 ' hListBox = the list box to get the items from
 ' r_idxSel[] = the array to place the indexes of selected items into
 ' returns the number of selected items, or 0 if fail
 ' Usage:
-'cSel = WinXListBox_GetSelection (hListBox, @index[])
+'cSel = WinXListBox_GetAllSelections (hListBox, @index[])
+'IFZ cSel THEN XstAlert ("No item selected")
 '
-FUNCTION WinXListBox_GetSelection (hListBox, r_idxSel[])
+FUNCTION WinXListBox_GetAllSelections (hListBox, r_idxSel[])
 
 	SetLastError (0)
 	r_cSel = 0
@@ -5137,7 +5304,7 @@ FUNCTION WinXListBox_GetSelection (hListBox, r_idxSel[])
 			SELECT CASE WinXMask_found (style, $$LBS_EXTENDEDSEL)
 				CASE $$TRUE		' multi-selections
 					r_cSel = SendMessageA (hListBox, $$LB_GETSELCOUNT, 0, 0)
-					IF r_cSel THEN
+					IF r_cSel >= 1 THEN
 						DIM r_idxSel[r_cSel - 1]
 						SendMessageA (hListBox, $$LB_GETSELITEMS, r_cSel, &r_idxSel[0])
 					ENDIF
@@ -5160,45 +5327,28 @@ FUNCTION WinXListBox_GetSelection (hListBox, r_idxSel[])
 
 END FUNCTION
 '
-' ########################################
-' #####  WinXListBox_RemoveAllItems  #####
-' ########################################
-' removes all items from a list box
-' hListBox = the handle to the list box
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXListBox_RemoveAllItems (hListBox)
-	SetLastError (0)
-	IFZ hListBox THEN RETURN
-	SendMessageA (hListBox, $$LB_RESETCONTENT, 0, 0)
-	RETURN $$TRUE
-END FUNCTION
-'
 ' ####################################
 ' #####  WinXListBox_RemoveItem  #####
 ' ####################################
-' removes an item from a list box
+' Removes an item from a list box
 ' hListBox = the list box to remove from
 ' index = the index of the item to remove, -1 to remove the last item
 ' returns the number of strings remaining in the list or -1 if index is out of range
 '
 ' Usage:
-'ret = WinXListBox_RemoveItem (hListBox, index[0])
-'IF ret = $$LB_ERR THEN
-'	msg$ = "WinXListBox_RemoveItem: Can't delete item at index" + STR$ (index[0])
+'ret = WinXListBox_RemoveItem (hListBox, index)
+'IF ret < 0 THEN
+'	msg$ = "WinXListBox_RemoveItem: Can't remove item at index " + STRING$ (index)
 '	XstAlert (msg$)
 'ENDIF
 '
 FUNCTION WinXListBox_RemoveItem (hListBox, index)
+
+	r_countNew = $$LB_ERR
 	SetLastError (0)
-	IFZ hListBox THEN RETURN $$LB_ERR		' fail
-
-	' get count of items in list box
-	count = SendMessageA (hListBox, $$LB_GETCOUNT, 0, 0)
-	IFZ count THEN RETURN $$LB_ERR		' empty list box
-
-	IF index < 0 THEN index = count - 1
-	r_countNew = SendMessageA (hListBox, $$LB_DELETESTRING, index, 0)
+	IF hListBox THEN r_countNew = SendMessageA (hListBox, $$LB_DELETESTRING, index, 0)
 	RETURN r_countNew
+
 END FUNCTION
 '
 ' ##################################
@@ -5217,6 +5367,23 @@ END FUNCTION
 ' ######################################
 ' #####  WinXListBox_SetSelection  #####
 ' ######################################
+'
+'
+'
+FUNCTION WinXListBox_SetSelection (hListBox, index)
+	bOK = $$FALSE
+	IF hListBox THEN
+		DIM index[0]
+		index[0] = index
+		bOK = WinXListBox_SetAllSelections (hListBox, @index[])
+	ENDIF
+	RETURN bOK
+
+END FUNCTION
+'
+' ##########################################
+' #####  WinXListBox_SetAllSelections  #####
+' ##########################################
 ' Sets the selection on a list box
 ' hListBox = the handle to the list box to set the selection for
 ' index[] = an array of item indexes to select
@@ -5225,7 +5392,7 @@ END FUNCTION
 ' notes:
 ' - index[i] > count - 1 (last): no selection
 ' - idx < 0: idx = -1 (unselect for mono-selection)
-FUNCTION WinXListBox_SetSelection (hListBox, index[])
+FUNCTION WinXListBox_SetAllSelections (hListBox, index[])
 
 	SetLastError (0)
 	bOK = $$FALSE
@@ -5379,12 +5546,12 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 
 END FUNCTION
 '
-' #########################################
-' #####  WinXListView_DeleteAllItems  #####
-' #########################################
-' Deletes all item from a list view control
+' ################################
+' #####  WinXListView_Clear  #####
+' ################################
+' Clears out the list view's contents
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXListView_DeleteAllItems (hLV)
+FUNCTION WinXListView_Clear (hLV)
 
 	SetLastError (0)
 	bOK = $$FALSE
@@ -5564,13 +5731,52 @@ END FUNCTION
 ' #######################################
 ' #####  WinXListView_GetSelection  #####
 ' #######################################
+' Gets the selected item in a list view
+' returns the index of the selected item, or -1 if fail
+' Usage:
+'itemSel = WinXListView_GetSelection (hLV)
+'
+FUNCTION WinXListView_GetSelection (hLV)
+
+	SetLastError (0)
+	r_itemSel = -1
+	SELECT CASE hLV
+		CASE 0
+		CASE ELSE
+			' get count of items in list view
+			count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+			IFZ count THEN EXIT SELECT
+			'
+			cSel = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
+			IF cSel >= 1 THEN
+				' iterate over all the items to locate the selected one
+				upp = count - 1
+				FOR i = 0 TO upp
+					ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED)
+					IF ret THEN
+						r_itemSel = i
+						EXIT FOR
+					ENDIF
+					'
+				NEXT i
+			ENDIF
+			'
+	END SELECT
+
+	RETURN r_itemSel
+
+END FUNCTION
+'
+' ###########################################
+' #####  WinXListView_GetAllSelections  #####
+' ###########################################
 ' Gets the selected item(s) in a list view
 ' r_iItems[] = the array in which to store the indexes of selected items
 ' returns the number of selected items, or 0 if fail
 ' Usage:
-'cSel = WinXListView_GetSelection (hLV, @iItems[])
+'cSel = WinXListView_GetAllSelections (hLV, @iItems[])
 '
-FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
+FUNCTION WinXListView_GetAllSelections (hLV, r_iItems[])
 
 	SetLastError (0)
 	r_cSel = 0
@@ -5582,22 +5788,22 @@ FUNCTION WinXListView_GetSelection (hLV, r_iItems[])
 			IFZ count THEN EXIT SELECT
 			'
 			r_cSel = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-			IF r_cSel THEN
+			IF r_cSel >= 1 THEN
 				upper_slot = r_cSel - 1
 				DIM r_iItems[upper_slot]
 				'
 				' now iterate over all the items to locate the selected ones
-				slot_add = -1
-				uppItem = count - 1
-				FOR iItem = 0 TO uppItem
-					ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, iItem, $$LVIS_SELECTED)
+				slotAdd = -1
+				upp = count - 1
+				FOR i = 0 TO upp
+					ret = SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED)
 					IFZ ret THEN DO NEXT
 					'
-					INC slot_add
-					IF slot_add <= upper_slot THEN r_iItems[slot_add] = iItem
-					IF slot_add >= upper_slot THEN EXIT FOR		' GL-25jul12-stop iteration
+					INC slotAdd
+					IF slotAdd <= upper_slot THEN r_iItems[slotAdd] = i
+					IF slotAdd >= upper_slot THEN EXIT FOR		' GL-25jul12-retrieved all selected
 					'
-				NEXT iItem
+				NEXT i
 			ENDIF
 			'
 	END SELECT
@@ -5876,12 +6082,12 @@ FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
 	IF SendMessageA (hLV, $$LVM_SETITEMTEXT, iItem, &lvi) THEN RETURN $$TRUE		' success
 END FUNCTION
 '
-' #######################################
-' #####  WinXListView_SetSelection  #####
-' #######################################
+' ###########################################
+' #####  WinXListView_SetAllSelections  #####
+' ###########################################
 ' Sets the selection in a list view control
 ' Returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXListView_SetSelection (hLV, iItems[])
+FUNCTION WinXListView_SetAllSelections (hLV, iItems[])
 	LVITEM lvi
 
 	SetLastError (0)
@@ -5922,6 +6128,36 @@ FUNCTION WinXListView_SetSelection (hLV, iItems[])
 					NEXT i
 					'
 			END SELECT
+			SetFocus (hLV)
+			bOK = $$TRUE
+			'
+	END SELECT
+	RETURN bOK
+
+END FUNCTION
+'
+' #######################################
+' #####  WinXListView_SetSelection  #####
+' #######################################
+' Sets the selection in a list view control
+' Returns $$TRUE on success or $$FALSE on fail
+FUNCTION WinXListView_SetSelection (hLV, iItem)
+	LVITEM lvi
+
+	SetLastError (0)
+	bOK = $$FALSE
+	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+	SELECT CASE count
+		CASE 0
+		CASE ELSE
+			' mono-selection
+			IF iItem >= count THEN iItem = count - 1
+			'
+			IF iItem < 0 THEN iItem = -1		' unselect
+			lvi.state = $$LVIS_SELECTED
+			lvi.stateMask = $$LVIS_SELECTED
+			SendMessageA (hLV, $$LVM_SETITEMSTATE, iItem, &lvi)
+			'
 			SetFocus (hLV)
 			bOK = $$TRUE
 			'
@@ -6080,7 +6316,7 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 			ENDIF
 			'
 			DIM r_mruList$[$$UPP_MRU]
-			iAdd = -1
+			slotAdd = -1
 			'
 			' trim path pathNew$ and check it can be found
 			pathNew$ = WinXPath_Trim$ (pathNew$)
@@ -6095,7 +6331,7 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 				IFF bErr THEN
 					' pathNew$ exists =>
 					' add actual file pathNew$ to r_mruList$[0]
-					iAdd = 0
+					slotAdd = 0
 					r_mruList$[0] = pathNew$
 				ENDIF
 			ENDIF
@@ -6119,11 +6355,11 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 				'
 				' don't add find$ if already in r_mruList$[]
 				bFound = $$FALSE
-				IF iAdd >= 0 THEN
+				IF slotAdd >= 0 THEN
 					find_lc$ = LCASE$ (find$)
 					LEN_find = LEN (find_lc$)
 					'
-					FOR z = 0 TO iAdd
+					FOR z = 0 TO slotAdd
 						IF LEN (r_mruList$[z]) <> LEN_find THEN DO NEXT
 						IF LCASE$ (r_mruList$[z]) = find_lc$ THEN
 							bFound = $$TRUE
@@ -6133,16 +6369,16 @@ FUNCTION WinXMRU_LoadListFromIni (iniPath$, pathNew$, @r_mruList$[])
 				ENDIF
 				IF bFound THEN DO NEXT		' already in r_mruList$[] => skip it!
 				'
-				IF iAdd >= $$UPP_MRU THEN EXIT FOR		' r_mruList$[] is full
+				IF slotAdd >= $$UPP_MRU THEN EXIT FOR		' r_mruList$[] is full
 				'
-				INC iAdd
-				r_mruList$[iAdd] = find$
+				INC slotAdd
+				r_mruList$[slotAdd] = find$
 			NEXT id
 			'
-			IF iAdd < 0 THEN
+			IF slotAdd < 0 THEN
 				DIM r_mruList$[]
 			ELSE
-				IF UBOUND (r_mruList$[]) <> iAdd THEN REDIM r_mruList$[iAdd]
+				IF UBOUND (r_mruList$[]) <> slotAdd THEN REDIM r_mruList$[slotAdd]
 			ENDIF
 			bOK = $$TRUE		' success
 			'
@@ -6446,7 +6682,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, italic, underline, strikeOut
 				CASE ELSE : oLogFont.weight = $$FW_NORMAL
 			END SELECT
 			'
-			IF italic THEN oLogFont.italic = 1 ELSE oLogFont.italic = 0
+			IF italic    THEN oLogFont.italic = 1    ELSE oLogFont.italic = 0
 			IF underline THEN oLogFont.underline = 1 ELSE oLogFont.underline = 0
 			IF strikeOut THEN oLogFont.strikeOut = 1 ELSE oLogFont.strikeOut = 0
 			'
@@ -6507,18 +6743,22 @@ END FUNCTION
 ' ############################
 ' #####  WinXNewToolbar  #####
 ' ############################
+'
 ' Generates a new toolbar
-' wButton = The width of a button image in pixels
-' hButton = the height of a button image in pixels
-' nButtons = the number of buttons images
-' hBmpButtons = the handle to a bitmap containing the button images
-' hBmpGray = the appearance of the buttons when disabled, 0 for default
-' hBmpHot = the appearance of the buttons when the mouse is over them, 0 for default
-' rgbTrans = the color to use as transparent
-' toolTips = $$TRUE to use tooltips, $$FALSE to disable them
-' customisable = $$TRUE if this toolbar can be customised.
+'
+' wButton     : The width of a button image in pixels
+' hButton     : the height of a button image in pixels
+' nButtons    : the number of buttons images
+' hBmpButtons : the handle to a bitmap containing the button images
+' hBmpGray    : the appearance of the buttons when disabled, 0 for default
+' hBmpHot     : the appearance of the buttons when the mouse is over them, 0 for default
+' rgbTrans    : the color to use as transparent
+' toolTips    : $$TRUE to use tooltips, $$FALSE to disable them
+' customisable: $$TRUE if this toolbar can be customised.
 ' !!THIS FEATURE IS NOT IMPLEMENTED YET, USE $$FALSE FOR THIS PARAMETER!!
+'
 ' returns the handle to the toolbar or 0 on fail
+'
 FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, rgbTrans, toolTips, customisable)
 	BITMAP bm
 
@@ -6528,14 +6768,22 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 	SELECT CASE hBmpButtons
 		CASE 0
 		CASE ELSE
+			' GL-some argument checking...
+			SELECT CASE ALL TRUE
+				CASE wButton < 16 : wButton = 16
+				CASE hButton < 16 : hButton = 16
+				CASE nButtons < 1 : nButtons = 1
+			END SELECT
+			'
 			' bmpWidth = wButton*nButtons
 			GetObjectA (hBmpButtons, SIZE (bm), &bm)		' get the bitmap's sizes
 			bmpWidth = bm.width		' save bitmap size for later use
 			'
 			' make image lists
-			hilMain = ImageList_Create (wButton, hButton, $$ILC_COLOR24 | $$ILC_MASK, nButtons, 0)
-			hilGray = ImageList_Create (wButton, hButton, $$ILC_COLOR24 | $$ILC_MASK, nButtons, 0)
-			hilHot = ImageList_Create (wButton, hButton, $$ILC_COLOR24 | $$ILC_MASK, nButtons, 0)
+			flags = $$ILC_COLOR24 | $$ILC_MASK
+			hilMain = ImageList_Create (wButton, hButton, flags, nButtons, 0)
+			hilGray = ImageList_Create (wButton, hButton, flags, nButtons, 0)
+			hilHot  = ImageList_Create (wButton, hButton, flags, nButtons, 0)
 			'
 			' make 2 memory DCs for image manipulations
 			hDC = GetDC (GetDesktopWindow ())
@@ -6572,7 +6820,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 				FOR y = 0 TO (hButton - 1)
 					FOR x = 0 TO (bmpWidth - 1)
 						col = GetPixel (hSource, x, y)
-						IF col = 0x00000000 THEN SetPixel (hMem, x, y, 0x00808080)
+						IFZ col THEN SetPixel (hMem, x, y, 0x00808080) ' bring some light to darkness
 					NEXT x
 				NEXT y
 			ENDIF
@@ -8297,8 +8545,8 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 			' GL-18mar12-add or remove $$ES_READONLY flag with:
 			' SendMessageA (handle, $$EM_SETREADONLY, On/off, 0)
 			state = -1
-			IF WinXMask_found (add, $$ES_READONLY) THEN state = 1		' read only
-			IF WinXMask_found (sub, $$ES_READONLY) THEN state = 0		' unprotected
+			IF WinXMask_found (add, $$ES_READONLY) THEN state = 1		' if $$ES_READONLY in add => read only
+			IF WinXMask_found (sub, $$ES_READONLY) THEN state = 0		' if $$ES_READONLY in sub => unprotected
 			'
 			SELECT CASE state
 				CASE 0, 1
@@ -8886,11 +9134,11 @@ END FUNCTION
 ' #####  WinXToolbar_AddToggleButton  #####
 ' #########################################
 ' Adds a toggle button to a toolbar
-' hToolbar = the handle to the toolbar
-' commandId = the command constant the button will generate
-' iImage = the zero-based index of the image for this button
-' tooltipText = the text for this button's tooltip
-' mutex = $$TRUE if this toggle is mutually exclusive, ie. only one from a group can be toggled at a time
+' hToolbar   : the handle to the toolbar
+' commandId  : the command constant the button will generate
+' iImage     : the zero-based index of the image for this button
+' tooltipText: the text for this button's tooltip
+' mutex      : $$TRUE if this toggle is mutually exclusive, ie. only one from a group can be toggled at a time
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, STRING tooltipText, mutex, optional, moveable)
 	TBBUTTON bt
@@ -8921,14 +9169,29 @@ END FUNCTION
 ' enable = $$TRUE to enable the button, $$FALSE to disable
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_EnableButton (hToolbar, idButton, enable)
+
 	SetLastError (0)
 	IFZ hToolbar THEN RETURN
 
 	' GL-13jan11-RETURN SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, enable)
-	IFZ enable THEN fEnable = 0 ELSE fEnable = 1		' enable
-	ret = SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, fEnable)
-	IFZ ret THEN RETURN
+
+	IF enable THEN fEnableNew = 1 ELSE fEnableNew = 0
+
+	' determine whether button idButton is enabled or disabled
+	fEnableOld = SendMessageA (hToolbar, $$TB_ISBUTTONENABLED, idButton, 0)
+	IF fEnableOld THEN fEnableOld = 1
+
+	IF fEnableNew <> fEnableOld THEN
+		' toggle the state
+		SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, fEnableNew)
+		'
+		' check if the state was really toggled
+		ret = SendMessageA (hToolbar, $$TB_ISBUTTONENABLED, idButton, 0)
+		IF ret <> fEnableNew THEN RETURN ' fail
+	ENDIF
+
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ######################################
@@ -9177,13 +9440,13 @@ FUNCTION WinXTreeView_CopyItem (hTV, hParentItem, hItemInsertAfter, hItem)
 	RETURN tvis.item.hItem
 END FUNCTION
 '
-' #########################################
-' #####  WinXTreeView_DeleteAllItems  #####
-' #########################################
-' Delete all items
+' ################################
+' #####  WinXTreeView_Clear  #####
+' ################################
+' Clears out the tree view's contents
 ' hTV = the handle to the tree view
 ' returns $$TRUE on success or $$FALSE
-FUNCTION WinXTreeView_DeleteAllItems (hTV)		' clear the tree view
+FUNCTION WinXTreeView_Clear (hTV)		' clear the tree view
 
 	SetLastError (0)
 	IFZ hTV THEN RETURN
