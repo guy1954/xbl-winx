@@ -1,9 +1,9 @@
 ===========
 ADT Library
 ===========
-Version 0.2
+Version 0.1
 (C) Callum Lowcay 2008.  Distributed under the terms of the GNU LGPL.
-    Guy Lonne     2011.  small changes in accessors.m4.
+    Guy Lonne 2011-2013. Small changes in accessors.m4.
 
 =======================
 Installing
