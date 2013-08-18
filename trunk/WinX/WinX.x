@@ -12,7 +12,7 @@ VERSION "0.6.0.16"
 ' ***** Versions *****
 ' Contributors:
 '     Callum Lowcay (original version 0.6.0.1)
-'     Guy "GL" Lonne (evolutions)
+'     Guy Lonne (evolutions)
 '
 ' 0.6.0.2-GL-10sep08-added hideReadOnly argument to WinXDialog_OpenFile$.
 '         GL-28oct09-REVERTED to show again the check box "Read Only"
@@ -2443,6 +2443,7 @@ FUNCTION WinXComboBox_SetSelection (hCombo, index)
 END FUNCTION
 
 ' Computes a (date & time) stamp "year_month_day_hour_minute_second"
+' stamp$ = WinXDate_GetCurrentTimeStamp$ ()
 ' eg. stamp$ = "2011_05_24_13_26_05"
 FUNCTION WinXDate_GetCurrentTimeStamp$ ()
 
@@ -3043,7 +3044,7 @@ END FUNCTION
 '	bOK = WinXDir_Create (dir$)
 '	IFF bOK THEN
 '		msg$ = "WinXDir_Create: Can't create missing directory " + dir$
-'		WinXDialog_Error (msg$, "Create Directory", 2)
+'		XstAlert (msg$)
 '	ENDIF
 'ENDIF
 '
@@ -5285,10 +5286,12 @@ END FUNCTION
 ' ##########################################
 ' #####  WinXListBox_GetAllSelections  #####
 ' ##########################################
+'
 ' Gets the selected item(s) in a list box
 ' hListBox = the list box to get the items from
 ' r_idxSel[] = the array to place the indexes of selected items into
 ' returns the number of selected items, or 0 if fail
+'
 ' Usage:
 'cSel = WinXListBox_GetAllSelections (hListBox, @index[])
 'IFZ cSel THEN XstAlert ("No item selected")
@@ -5368,7 +5371,16 @@ END FUNCTION
 ' #####  WinXListBox_SetSelection  #####
 ' ######################################
 '
+' Sets the selection on a list box
+' hListBox: the handle to the list box to set the selection for
+' index   : the item index to select, -1 to unselect
+' returns $$TRUE on success or $$FALSE on fail
 '
+' Usage:
+'bOK = WinXListBox_SetSelection (hListBox, index)
+'IFF bOK THEN XstAlert ("WinXListBox_SetSelection: Can't  select item")
+'
+'bOK = WinXListBox_SetSelection (hListBox, -1) ' unselect
 '
 FUNCTION WinXListBox_SetSelection (hListBox, index)
 	bOK = $$FALSE
@@ -5384,14 +5396,16 @@ END FUNCTION
 ' ##########################################
 ' #####  WinXListBox_SetAllSelections  #####
 ' ##########################################
+'
 ' Sets the selection on a list box
-' hListBox = the handle to the list box to set the selection for
-' index[] = an array of item indexes to select
+' hListBox: the handle to the list box to set the selection for
+' index[] : an array of item indexes to select
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' notes:
 ' - index[i] > count - 1 (last): no selection
 ' - idx < 0: idx = -1 (unselect for mono-selection)
+'
 FUNCTION WinXListBox_SetAllSelections (hListBox, index[])
 
 	SetLastError (0)
@@ -5424,6 +5438,7 @@ FUNCTION WinXListBox_SetAllSelections (hListBox, index[])
 					IF index[0] >= count THEN EXIT SELECT
 					idx = index[0]
 					IF idx < 0 THEN idx = -1		' unselect
+					'
 					SetLastError (0)
 					ret = SendMessageA (hListBox, $$LB_SETCURSEL, idx, 0)
 					IF (ret < 0) && (idx <> -1) THEN EXIT SELECT
@@ -5493,12 +5508,19 @@ END FUNCTION
 ' ##################################
 ' #####  WinXListView_AddItem  #####
 ' ##################################
-' Adds a new item to a list view control
-' iItem = the index at which to insert the item, -1 to add to the end of the list
-' STRING item = the label for the item plus subitems in the form "label\0subItem1\0subItem2..."
-' or (more User-frendly) "label|subItem1|subItem2..."
-' iIcon = the index to the icon or -1 if this item has no icon
+'
+' Adds a new item to a list view control.
+'
+' iItem      : the index at which to insert the item, -1 to add to the end of the list
+' STRING item: the label for the item plus subitems in the form "label\0subItem1\0subItem2..."
+'                                                            or "label|subItem1|subItem2..."
+' iIcon      : the index to the icon or -1 if this item has no icon
+'
 ' returns the index to the item or -1 on error
+'
+'iItem = WinXListView_AddItem (hLV, -1, item$, -1)
+'IF iItem < 0 THEN XstAlert ("WinXListView_AddItem: Can't add item " + item$)
+'
 FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 	LVITEM lvi
 
@@ -5506,17 +5528,15 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 	SELECT CASE hLV
 		CASE 0
 		CASE ELSE
-			st$ = TRIM$ (item) + "|"
+			st$ = item + "|" ' add a separator to ensure XstParseStringToStringArray will work
 			'
 			' replace all embedded zero-characters by separator "|"
-			upp = LEN (st$) - 1
-			FOR i = 0 TO upp
+			FOR i = LEN (st$) - 2 TO 0 STEP -1
 				IF st${i} = '\0' THEN st${i} = '|'
 			NEXT i
 			'
 			' parse the string item
 			XstParseStringToStringArray (st$, "|", @s$[])
-			IFZ s$[] THEN EXIT SELECT		' fail (unlikely!)
 			'
 			' set the item
 			lvi.mask = $$LVIF_TEXT
@@ -8997,18 +9017,26 @@ END FUNCTION
 ' iTab = the index of the new current tab
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
+
 	SetLastError (0)
-	IFZ hTabs THEN RETURN
+	bOK = $$FALSE
+	SELECT CASE hTabs
+		CASE 0
+		CASE ELSE
+			uppTab = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0) - 1
+			IF uppTab < 0 THEN EXIT SELECT
+			'
+			IF iTab < 0 THEN iTab = 0 ' select first tabstrip
+			IF iTab > uppTab THEN iTab = uppTab ' select last tabstrip
+			'
+			ret = SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
+			IFZ ret THEN EXIT SELECT
+			'
+			bOK = $$TRUE		' success
+			'
+	END SELECT
+	RETURN bOK
 
-	uppTab = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0) - 1
-	IF uppTab < 0 THEN RETURN
-
-	IF iTab < 0 THEN RETURN
-	IF iTab > uppTab THEN RETURN
-
-	ret = SendMessageA (hTabs, $$TCM_SETCURSEL, iTab, 0)
-	IFZ ret THEN RETURN
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' #####################################
@@ -9168,6 +9196,16 @@ END FUNCTION
 ' idButton = the command idCtr of the button
 ' enable = $$TRUE to enable the button, $$FALSE to disable
 ' returns $$TRUE on success or $$FALSE on fail
+'
+' Usage:
+'' disable all toolbar buttons (just to annoy the User ;-)
+'FOR idButton = $$tbbNew TO $$tbbExit - 1
+'	bOK = WinXToolbar_EnableButton (hToolbar, idButton, $$FALSE)
+'	IFF bOK THEN
+'		msg$ = "WinXToolbar_EnableButton: Can't disable toolbar button " + STRING$ (idButton)
+'		XstAlert (msg$)
+'	ENDIF
+'NEXT idButton
 FUNCTION WinXToolbar_EnableButton (hToolbar, idButton, enable)
 
 	SetLastError (0)
