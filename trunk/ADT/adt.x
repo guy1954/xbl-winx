@@ -143,18 +143,20 @@ DECLARE FUNCTION AssocArray_Find (ASSOCARRAY array,key$, @iData)
 DECLARE FUNCTION AssocArray_Clear (ASSOCARRAY @array)
 DECLARE FUNCTION AssocArray_Init (ASSOCARRAY @array)
 '
-' === STRING class ===
+' === STRING list ===
 '
-DECLARE FUNCTION STRING_Delete (id) ' delete a STRING item accessed by its id
-DECLARE FUNCTION STRING_Find (match$) ' find exact match of match$
-DECLARE FUNCTION STRING_FindIns (match$) ' find match$ insensitive
-DECLARE FUNCTION STRING_Get (id, @STRING_item$) ' get data of a STRING item accessed by its id
-DECLARE FUNCTION STRING_Get_count () ' get the STRING pool's item count
+DECLARE FUNCTION STRING_Delete (id) ' delete STRING item accessed by its id
+DECLARE FUNCTION STRING_Find (match$) ' find exact match
+DECLARE FUNCTION STRING_FindIns (match$) ' find case insensitive
+DECLARE FUNCTION STRING_Get (id, @STRING_item$) ' get value of STRING item accessed by its id
+DECLARE FUNCTION STRING_Get_count () ' get the count of STRING list's items
 DECLARE FUNCTION STRING_Get_idMax () ' get STRING item id max
 DECLARE FUNCTION STRING_Get_idMin () ' get STRING item id min
-DECLARE FUNCTION STRING_Init () ' initialize the STRING class
-DECLARE FUNCTION STRING_New (STRING_item$) ' add item to STRING pool
-DECLARE FUNCTION STRING_Update (id, STRING_item$) ' update data of a STRING item accessed by its id
+DECLARE FUNCTION STRING_Init () ' initialize STRING list
+DECLARE FUNCTION STRING_New (STRING_item$) ' add item to STRING list
+DECLARE FUNCTION STRING_Update (id, STRING_item$) ' update the value of STRING item accessed by its id
+'
+DECLARE FUNCTION STRING_Extract$ (string$, start, end) ' extract a sub-string
 '
 DECLARE FUNCTION IntCompare (a, b)
 DECLARE FUNCTION StringCompare (a, b)
@@ -978,46 +980,47 @@ FUNCTION LinkedList_Walk (hWalk, @iData)
 	RETURN $$TRUE ' success
 END FUNCTION
 '
-' === STRING class ===
+' === STRING list ===
 '
-' Deletes a STRING item accessed by its id
+' Deletes STRING item accessed by its id.
+'
 ' id = id of the item to delete
-' returns bOK: $$TRUE on success or $$FALSE on fail
+' Returns bOK: $$TRUE on success
 '
 ' Usage:
 'bOK = STRING_Delete (id)
-'IFF bOK THEN PRINT "STRING_Delete: Can't delete STRING item from STRING pool by its id = "; id
+'IFF bOK THEN PRINT "STRING_Delete: Can't delete STRING item from STRING list by its id = "; id
 '
 FUNCTION STRING_Delete (id)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
+	SHARED STRING_pool$[]
+	SHARED STRING_used[]
 
 	bOK = $$FALSE
 	slot = id - 1
-	upper_slot = UBOUND (STRING_poolUM[])
+	upper_slot = UBOUND (STRING_used[])
 	IF (slot >= 0 && slot <= upper_slot) THEN
-		IF STRING_poolUM[slot] THEN
+		IF STRING_used[slot] THEN
 			' empty the slot
 			STRING_pool$[slot] = ""
-			STRING_poolUM[slot] = $$FALSE
+			STRING_used[slot] = $$FALSE
 			bOK = $$TRUE
 		ENDIF
 	ENDIF
 	RETURN bOK
 END FUNCTION
 '
-' Finds a STRING item using its value
-' match$ = the value to search for
-' returns r_idFound on success or 0 on fail
+' Finds STRING item using its value as criterium.
+'
+' match$ = the value to find for
+' Returns r_idFound on success or 0 on fail
 '
 ' Usage:
-'' find exact match of match$
-'idFound = STRING_Find (match$)
-'IFZ idFound THEN ' Can't find STRING item
+'idFound = STRING_Find (match$)	' find exact match
+'IFZ idFound THEN PRINT "Can't find exact match of "; match$
 '
 FUNCTION STRING_Find (match$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
+	SHARED STRING_pool$[]
+	SHARED STRING_used[]
 
 	r_idFound = 0
 	match$ = TRIM$ (match$)
@@ -1026,11 +1029,11 @@ FUNCTION STRING_Find (match$)
 	SELECT CASE LEN_match
 		CASE 0
 		CASE ELSE
-			IFZ STRING_poolUM[] THEN EXIT SELECT
+			IFZ STRING_used[] THEN EXIT SELECT
 			'
-			upper_slot = UBOUND (STRING_poolUM[])
+			upper_slot = UBOUND (STRING_used[])
 			FOR slot = 0 TO upper_slot
-				IFF STRING_poolUM[slot] THEN DO NEXT ' skip deleted spots
+				IFF STRING_used[slot] THEN DO NEXT ' skip deleted spots
 				'
 				st$ = TRIM$ (STRING_pool$[slot])
 				IFZ st$ THEN DO NEXT ' skip empty spots
@@ -1049,18 +1052,18 @@ FUNCTION STRING_Find (match$)
 	RETURN r_idFound
 END FUNCTION
 '
-' Finds case insensitive a STRING item using its value
-' match$ = the value to search for
-' returns r_idFound on success or 0 on fail
+' Finds case insensitive STRING item using its value as criterium.
+'
+' match$ = the value to find for
+' Returns r_idFound on success or 0 on fail
 '
 ' Usage:
-'' find match$ (case insensitive)
-'idFound = STRING_FindIns (match$)
-'IFZ idFound THEN ' Can't find (case insensitive) STRING item
+'idFound = STRING_FindIns (match$)	' find case insensitive
+'IFZ idFound THEN PRINT "Can't find case insensitive "; match$
 '
 FUNCTION STRING_FindIns (match$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
+	SHARED STRING_pool$[]
+	SHARED STRING_used[]
 
 	r_idFound = 0
 	match$ = TRIM$ (match$)
@@ -1070,11 +1073,11 @@ FUNCTION STRING_FindIns (match$)
 	SELECT CASE LEN_match
 		CASE 0
 		CASE ELSE
-			IFZ STRING_poolUM[] THEN EXIT SELECT
+			IFZ STRING_used[] THEN EXIT SELECT
 			'
-			upper_slot = UBOUND (STRING_poolUM[])
+			upper_slot = UBOUND (STRING_used[])
 			FOR slot = 0 TO upper_slot
-				IFF STRING_poolUM[slot] THEN DO NEXT ' skip deleted spots
+				IFF STRING_used[slot] THEN DO NEXT ' skip deleted spots
 				'
 				st$ = TRIM$ (STRING_pool$[slot])
 				IFZ st$ THEN DO NEXT ' skip empty spots
@@ -1093,25 +1096,26 @@ FUNCTION STRING_FindIns (match$)
 	RETURN r_idFound
 END FUNCTION
 '
-' Gets data of a STRING item accessed by its id
+' Gets value of STRING item accessed by its id.
+'
 ' id = id of item
 ' r_STRING_item$ = returned data
-' returns bOK: $$TRUE on success or $$FALSE on fail
+' Returns bOK: $$TRUE on success
 '
 ' Usage:
-'bOK = STRING_Get (id, @r_STRING_item$)
-'IFF bOK THEN PRINT "STRING_Get: Can't get STRING item from STRING pool by its id = "; id
+'bOK = STRING_Get (id, @STRING_item$)
+'IFF bOK THEN PRINT "STRING_Get: Can't get STRING item from STRING list by its id = "; id
 '
 FUNCTION STRING_Get (id, r_STRING_item$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
+	SHARED STRING_pool$[]
+	SHARED STRING_used[]
 
 	bOK = $$FALSE
 	r_STRING_item$ = ""
 	slot = id - 1
-	upper_slot = UBOUND (STRING_poolUM[])
+	upper_slot = UBOUND (STRING_used[])
 	IF (slot >= 0 && slot <= upper_slot) THEN
-		IF STRING_poolUM[slot] THEN
+		IF STRING_used[slot] THEN
 			r_STRING_item$ = STRING_pool$[slot]
 			bOK = $$TRUE
 		ENDIF
@@ -1119,38 +1123,38 @@ FUNCTION STRING_Get (id, r_STRING_item$)
 	RETURN bOK
 END FUNCTION
 '
-' Gets the STRING pool's item count
+' Gets the count of STRING list's items.
 '
 ' Usage:
-'count = STRING_Get_count () ' get the STRING pool's item count
+'count = STRING_Get_count () ' get the STRING list's item count
 '
 FUNCTION STRING_Get_count ()
-	SHARED STRING_poolUM[]
+	SHARED STRING_used[]
 
 	r_count = 0
-	IF STRING_poolUM[] THEN
-		upper_slot = UBOUND (STRING_poolUM[])
+	IF STRING_used[] THEN
+		upper_slot = UBOUND (STRING_used[])
 		FOR slot = 0 TO upper_slot
-			IF STRING_poolUM[slot] THEN INC r_count
+			IF STRING_used[slot] THEN INC r_count
 		NEXT slot
 	ENDIF
 	RETURN r_count
 END FUNCTION
 '
-' Gets STRING item id max
+' Gets the maximum of STRING item id.
 '
 ' Usage:
 'idMax = STRING_Get_idMax ()
 'FOR id = 1 TO idMax
 '
 FUNCTION STRING_Get_idMax ()
-	SHARED STRING_poolUM[]
+	SHARED STRING_used[]
 
 	r_idMax = 0
-	IF STRING_poolUM[] THEN
-		upper_slot = UBOUND (STRING_poolUM[])
+	IF STRING_used[] THEN
+		upper_slot = UBOUND (STRING_used[])
 		FOR slot = upper_slot TO 0 STEP -1
-			IF STRING_poolUM[slot] THEN
+			IF STRING_used[slot] THEN
 				r_idMax = slot + 1
 				EXIT FOR
 			ENDIF
@@ -1159,21 +1163,21 @@ FUNCTION STRING_Get_idMax ()
 	RETURN r_idMax
 END FUNCTION
 '
-' Gets STRING item id min
+' Gets the minimum of STRING item id.
 '
 ' Usage:
-'idMin = STRING_Get_idMin ()
-'idMax = STRING_Get_idMax ()
+'idMin = STRING_Get_idMin ()	' Minimum
+'idMax = STRING_Get_idMax ()	' Maximum
 'FOR id = idMin TO idMax
 '
 FUNCTION STRING_Get_idMin ()
-	SHARED STRING_poolUM[]
+	SHARED STRING_used[]
 
 	r_idMin = 0
-	IF STRING_poolUM[] THEN
-		upper_slot = UBOUND (STRING_poolUM[])
+	IF STRING_used[] THEN
+		upper_slot = UBOUND (STRING_used[])
 		FOR slot = 0 TO upper_slot
-			IF STRING_poolUM[slot] THEN
+			IF STRING_used[slot] THEN
 				r_idMin = slot + 1
 				EXIT FOR
 			ENDIF
@@ -1182,47 +1186,48 @@ FUNCTION STRING_Get_idMin ()
 	RETURN r_idMin
 END FUNCTION
 '
-' Initializes the STRING class
+' Initializes STRING list.
 '
 FUNCTION STRING_Init ()
-	SHARED STRING_pool$[] ' an array of items
-	SHARED STRING_poolUM[] ' usage map so we can see which STRING_pool$[] elements are in use
+	SHARED STRING_pool$[] ' an array of STRING items
+	SHARED STRING_used[]  ' usage map so we can see which STRING items are in use
 
 	IFZ STRING_pool$[] THEN
 		upper_slot = 7
 		DIM STRING_pool$[upper_slot]
-		DIM STRING_poolUM[upper_slot]
+		DIM STRING_used[upper_slot]
 	ELSE
 		' reset an existing STRING_pool$[]
-		upper_slot = UBOUND (STRING_poolUM[])
+		upper_slot = UBOUND (STRING_used[])
 		FOR slot = 0 TO upper_slot
 			' empty the slot
 			STRING_pool$[slot] = ""
-			STRING_poolUM[slot] = $$FALSE
+			STRING_used[slot] = $$FALSE
 		NEXT slot
 	ENDIF
 END FUNCTION
 '
-' Adds a new STRING item to STRING pool
-' returns r_idNew on success or 0 on fail
+' Adds a new STRING item to STRING list.
+'
+' Returns r_idNew on success or 0 on fail
 '
 ' Usage:
 'idNew = STRING_New (STRING_item$)
-'IFZ idNew THEN PRINT "STRING_New: Can't add item = "; STRING_item$; " to STRING pool"
+'IFZ idNew THEN PRINT "STRING_New: Can't add item = "; STRING_item$; " to STRING list"
 '
 FUNCTION STRING_New (STRING_item$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
+	SHARED STRING_pool$[]
+	SHARED STRING_used[]
 
 	r_idNew = 0 ' invalid id
 
-	IFZ STRING_poolUM[] THEN STRING_Init ()
+	IFZ STRING_used[] THEN STRING_Init ()
 
 	slotNew = -1 ' invalid slot
 
-	upper_slot = UBOUND (STRING_poolUM[])
+	upper_slot = UBOUND (STRING_used[])
 	FOR slot = 0 TO upper_slot
-		IFF STRING_poolUM[slot] THEN
+		IFF STRING_used[slot] THEN
 			' use/reuse this empty slot
 			slotNew = slot
 			EXIT FOR
@@ -1233,37 +1238,38 @@ FUNCTION STRING_New (STRING_item$)
 		' empty slot not found => expand STRING_pool$[]
 		upp = ((upper_slot + 1) * 2) - 1
 		REDIM STRING_pool$[upp]
-		REDIM STRING_poolUM[upp]
+		REDIM STRING_used[upp]
 		slotNew = upper_slot + 1
 	ENDIF
 
 	IF slotNew >= 0 THEN
 		STRING_pool$[slotNew] = STRING_item$
-		STRING_poolUM[slotNew] = $$TRUE
+		STRING_used[slotNew] = $$TRUE
 		r_idNew = slotNew + 1
 	ENDIF
 
 	RETURN r_idNew
 END FUNCTION
 '
-' Updates the data of a STRING item accessed by its id
+' Updates the value of STRING item accessed by its id.
+'
 ' id = id of item
 ' STRING_item$ = new data
-' returns bOK: $$TRUE on success or $$FALSE on fail
+' Returns bOK: $$TRUE on success
 '
 ' Usage:
 'bOK = STRING_Update (id, STRING_item$)
-'IFF bOK THEN PRINT "STRING_Update: Can't update STRING item in STRING pool by its id = "; id
+'IFF bOK THEN PRINT "STRING_Update: Can't update STRING item in STRING list by its id = "; id
 '
 FUNCTION STRING_Update (id, STRING_item$)
-	SHARED STRING_pool$[] ' string pool
-	SHARED STRING_poolUM[]
+	SHARED STRING_pool$[]
+	SHARED STRING_used[]
 
 	bOK = $$FALSE
 	slot = id - 1
-	upper_slot = UBOUND (STRING_poolUM[])
+	upper_slot = UBOUND (STRING_used[])
 	IF (slot >= 0 && slot <= upper_slot) THEN
-		IF STRING_poolUM[slot] THEN
+		IF STRING_used[slot] THEN
 			STRING_pool$[slot] = STRING_item$
 			bOK = $$TRUE
 		ENDIF
@@ -1271,7 +1277,49 @@ FUNCTION STRING_Update (id, STRING_item$)
 	RETURN bOK
 END FUNCTION
 '
-' === End of STRING class ===
+' #############################
+' #####  STRING_Extract$  #####
+' #############################
+'
+' Extracts a sub-string from a string.
+'
+' string$  = the passed string
+' start  = position of the first character of the sub-string
+'             < 1 indicates "first character"
+' end    = position of the last character of the sub-string
+'             < 1 indicates "up to the last character"
+'
+' Usage:
+'posSepPrev = 0
+'posSep = INSTR (csv$, ",")
+'
+'DO WHILE posSep > 1
+'	' extract the next CSV field
+'	start = posSepPrev + 1
+'	end = posSep - 1
+'	'
+'	field$ = STRING_Extract$ (csv$, start, end)
+'	'
+'	' (...)
+'	'
+'	posSepPrev = posSep
+'	posSep = INSTR (csv$, ",", posSep + 1)
+'	'
+'LOOP
+'
+FUNCTION STRING_Extract$ (string$, start, end)
+
+	IF start < 1 THEN start = 1
+	IF end < start THEN end = LEN (string$)
+
+	length = end - start + 1
+	IF length > 0 THEN ret$ = MID$ (string$, start, length) ELSE ret$ = ""
+
+	RETURN ret$
+
+END FUNCTION
+'
+' === End of STRING routines ===
 '
 '
 ' ########################
