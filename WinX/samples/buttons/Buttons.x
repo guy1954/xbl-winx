@@ -35,6 +35,7 @@ $$CB_ALL = 106
 DECLARE FUNCTION Entry ()
 DECLARE FUNCTION initWindow ()
 DECLARE FUNCTION onCommand (id, code, hWnd)
+DECLARE FUNCTION hMain_OnClose (hWnd) ' to process $$WM_CLOSE wMsg
 '
 '
 ' ######################
@@ -65,36 +66,51 @@ FUNCTION initWindow ()
 
 	'create the main window
 	#hMain = WinXNewWindow (0, "Buttons Example", -1, -1, 200, 200, $$XWSS_APP, 0, 0, 0)
-	WinXSetMinSize (#hMain, 160, 160)
+'	WinXSetMinSize (#hMain, 200, 200)
+
+	RB1 = WinXAddRadioButton (#hMain, "Radio 1", $$TRUE, $$FALSE, $$RB1) ' create radio button $$RB1
+	RB2 = WinXAddRadioButton (#hMain, "Radio 2", $$FALSE, $$FALSE, $$RB2) ' create radio button $$RB2
+	RB3 = WinXAddRadioButton (#hMain, "Radio 3", $$FALSE, $$FALSE, $$RB3) ' create radio button $$RB3
+
+	CB1 = WinXAddCheckButton (#hMain, "Check 1", $$TRUE, $$FALSE, $$CB1) ' create check box $$CB1
+	CB2 = WinXAddCheckButton (#hMain, "Check 2", $$FALSE, $$FALSE, $$CB2) ' create check box $$CB2
+	CB3 = WinXAddCheckButton (#hMain, "Check 3", $$FALSE, $$FALSE, $$CB3) ' create check box $$CB3
+	CB_ALL = WinXAddCheckButton (#hMain, "Select All", $$FALSE, $$FALSE, $$CB_ALL) ' create check box $$CB_ALL
 
 	'set up the layout
 	'we are using three auto sizer series.
-	'row will be a row in the main series containing two columns: checks and radios...
-	row = WinXNewAutoSizerSeries ($$DIR_HORIZ)
-	checks = WinXNewAutoSizerSeries ($$DIR_VERT)
-	radios = WinXNewAutoSizerSeries ($$DIR_VERT)
+	'hMain_horiz will be a row in the main series containing two columns: checks_vert and radios_vert...
 
-	'organise the series into this order
-	WinXAutoSizer_SetInfo (row, WinXAutoSizer_GetMainSeries(#hMain), 50, 1.0, 0, 0, 1.0, 1.0, $$SIZER_SERIES)
-	WinXAutoSizer_SetInfo (checks, row, 0, 0.5, -1, 0, 60, 1.0, $$SIZER_SERIES)
-	WinXAutoSizer_SetInfo (radios, row, 0, 0.5, -1, 0, 60, 1.0, $$SIZER_SERIES)
+	main_series = WinXAutoSizer_GetMainSeries (#hMain)
+
+	hMain_horiz = WinXNewAutoSizerSeries ($$DIR_HORIZ)
+	WinXAutoSizer_SetSimpleInfo (hMain_horiz, main_series, 0.0, 1.0, $$SIZER_SERIES)
+
+	checks_vert  = WinXNewAutoSizerSeries ($$DIR_VERT)
+	WinXAutoSizer_SetSimpleInfo (checks_vert, hMain_horiz, 0.0, 0.5, $$SIZER_SERIES)
+
+	radios_vert  = WinXNewAutoSizerSeries ($$DIR_VERT)
+	WinXAutoSizer_SetSimpleInfo (radios_vert, hMain_horiz, 0.0, 0.5, $$SIZER_SERIES)
 
 	'add the check buttons
-	WinXAutoSizer_SetInfo (WinXAddCheckButton (#hMain, "Check 1", $$TRUE, $$FALSE, $$CB1), checks, 0, 25, 0, 0, 1.0, 1.0, 0)
-	WinXAutoSizer_SetInfo (WinXAddCheckButton (#hMain, "Check 2", $$FALSE, $$FALSE, $$CB2), checks, 0, 25, 0, 0, 1.0, 1.0, 0)
-	WinXAutoSizer_SetInfo (WinXAddCheckButton (#hMain, "Check 3", $$FALSE, $$FALSE, $$CB3), checks, 0, 25, 0, 0, 1.0, 1.0, 0)
-	WinXAutoSizer_SetInfo (WinXAddCheckButton (#hMain, "Select All", $$FALSE, $$FALSE, $$CB_ALL), checks, 0, 25, 0, 0, 1.0, 1.0, 0)
+	WinXAutoSizer_SetSimpleInfo (CB1, checks_vert, 0.0, 0.25, $$SIZER_FLAGS_NONE)
+	WinXAutoSizer_SetSimpleInfo (CB2, checks_vert, 0.0, 0.25, $$SIZER_FLAGS_NONE)
+	WinXAutoSizer_SetSimpleInfo (CB3, checks_vert, 0.0, 0.25, $$SIZER_FLAGS_NONE)
+	WinXAutoSizer_SetSimpleInfo (CB_ALL, checks_vert, 0.0, 1.0, $$SIZER_SIZERELREST)
 
 	'add the radio buttons
-	WinXAutoSizer_SetInfo (WinXAddRadioButton (#hMain, "Radio 1", $$TRUE, $$FALSE, $$RB1), radios, 0, 25, 0, 0, 1.0, 1.0, 0)
-	WinXAutoSizer_SetInfo (WinXAddRadioButton (#hMain, "Radio 2", $$FALSE, $$FALSE, $$RB2), radios, 0, 25, 0, 0, 1.0, 1.0, 0)
-	WinXAutoSizer_SetInfo (WinXAddRadioButton (#hMain, "Radio 3", $$FALSE, $$FALSE, $$RB3), radios, 0, 25, 0, 0, 1.0, 1.0, 0)
+	WinXAutoSizer_SetSimpleInfo (RB1, radios_vert, 0.0, 0.333, $$SIZER_FLAGS_NONE)
+	WinXAutoSizer_SetSimpleInfo (RB2, radios_vert, 0.0, 0.333, $$SIZER_FLAGS_NONE)
+	WinXAutoSizer_SetSimpleInfo (RB3, radios_vert, 0.0, 1.0, $$SIZER_SIZERELREST)
 
 	'select the first radio button
 	WinXButton_SetCheck (GetDlgItem(#hMain, $$RB1), $$TRUE)
 
 	'register the callbacks
 	WinXRegOnCommand (#hMain, &onCommand())
+
+	addrProc = &hMain_OnClose () ' to process $$WM_CLOSE wMsg
+	WinXRegOnClose (#hMain, addrProc)
 
 	'This function enables the use of the tab and arrow keys to navigate the window.
 	'it comes at the expense of the ability to process these keypresses.
@@ -122,6 +138,15 @@ FUNCTION onCommand (id, code, hWnd)
 			WinXButton_SetCheck (GetDlgItem(#hMain, $$CB2), check)
 			WinXButton_SetCheck (GetDlgItem(#hMain, $$CB3), check)
 	END SELECT
+
+END FUNCTION
+
+FUNCTION hMain_OnClose (hWnd)
+
+'	RETURN 1 ' quit is canceled
+	' quit application
+	PostQuitMessage ($$WM_QUIT)
+	RETURN 0 ' quit is confirmed
 
 END FUNCTION
 END PROGRAM

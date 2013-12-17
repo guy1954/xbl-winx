@@ -844,8 +844,7 @@ DECLARE FUNCTION BINDING_Ov_Get (hWnd, @id, BINDING @BINDING_item) ' get data of
 DECLARE FUNCTION Color_AlphaBlend (front, back, alpha)
 
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
-'
-' Device context
+
 DECLARE FUNCTION VOID DC_DrawLine (hdc, x1, y1, x2, y2, penStyle, width, color)
 DECLARE FUNCTION VOID DC_DrawRectangle (hdc, x, y, w, h, color)
 
@@ -857,7 +856,6 @@ DECLARE FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 
 DECLARE FUNCTION SPLITTER_Proc (hWnd, wMsg, wParam, lParam)
 
-DECLARE FUNCTION window_NewMdiChild (hClient, title$, style)
 DECLARE FUNCTION WapiSetFontAndRedraw (hCtr, hFont, bRedraw) ' set control hCtr to logical font hFont
 DECLARE FUNCTION WapiTellDialogError (parent, title$) ' display a WinXDialog_'s run-time error message
 
@@ -874,6 +872,8 @@ DECLARE FUNCTION autoSizerInfo_update (id, idCtr, AUTOSIZER autoSizerBlock)
 
 DECLARE FUNCTION cancelDlgOnClose (hWnd)
 DECLARE FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
+
+DECLARE FUNCTION control_GetWindowHandle (hCtr)
 
 DECLARE FUNCTION VOID drawArc (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION VOID drawBezier (hdc, AUTODRAWRECORD record, x0, y0)
@@ -910,6 +910,7 @@ DECLARE FUNCTION printAbortProc (hdc, nCode)
 
 DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
 
+DECLARE FUNCTION window_NewMdiChild (hClient, title$, style)
 DECLARE FUNCTION window_Size (hWnd, w, h)
 '
 '
@@ -935,6 +936,8 @@ $$RightSubSizer$ = "WinXRightSubSizer" ' GL-16mar11-unused???
 ' Examples    = IF WinX () THEN XstAbend ("Can't initialize WinX.dll")<br/>
 ' */
 FUNCTION WinX ()
+	SHARED g_customColors[15]
+
 	INITCOMMONCONTROLSEX iccex
 	WNDCLASS wc
 
@@ -1018,7 +1021,43 @@ FUNCTION WinX ()
 
 	RegisterClassA (&wc)
 
+	' init the custom colors
+	DIM g_customColors[15]
+	FOR i = 0 TO 15
+		g_customColors[i] = 0x00FFFFFF
+	NEXT i
+
 	#bReentry = $$TRUE ' protect for reentry
+
+END FUNCTION
+'
+' #########################
+' #####  RGB_GetBlue  #####
+' #########################
+'
+FUNCTION RGB_GetBlue (color)
+
+	RETURN ((color \ 65536) MOD 256)
+
+END FUNCTION
+'
+' ##########################
+' #####  RGB_GetGreen  #####
+' ##########################
+'
+FUNCTION RGB_GetGreen (color)
+
+	RETURN ((color \ 256) MOD 256)
+
+END FUNCTION
+'
+' ########################
+' #####  RGB_GetRed  #####
+' ########################
+'
+FUNCTION RGB_GetRed (color)
+
+	RETURN (color MOD 256)
 
 END FUNCTION
 '
@@ -1911,8 +1950,8 @@ END FUNCTION
 ' hWnd = the window to get the series for
 ' Returns the index of the window's main series, -1 on fail
 '
-' Usage:
-'serHoriz = WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
+' eg serHoriz = WinXAutoSizer_GetMainSeries (hWnd) ' get the window's main series
+'
 FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 	BINDING binding
 
@@ -1945,7 +1984,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 
 	IF series = -1 THEN ' the window's series
 		' get the binding
-		hWnd = GetParent (hCtr)
+		hWnd = control_GetWindowHandle (hCtr)
 		IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 		series = binding.autoSizerInfo
 	ENDIF
@@ -2106,8 +2145,7 @@ FUNCTION WinXCleanUp ()
 		' destroy all windows
 		hInst = GetModuleHandleA (0)
 		'
-		upper_slot = UBOUND (BINDING_used[])
-		FOR slot = 0 TO upper_slot
+		FOR slot = UBOUND (BINDING_used[]) TO 0 STEP -1
 			IFF BINDING_used[slot] THEN DO NEXT
 			'
 			hWnd = BINDING_pool[slot].hWnd
@@ -2115,9 +2153,7 @@ FUNCTION WinXCleanUp ()
 			'
 			IF hInst THEN
 				hWndInst = GetWindowLongA (hWnd, $$GWL_HINSTANCE)
-				IF hWndInst THEN
-					IF hWndInst <> hInst THEN DO NEXT
-				ENDIF
+				IF (hWndInst <> 0) && (hWndInst <> hInst) THEN DO NEXT ' belongs to another instance
 			ENDIF
 			BINDING_pool[slot].hWnd = 0
 			'
@@ -2643,7 +2679,6 @@ FUNCTION WinXDate_GetCurrentTimeStamp$ ()
 	FOR i = 0 TO 4
 		stamp$ = stamp$ + "_" + RIGHT$ ("00" + STRING$ (arr[i]), 2)	' 2 digits
 	NEXT i
-
 	RETURN stamp$
 
 END FUNCTION
@@ -2749,10 +2784,14 @@ END FUNCTION
 FUNCTION WinXDialog_Error (STRING message, STRING title, severity)
 
 	icon = 0
+	IF severity < 0 THEN severity = 0
+	IF severity > 3 THEN severity = 3
+
 	SELECT CASE severity
-		CASE 0    : icon = $$MB_ICONASTERISK
-		CASE 1    : icon = $$MB_ICONWARNING
-		CASE ELSE : icon = $$MB_ICONSTOP
+		CASE 0 : icon = $$MB_ICONASTERISK
+		CASE 1 : icon = $$MB_ICONWARNING
+		CASE 2 : icon = $$MB_ICONSTOP
+		CASE 3 : icon = $$MB_ICONSTOP
 	END SELECT
 
 	' GL-27jul12-MessageBoxA (0, &message, &title, $$MB_OK | icon)
@@ -4159,16 +4198,17 @@ END FUNCTION
 '
 ' Displays a dialog box allowing the User to select a color.
 '
-' initialColor = the color to initialize the dialog box with
+' colorStart = the color to initialize the dialog box with
 ' Returns the color the User selected, 0 if User canceled
 '
-FUNCTION WinXDraw_GetColor (parent, initialColor)
+FUNCTION WinXDraw_GetColor (parent, colorStart)
 	SHARED g_customColors[15]
 
 	CHOOSECOLOR cc
 
 	IFZ g_customColors[0] THEN
 		' init the custom colors
+		DIM g_customColors[15]
 		FOR i = 0 TO 15
 			g_customColors[i] = 0x00FFFFFF
 		NEXT i
@@ -4176,7 +4216,7 @@ FUNCTION WinXDraw_GetColor (parent, initialColor)
 
 	cc.lStructSize = SIZE (CHOOSECOLOR)
 	cc.hwndOwner = parent
-	cc.rgbResult = initialColor
+	cc.rgbResult = colorStart
 	cc.lpCustColors = &g_customColors[]
 	cc.flags = $$CC_RGBINIT
 
@@ -5855,9 +5895,11 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 				IF st${i} = '\0' THEN st${i} = '|'
 			NEXT i
 			'
-			' parse the string item
-			XstParseStringToStringArray (st$, "|", @s$[])
-			IFZ s$[] THEN EXIT SELECT		' fail (unlikely!)
+			' parse the string st$
+			SELECT CASE INSTR (st$, "|")
+				CASE 0    : DIM s$[0] : s$[0] = st$
+				CASE ELSE : XstParseStringToStringArray (st$, "|", @s$[])
+			END SELECT
 			'
 			' set the item
 			lvi.mask = $$LVIF_TEXT
@@ -5874,7 +5916,7 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 			'
 			' set the subitems
 			upp = UBOUND (s$[])
-			FOR i = 1 TO upp
+			FOR i = 1 TO upp		' skip 1st item
 				lvi.mask = $$LVIF_TEXT
 				lvi.iItem = r_index
 				lvi.iSubItem = i
@@ -5936,8 +5978,9 @@ FUNCTION WinXListView_Clear (hLV)
 			IFF bSkipOld THEN
 				LOCK_Set_skipOnSelect (id, $$FALSE)
 				SendMessageA (hLV, $$WM_SETREDRAW, 1, 0)		' redraw list view
-				hWnd = GetParent (hLV)
-				UpdateWindow (hWnd)
+				hParent = GetParent (hLV)
+				' GL-UpdateWindow (hParent)
+				parent_Refresh (hParent)
 			ENDIF
 			'
 	END SELECT
@@ -6247,8 +6290,9 @@ FUNCTION WinXListView_SetAllChecked (hLV)
 			LOCK_Set_skipOnSelect (id, bSkipOld)
 			IFF bSkipOld THEN
 				SendMessageA (hLV, $$LVM_REDRAWITEMS, 0, 0)
-				hWnd = GetParent (hLV)
-				UpdateWindow (hWnd)
+				hParent = GetParent (hLV)
+				' GL-UpdateWindow (hParent)
+				parent_Refresh (hParent)
 			ENDIF
 			'
 			bOK = $$TRUE
@@ -6369,8 +6413,9 @@ FUNCTION WinXListView_SetAllUnchecked (hLV)
 			LOCK_Set_skipOnSelect (id, bSkipOld)
 			IFF bSkipOld THEN
 				SendMessageA (hLV, $$LVM_REDRAWITEMS, 0, 0)
-				hWnd = GetParent (hLV)
-				UpdateWindow (hWnd)
+				hParent = GetParent (hLV)
+				' GL-UpdateWindow (hParent)
+				parent_Refresh (hParent)
 			ENDIF
 			'
 			bOK = $$TRUE
@@ -6880,7 +6925,8 @@ FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @r_mruList$[])
 
 SUB AddFile
 
-	fPath$ = WinXPath_Trim$ (fPath$)
+	' GL-fPath$ = WinXPath_Trim$ (fPath$)
+	IF INSTR (fPath$, $$PathSlash$) THEN XstTranslateChars (@fPath$, $$PathSlash$, "/")
 	SELECT CASE TRUE
 		CASE uppFile >= $$UPP_MRU ' file$[] is full
 			'
@@ -6954,11 +7000,14 @@ END FUNCTION
 FUNCTION WinXMask_found (mask, flags)
 
 	state = $$FALSE
-	SELECT CASE flags
-		CASE 0    : IFZ mask THEN state = $$TRUE		' mask and flags are both null
-		CASE mask : state = $$TRUE		' mask and flags are equal
-		CASE ELSE : IF (mask & flags) = flags THEN state = $$TRUE		' flags is found in mask
-	END SELECT
+	IF mask = flags THEN
+		state = $$TRUE		' mask and flags are equal
+	ELSE
+		IF mask THEN		' flags is also non-zero
+			IF ((mask & flags) = flags) THEN state = $$TRUE		' mask contains flags
+		ENDIF
+	ENDIF
+
 	RETURN state
 
 END FUNCTION
@@ -6969,7 +7018,7 @@ END FUNCTION
 ' Attach a sub menu to another menu
 ' subMenu = the sub menu to attach
 ' newParent = the new parent menu
-' idMenu = the id of the sub menu to attach to
+' idMenu = the idMenu to attach to
 ' Returns bOK: $$TRUE on success
 FUNCTION WinXMenu_Attach (subMenu, newParent, idMenu)
 	MENUITEMINFO mii
@@ -6983,9 +7032,7 @@ FUNCTION WinXMenu_Attach (subMenu, newParent, idMenu)
 	mii.fMask = $$MIIM_SUBMENU
 	mii.hSubMenu = subMenu
 
-	ret = SetMenuItemInfoA (newParent, idMenu, 0, &mii)
-	IF ret THEN RETURN $$TRUE		' success
-
+	IF SetMenuItemInfoA (newParent, idMenu, 0, &mii) THEN RETURN $$TRUE		' success
 END FUNCTION
 '
 ' ###############################
@@ -7586,7 +7633,7 @@ FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, hIcon,
 	BINDING binding
 	RECT ownerRect
 	LINKEDLIST autoDrawList
-	WNDCLASS wc		' to retrieve the application icon
+	WNDCLASS wc		' to retrieve application information
 
 	SetLastError (0)
 	IFF #bReentry THEN WinX ()		' GL-07nov11-initialize WinX library
@@ -7765,7 +7812,7 @@ FUNCTION WinXPath_Trim$ (path$)
 		CASE ELSE
 			upp = LEN (path$) - 1
 			'
-			' search the last non-space character, its index is iLast
+			' find the last non-space character, its index is iLast
 			iLast = -1
 			FOR i = upp TO 0 STEP -1
 				IF (path${i} >= 33) && (path${i} <= 253) THEN
@@ -7775,7 +7822,7 @@ FUNCTION WinXPath_Trim$ (path$)
 			NEXT i
 			IF iLast = -1 THEN EXIT SELECT		' empty directory path => return a null string
 			'
-			' search the 1st non-space character, its index is iFirst
+			' find the 1st non-space character, its index is iFirst
 			FOR i = 0 TO iLast
 				IF (path${i} >= 33) && (path${i} <= 253) THEN
 					iFirst = i
@@ -7981,11 +8028,11 @@ FUNCTION WinXPrint_Start (minPage, maxPage, @rangeMin, @rangeMax, @cxPhys, @cyPh
 			IFZ g_oPrinter.hDevMode THEN g_oPrinter.hDevMode = printDlg.hDevMode
 			IFZ g_oPrinter.hDevNames THEN g_oPrinter.hDevNames = printDlg.hDevNames
 			g_oPrinter.printSetupFlags = printDlg.flags
-			IF WinXMask_found (printDlg.flags, $$PD_PAGENUMS) THEN
+			IF ((printDlg.flags & $$PD_PAGENUMS) = $$PD_PAGENUMS) THEN
 				rangeMin = printDlg.nFromPage		'range
 				rangeMax = printDlg.nToPage
 			ELSE
-				IF WinXMask_found (printDlg.flags, $$PD_SELECTION) THEN
+				IF ((printDlg.flags & $$PD_SELECTION) = $$PD_SELECTION) THEN
 					rangeMin = 0		'selection
 				ELSE
 					rangeMax = -1		'all pages
@@ -9517,7 +9564,7 @@ FUNCTION WinXSplitter_SetProperties (series, hCtr, min, max, dock)
 	IFF dock THEN
 		splitterInfo.dock = $$DOCK_DISABLED
 	ELSE
-		IF WinXMask_found (AUTOSIZER_list[series].direction, $$DIR_REVERSE) THEN
+		IF ((AUTOSIZER_list[series].direction & $$DIR_REVERSE) = $$DIR_REVERSE) THEN
 			splitterInfo.dock = $$DOCK_BACKWARD
 		ELSE
 			splitterInfo.dock = $$DOCK_FORWARD
@@ -10604,16 +10651,15 @@ END FUNCTION
 FUNCTION WinXTreeView_SetSelection (hTV, hItem)
 	' GL-26jan09-RETURN SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
 
+	bOK = $$FALSE
 	SetLastError (0)
-	IFZ hTV THEN RETURN
-	IFZ hItem THEN hItem = WinXTreeView_GetRootItem (hTV)
-	IFZ hItem THEN RETURN
+	IF hTV THEN
+		ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
+		IF ret THEN bOK = $$TRUE
+		SetFocus (hTV)
+	ENDIF
+	RETURN bOK
 
-	ret = SendMessageA (hTV, $$TVM_SELECTITEM, $$TVGN_CARET, hItem)
-	IFZ ret THEN RETURN
-
-	SetFocus (hTV)
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' ######################
@@ -10677,17 +10723,15 @@ FUNCTION VOID WinXUpdate (hWnd)
 	' get the binding
 	IFF BINDING_Ov_Get (hWnd, @idBinding, @binding) THEN RETURN
 
-	' GL-13nov13-deleted
-	'ret = GetClientRect (hWnd, &rect)
-	'IFZ ret THEN RETURN
-	'winRight = rect.right + GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
-	'winBottom = rect.bottom + GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
-	'binding.hUpdateRegion = CreateRectRgn (0, 0, winRight, winBottom)
-	' GL----
+	ret = GetClientRect (hWnd, &rect)
+	IFZ ret THEN RETURN
 
-	bOK = WinXGetUsableRect (hWnd, @rect)
-	IFF bOK THEN RETURN
-	binding.hUpdateRegion = CreateRectRgn (0, 0, rect.right, rect.bottom)
+	' GL-winRight = rect.right + 2
+	' GL-winBottom = rect.bottom + 2
+
+	winRight = rect.right + GetSystemMetrics ($$SM_CXFRAME)		' width of window frame
+	winBottom = rect.bottom + GetSystemMetrics ($$SM_CYFRAME)		' height of window frame
+	binding.hUpdateRegion = CreateRectRgn (0, 0, winRight, winBottom)
 
 	' PRINT binding.hUpdateRegion
 	InvalidateRgn (hWnd, binding.hUpdateRegion, 1)		' erase
@@ -10941,7 +10985,7 @@ FUNCTION AUTOSIZER_Size (id, x0, y0, w, h)
 	IFZ nNumWindows THEN RETURN ' none!
 
 	currPos = 0
-	IF WinXMask_found (AUTOSIZER_list[id].direction, $$DIR_REVERSE) THEN
+	IF ((AUTOSIZER_list[id].direction & $$DIR_REVERSE) = $$DIR_REVERSE) THEN
 		SELECT CASE AUTOSIZER_list[id].direction & 0x00000003
 			CASE $$DIR_HORIZ
 				currPos = w
@@ -11271,36 +11315,6 @@ FUNCTION LOCK_Set_skipOnSelect (id, bSkip)
 	ENDIF
 
 	RETURN bOK
-
-END FUNCTION
-'
-' #########################
-' #####  RGB_GetBlue  #####
-' #########################
-'
-FUNCTION RGB_GetBlue (color)
-
-	RETURN ((color \ 65536) MOD 256)
-
-END FUNCTION
-'
-' ##########################
-' #####  RGB_GetGreen  #####
-' ##########################
-'
-FUNCTION RGB_GetGreen (color)
-
-	RETURN ((color \ 256) MOD 256)
-
-END FUNCTION
-'
-' ########################
-' #####  RGB_GetRed  #####
-' ########################
-'
-FUNCTION RGB_GetRed (color)
-
-	RETURN (color MOD 256)
 
 END FUNCTION
 '
@@ -11679,35 +11693,6 @@ SUB SetSizeCursor
 		SetCursor (LoadCursorA (0, $$IDC_SIZENS))		' horizontal bar
 	ENDIF
 END SUB
-
-END FUNCTION
-'
-' ###################################
-' #####	window_NewMdiChild ()	#####
-' ###################################
-'
-' Creates an MDI child window
-'
-' binding.hWnd = window_NewMdiChild (binding.hWndMDIParent, "", $$WS_MAXIMIZE)
-FUNCTION window_NewMdiChild (hClient, STRING title, style)
-
-	SetLastError (0)
-	IFZ hClient THEN RETURN
-
-	IFZ title THEN pTitle = 0 ELSE pTitle = &title
-
-	exStyle = $$WS_EX_MDICHILD | $$WS_EX_CLIENTEDGE
-
-	hMdiActive = SendMessageA (hClient, $$WM_MDIGETACTIVE, 0, 0)
-	IF hMdiActive THEN
-		IF IsZoomed (hMdiActive) THEN style = style | $$WS_MAXIMIZE
-	ENDIF
-
-	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
-	IFZ hInst THEN hInst = GetModuleHandleA (0)
-
-	hMdi = CreateWindowExA (exStyle, &$$WINX_CLASS$, pTitle, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
-	RETURN hMdi
 
 END FUNCTION
 '
@@ -12127,6 +12112,26 @@ FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
 		CASE $$IDCANCEL
 			SendMessageA (g_oPrinter.hCancelDlg, $$WM_CLOSE, 0, 0)
 	END SELECT
+END FUNCTION
+'
+' #####################################
+' #####  control_GetWindowHandle  #####
+' #####################################
+'
+FUNCTION control_GetWindowHandle (hCtr)
+
+	' find the parent window
+	hWnd = 0
+	parent = GetParent (hCtr)
+	DO WHILE parent
+		IF IsWindow (parent) THEN
+			hWnd = parent
+			EXIT DO
+		ENDIF
+		parent = GetParent (parent)
+	LOOP
+	RETURN hWnd
+
 END FUNCTION
 '
 ' #####################
@@ -13169,6 +13174,8 @@ SUB endDragTreeViewItem
 
 	' refresh  tree view to erase a remanent target label
 	SendMessageA (g_drag_hCtr, $$WM_SETREDRAW, 1, 0) ' turn on redrawing (just in case)
+	hParent = GetParent (g_drag_hCtr)
+	IF hParent <> hWnd THEN parent_Refresh (hParent)
 	UpdateWindow (hWnd)
 
 END SUB
@@ -13409,16 +13416,7 @@ FUNCTION VOID parent_Refresh (hCtr)
 	SetLastError (0)
 	IFZ hCtr THEN RETURN
 
-	' find the parent window
-	hWnd = 0
-	parent = GetParent (hCtr)
-	DO WHILE parent
-		IF IsWindow (parent) THEN
-			hWnd = parent
-			EXIT DO
-		ENDIF
-		parent = GetParent (parent)
-	LOOP
+	hWnd = control_GetWindowHandle (hCtr)
 	IF hWnd THEN
 		' refresh the parent window
 		bOK = WinXGetUsableRect (hWnd, @rect)		' get the window's effective rectangle
@@ -13465,6 +13463,35 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	SendMessageA (hTabs, $$TCM_ADJUSTRECT, 0, pRect)
 	r_autosizerSeries = WinXTabs_GetAutosizerSeries (hTabs, WinXTabs_GetCurrentTab (hTabs))
 	RETURN r_autosizerSeries
+END FUNCTION
+'
+' ###################################
+' #####	window_NewMdiChild ()	#####
+' ###################################
+'
+' Creates an MDI child window
+'
+' binding.hWnd = window_NewMdiChild (binding.hWndMDIParent, "", $$WS_MAXIMIZE)
+FUNCTION window_NewMdiChild (hClient, STRING title, style)
+
+	SetLastError (0)
+	IFZ hClient THEN RETURN
+
+	IFZ title THEN pTitle = 0 ELSE pTitle = &title
+
+	exStyle = $$WS_EX_MDICHILD | $$WS_EX_CLIENTEDGE
+
+	hMdiActive = SendMessageA (hClient, $$WM_MDIGETACTIVE, 0, 0)
+	IF hMdiActive THEN
+		IF IsZoomed (hMdiActive) THEN style = style | $$WS_MAXIMIZE
+	ENDIF
+
+	hInst = GetWindowLongA (hClient, $$GWL_HINSTANCE)
+	IFZ hInst THEN hInst = GetModuleHandleA (0)
+
+	hMdi = CreateWindowExA (exStyle, &$$WINX_CLASS$, pTitle, style, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hClient, 0, hInst, 0)
+	RETURN hMdi
+
 END FUNCTION
 '
 ' #########################
