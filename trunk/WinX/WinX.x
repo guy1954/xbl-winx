@@ -95,6 +95,7 @@ VERSION "0.6.0.16"
 ' 0.6.0.16-GL-13aug13-Added similar selection functions for list box, list view and treeview
 '                     to share code between list controls.
 '          GL-11nov13-used WinX's icon when a passed hIcon is null in WinXNewWindow.
+'          GL-18jan14-Process event $$MCN_SELCHANGE (13,641 lines).
 '
 ' Win32API DLL headers
 '
@@ -664,7 +665,7 @@ DECLARE FUNCTION WinXMRU_MakeKey$ (id)
 DECLARE FUNCTION WinXMRU_SaveListToIni (iniPath$, pathNew$, @mruList$[]) ' save the Most Recently Used file list into the INI file
 '
 ' Mask
-DECLARE FUNCTION WinXMask_AddSub (style, add, sub) ' add a style and subtract another style from a mask
+DECLARE FUNCTION WinXMask_AddSub (style, styleAdd, styleSub) ' add a style and subtract another style from a mask
 DECLARE FUNCTION WinXMask_found (mask, flags) ' flag(s) raized?
 '
 ' Menu
@@ -736,7 +737,7 @@ DECLARE FUNCTION WinXScroll_Show (hWnd, horiz, vert)
 DECLARE FUNCTION WinXScroll_Update (hWnd, deltaX, deltaY)
 '
 '
-DECLARE FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx) ' set style and extended style
+DECLARE FUNCTION WinXSetStyle (hWnd, styleAdd, addEx, styleSub, subEx) ' set style and extended style
 '
 ' Splitter
 DECLARE FUNCTION WinXSplitter_GetPos (series, hCtr, @position, @docked)
@@ -1630,9 +1631,7 @@ FUNCTION WinXAddStatusBar (hWnd, STRING initialStatus, idCtr)
 
 	' get the parent window's style
 	window_style = GetWindowLongA (hWnd, $$GWL_STYLE)
-  	IF ((window_style & $$WS_SIZEBOX) = $$WS_SIZEBOX) THEN
-		style = style | $$SBARS_SIZEGRIP
-	ENDIF
+	IF ((window_style & $$WS_SIZEBOX) = $$WS_SIZEBOX) THEN style = style | $$SBARS_SIZEGRIP
 
 	' make the status bar
 	hInst = GetModuleHandleA (0)
@@ -1873,16 +1872,18 @@ END FUNCTION
 '
 ' Displays a message.
 '
-' text$  = the text to display
+' msg$  = the text to display
 ' title$ = the title for the dialog
 '
 ' Returns bOK: $$TRUE on success
 '
-FUNCTION WinXAlert (text$, title$)
+FUNCTION WinXAlert (msg$, title$)
 
+	bOK = $$FALSE
 	hwnd = GetActiveWindow ()
-	MessageBoxA (hwnd, &message, &title, $$MB_ICONSTOP)
-	RETURN $$TRUE		' success
+	ret = MessageBoxA (hwnd, &msg$, &title, $$MB_ICONSTOP)
+	IF ret THEN bOK = $$TRUE
+	RETURN bOK
 
 END FUNCTION
 '
@@ -3127,7 +3128,9 @@ FUNCTION WinXDialog_Question (hWnd, text$, title$, cancel, defaultButton)
 	END SELECT
 	flags = flags | $$MB_ICONQUESTION
 
-	RETURN MessageBoxA (hWnd, &text$, &title$, flags)
+	hwnd = GetActiveWindow ()
+	ret = MessageBoxA (hwnd, &text$, &title$, flags)
+	RETURN ret
 END FUNCTION
 '
 ' ##################################
@@ -5731,16 +5734,13 @@ FUNCTION WinXListBox_SetAllSelections (hListBox, index[])
 			style = GetWindowLongA (hListBox, $$GWL_STYLE)
 			SELECT CASE ((style & $$LBS_EXTENDEDSEL) = $$LBS_EXTENDEDSEL)
 				CASE $$TRUE		' multi-selections
-					' first, unselect everything
-					SendMessageA (hListBox, $$LB_SETSEL, 0, -1)
+					SendMessageA (hListBox, $$LB_SETSEL, 0, -1)		' first, unselect everything
 					'
 					upp = UBOUND (index[])
 					FOR i = 0 TO upp
 						IF index[i] < 0 THEN DO NEXT
 						IF index[i] >= count THEN DO NEXT
-						SetLastError (0)
-						ret = SendMessageA (hListBox, $$LB_SETSEL, 1, index[i])
-						IF ret < 0 THEN EXIT SELECT
+						SendMessageA (hListBox, $$LB_SETSEL, 1, index[i])		' select index[i]
 					NEXT i
 					bOK = $$TRUE
 					'
@@ -6680,8 +6680,8 @@ END FUNCTION
 FUNCTION WinXListView_SetView (hLV, view)
 	IFZ hLV THEN RETURN
 
-	sub = $$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT
-	WinXSetStyle (hLV, view, 0, sub, 0)
+	styleSub = $$LVS_ICON | $$LVS_SMALLICON | $$LVS_LIST | $$LVS_REPORT
+	WinXSetStyle (hLV, view, 0, styleSub, 0)
 	RETURN $$TRUE		' success
 END FUNCTION
 '
@@ -6966,25 +6966,25 @@ END FUNCTION
 ' #############################
 '
 ' Adds a style and subtract another style from a mask.
-' style = the mask
-' add   = the style to add
-' sub   = the style to subtract
+' style    = the mask
+' styleAdd = the style to add
+' styleSub = the style to subtract
 '
-FUNCTION WinXMask_AddSub (style, add, sub)
+FUNCTION WinXMask_AddSub (style, styleAdd, styleSub)
 
 	r_mask = style
 	SELECT CASE TRUE
-		CASE add = sub		' nothing to do at all
+		CASE styleAdd = styleSub		' nothing to do at all
 		CASE ELSE
-			' 1. subtract sub from r_mask
+			' 1. subtract styleSub from r_mask
 			SELECT CASE TRUE
-				CASE sub = 0		' nothing to subtract
+				CASE styleSub = 0		' nothing to subtract
 				CASE r_mask = 0		' nothing to subtract from
-				CASE ELSE : IF (r_mask & sub) = sub THEN r_mask = r_mask & (~sub)
+				CASE ELSE : IF (r_mask & styleSub) = styleSub THEN r_mask = r_mask & (~styleSub)
 			END SELECT
 			'
-			' 2. add add to r_mask
-			IF add THEN r_mask = r_mask | add
+			' 2. add styleAdd to r_mask
+			IF styleAdd THEN r_mask = r_mask | styleAdd
 			'
 	END SELECT
 	RETURN r_mask
@@ -7179,9 +7179,11 @@ END FUNCTION
 '
 FUNCTION WinXMsgBox (msg$, title$)
 
+	bOK = $$FALSE
 	hwnd = GetActiveWindow ()
-	MessageBoxA (hwnd, &msg$, &title$, $$MB_ICONINFORMATION)
-	RETURN $$TRUE		' success
+	ret = MessageBoxA (hwnd, &msg$, &title$, $$MB_ICONINFORMATION)
+	IF ret THEN bOK = $$TRUE
+	RETURN bOK
 
 END FUNCTION
 '
@@ -8098,16 +8100,16 @@ END FUNCTION
 FUNCTION WinXProgress_SetMarquee (hProg, enable)
 	SetLastError (0)
 	IF enable THEN
-		add = $$PBS_MARQUEE ' add flag
-		sub = 0
+		styleAdd = $$PBS_MARQUEE ' add flag
+		styleSub = 0
 		state = 1 ' set ON
 	ELSE
-		add = 0
-		sub = $$PBS_MARQUEE ' remove flag
+		styleAdd = 0
+		styleSub = $$PBS_MARQUEE ' remove flag
 		state = 0 ' set off
 	ENDIF
 
-	WinXSetStyle (hProg, add, 0, sub, 0)
+	WinXSetStyle (hProg, styleAdd, 0, styleSub, 0)
 	SendMessageA (hProg, $$PBM_SETMARQUEE, state, 50)
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -9087,12 +9089,12 @@ END FUNCTION
 FUNCTION WinXScroll_Show (hWnd, horiz, vert)
 
 	flag = $$WS_HSCROLL ' to add if horizontal, or to remove
-	IF horiz THEN add = flag ELSE sub = flag
+	IF horiz THEN styleAdd = flag ELSE styleSub = flag
 
 	flag = $$WS_VSCROLL ' to add if vertical, or to remove
-	IF vert THEN add = add | flag ELSE sub = sub | flag
+	IF vert THEN styleAdd = styleAdd | flag ELSE styleSub = styleSub | flag
 
-	WinXSetStyle (hWnd, add, 0, sub, 0)
+	WinXSetStyle (hWnd, styleAdd, 0, styleSub, 0)
 
 	' refresh
 	SetWindowPos (hWnd, 0, 0, 0, 0, 0, $$SWP_NOMOVE | $$SWP_NOSIZE | $$SWP_NOZORDER | $$SWP_FRAMECHANGED)
@@ -9233,14 +9235,14 @@ END FUNCTION
 ' #####  WinXSetStyle  #####
 ' ##########################
 ' Changes the window style of a window or a control
-' hWnd  = the handle to the window the change the style of
-' add   = the styles to add
-' addEx = the extended styles to add
-' sub   = the styles to remove
-' subEx = the extended styles to remove
+' hWnd     = the handle to the window the change the style of
+' styleAdd = the styles to add
+' addEx    = the extended styles to add
+' styleSub = the styles to remove
+' subEx    = the extended styles to remove
 ' Returns bOK: $$TRUE on success
 '
-FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
+FUNCTION WinXSetStyle (hWnd, styleAdd, addEx, styleSub, subEx)
 
 	SetLastError (0)
 
@@ -9249,22 +9251,22 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 	bOK = $$TRUE		' assume success
 
 	SELECT CASE TRUE
-		CASE add = sub		' do nothing
+		CASE styleAdd = styleSub		' do nothing
 			'
 		CASE ELSE
 			styleOld = GetWindowLongA (hWnd, $$GWL_STYLE)
 			'
 			' add before subtracting
 			style = styleOld
-			IF add THEN
+			IF styleAdd THEN
 				' add only if not there
-				IF (style & add) <> add THEN style = style | add
+				IF (style & styleAdd) <> styleAdd THEN style = style | styleAdd
 			ENDIF
 			'
-			' subtract sub from style
-			IF sub THEN
+			' subtract styleSub from style
+			IF styleSub THEN
 				' subtract only if present
-				IF (style & sub) = sub THEN style = style & (~sub)
+				IF (style & styleSub) = styleSub THEN style = style & (~styleSub)
 			ENDIF
 			'
 			' update the control only for a styleOld change
@@ -9275,8 +9277,8 @@ FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx)
 			' GL-18mar12-add or remove $$ES_READONLY flag with:
 			' SendMessageA (handle, $$EM_SETREADONLY, On/off, 0)
 			state = -1
-			IF ((add & $$ES_READONLY) = $$ES_READONLY) THEN state = 1		' if $$ES_READONLY in add => read only
-			IF ((sub & $$ES_READONLY) = $$ES_READONLY) THEN state = 0		' if $$ES_READONLY in sub => unprotected
+			IF ((styleAdd & $$ES_READONLY) = $$ES_READONLY) THEN state = 1		' if $$ES_READONLY in styleAdd => read only
+			IF ((styleSub & $$ES_READONLY) = $$ES_READONLY) THEN state = 0		' if $$ES_READONLY in styleSub => unprotected
 			'
 			SELECT CASE state
 				CASE 0, 1
@@ -9923,7 +9925,7 @@ END FUNCTION
 ' ?????  all useful toolbar buttons ????
 ' ??????????????????????????????????????
 '
-'FOR idButton = 0 TO $$tbbExit
+'FOR idButton = $$tbbNew TO $$tbbExit
 '	bOK = WinXToolbar_EnableButton (hToolbar, idButton, $$FALSE)
 '	IFF bOK THEN
 '		msg$ = "WinXToolbar_EnableButton: Lucky you! I can't disable toolbar button " + STRING$ (idButton)
@@ -9943,7 +9945,7 @@ FUNCTION WinXToolbar_EnableButton (hToolbar, idButton, enable)
 
 	' determine whether button idButton is enabled or disabled
 	fEnableOld = SendMessageA (hToolbar, $$TB_ISBUTTONENABLED, idButton, 0)
-	IF fEnableOld THEN fEnableOld = 1
+	IF fEnableOld THEN fEnableOld = 1		' 1 = enabled
 
 	IF fEnableNew <> fEnableOld THEN
 		' toggle the state
@@ -12103,7 +12105,7 @@ END FUNCTION
 ' ################################
 ' #####  cancelDlgOnCommand  #####
 ' ################################
-' FnOnCommand callback for the cancel printing dialog box
+' printer dialog OnCommand callback for the cancel printing dialog box
 FUNCTION cancelDlgOnCommand (idCtr, code, hWnd)
 	SHARED PRINTINFO g_oPrinter
 
@@ -13209,6 +13211,8 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 
 	RECT rect
 
+	SYSTEMTIME sysTime		' for event $$MCN_SELCHANGE
+
 	SetLastError (0)
 	retCode = 0
 	IFZ lParam THEN RETURN retCode
@@ -13236,6 +13240,15 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 				p_nmsc = &nmsc
 				XLONGAT (&&nmsc) = lParam
 				retCode = @binding.onCalendarSelect (idCtr, nmsc.stSelStart)
+				XLONGAT (&&nmsc) = p_nmsc
+			ENDIF
+
+		CASE $$MCN_SELCHANGE
+			IF binding.onCalendarSelect THEN
+				p_nmsc = &nmsc
+				XLONGAT (&&nmsc) = lParam
+				SendMessageA (nmsc.hdr.hwndFrom, $$MCM_GETCURSEL, SIZE (SYSTEMTIME), &sysTime)
+				retCode = @binding.onCalendarSelect (idCtr, sysTime)
 				XLONGAT (&&nmsc) = p_nmsc
 			ENDIF
 
