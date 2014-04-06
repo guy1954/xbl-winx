@@ -155,7 +155,7 @@ TYPE BINDING
 	XLONG			.isMouseInWindow
 	XLONG			.hUpdateRegion
 
-	FUNCADDR .paint (XLONG, XLONG)		'hWnd, hdc : paint the window
+	FUNCADDR .paint (XLONG, XLONG)		'hWnd, hDC : paint the window
 	FUNCADDR .dimControls (XLONG, XLONG, XLONG)		'hWnd, w, h : dimension the controls
 	FUNCADDR .onCommand (XLONG, XLONG, XLONG)		'idCtr, notifyCode, hCtr
 	FUNCADDR .onMouseMove (XLONG, XLONG, XLONG)		'hWnd, x, y
@@ -629,11 +629,12 @@ DECLARE FUNCTION WinXListBox_SetAllSelections (hListBox, index[])
 '
 ' List view
 DECLARE FUNCTION WinXListView_AddCheck (hLV) ' add the check boxes to a list view
-DECLARE FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, label$, iSubItem)
+DECLARE FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, label$)
 DECLARE FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
 DECLARE FUNCTION WinXListView_Clear (hLV) ' clear out the contents of the list view
 DECLARE FUNCTION WinXListView_DeleteColumn (hLV, iColumn)
 DECLARE FUNCTION WinXListView_DeleteItem (hLV, iItem)
+DECLARE FUNCTION WinXListView_Find (hLV, match$, iColumn)
 DECLARE FUNCTION WinXListView_GetCheck (hLV, iItem) ' determine whether an item in a list view control is checked
 DECLARE FUNCTION WinXListView_GetHeaderHeight (hLV)
 DECLARE FUNCTION WinXListView_GetItemFromPoint (hLV, x, y)
@@ -647,13 +648,13 @@ DECLARE FUNCTION WinXListView_SetAllUnchecked (hLV)
 DECLARE FUNCTION WinXListView_SetAllUnselected (hLV)
 DECLARE FUNCTION WinXListView_SetCheck (hLV, iItem, checked) ' set the item's check state of a list view with check boxes
 DECLARE FUNCTION WinXListView_SetColumnText (hLV, iColumn, label$)
-DECLARE FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem) ' set the focus on item
-DECLARE FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, newText$)
+DECLARE FUNCTION WinXListView_SetItemFocus (hLV, iItem, iColumn) ' set the focus on item
+DECLARE FUNCTION WinXListView_SetItemText (hLV, iItem, iColumn, newText$)
 DECLARE FUNCTION WinXListView_SetAllSelections (hLV, iItems[]) ' multi-select these items
 DECLARE FUNCTION WinXListView_SetSelection (hLV, iItem) ' select this item
-DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
+DECLARE FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iColumn)
 DECLARE FUNCTION WinXListView_SetView (hLV, view)
-DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
+DECLARE FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iColumn)
 DECLARE FUNCTION WinXListView_Sort (hLV, iCol, desc)
 '
 DECLARE FUNCTION WinXListView_BeginUpdate (hLV) ' disable $$LVN_ITEMCHANGED
@@ -1428,18 +1429,24 @@ END FUNCTION
 FUNCTION WinXAddListBox (parent, sort, multiSelect, idCtr)
 
 	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
+	exStyle = 0
 
 	' $$LBS_NOINTEGRALHEIGHT: Predefined size
-	style = style | $$WS_VSCROLL | $$WS_HSCROLL | $$LBS_HASSTRINGS | $$LBS_NOINTEGRALHEIGHT
+	style = style | $$LBS_NOINTEGRALHEIGHT | $$LBS_STANDARD
+
+	style = style | $$WS_VSCROLL | $$WS_HSCROLL | $$LBS_HASSTRINGS
 
 	' $$LBS_NOTIFY: enables $$WM_COMMAND's notification code ($$LBN_SELCHANGE)
 	style = style | $$LBS_NOTIFY		' $$LBS_STANDARD only does not allow dragNdrop
 
-	IF sort        THEN style = style | $$LBS_SORT
-	IF multiSelect THEN style = style | $$LBS_EXTENDEDSEL
+	IF sort THEN style = style | $$LBS_SORT
+	IF multiSelect THEN
+		style = style | $$LBS_EXTENDEDSEL
+		exStyle = $$WS_EX_CLIENTEDGE
+	ENDIF
 
 	hInst = GetModuleHandleA (0)
-	hListBox = CreateWindowExA (0, &$$LISTBOX, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
+	hListBox = CreateWindowExA (exStyle, &$$LISTBOX, 0, style, 0, 0, 0, 0, parent, idCtr, hInst, 0)
 	IFZ hListBox THEN RETURN
 
 	WinXSetDefaultFont (hListBox)
@@ -5374,11 +5381,12 @@ END FUNCTION
 ' Returns the index of the string in the list or -1 on fail
 '
 ' Usage:
-'index = WinXListBox_AddItem (hListBox, -1, item$) ' add last
-'IF index < 0 THEN
+'indexAdd = WinXListBox_AddItem (hListBox, -1, item$)		' add last
+'IF indexAdd < 0 THEN
 '	msg$ = "WinXListBox_AddItem: Can't add item " + item$
 '	XstAlert (msg$)
 'ENDIF
+'
 FUNCTION WinXListBox_AddItem (hListBox, index, item$)
 
 	SetLastError (0)
@@ -5528,8 +5536,8 @@ END FUNCTION
 ' Returns the index of the item r_index or $$LB_ERR on fail
 '
 ' Usage:
-'index = WinXListBox_Find (hListBox, match$)
-'IF index < 0 THEN ' Can't find exact match
+'indexMatch = WinXListBox_Find (hListBox, match$)
+'IF indexMatch < 0 THEN		' Can't find exact match
 '
 FUNCTION WinXListBox_Find (hListBox, match$)
 
@@ -5838,24 +5846,27 @@ END FUNCTION
 '
 ' Adds a column to a list view control for use in report view
 '
-' iColumn  = the zero-based index for the new column
+' iColumn = the index of the sub item the column displays
 ' wColumn  = the width of the column
 ' label    = the label for the column
-' iSubItem = the 1-based index of the sub item the column displays
 '
 ' Returns the index to the column or -1 on fail
 '
-FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, STRING label, iSubItem)
+FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, STRING label)
 	LVCOLUMN lvCol
 
 	SetLastError (0)
 	IFZ hLV THEN RETURN -1		' fail
+	IF iColumn < 0 THEN iColumn = 0
 
 	lvCol.mask = $$LVCF_FMT | $$LVCF_ORDER | $$LVCF_SUBITEM | $$LVCF_TEXT | $$LVCF_WIDTH
 	lvCol.fmt = $$LVCFMT_LEFT
 	lvCol.cx = wColumn
 	lvCol.pszText = &label
-	lvCol.iSubItem = iSubItem
+
+	IF iColumn < 0 THEN iColumn = 0
+	lvCol.iSubItem = iColumn
+
 	lvCol.iOrder = iColumn
 
 	r_index = SendMessageA (hLV, $$LVM_INSERTCOLUMN, iColumn, &lvCol)
@@ -5878,16 +5889,16 @@ END FUNCTION
 ' Returns the index to the item or -1 on error
 '
 'iItem = WinXListView_AddItem (hLV, -1, item$, -1)
-'IF iItem < 0 THEN XstAlert ("WinXListView_AddItem: Can't add item " + item$)
+'IF iItem < 0 THEN XstAlert ("WinXListView_AddItem: Can't add listvew item " + item$)
 '
-FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
+FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
 	LVITEM lvi
 
 	r_index = -1
 	SELECT CASE hLV
 		CASE 0
 		CASE ELSE
-			st$ = item + "|" ' add a separator to ensure XstParseStringToStringArray will work
+			st$ = item$ + "|" ' add a separator to ensure XstParseStringToStringArray will work
 			'
 			' replace all embedded zero-characters by separator "|"
 			upp = LEN (st$) - 2 ' ...|\0 <--LEN (st$) - 1
@@ -5901,7 +5912,7 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 				CASE ELSE : XstParseStringToStringArray (st$, "|", @s$[])
 			END SELECT
 			'
-			' set the item
+			' set the listvew item
 			lvi.mask = $$LVIF_TEXT
 			IF iIcon > -1 THEN lvi.mask = lvi.mask | $$LVIF_IMAGE
 			'
@@ -5916,10 +5927,12 @@ FUNCTION WinXListView_AddItem (hLV, iItem, STRING item, iIcon)
 			'
 			' set the subitems
 			upp = UBOUND (s$[])
-			FOR i = 1 TO upp		' skip 1st item
+			FOR i = 1 TO upp		' skip 1st listvew item
 				lvi.mask = $$LVIF_TEXT
 				lvi.iItem = r_index
+				'
 				lvi.iSubItem = i
+				'
 				lvi.pszText = &s$[i]
 				SendMessageA (hLV, $$LVM_SETITEM, 0, &lvi)
 			NEXT i
@@ -6096,6 +6109,44 @@ FUNCTION WinXListView_GetCheck (hLV, iItem)
 
 END FUNCTION
 '
+' ###############################
+' #####  WinXListView_Find  #####
+' ###############################
+'
+' Finds a listview item using the value of a sub-item
+' hLV      = the handle to the list box containing the string
+' match$   = the string to search FOR
+' iColumn = the index of the sub item the column displays
+' Returns the index of the item r_index or -1 on fail
+'
+' Usage:
+'indexMatch = WinXListView_Find (hLV, match$, 0)
+'IF indexMatch < 0 THEN		' Can't find exact match
+'
+FUNCTION WinXListView_Find (hLV, match$, iColumn)
+
+	SetLastError (0)
+	r_index = -1
+	SELECT CASE hLV
+		CASE 0
+		CASE ELSE
+			IFZ match$ THEN EXIT SELECT
+			IF iColumn < 0 THEN iColumn = 0
+			'
+			count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+			upper_iItem = count - 1
+			FOR iItem = 0 TO upper_iItem
+				bOK = WinXListView_GetItemText (hLV, iItem, iColumn, @text$[])		' retrieve the first iColumn columns
+				IF bOK THEN
+					IF text$[iColumn] = match$ THEN r_index = iItem : EXIT FOR
+				ENDIF
+			NEXT iItem
+			'
+	END SELECT
+	RETURN r_index
+
+END FUNCTION
+'
 ' ##########################################
 ' #####  WinXListView_GetHeaderHeight  #####
 ' ##########################################
@@ -6164,20 +6215,22 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, uppSubItem, @r_cell$[])
 			IF iItem >= count THEN EXIT SELECT
 			'
 			DIM r_cell$[uppSubItem]
-			FOR iSubItem = 0 TO uppSubItem
+			FOR iColumn = 0 TO uppSubItem
 				lvi.mask = $$LVIF_TEXT
 				szBuf$ = NULL$ (4096)
 				lvi.pszText = &szBuf$
 				lvi.cchTextMax = 4095
 				lvi.iItem = iItem
-				lvi.iSubItem = iSubItem
+				'
+				IF iColumn < 1 THEN iColumn = 0
+				lvi.iSubItem = iColumn
 				'
 				ret = SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi)
 				IF ret THEN
 					st$ = CSTRING$ (lvi.pszText)
-					r_cell$[iSubItem] = st$
+					r_cell$[iColumn] = st$
 				ENDIF
-			NEXT iSubItem
+			NEXT iColumn
 			'
 			bOK = $$TRUE
 			'
@@ -6489,7 +6542,7 @@ END FUNCTION
 ' iColumn  = the zero-based index for the column
 ' wColumn  = the width of the column (0 if none)
 ' label    = the label for the column
-' iSubItem = the 1-based index of the sub item the column displays
+' iColumn = the index of the sub item the column displays
 '
 ' Returns bOK: $$TRUE on success
 '
@@ -6498,7 +6551,7 @@ END FUNCTION
 FUNCTION WinXListView_SetColumnText (hLV, iColumn, STRING label)
 	HD_ITEM hdItem
 
-	IF iColumn < 0 THEN RETURN
+	IF iColumn < 0 THEN iColumn = 0
 
 	' get a handle to the header control ($$WC_HEADER
 	SetLastError (0)
@@ -6527,9 +6580,9 @@ END FUNCTION
 ' #######################################
 ' Sets the focus on an item
 ' iItem = the zero-based index of the item
-' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' iColumn = 0 the index of the subitem or 0 if setting the main item
 ' Returns bOK: $$TRUE on success
-FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
+FUNCTION WinXListView_SetItemFocus (hLV, iItem, iColumn)
 	LVITEM lvi
 
 	SetLastError (0)
@@ -6544,10 +6597,13 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 			IF iItem < 0 THEN iItem = 0
 			IF iItem >= count THEN EXIT SELECT
 			'
-			IF iSubItem < 0 THEN iSubItem = 0
+			IF iColumn < 0 THEN iColumn = 0
 			'
 			lvi.iItem = iItem
-			lvi.iSubItem = iSubItem
+			'
+			IF iColumn < 0 THEN iColumn = 0
+			lvi.iSubItem = iColumn
+			'
 			lvi.mask = $$LVIF_TEXT
 			lvi.state = $$LVIS_FOCUSED | $$LVIS_SELECTED
 			lvi.stateMask = $$LVIS_FOCUSED | $$LVIS_SELECTED
@@ -6563,7 +6619,10 @@ FUNCTION WinXListView_SetItemFocus (hLV, iItem, iSubItem)
 			'
 			' select the focused item
 			lvi.iItem = iItem
-			lvi.iSubItem = iSubItem
+			'
+			IF iColumn < 0 THEN iColumn = 0
+			lvi.iSubItem = iColumn
+			'
 			lvi.mask = $$LVIF_STATE
 			lvi.stateMask = $$LVIS_SELECTED
 			lvi.state = $$LVIS_SELECTED
@@ -6584,9 +6643,9 @@ END FUNCTION
 ' ######################################
 ' Sets new text for an item
 ' iItem = the zero-based index of the item
-' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' iColumn = 0 the index of the subitem or 0 if setting the main item
 ' Returns bOK: $$TRUE on success
-FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
+FUNCTION WinXListView_SetItemText (hLV, iItem, iColumn, STRING newText)
 	LVITEM lvi
 
 	SetLastError (0)
@@ -6594,7 +6653,10 @@ FUNCTION WinXListView_SetItemText (hLV, iItem, iSubItem, STRING newText)
 
 	lvi.mask = $$LVIF_TEXT
 	lvi.iItem = iItem
-	lvi.iSubItem = iSubItem
+
+	IF iColumn < 0 THEN iColumn = 0
+	lvi.iSubItem = iColumn
+
 	lvi.pszText = &newText
 
 	IF SendMessageA (hLV, $$LVM_SETITEMTEXT, iItem, &lvi) THEN RETURN $$TRUE		' success
@@ -6635,9 +6697,9 @@ END FUNCTION
 ' ############################################
 ' Shows an item on top using its index
 ' iItem = the zero-based index of the item
-' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' iColumn = 0 the 1-based index of the subitem or 0 if setting the main item
 ' Returns bOK: $$TRUE on success
-FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
+FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iColumn)
 	RECT rect
 
 	SetLastError (0)
@@ -6652,7 +6714,7 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 			IF iItem < 0 THEN iItem = 0
 			IF iItem >= count THEN EXIT SELECT
 			'
-			IF iSubItem < 0 THEN iSubItem = 0
+			IF iColumn < 0 THEN iColumn = 0
 			'
 			topIndex = SendMessageA (hLV, $$LVM_GETTOPINDEX, 0, 0)
 			IF iItem = topIndex THEN EXIT SELECT
@@ -6661,7 +6723,7 @@ FUNCTION WinXListView_SetTopItemByIndex (hLV, iItem, iSubItem)
 			SendMessageA (hLV, $$LVM_GETITEMRECT, 0, &rect)
 			scrollY = (iItem - topIndex) * (rect.bottom - rect.top)
 			SendMessageA (hLV, $$LVM_SCROLL, 0, scrollY)
-			SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, iSubItem)
+			SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, iColumn)
 			'
 			bOK = $$TRUE
 			'
@@ -6690,9 +6752,9 @@ END FUNCTION
 ' ##########################################
 ' Shows an item using its index
 ' iItem = the zero-based index of the item
-' iSubItem = 0 the 1-based index of the subitem or 0 if setting the main item
+' iColumn = 0 the 1-based index of the subitem or 0 if setting the main item
 ' Returns bOK: $$TRUE on success
-FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
+FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iColumn)
 
 	SetLastError (0)
 	IFZ hLV THEN RETURN
@@ -6704,9 +6766,9 @@ FUNCTION WinXListView_ShowItemByIndex (hLV, iItem, iSubItem)
 	IF iItem < 0 THEN iItem = 0
 	IF iItem >= count THEN RETURN
 
-	IF iSubItem < 0 THEN iSubItem = 0
+	IF iColumn < 0 THEN iColumn = 0
 
-	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, iSubItem)
+	SendMessageA (hLV, $$LVM_ENSUREVISIBLE, iItem, iColumn)
 	RETURN $$TRUE		' success
 
 END FUNCTION
@@ -10175,26 +10237,21 @@ END FUNCTION
 '
 FUNCTION WinXTreeView_Clear (hTV)
 
-	SetLastError (0)
 	bOK = $$FALSE
 	SELECT CASE hTV
 		CASE 0
 		CASE ELSE
-			count = SendMessageA (hTV, $$TVM_GETCOUNT, 0, 0)
-			IFZ count THEN
-				bOK = $$TRUE
-				EXIT SELECT
-			ENDIF
+			SendMessageA (hTV, $$WM_SETREDRAW, 0, 0)		' freeze
 			'
-			' protect from an endless LOOP
-			SendMessageA (hTV, $$WM_SETREDRAW, 0, 0) ' freeze
+			' delete all treeview nodes
+			DO
+				hItem = SendMessageA (hTV, $$TVM_GETNEXTITEM, $$TVGN_ROOT, 0)
+				IFZ hItem THEN EXIT DO
+				SendMessageA (hTV, $$TVM_DELETEITEM, 0, hItem)
+			LOOP
 			'
-			ret = SendMessageA (hTV, $$TVM_DELETEITEM, 0, $$TVI_ROOT)
-			IF ret THEN bOK = $$TRUE
-			'
-			SendMessageA (hTV, $$WM_SETREDRAW, 1, 0) ' redraw
-			hParent = GetParent (hTV)
-			parent_Refresh (hParent)
+			SendMessageA (hTV, $$WM_SETREDRAW, 1, 0)		' redraw
+			bOK = $$TRUE
 			'
 	END SELECT
 	RETURN bOK
