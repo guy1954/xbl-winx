@@ -1,0 +1,1 @@
+WinX is a thin layer over the native Windows API.  It is designed to fill in the gaps in the Win32 API without introducing too many additional abstractions.
