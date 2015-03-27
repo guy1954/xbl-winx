@@ -1,9 +1,4 @@
-============================
-Win\\  //
-    \\//
-    //\\
-   //  \\
-============================
+Win.dll
 GUI library for XBlite
 
 (c) Callum Lowcay 2007-2008  Distributed under the terms of the GNU LGPL.
