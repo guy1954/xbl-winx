@@ -1,96 +1,67 @@
-m4_define(`DeclareAccess',`''
-' === $1 class ===
-'
-DECLARE FUNCTION $1_Delete (id) ' delete a $1 item accessed by its id
-DECLARE FUNCTION $1_Get (id`,' $1 @$1_item) ' get data of a $1 item accessed by its id
-DECLARE FUNCTION $1_Get_count () ' get $1 item count
-DECLARE FUNCTION $1_Get_idMax () ' get $1 item id max
-DECLARE FUNCTION $1_Get_idMin () ' get $1 item id min
-DECLARE FUNCTION $1_Init () ' initialize the $1 class
-DECLARE FUNCTION $1_New ($1 $1_item) ' add $1 item to $1 pool
-DECLARE FUNCTION $1_Update (id`,' $1 $1_item) ' update data of a $1 item accessed by its id)
+m4_define(`DeclareAccess', `DECLARE FUNCTION $1_Delete ($1_id)
+DECLARE FUNCTION $1_Get ($1_id`,' $1 @$1_item)
+DECLARE FUNCTION $1_Get_count ()
+DECLARE FUNCTION $1_Get_idMax ()
+DECLARE FUNCTION $1_Get_idMin ()
+DECLARE FUNCTION $1_Init ()
+DECLARE FUNCTION $1_New ($1 $1_item)
+DECLARE FUNCTION $1_Update ($1_id`,' $1 $1_item)')
 
-m4_define(`DefineAccess',`''
-' === $1 class ===
-'
-'
-' Deletes a $1 item accessed by its id
-' id = id of the $1 item to delete
-' returns $$TRUE on success or $$FALSE on fail
-'
-' Usage:
-'bOK = $1_Delete (id)
-'IFF bOK THEN PRINT "$1_Delete: Can't delete $1 item from $1 pool by its id = "; id
-'
-FUNCTION $1_Delete (id)
-	SHARED $1 $1_pool[]
-	SHARED $1_poolUM[]
+m4_define(`DefineAccess',`FUNCTION $1_Delete ($1_id)
+	SHARED $1 $1_array[]
+	SHARED $1_arrayUM[]
 
-	$1 $1_Nil
+	$1 $1_null
 
 	bOK = $$FALSE
-	slot = id - 1
-	IF (slot >= 0 && slot <= UBOUND ($1_poolUM[])) THEN
-		IF $1_poolUM[slot] THEN
-			' empty the slot
-			$1_pool[slot] = $1_Nil
-			$1_poolUM[slot] = $$FALSE
-			bOK = $$TRUE
-		ENDIF
+	slot = $1_id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		$1_array[slot] = $1_null
+		$1_arrayUM[slot] = $$FALSE
+		bOK = $$TRUE
 	ENDIF
 	RETURN bOK
 END FUNCTION
-'
-' Gets data of a $1 item accessed by its id
-' id = id of $1 item
-' $1_item = returned data
-' returns $$TRUE on success or $$FALSE on fail
-'
-' Usage:
-'bOK = $1_Get (id`,' @$1_item)
-'IFF bOK THEN PRINT "$1_Get: Can't get $1 item from $1 pool by its id = "; id
-'
-FUNCTION $1_Get (id`,' $1 $1_item)
-	SHARED $1 $1_pool[]
-	SHARED $1_poolUM[]
 
-	$1 $1_Nil
+FUNCTION $1_Get ($1_id`,' $1 $1_item)
+	SHARED $1 $1_array[]
+	SHARED $1_arrayUM[]
+
+	$1 $1_null
 
 	bOK = $$FALSE
-	$1_item = $1_Nil
-	slot = id - 1
-	IF (slot >= 0 && slot <= UBOUND ($1_poolUM[])) THEN
-		IF $1_poolUM[slot] THEN
-			$1_item = $1_pool[slot]
+	slot = $1_id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		IF $1_arrayUM[slot] THEN
+			$1_item = $1_array[slot]
 			bOK = $$TRUE
 		ENDIF
 	ENDIF
+	IFF bOK THEN
+		$1_item = $1_null
+	ENDIF
 	RETURN bOK
 END FUNCTION
-'
-' Gets $1 item count
-'
+
 FUNCTION $1_Get_count ()
-	SHARED $1_poolUM[]
+	SHARED $1_arrayUM[]
 
 	count = 0
-	IF $1_poolUM[] THEN
-		FOR slot = UBOUND ($1_poolUM[]) TO 0 STEP -1
-			IF $1_poolUM[slot] THEN INC count
+	IF $1_arrayUM[] THEN
+		FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+			IF $1_arrayUM[slot] THEN INC count
 		NEXT slot
 	ENDIF
 	RETURN count
 END FUNCTION
-'
-' Gets $1 item id max
-'
+
 FUNCTION $1_Get_idMax ()
-	SHARED $1_poolUM[]
+	SHARED $1_arrayUM[]
 
 	$1_idMax = 0
-	IF $1_poolUM[] THEN
-		FOR slot = UBOUND ($1_poolUM[]) TO 0 STEP -1
-			IF $1_poolUM[slot] THEN
+	IF $1_arrayUM[] THEN
+		FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+			IF $1_arrayUM[slot] THEN
 				$1_idMax = slot + 1
 				EXIT FOR
 			ENDIF
@@ -98,16 +69,15 @@ FUNCTION $1_Get_idMax ()
 	ENDIF
 	RETURN $1_idMax
 END FUNCTION
-'
-' Gets $1 item id min
-'
-FUNCTION $1_Get_idMin ()
-	SHARED $1_poolUM[]
 
-	IF $1_poolUM[] THEN
-		upper_slot = UBOUND ($1_poolUM[])
+FUNCTION $1_Get_idMin ()
+	SHARED $1_arrayUM[]
+
+	$1_idMin = 0
+	IF $1_arrayUM[] THEN
+		upper_slot = UBOUND ($1_arrayUM[])
 		FOR slot = 0 TO upper_slot
-			IF $1_poolUM[slot] THEN
+			IF $1_arrayUM[slot] THEN
 				$1_idMin = slot + 1
 				EXIT FOR
 			ENDIF
@@ -115,86 +85,67 @@ FUNCTION $1_Get_idMin ()
 	ENDIF
 	RETURN $1_idMin
 END FUNCTION
-'
-' Initializes the $1 class
-'
+
 FUNCTION $1_Init ()
-	SHARED $1 $1_pool[] ' an array of $1 items
-	SHARED $1_poolUM[] ' usage map so we can see which $1_pool[] elements are in use
+	SHARED $1 $1_array[]
+	SHARED $1_arrayUM[]
 
-	$1 $1_Nil
+	$1 $1_null
 
-	IFZ $1_pool[] THEN
-		upper_slot = 7
-		DIM $1_pool[upper_slot]
-		DIM $1_poolUM[upper_slot]
-	ELSE
-		' reset an existing $1_pool[]
-		FOR slot = UBOUND ($1_poolUM[]) TO 0 STEP -1
-			' empty the slot
-			$1_pool[slot] = $1_Nil
-			$1_poolUM[slot] = $$FALSE
-		NEXT slot
+	IFZ $1_array[] THEN
+		DIM $1_array[7]
+		DIM $1_arrayUM[7]
 	ENDIF
+	FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
+		$1_array[slot] = $1_null
+		$1_arrayUM[slot] = $$FALSE
+	NEXT slot
 END FUNCTION
-'
-' Adds a $1 item to $1 pool
-' returns id on success or 0 on fail
-'
-' Usage:
-'id_new = $1_New ($1_item)
-'IFZ id_new THEN PRINT "$1_New: Can't add item = "; $1_item; " to $1 pool"
-'
+
 FUNCTION $1_New ($1 $1_item)
-	SHARED $1 $1_pool[]
-	SHARED $1_poolUM[]
+	SHARED $1 $1_array[]
+	SHARED $1_arrayUM[]
 
-	IFZ $1_poolUM[] THEN $1_Init ()
+	$1 $1_null
 
-	slot_new = -1
+	IFZ $1_arrayUM[] THEN $1_Init ()
 
-	upper_slot = UBOUND ($1_poolUM[])
+	slotNew = -1
+
+	upper_slot = UBOUND ($1_arrayUM[])
 	FOR slot = 0 TO upper_slot
-		IFF $1_poolUM[slot] THEN
-			' use/reuse this empty slot
-			slot_new = slot
+		IFF $1_arrayUM[slot] THEN
+			slotNew = slot
 			EXIT FOR
 		ENDIF
 	NEXT slot
 
-	IF slot_new = -1 THEN
-		' empty slot_new not found => expand $1_pool[]
-		upp = ((upper_slot + 1) * 2) - 1
-		REDIM $1_pool[upp]
-		REDIM $1_poolUM[upp]
-		slot_new = upper_slot + 1
+	IF slotNew < 0 THEN
+		slotNew = upper_slot + 1
+		upp = (slotNew << 1) | 3
+		REDIM $1_array[upp]
+		REDIM $1_arrayUM[upp]
+		FOR i = slotNew TO upp
+			$1_array[i] = $1_null
+		NEXT i
 	ENDIF
 
-	IF slot_new >= 0 THEN
-		$1_pool[slot_new] = $1_item
-		$1_poolUM[slot_new] = $$TRUE
+	IF slotNew >= 0 THEN
+		$1_array[slotNew] = $1_item
+		$1_arrayUM[slotNew] = $$TRUE
 	ENDIF
-	RETURN (slot_new + 1)
+	RETURN (slotNew + 1)
 END FUNCTION
-'
-' Updates the data of a $1 item accessed by its id
-' id = id of $1 item
-' $1_item = new data
-' returns $$TRUE on success or $$FALSE on fail
-'
-' Usage:
-'bOK = $1_Update (id`,' $1_item)
-'IFF bOK THEN PRINT "$1_Update: Can't update $1 item in $1 pool by its id = "; id
-'
-FUNCTION $1_Update (id`,' $1 $1_item)
-	SHARED $1 $1_pool[]
-	SHARED $1_poolUM[]
+
+FUNCTION $1_Update ($1_id`,' $1 $1_item)
+	SHARED $1 $1_array[]
+	SHARED $1_arrayUM[]
 
 	bOK = $$FALSE
-	slot = id - 1
-	IF (slot >= 0 && slot <= UBOUND ($1_poolUM[])) THEN
-		IF $1_poolUM[slot] THEN
-			$1_pool[slot] = $1_item
+	slot = $1_id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
+		IF $1_arrayUM[slot] THEN
+			$1_array[slot] = $1_item
 			bOK = $$TRUE
 		ENDIF
 	ENDIF
