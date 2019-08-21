@@ -1,151 +1,105 @@
-m4_define(`DeclareAccess', `DECLARE FUNCTION $1_Delete ($1_id)
-DECLARE FUNCTION $1_Get ($1_id`,' $1 @$1_item)
-DECLARE FUNCTION $1_Get_count ()
-DECLARE FUNCTION $1_Get_idMax ()
-DECLARE FUNCTION $1_Get_idMin ()
+m4_define(`DeclareAccess',`DECLARE FUNCTION $1_Delete (id)
+DECLARE FUNCTION $1_Get (id`,' $1 @item)
 DECLARE FUNCTION $1_Init ()
-DECLARE FUNCTION $1_New ($1 $1_item)
-DECLARE FUNCTION $1_Update ($1_id`,' $1 $1_item)')
+DECLARE FUNCTION $1_New ($1 item)
+DECLARE FUNCTION $1_Update (id`,' $1 item)')
 
-m4_define(`DefineAccess',`FUNCTION $1_Delete ($1_id)
-	SHARED $1 $1_array[]
-	SHARED $1_arrayUM[]
+m4_define(`DefineAccess',`FUNCTION $1_Delete (id)
+	SHARED $1 $1array[]
+	SHARED UBYTE $1arrayUM[]
 
-	$1 $1_null
+	$1 item_null
 
 	bOK = $$FALSE
-	slot = $1_id - 1
-	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
-		$1_array[slot] = $1_null
-		$1_arrayUM[slot] = $$FALSE
+	slot = id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1arrayUM[])) THEN
+		$1array[slot] = item_null
+		$1arrayUM[slot] = $$FALSE
 		bOK = $$TRUE
 	ENDIF
 	RETURN bOK
 END FUNCTION
 
-FUNCTION $1_Get ($1_id`,' $1 $1_item)
-	SHARED $1 $1_array[]
-	SHARED $1_arrayUM[]
+FUNCTION $1_Get (id`,' $1 item)
+	SHARED $1 $1array[]
+	SHARED UBYTE $1arrayUM[]
 
-	$1 $1_null
+	$1 item_null
 
 	bOK = $$FALSE
-	slot = $1_id - 1
-	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
-		IF $1_arrayUM[slot] THEN
-			$1_item = $1_array[slot]
+	slot = id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1arrayUM[])) THEN
+		IF $1arrayUM[slot] THEN
+			item = $1array[slot]
 			bOK = $$TRUE
 		ENDIF
 	ENDIF
 	IFF bOK THEN
-		$1_item = $1_null
+		item = item_null
 	ENDIF
 	RETURN bOK
 END FUNCTION
 
-FUNCTION $1_Get_count ()
-	SHARED $1_arrayUM[]
-
-	count = 0
-	IF $1_arrayUM[] THEN
-		FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
-			IF $1_arrayUM[slot] THEN INC count
-		NEXT slot
-	ENDIF
-	RETURN count
-END FUNCTION
-
-FUNCTION $1_Get_idMax ()
-	SHARED $1_arrayUM[]
-
-	$1_idMax = 0
-	IF $1_arrayUM[] THEN
-		FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
-			IF $1_arrayUM[slot] THEN
-				$1_idMax = slot + 1
-				EXIT FOR
-			ENDIF
-		NEXT slot
-	ENDIF
-	RETURN $1_idMax
-END FUNCTION
-
-FUNCTION $1_Get_idMin ()
-	SHARED $1_arrayUM[]
-
-	$1_idMin = 0
-	IF $1_arrayUM[] THEN
-		upper_slot = UBOUND ($1_arrayUM[])
-		FOR slot = 0 TO upper_slot
-			IF $1_arrayUM[slot] THEN
-				$1_idMin = slot + 1
-				EXIT FOR
-			ENDIF
-		NEXT slot
-	ENDIF
-	RETURN $1_idMin
-END FUNCTION
-
 FUNCTION $1_Init ()
-	SHARED $1 $1_array[]
-	SHARED $1_arrayUM[]
+	SHARED $1 $1array[]
+	SHARED UBYTE $1arrayUM[]
 
-	$1 $1_null
+	$1 item_null
 
-	IFZ $1_array[] THEN
-		DIM $1_array[7]
-		DIM $1_arrayUM[7]
+	IFZ $1array[] THEN
+		DIM $1array[7]
+		DIM $1arrayUM[7]
 	ENDIF
-	FOR slot = UBOUND ($1_arrayUM[]) TO 0 STEP -1
-		$1_array[slot] = $1_null
-		$1_arrayUM[slot] = $$FALSE
+	FOR slot = UBOUND ($1arrayUM[]) TO 0 STEP -1
+		$1array[slot] = item_null
+		$1arrayUM[slot] = $$FALSE
 	NEXT slot
 END FUNCTION
 
-FUNCTION $1_New ($1 $1_item)
-	SHARED $1 $1_array[]
-	SHARED $1_arrayUM[]
+FUNCTION $1_New ($1 item)
+	SHARED $1 $1array[]
+	SHARED UBYTE $1arrayUM[]
 
-	$1 $1_null
+	$1 item_null
 
-	IFZ $1_arrayUM[] THEN $1_Init ()
+	IFZ $1arrayUM[] THEN $1_Init ()
 
-	slotNew = -1
+	slot = -1
 
-	upper_slot = UBOUND ($1_arrayUM[])
-	FOR slot = 0 TO upper_slot
-		IFF $1_arrayUM[slot] THEN
-			slotNew = slot
+	upper_slot = UBOUND ($1arrayUM[])
+	FOR i = 0 TO upper_slot
+		IFF $1arrayUM[i] THEN
+			slot = i
 			EXIT FOR
 		ENDIF
-	NEXT slot
+	NEXT i
 
-	IF slotNew < 0 THEN
-		slotNew = upper_slot + 1
-		upp = (slotNew << 1) | 3
-		REDIM $1_array[upp]
-		REDIM $1_arrayUM[upp]
-		FOR i = slotNew TO upp
-			$1_array[i] = $1_null
+	IF slot < 0 THEN
+		slot = upper_slot + 1
+		upp = (slot << 1) | 3
+		REDIM $1array[upp]
+		REDIM $1arrayUM[upp]
+		FOR i = slot TO upp
+			$1array[i] = item_null
 		NEXT i
 	ENDIF
 
-	IF slotNew >= 0 THEN
-		$1_array[slotNew] = $1_item
-		$1_arrayUM[slotNew] = $$TRUE
+	IF slot >= 0 THEN
+		$1array[slot] = item
+		$1arrayUM[slot] = $$TRUE
 	ENDIF
-	RETURN (slotNew + 1)
+	RETURN (slot + 1)
 END FUNCTION
 
-FUNCTION $1_Update ($1_id`,' $1 $1_item)
-	SHARED $1 $1_array[]
-	SHARED $1_arrayUM[]
+FUNCTION $1_Update (id`,' $1 item)
+	SHARED $1 $1array[]
+	SHARED UBYTE $1arrayUM[]
 
 	bOK = $$FALSE
-	slot = $1_id - 1
-	IF (slot >= 0) && (slot <= UBOUND ($1_arrayUM[])) THEN
-		IF $1_arrayUM[slot] THEN
-			$1_array[slot] = $1_item
+	slot = id - 1
+	IF (slot >= 0) && (slot <= UBOUND ($1arrayUM[])) THEN
+		IF $1arrayUM[slot] THEN
+			$1array[slot] = item
 			bOK = $$TRUE
 		ENDIF
 	ENDIF
