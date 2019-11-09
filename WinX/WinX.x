@@ -59,16 +59,16 @@ VERSION "0.6.0.2"
 '
 ' XBLite headers
 '
-' Static build---
+' DLL build+++
 	IMPORT "xst"		' XBLite Standard Library
 	IMPORT "xsx"		' XBLite Standard eXtended Library
 '	IMPORT "xio"		' console library
 	IMPORT "xma"		' XBLite Math Library (Sin/Asin/Sinh/Asinh/Log/Exp/Sqrt...)
 	IMPORT "adt"		' Callum's Abstract Data Types library
-' Static build~~~
+' DLL build~~~
 
 ' Uncomment for a static build.
-' Static build+++
+' Static build---
 '	IMPORT "xst_s.lib"
 '	IMPORT "xsx_s.lib"
 '	IMPORT "xma_s.lib"
@@ -836,7 +836,7 @@ FUNCTION WinX ()
 	#bReentry = $$TRUE		' ...and then no more
 
 ' Uncomment for a static build.
-' Static build+++
+' Static build---
 '	Xst ()		' initialize Standard Library
 '	Xsx ()		' initialize Standard eXtended Library
 '	Xma ()		' initialize Math Library
@@ -2384,6 +2384,14 @@ FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
 		ENDIF
 		cbexi.pszText = &item$
 		cbexi.cchTextMax = LEN (item$)
+'
+' debug+++
+IF cbexi.cchTextMax > $$CBEMAXSTRLEN THEN
+	msg$ = "WinXComboBox_AddItem-Assert fail: cbexi.cchTextMax =" + STR$(cbexi.cchTextMax) + " > 512"
+	XstAlert (msg$)
+ENDIF
+' debug~~~
+'
 		cbexi.iImage = iImage
 		cbexi.iSelectedImage = iSelImage
 		cbexi.iIndent = indent
@@ -2422,26 +2430,29 @@ END FUNCTION
 ' Gets the text of an item
 ' hCombo = the handle to the combo box
 ' index = the zero-based index of the item to get
+'         or -1 to retrieve the item displayed in the edit control.
 ' returns the text of the item, or an empty string on fail
 FUNCTION WinXComboBox_GetItem$ (hCombo, index)
 	COMBOBOXEXITEM cbexi
 
 	SetLastError (0)
 	IF hCombo THEN
-		IF index >= 0 THEN
-			cbexi.mask = $$CBEIF_TEXT
-			cbexi.iItem = index
-			cbexi.cchTextMax = 4094
-			szBuf$ = NULL$ (cbexi.cchTextMax+1)		' to keep the nul-terminator
-			cbexi.pszText = &szBuf$
+		IF index < 0 THEN
+			' retrieve the item displayed in the edit control
+			index = -1
+		ENDIF
+		cbexi.mask = $$CBEIF_TEXT
+		cbexi.iItem = index
+		cbexi.cchTextMax = $$CBEMAXSTRLEN
+		szBuf$ = NULL$ (cbexi.cchTextMax)
+		cbexi.pszText = &szBuf$
 
-			ret = SendMessageA (hCombo, $$CBEM_GETITEM, 0, &cbexi)
-			IF ret THEN
-				RETURN CSTRING$ (cbexi.pszText)
-			ELSE
-				msg$ = "WinXComboBox_GetItem$: Can't get the item's text"
-				GuiTellApiError (msg$)
-			ENDIF
+		ret = SendMessageA (hCombo, $$CBEM_GETITEM, 0, &cbexi)
+		IF ret THEN
+			RETURN CSTRING$ (cbexi.pszText)
+		ELSE
+			msg$ = "WinXComboBox_GetItem$: Can't get the item's text"
+			GuiTellApiError (msg$)
 		ENDIF
 	ENDIF
 
@@ -4480,7 +4491,7 @@ FUNCTION WinXListBox_GetItem$ (hListBox, index)
 	IF hListBox THEN
 		IF index >= 0 THEN
 			cc = SendMessageA (hListBox, $$LB_GETTEXTLEN, index, 0)
-			szBuf$ = NULL$ (cc+1)		' to keep the nul-terminator
+			szBuf$ = NULL$ (cc)
 			SetLastError (0)
 			cc = SendMessageA (hListBox, $$LB_GETTEXT, index, &szBuf$)
 			IF cc THEN
@@ -4861,8 +4872,8 @@ FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 		lvi.mask = $$LVIF_TEXT
 		lvi.iItem = iItem
 		lvi.iSubItem = i
-		lvi.cchTextMax = 4095
-		szBuf$ = NULL$ (lvi.cchTextMax+1)		' to keep the nul-terminator
+		lvi.cchTextMax = 512
+		szBuf$ = NULL$ (lvi.cchTextMax)
 		lvi.pszText = &szBuf$
 
 		IFZ SendMessageA (hLV, $$LVM_GETITEM, iItem, &lvi) THEN
@@ -7506,7 +7517,7 @@ FUNCTION WinXGetText$ (hCtr)
 	IF hCtr THEN
 		cc = GetWindowTextLengthA (hCtr)		'  get the character count
 		IF cc > 0 THEN
-			szBuf$ = NULL$ (cc+1)		' to keep the nul-terminator
+			szBuf$ = NULL$ (cc)
 			SetLastError (0)
 			cc = GetWindowTextA (hCtr, &szBuf$, cc)
 			IF cc > 0 THEN
@@ -7587,8 +7598,6 @@ FUNCTION WinXGetUseableRect (hWnd, RECT rectUsable)
 ' 0.6.0.2-old~~~
 ' 0.6.0.2-new+++
 			rectUsable.left  = rectUsable.left  + GetSystemMetrics ($$SM_CXFRAME)		' width of the window frame
-			rectUsable.right = rectUsable.right - GetSystemMetrics ($$SM_CXFRAME)		' width of the window frame
-			rectUsable.bottom = rectUsable.bottom - GetSystemMetrics ($$SM_CYFRAME)		' height of the window frame
 
 			' 1.account for the caption's height
 			rectUsable.top = rectUsable.top + GetSystemMetrics ($$SM_CYCAPTION)		' height of caption
@@ -8237,7 +8246,7 @@ FUNCTION WinXStatus_GetText$ (hWnd, part)
 		IF binding.hStatus THEN
 			IF part <= binding.statusParts THEN
 				cc = SendMessageA (binding.hStatus, $$SB_GETTEXTLENGTH, part, 0)
-				szBuf$ = NULL$ (cc+1)		' to keep the nul-terminator
+				szBuf$ = NULL$ (cc)
 				SendMessageA (binding.hStatus, $$SB_GETTEXT, part, &szBuf$)
 				ret$ = CSTRING$ (&szBuf$)
 				RETURN ret$
@@ -8290,6 +8299,14 @@ FUNCTION WinXTabs_AddTab (hTabs, label$, insertAfter)
 		tci.mask = $$TCIF_PARAM|$$TCIF_TEXT
 		tci.pszText = &label$
 		tci.cchTextMax = LEN (label$)
+'
+' debug+++
+IF tci.cchTextMax > 512 THEN
+	msg$ = "WinXTabs_AddTab-Assert fail: tci.cchTextMax =" + STR$(tci.cchTextMax) + " > 512"
+	XstAlert (msg$)
+ENDIF
+' debug~~~
+'
 		tci.lParam = autoSizerGroup_add ($$DIR_VERT)		' (GL: it's an index)
 
 		IF insertAfter < 0 THEN
@@ -8767,6 +8784,14 @@ FUNCTION WinXTreeView_AddItem (hTreeView, hParent, hNodeAfter, iImage, iImageSel
 		tvis.item.mask = $$TVIF_IMAGE|$$TVIF_SELECTEDIMAGE|$$TVIF_TEXT|$$TVIF_PARAM
 		tvis.item.pszText = &label$
 		tvis.item.cchTextMax = LEN (label$)
+'
+' debug+++
+IF tvis.item.cchTextMax > 512 THEN
+	msg$ = "WinXTreeView_AddItem-Assert fail: tvis.item.cchTextMax =" + STR$(tvis.item.cchTextMax) + " > 512"
+	XstAlert (msg$)
+ENDIF
+' debug~~~
+'
 		tvis.item.iImage = iImage
 		tvis.item.iSelectedImage = iImageSelect
 		tvis.item.lParam = 0
@@ -8800,7 +8825,7 @@ FUNCTION WinXTreeView_CopyItem (hTreeView, hNodeParent, hNodeAfter, hNode)
 	tvi.stateMask = 0xFFFFFFFF
 
 	tvi.cchTextMax = 512
-	szBuf$ = NULL$ (tvi.cchTextMax+1)		' to keep the nul-terminator
+	szBuf$ = NULL$ (tvi.cchTextMax)
 	tvi.pszText = &szBuf$
 
 	ret = SendMessageA (hTreeView, $$TVM_GETITEM, 0, &tvi)
@@ -8909,7 +8934,7 @@ FUNCTION WinXTreeView_GetItemLabel$ (hTreeView, hNode)
 		tvi.mask = $$TVIF_HANDLE|$$TVIF_TEXT
 		tvi.hItem = hNode
 		tvi.cchTextMax = 512
-		szBuf$ = NULL$ (tvi.cchTextMax+1)		' to keep the nul-terminator
+		szBuf$ = NULL$ (tvi.cchTextMax)
 		tvi.pszText = &szBuf$
 
 		ret = SendMessageA (hTreeView, $$TVM_GETITEM, 0, &tvi)
@@ -8996,7 +9021,14 @@ FUNCTION WinXTreeView_SetItemLabel (hTreeView, hNode, newLabel$)
 		tvi.hItem = hNode
 		tvi.pszText = &newLabel$
 		tvi.cchTextMax = LEN (newLabel$)
-
+'
+' debug+++
+IF tvi.cchTextMax > 512 THEN
+	msg$ = "WinXTreeView_SetItemLabel-Assert fail: tvi.cchTextMax =" + STR$(tvi.cchTextMax) + " > 512"
+	XstAlert (msg$)
+ENDIF
+' debug~~~
+'
 		RETURN SendMessageA (hTreeView, $$TVM_SETITEM, 0, &tvi)
 	ENDIF
 
@@ -9118,8 +9150,8 @@ FUNCTION CompareLVItems (item1, item2, hLV)
 SUB GetItemText
 
 	lvi.mask = $$LVIF_TEXT
-	lvi.cchTextMax = 1024
-	szBuf$ = NULL$ (lvi.cchTextMax+1)		' to keep the nul-terminator
+	lvi.cchTextMax = 512
+	szBuf$ = NULL$ (lvi.cchTextMax)
 	lvi.pszText = &szBuf$
 	lvi.iItem = item1
 	lvi.iSubItem = #lvs_column_index & 0x7FFFFFFF
@@ -9679,6 +9711,7 @@ FUNCTION autoSizerGroup_add (direction)
 
 	AUTOSIZERINFO autoSizerInfoLocal[]
 
+	'look for a blank slot
 	slot = -1
 	upp = UBOUND(autoSizerInfoUM[])
 	FOR i = 0 TO upp
@@ -9688,6 +9721,7 @@ FUNCTION autoSizerGroup_add (direction)
 		ENDIF
 	NEXT i
 
+	'allocate more memory if needed
 	IF slot < 0 THEN
 		slot = UBOUND(autoSizerInfoUM[])+1
 		upper_slot = (slot<<1)|3
