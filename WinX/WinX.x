@@ -3558,7 +3558,10 @@ FUNCTION WinXDraw_Undo (hWnd, idDraw)
 		CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
 		DeleteObject (record.hUpdateRegion)
 	ENDIF
-	IF record.draw = &drawText () THEN STRING_Delete (record.text.iString)
+	IF record.draw = &drawText () THEN
+		STRING_Delete (record.text.iString)
+		record.text.iString = 0
+	ENDIF
 	AUTODRAWRECORD_Update (idDraw, record)
 '	LinkedList_DeleteItem (@autoDrawList, idDraw)
 '	LINKEDLIST_Update (binding.autoDrawInfo, @autoDrawList)
@@ -7514,21 +7517,33 @@ END FUNCTION
 FUNCTION WinXGetText$ (hCtr)
 
 	SetLastError (0)
-	IF hCtr THEN
-		cc = GetWindowTextLengthA (hCtr)		'  get the character count
-		IF cc > 0 THEN
-			szBuf$ = NULL$ (cc)
+	ret$ = ""
+
+	SELECT CASE hCtr
+		CASE 0
+			msg$ = "WinXGetText$: Ignore a NULL control handle"
+			GuiAlert (msg$, "")
+			'
+		CASE ELSE
+			cCh = GetWindowTextLengthA (hCtr)		' get character count
+			IF cCh <= 0 THEN EXIT SELECT
+			'
+			sizeBuf = cCh + 1		' 1 output byte per input character + 0 terminator
+			szBuf$ = NULL$ (sizeBuf)
+			'
 			SetLastError (0)
-			cc = GetWindowTextA (hCtr, &szBuf$, cc)
-			IF cc > 0 THEN
-				text$ = CSTRING$ (&szBuf$)
-				RETURN text$
-			ELSE
+			cCh = GetWindowTextA (hCtr, &szBuf$, sizeBuf)		' get the text
+			IF cCh <= 0 THEN
 				msg$ = "WinXGetText$: Can't get the text from control, handle " + STRING$ (hCtr)
 				GuiTellApiError (msg$)
+				EXIT SELECT
 			ENDIF
-		ENDIF
-	ENDIF
+			'
+			ret$ = LEFT$ (szBuf$, cCh)
+			'
+	END SELECT
+
+	RETURN ret$
 
 END FUNCTION
 '
@@ -9471,13 +9486,22 @@ FUNCTION autoDraw_clear (idList)
 		hWalk = LinkedList_StartWalk (list)
 
 		DO WHILE LinkedList_Walk (hWalk, @iData)
-			AUTODRAWRECORD_Get (iData, @record)
-			IF record.draw = &drawText () THEN
-				STRING_Delete (record.text.iString)
+			bOK = AUTODRAWRECORD_Get (iData, @record)
+			IFF bOK THEN
+				msg$ = "autoDraw_clear: Can't get auto draw" + STR$ (iData)
+				XstAlert (msg$)
+			ELSE
+				IF record.text.iString THEN
+					STRING_Delete (record.text.iString)
+					record.text.iString = 0
+				ENDIF
+				CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
+				DeleteObject (record.hUpdateRegion)
+				record.hUpdateRegion = 0
+				AUTODRAWRECORD_Delete (iData)
 			ENDIF
-			DeleteObject (record.hUpdateRegion)
-			AUTODRAWRECORD_Delete (iData)
 		LOOP
+
 		LinkedList_EndWalk (hWalk)
 		LinkedList_DeleteAll (@list)
 
