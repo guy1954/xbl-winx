@@ -357,14 +357,6 @@ $$CHANNEL_BLUE	= 0
 $$CHANNEL_ALPHA	= 3
 
 $$ACL_REG_STANDARD = "D:(A;OICI;GRKRKW;;;WD)(A;OICI;GAKA;;;BA)"
-
-$$MAIN_CLASS$			= "WinXMainClass"
-$$SPLITTER_CLASS$	= "WinXSplitterClass"
-
-$$auto_sizer$    = "WinXAutoSizerSeries"
-$$LeftSubSizer$  = "WinXLeftSubSizer"
-$$RightSubSizer$ = "WinXRightSubSizer"
-$$SizerInfo$     = "autoSizerInfoBlock"
 '
 '
 ' *************************
@@ -761,6 +753,17 @@ DeclareAccess(LINKEDLIST)
 ' Splitter
 '
 DeclareAccess(SPLITTERINFO)
+'
+'
+' ***** Shared Program Constants *****
+'
+$$MAIN_CLASS$			= "WinXMainClass"
+$$SPLITTER_CLASS$	= "WinXSplitterClass"
+
+$$auto_sizer$    = "WinXAutoSizerSeries"
+$$LeftSubSizer$  = "WinXLeftSubSizer"
+$$RightSubSizer$ = "WinXRightSubSizer"
+$$SizerInfo$     = "autoSizerInfoBlock"
 '
 '
 ' ***********************************
