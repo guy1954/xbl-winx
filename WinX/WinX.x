@@ -282,6 +282,7 @@ END TYPE
 ' ***********************************
 ' *****  BLOCK EXPORT (part 1)  *****
 ' ***********************************
+'
 EXPORT
 '
 ' WinX - A Win32 abstraction for XBLite.
@@ -422,10 +423,12 @@ DECLARE FUNCTION WinXClip_PutString (Stri$)
 
 ' Combo box
 DECLARE FUNCTION WinXComboBox_AddItem (hCombo, index, indent, item$, iImage, iSelImage)
+DECLARE FUNCTION WinXComboBox_Clear (hCombo) ' clear out contents of combo box
+DECLARE FUNCTION WinXComboBox_DeleteItem (hCombo, index)
 DECLARE FUNCTION WinXComboBox_GetEditText$ (hCombo)
 DECLARE FUNCTION WinXComboBox_GetItem$ (hCombo, index)
 DECLARE FUNCTION WinXComboBox_GetSelection (hCombo)
-DECLARE FUNCTION WinXComboBox_RemoveItem (hCombo, index)
+DECLARE FUNCTION WinXComboBox_RemoveItem (hCombo, index, @number_left)
 DECLARE FUNCTION WinXComboBox_SetEditText (hCombo, text$)
 DECLARE FUNCTION WinXComboBox_SetSelection (hCombo, index)
 
@@ -481,6 +484,7 @@ DECLARE FUNCTION WinXDrawText (hWnd, hFont, text$, x, y, backCol, forCol)
 DECLARE FUNCTION WinXDraw_GetTextWidth (hFont, text$, maxWidth)
 
 ' Font
+DECLARE FUNCTION WinXKillFont (@hFont) ' free logical font
 DECLARE FUNCTION WinXSetFont (hCtr, hFont) ' apply font to control
 
 ' Keyboard
@@ -522,6 +526,7 @@ DECLARE FUNCTION WinXMenu_Attach (subMenu, newParent, idMenu)
 DECLARE FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
 DECLARE FUNCTION WinXNewAutoSizerSeries (direction)
 DECLARE FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
+DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 DECLARE FUNCTION WinXNewMenu (menuList$, firstID, isPopup)
 DECLARE FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpDis, hBmpHot, transparentRGB, toolTips, customisable)
 DECLARE FUNCTION WinXNewToolbarUsingIls (hilNor, hilDis, hilHot, toolTips, customisable)
@@ -784,6 +789,9 @@ SHARED XLONG	tvDragItem		' if treeview, its property "Disable Drag And Drop" mus
 SHARED XLONG	tvDragImage		' image list for the dragging effect
 
 SHARED PRINTINFO printInfo
+
+SHARED XLONG	#lvs_column_index		' zero-based index of the column to sort by
+SHARED XLONG	#lvs_decreasing		' $$TRUE to sort decreasing instead of increasing
 
 SHARED BINDING	bindings[]			'a simple array of bindings
 
@@ -1321,7 +1329,7 @@ END FUNCTION
 ' #############################
 ' #####  WinXAddListView  #####
 ' #############################
-' Creates a new list view control
+' Creates a new listview
 ' editable = $$TRUE to enable label editing
 ' view is a view constant ($$LVS_LIST (default), $$LVS_REPORT, $$LVS_ICON, $$LVS_SMALLICON)
 ' returns the new listview handle or 0 on fail.
@@ -1369,7 +1377,7 @@ END FUNCTION
 ' ################################
 ' #####  WinXAddProgressBar  #####
 ' ################################
-' Adds a new progress bar control
+' Creates a new progress bar
 ' hParent = the handle to the parent window
 ' smooth = $$TRUE if the progress bar is not to be segmented
 ' idCtr = unique id constant for this control
@@ -1377,7 +1385,9 @@ END FUNCTION
 FUNCTION WinXAddProgressBar (hParent, smooth, idCtr)
 
 	style = $$WS_TABSTOP|$$WS_GROUP
-	IF smooth THEN style = style|$$PBS_SMOOTH
+	IF smooth THEN
+		style = style|$$PBS_SMOOTH
+	ENDIF
 
 	hCtr = NewChild ("msctls_progress32", "", style, 0, 0, 0, 0, hParent, idCtr, 0)
 	IF hCtr THEN
@@ -1392,7 +1402,7 @@ END FUNCTION
 ' ################################
 ' #####  WinXAddRadioButton  #####
 ' ################################
-' Adds a new radio button control
+' Creates a new radio button
 ' hParent = the handle to the parent window
 ' text$ = title of radio button
 ' isFirst = $$TRUE if this is the first radio button in the group, otherwise $$FALSE
@@ -1414,7 +1424,7 @@ END FUNCTION
 ' ###########################
 ' #####  WinXAddStatic  #####
 ' ###########################
-' Adds a static control to a window
+' Creates a new static control
 ' hParent = the handle to the parent window
 ' text$ = text for the static control
 ' hImage = image to use or 0 if no image
@@ -1650,7 +1660,9 @@ FUNCTION WinXAddTooltip (hCtr, theTip$)
 
 		CASE ELSE
 			theTip$ = TRIM$ (theTip$)
-			IFZ theTip$ THEN theTip$ = "(Missing)"
+			IFZ theTip$ THEN
+				theTip$ = "(Missing)"
+			ENDIF
 
 			'get the binding of the parent window
 			hParent = GetParent (hCtr)
@@ -1706,7 +1718,7 @@ END FUNCTION
 ' #############################
 ' #####  WinXAddTreeView  #####
 ' #############################
-' Creates a new treeview and adds it to specified window.
+' Creates a new treeview
 ' hParent = the handle to the parent window
 ' editable = $$TRUE to enable label editing
 ' draggable = $$TRUE to enable dragging
@@ -2410,6 +2422,54 @@ ENDIF
 
 END FUNCTION
 '
+' ################################
+' #####  WinXComboBox_Clear  #####
+' ################################
+' Clears out the extended combo box's contents
+' and resets the content of its edit control.
+' hCombo = extended combo box handle
+FUNCTION WinXComboBox_Clear (hCombo)
+	SetLastError (0)
+	IF hCombo THEN
+		SendMessageA (hCombo, $$CB_RESETCONTENT, 0, 0)
+		RETURN $$TRUE		' success
+	ENDIF
+END FUNCTION
+'
+' #####################################
+' #####  WinXComboBox_DeleteItem  #####
+' #####################################
+' Deletes an item from a combo box
+' hCombo = the handle to the combo box
+' index = the zero-based index of the item to delete
+' returns bOK: $$TRUE on success
+FUNCTION WinXComboBox_DeleteItem (hCombo, index)
+
+	SetLastError (0)
+	bOK = $$FALSE
+
+	SELECT CASE hCombo
+		CASE 0
+		CASE ELSE
+			IF index < 0 THEN EXIT SELECT
+			'
+			count = SendMessageA (hCombo, $$CB_GETCOUNT, 0, 0)
+			IF index < count THEN
+				ret = SendMessageA (hCombo, $$CBEM_DELETEITEM, index, 0)
+				IF ret THEN
+					bOK = $$TRUE
+				ELSE
+					msg$ = "WinXComboBox_DeleteItem: Can't remove item at index " + STRING$ (index)
+					GuiTellApiError (msg$)
+				ENDIF
+			ENDIF
+			'
+	END SELECT
+
+	RETURN bOK
+
+END FUNCTION
+'
 ' #######################################
 ' #####  WinXComboBox_GetEditText$  #####
 ' #######################################
@@ -2487,9 +2547,9 @@ END FUNCTION
 ' removes an item from a combobox
 ' hCombo = the handle to the combobox
 ' index = the zero-based index of the item to delete
-' returns the number of items remaining in the list
+' r_number_left = the number of items remaining in the list
 '  or -1 on fail
-FUNCTION WinXComboBox_RemoveItem (hCombo, index)
+FUNCTION WinXComboBox_RemoveItem (hCombo, index, @r_number_left)
 ' 0.6.0.2-old---
 '	RETURN SendMessageA (hCombo, $$CBEM_DELETEITEM, index, 0)
 ' 0.6.0.2-old~~~
@@ -2504,6 +2564,7 @@ FUNCTION WinXComboBox_RemoveItem (hCombo, index)
 				ret = SendMessageA (hCombo, $$CBEM_DELETEITEM, index, 0)
 				IF ret = (count-1) THEN
 					r_number_left = ret
+					RETURN $$TRUE
 				ELSE
 					msg$ = "WinXComboBox_RemoveItem: Can't remove item at index " + STRING$ (index)
 					GuiTellApiError (msg$)
@@ -2511,8 +2572,6 @@ FUNCTION WinXComboBox_RemoveItem (hCombo, index)
 			ENDIF
 		ENDIF
 	ENDIF
-
-	RETURN r_number_left
 ' 0.6.0.2-new~~~
 END FUNCTION
 '
@@ -2536,6 +2595,7 @@ FUNCTION WinXComboBox_SetEditText (hCombo, text$)
 			GuiTellApiError (msg$)
 		ENDIF
 	ENDIF
+
 END FUNCTION
 '
 ' #######################################
@@ -3601,6 +3661,9 @@ FUNCTION WinXDraw_GetColour (hOwner, initialRGB)
 	SHARED #CustomColors[]
 	CHOOSECOLOR cc
 
+	SetLastError (0)
+	r_RGB = 0
+
 	IFZ #CustomColors[] THEN
 		'init the custom colors
 		DIM #CustomColors[15]
@@ -3628,14 +3691,14 @@ FUNCTION WinXDraw_GetColour (hOwner, initialRGB)
 		INC i : #CustomColors[i] = RGB (150, 200, 250)		' very light blue
 ' 0.6.0.2-new~~~
 	ENDIF
+	cc.lpCustColors = &#CustomColors[]
 
-	cc.lStructSize = SIZE (CHOOSECOLOR)
-	cc.hwndOwner = hWndOwner
-' 0.6.0.2-new+++
-	IFZ cc.hwndOwner THEN
+	IFZ hOwner THEN
 		cc.hwndOwner = GetActiveWindow ()
+	ELSE
+		cc.hwndOwner = hOwner
 	ENDIF
-' 0.6.0.2-new~~~
+'
 ' 0.6.0.2-old---
 '	cc.rgbResult = initialRGB
 ' 0.6.0.2-old~~~
@@ -3646,15 +3709,27 @@ FUNCTION WinXDraw_GetColour (hOwner, initialRGB)
 		cc.rgbResult = initialRGB MOD (1 + RGB (255, 255, 255))		' assign a valid RGB color
 	ENDIF
 ' 0.6.0.2-new~~~
-	cc.lpCustColors = &#CustomColors[]
+'
 	cc.flags = $$CC_RGBINIT
-	ChooseColorA (&cc)
-	RETURN cc.rgbResult
+
+	cc.lStructSize = SIZE (CHOOSECOLOR)
+
+	SetLastError (0)
+	ret = ChooseColorA (&cc)
+	IF ret THEN
+		r_RGB = cc.rgbResult		' User clicked button OK
+	ELSE
+		caption$ = "WinXDraw_GetColor: Color Picker Error"
+		GuiTellDialogError (hOwner, caption$)
+	ENDIF
+
+	RETURN r_RGB
+
 END FUNCTION
 '
-' ################################
-' #####  WinXFont_GetDialog  #####
-' ################################
+' ####################################
+' #####  WinXDraw_GetFontDialog  #####
+' ####################################
 ' Displays the get font dialog box
 ' hOwner = the owner of the dialog
 ' r_font = the LOGFONT structure to initialize the dialog and store the output
@@ -4315,6 +4390,33 @@ FUNCTION WinXDraw_GetTextWidth (hFont, text$, maxWidth)
 
 END FUNCTION
 '
+' ##########################
+' #####  WinXKillFont  #####
+' ##########################
+'
+' Releases a logical font.
+'
+' r_hFont = handle to the logical font, reset on deletion.
+' returns bOK: $$TRUE if success.
+'
+FUNCTION WinXKillFont (@r_hFont)
+
+	SetLastError (0)
+	bOK = $$FALSE
+
+	IF r_hFont THEN
+		SetLastError (0)
+		ret = DeleteObject (r_hFont)		' free memory space
+		IF ret THEN
+			bOK = $$TRUE
+		ENDIF
+	ENDIF
+
+	r_hFont = 0		' reset on exit
+	RETURN bOK
+
+END FUNCTION
+'
 ' #########################
 ' #####  WinXSetFont  #####
 ' #########################
@@ -4323,13 +4425,33 @@ END FUNCTION
 ' hFont = the handle to the font
 ' returns bOK: $$TRUE on success
 FUNCTION WinXSetFont (hCtr, hFont)
+
+	SHARED hFontDefault ' standard font
+
 	SetLastError (0)
-	IF hCtr THEN
-		IF hFont THEN
+	bOK = $$FALSE
+
+	SELECT CASE hCtr
+		CASE 0
+			'
+		CASE ELSE
+			IFZ hFontDefault THEN
+				hFontDefault = GetStockObject ($$ANSI_VAR_FONT)
+			ENDIF
+			'
+			IFZ hFont THEN hFont = hFontDefault
+			'
+			' check hFont not null
+			IFZ hFont THEN EXIT SELECT
+			'
 			SendMessageA (hCtr, $$WM_SETFONT, hFont, 1)		' redraw
-			RETURN $$TRUE
-		ENDIF
-	ENDIF
+			'
+			bOK = $$TRUE
+			'
+	END SELECT
+
+	RETURN bOK
+
 END FUNCTION
 '
 ' ###########################
@@ -4867,8 +4989,8 @@ END FUNCTION
 ' returns bOK: $$TRUE on success
 '
 ' Usage:
-' retrieve the first 2 columns of the 1st item
-' bOK = WinXListView_GetItemText (hLV, 0, 1, @aSubItem$[])
+'	retrieve the first 2 columns of the 1st item
+'	bOK = WinXListView_GetItemText (hLV, 0, 1, @aSubItem$[])
 '
 FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
 	LV_ITEM lvi		' listview item
@@ -5063,7 +5185,7 @@ FUNCTION WinXListView_SetSelectionArray (hLV, indexList[])
 				lvi.stateMask = $$LVIS_SELECTED
 				SendMessageA (hLV, $$LVM_SETITEMSTATE, idx, &lvi)
 			ELSE
-				' multi-selections
+				' multiple selections
 				' first, unselect everything
 				lvi.state = ~$$LVIS_SELECTED
 				lvi.stateMask = $$LVIS_SELECTED
@@ -5117,15 +5239,17 @@ FUNCTION WinXListView_Sort (hLV, iCol, decreasing)
 	SHARED #lvs_decreasing
 
 	SetLastError (0)
-	#lvs_column_index = iCol
-	IF decreasing THEN
-		#lvs_decreasing = $$TRUE
-	ELSE
-		#lvs_decreasing = $$FALSE
-	ENDIF
-	ret = SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems())
-	IF ret THEN
-		RETURN $$TRUE		' success
+	IF hLV THEN
+		#lvs_column_index = iCol
+		IF decreasing THEN
+			#lvs_decreasing = $$TRUE
+		ELSE
+			#lvs_decreasing = $$FALSE
+		ENDIF
+		ret = SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems())
+		IF ret THEN
+			RETURN $$TRUE		' success
+		ENDIF
 	ENDIF
 
 END FUNCTION
@@ -5142,13 +5266,25 @@ FUNCTION WinXMenu_Attach (subMenu, newParent, idMenu)
 	MENUITEMINFO	mii
 
 	SetLastError (0)
-	mii.fMask = $$MIIM_SUBMENU
-	mii.hSubMenu = subMenu
-	mii.cbSize = SIZE (MENUITEMINFO)
+	bOK = $$FALSE
 
-	IF SetMenuItemInfoA (newParent, idMenu, $$FALSE, &mii) THEN
-		RETURN $$TRUE
-	ENDIF
+	SELECT CASE subMenu
+		CASE 0
+		CASE ELSE
+			IFZ newParent THEN EXIT SELECT
+
+			mii.fMask = $$MIIM_SUBMENU
+			mii.hSubMenu = subMenu
+			mii.cbSize = SIZE (MENUITEMINFO)
+
+			' attach sub-menu idMenu to menu newParent
+			ret = SetMenuItemInfoA (newParent, idMenu, 0, &mii)
+			IF ret THEN bOK = $$TRUE		' success
+
+	END SELECT
+
+	RETURN bOK
+
 END FUNCTION
 '
 ' ########################
@@ -5227,6 +5363,104 @@ FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
 END FUNCTION
 '
 ' #########################
+' #####  WinXNewFont  #####
+' #########################
+'
+' Creates a logical font.
+'
+' fontName$  = name of the font
+' pointSize  = size of the font in points
+' weight     = weight of the font as $$FW_THIN,...
+' bItalic    = $$TRUE for italic characters
+' bUnderL    = $$TRUE for underlined characters
+' bStrike    = $$TRUE for striken-out characters
+'
+' returns the handle to the new font or 0 on fail.
+'
+FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
+	LOGFONT logFont
+
+	SetLastError (0)
+	r_hFont = 0
+
+	' check fontName$ not empty
+	fontName$ = TRIM$ (fontName$)
+	IFZ fontName$ THEN
+		msg$ = "WinXNewFont: empty font face"
+		XstAlert (msg$)
+		RETURN		' fail
+	ENDIF
+
+	' hFontToClone provides with a well-formed font structure
+	SetLastError (0)
+	hFontToClone = GetStockObject ($$DEFAULT_GUI_FONT)		' get a font to clone
+	IFZ hFontToClone THEN
+		msg$ = "GetStockObject: Can't get a font to clone"
+		GuiTellApiError (msg$)
+		RETURN		' invalid handle
+	ENDIF
+
+	bytes = 0		' number of bytes stored into the buffer
+	bErr = $$FALSE
+	SetLastError (0)
+	bytes = GetObjectA (hFontToClone, SIZE (LOGFONT), &logFont)		' fill allocated structure logFont
+	IF bytes <= 0 THEN
+		msg$ = "GetObjectA: Can't fill allocated structure logFont"
+		GuiTellApiError (msg$)
+		RETURN
+	ENDIF
+
+	' release the cloned font
+	DeleteObject (hFontToClone) : hFontToClone = 0		' free memory space
+
+	' set the cloned font structure with the passed parameters
+	logFont.faceName = fontName$
+
+	IFZ pointSize THEN
+		logFont.height = 0
+	ELSE
+		' character height is specified (in points)
+		pointH = pointSize
+		IF pointH < 0 THEN pointH = -pointH		' make it positive
+		'
+		' convert pointSize to pixels
+		SetLastError (0)
+		hdc = GetDC ($$HWND_DESKTOP)		' get a handle to the desktop context
+		IFZ hdc THEN
+			msg$ = "GetDC: Can't get a handle to the desktop context"
+			bErr = GuiTellApiError (msg$)
+			IF bErr THEN RETURN		' invalid handle
+		ENDIF
+		'
+		' Windows expects the font height to be in pixels and negative
+		logFont.height = MulDiv (pointH, GetDeviceCaps (hdc, $$LOGPIXELSY), -72)
+		ReleaseDC ($$HWND_DESKTOP, hdc)		' release the handle to the desktop context
+	ENDIF
+
+	SELECT CASE weight
+		CASE $$FW_THIN, $$FW_EXTRALIGHT, $$FW_LIGHT, $$FW_NORMAL, $$FW_MEDIUM, _
+		  $$FW_SEMIBOLD, $$FW_BOLD, $$FW_EXTRABOLD, $$FW_HEAVY, $$FW_DONTCARE
+			logFont.weight = weight
+		CASE ELSE
+			logFont.weight = $$FW_NORMAL
+	END SELECT
+
+	IF bItalic THEN logFont.italic    = 1 ELSE logFont.italic    = 0
+	IF bUnderL THEN logFont.underline = 1 ELSE logFont.underline = 0
+	IF bStrike THEN logFont.strikeOut = 1 ELSE logFont.strikeOut = 0
+
+	SetLastError (0)
+	r_hFont = CreateFontIndirectA (&logFont)		' create logical font r_hFont
+	IFZ r_hFont THEN
+		msg$ = "CreateFontIndirectA: Can't create logical font r_hFont"
+		GuiTellApiError (msg$)
+	ENDIF
+
+	RETURN r_hFont
+
+END FUNCTION
+'
+' #########################
 ' #####  WinXNewMenu  #####
 ' #########################
 ' Generates a new menu
@@ -5285,9 +5519,7 @@ FUNCTION WinXNewMenu (menuList$, firstID, isPopup)
 	currID = firstID
 	upp = UBOUND (itemList$[])
 	FOR i = 0 TO upp
-		'write the data
-		itemList$[i] = TRIM$(itemList$[i])
-		IFZ itemList$[i] THEN
+		IFZ TRIM$ (itemList$[i]) THEN
 			' separator
 			AppendMenuA (r_hMenu, $$MF_SEPARATOR, 0, 0)
 			INC cSep
@@ -5331,130 +5563,205 @@ END FUNCTION
 ' hBmpButtons = LoadBitmapA (hInst, "toolbarImg")       ' normal
 ' hBmpHot     = LoadBitmapA (hInst, &"toolbarHotImg")   ' hot
 ' hBmpDis     = LoadBitmapA (hInst, &"toolbarGrayImg")  ' gray
+' returns the handle to the toolbar.
 '
 ' transparentRGB = RGB (255, 0, 255) ' color code for transparency
 '
 ' #tbrMain = WinXNewToolbar (16, 16, 9, hBmpButtons, hBmpDis, hBmpHot, transparentRGB, $$TRUE, $$FALSE)
 '
 FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpDis, hBmpHot, transparentRGB, toolTips, customisable)
+	BITMAP bitMap
 
-	IFZ hBmpButtons THEN RETURN 0
+	SetLastError (0)
 
-	w = wButton*nButtons
-
-	'make image lists
-	hilNor = ImageList_Create (wButton, hButton, $$ILC_COLOR24|$$ILC_MASK, nButtons, 0)
-	hilDis = ImageList_Create (wButton, hButton, $$ILC_COLOR24|$$ILC_MASK, nButtons, 0)
-	hilHot = ImageList_Create (wButton, hButton, $$ILC_COLOR24|$$ILC_MASK, nButtons, 0)
-
-	'make 2 memory DCs for image manipulations
-	hdc = GetDC (GetDesktopWindow ())
-	hMem = CreateCompatibleDC (hdc)
-	hSource = CreateCompatibleDC (hdc)
-	ReleaseDC (GetDesktopWindow (), hdc)
-
-	'make a mask for the normal buttons
-	hblankS = SelectObject (hSource, hBmpButtons)
-	hBmpMask = CreateCompatibleBitmap (hSource, w, hButton)
-	hblankM = SelectObject (hMem, hBmpMask)
-	BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
-	GOSUB makeMask
-	hBmpButtons = SelectObject (hSource, hblankS)
-	hBmpMask = SelectObject (hMem, hblankM)
-
-	'Add to the image list
-	ImageList_Add (hilNor, hBmpButtons, hBmpMask)
-
-	'now let's do the disabled buttons
-	IFZ hBmpDis THEN
-		'generate hBmpDis
-		hblankS = SelectObject (hSource, hBmpMask)
-		hBmpDis = CreateCompatibleBitmap (hSource, w, hButton)
-		hblankM = SelectObject (hMem, hBmpDis)
-		upper_x = w - 1
-		upper_y = hButton - 1
-		FOR y = 0 TO upper_y
-			FOR x = 0 TO upper_x
-				col = GetPixel (hSource, x, y)
-				IFZ col THEN SetPixel (hMem, x, y, 0x00808080)
-			NEXT x
-		NEXT y
-	ELSE
-		'generate a mask
-		hblankS = SelectObject (hSource, hBmpDis)
-		hblankM = SelectObject (hMem, hBmpMask)
-		BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
-		GOSUB makeMask
+	IFZ hBmpButtons THEN
+		msg$ = "WinXNewToolbar: Ignore a NULL bitmap handle"
+		XstAlert (msg$)
+		RETURN
 	ENDIF
 
-	SelectObject (hSource, hblankS)
-	SelectObject (hMem, hblankM)
-	ImageList_Add (hilDis, hBmpDis, hBmpMask)
+	hToolbar = 0
 
-	'and finally, the hot buttons
-	IFZ hBmpHot THEN
-		'generate a brighter version of hBmpButtons
-'		hBmpHot = hBmpButtons
-		hblankS = SelectObject (hSource, hBmpButtons)
-		'hBmpHot = CopyImage (hBmpButtons, $$IMAGE_BITMAP, w, hButton, 0)
-		hBmpHot = CreateCompatibleBitmap (hSource, w, hButton)
-		hblankM = SelectObject (hMem, hBmpHot)
-		upper_x = w - 1
-		upper_y = hButton - 1
-		FOR y = 0 TO upper_y
-			FOR x = 0 TO upper_x
-				col = GetPixel (hSource, x, y)
-				c1 = (col AND 0x000000FF)
-				c2 = (col AND 0x0000FF00)>>8
-				c3 = (col AND 0x00FF0000)>>16
-				c1 = c1+40 'c1+((0xFF-c1)\3)
-				c2 = c2+40 'c2+((0xFF-c2)\3)
-				c3 = c3+40 'c3+((0xFF-c3)\3)
-				SELECT CASE ALL TRUE
-					CASE c1>255 : c1=255
-					CASE c2>255 : c2=255
-					CASE c3>255 : c3=255
-				END SELECT
-				SetPixel (hMem, x, y, c1|(c2<<8)|(c3<<16))
-			NEXT x
-		NEXT y
-	ELSE
-		'generate a mask
-		hblankS = SelectObject (hSource, hBmpHot)
-		hblankM = SelectObject (hMem, hBmpMask)
-		BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
-		GOSUB makeMask
-	ENDIF
+	' GL-some argument checking...
+	IF nButtons <= 0 THEN nButtons = 1
 
-	SelectObject (hSource, hblankS)
-	SelectObject (hMem, hblankM)
+	' bmpWidth = wButton*nButtons
+	ret = GetObjectA (hBmpButtons, SIZE (BITMAP), &bitMap)		' get bitmap's sizes
+	SELECT CASE ret
+		CASE 0
+			IF hButton <= 16 THEN
+				hButton = 16
+				wButton = 16
+			ELSE
+				IF hButton <= 24 THEN
+					hButton = 24
+					wButton = 24
+				ELSE
+					hButton = 32
+					wButton = 32
+				ENDIF
+			ENDIF
+			'
+		CASE ELSE
+			' save bitmap size for later use
+			bmpWidth  = bitMap.width
+			bmpHeight = bitMap.height
+			'
+			SELECT CASE TRUE
+				CASE bmpHeight <= (16+4)
+					hButton = 16
+					wButton = 16
 
-	ImageList_Add (hilHot, hBmpHot, hBmpMask)
+				CASE bmpHeight <= (24+4)
+					hButton = 24
+					wButton = 24
 
-	'ok, now clean up
-	DeleteObject (hBmpMask)
-	IF hBmpDis THEN DeleteObject (hBmpDis)
-	DeleteDC (hMem)
-	DeleteDC (hSource)
+				CASE ELSE
+					hButton = 32
+					wButton = 32
 
-	'and make the toolbar
-	hToolbar = WinXNewToolbarUsingIls (hilNor, hilDis, hilHot, toolTips, customisable)
+			END SELECT
+			'
+			' make image lists
+			flags = $$ILC_COLOR24 | $$ILC_MASK
+			hilNor = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+			hilDis = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+			hilHot = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+			'
+			' make 2 memory DCs for image manipulations
+			hDC = GetDC (GetDesktopWindow ())
+			hMem = CreateCompatibleDC (hDC)
+			hSource = CreateCompatibleDC (hDC)
+			ReleaseDC (GetDesktopWindow (), hDC)
+			'
+			' make a mask for the normal buttons
+			hblankS = SelectObject (hSource, hBmpButtons)
+			hBmpMask = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
+			hblankM = SelectObject (hMem, hBmpMask)
+			BitBlt (hMem, 0, 0, bmpWidth, bmpHeight, hSource, 0, 0, $$SRCCOPY)
+			'
+			GOSUB makeMask
+			'
+			hBmpButtons = SelectObject (hSource, hblankS)
+			hBmpMask = SelectObject (hMem, hblankM)
+			'
+			' Add to image list
+			ImageList_Add (hilNor, hBmpButtons, hBmpMask)
+			'
+			' now let's do the gray buttons
+			IF hBmpDis THEN
+				' generate a mask
+				hblankS = SelectObject (hSource, hBmpDis)
+				hblankM = SelectObject (hMem, hBmpMask)
+				BitBlt (hMem, 0, 0, bmpWidth, bmpHeight, hSource, 0, 0, $$SRCCOPY)
+				GOSUB makeMask
+			ELSE
+				' generate hBmpDis
+				hblankS = SelectObject (hSource, hBmpMask)
+				hBmpDis = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
+				hblankM = SelectObject (hMem, hBmpDis)
+				'
+				upper_x = bmpWidth - 1
+				upper_y = bmpHeight - 1
+				FOR y = 0 TO upper_y
+					FOR x = 0 TO upper_x
+						col = GetPixel (hSource, x, y)
+						'IF col = 0x00000000 THEN SetPixel (hMem, x, y, 0x00808080)
+						IFZ col THEN SetPixel (hMem, x, y, $$MediumGrey)
+					NEXT x
+				NEXT y
+			ENDIF
+			'
+			SelectObject (hSource, hblankS)
+			SelectObject (hMem, hblankM)
+			ImageList_Add (hilDis, hBmpDis, hBmpMask)
+			'
+			' and finaly, the hot buttons
+			IF hBmpHot THEN
+				' generate a mask
+				hblankS = SelectObject (hSource, hBmpHot)
+				hblankM = SelectObject (hMem, hBmpMask)
+				BitBlt (hMem, 0, 0, bmpWidth, bmpHeight, hSource, 0, 0, $$SRCCOPY)
+				GOSUB makeMask
+			ELSE
+				' generate a brighter version of hBmpButtons
+				' hBmpHot = hBmpButtons
+				hblankS = SelectObject (hSource, hBmpButtons)
+				'
+				' hBmpHot = CopyImage (hBmpButtons, $$IMAGE_BITMAP, bmpWidth, bmpHeight, 0)
+				hBmpHot = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
+				hblankM = SelectObject (hMem, hBmpHot)
+				'
+				upper_x = bmpWidth - 1
+				upper_y = bmpHeight - 1
+				FOR y = 0 TO upper_y
+					FOR x = 0 TO upper_x
+						col = GetPixel (hSource, x, y)
+						'
+						red = (col & 0xFF)
+						IF red < 215 THEN red = red + 40		'red+((0xFF-red)\3)
+						'
+						green = (col & 0xFF00) >> 8
+						IF green < 215 THEN green = green + 40		'green+((0xFF-green)\3)
+						'
+						blue = (col & 0xFF0000) >> 16
+						IF blue < 215 THEN blue = blue + 40		'blue+((0xFF-blue)\3)
+						'
+						color = red | (green << 8) | (blue << 16)
+						SetPixel (hMem, x, y, color)
+					NEXT x
+				NEXT y
+			ENDIF
+			'
+			SelectObject (hSource, hblankS)
+			SelectObject (hMem, hblankM)
+			'
+			ImageList_Add (hilHot, hBmpHot, hBmpMask)
+			'
+			' ok, now clean up
+			DeleteDC (hMem) : hMem = 0
+			DeleteDC (hSource) : hSource = 0
+			'
+			' delete the bitmap handles they are no longer need
+			IF hBmpButtons THEN
+				DeleteObject (hBmpButtons) : hBmpButtons = 0
+			ENDIF
+			IF hBmpDis THEN
+				DeleteObject (hBmpDis) : hBmpDis = 0
+			ENDIF
+			IF hBmpHot THEN
+				DeleteObject (hBmpHot) : hBmpHot = 0
+			ENDIF
+			'
+			' and make the toolbar
+			hToolbar = WinXNewToolbarUsingIls (hilNor, hilDis, hilHot, toolTips, customisable)
+			'
+			' GL-28mar16-set the ToolBar bitmap size
+			SendMessageA (hToolbar, $$TB_SETBITMAPSIZE, 0, MAKELONG (wButton, hButton))
+			'
+	END SELECT
 
-	'return a handle to the toolbar
+	' return a handle to the toolbar
 	RETURN hToolbar
 
 	SUB makeMask
-		upper_x = w - 1
-		upper_y = hButton - 1
+
+		IFZ hMem THEN EXIT SUB
+
+		upper_x = bmpWidth - 1
+		upper_y = bmpHeight - 1
 		FOR y = 0 TO upper_y
 			FOR x = 0 TO upper_x
-				col = GetPixel (hSource, x, y)
+				col = GetPixel (hSource, x, y)		' get source's pixel
 				IF col = transparentRGB THEN
-					SetPixel (hMem, x, y, 0x00FFFFFF)
-					SetPixel (hSource, x, y, 0x00FFFFFF)
+					' transparency
+					pixelRGB = $$White
+					SetPixel (hSource, x, y, pixelRGB)		' reset source's pixel
 				ELSE
-					SetPixel (hMem, x, y, 0x00000000)
+					pixelRGB = $$Black
 				ENDIF
+				' set target's pixel
+				SetPixel (hMem, x, y, pixelRGB)
 			NEXT x
 		NEXT y
 	END SUB
@@ -7422,11 +7729,7 @@ FUNCTION WinXDoEvents (passed_accel)
 				' process accelerator keys for menu commands
 				ret = TranslateAcceleratorA (hWnd, binding.hAccelTable, &msg)
 				IFZ ret THEN
-					IF binding.useDialogInterface THEN
-						IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &msg)) THEN		' send only non-dialog messages
-							bDispatch = $$TRUE
-						ENDIF
-					ELSE
+					IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &msg)) THEN		' send only non-dialog messages
 						bDispatch = $$TRUE
 					ENDIF
 				ENDIF
@@ -7525,7 +7828,7 @@ FUNCTION WinXGetText$ (hCtr)
 	SELECT CASE hCtr
 		CASE 0
 			msg$ = "WinXGetText$: Ignore a NULL control handle"
-			GuiAlert (msg$, "")
+			XstAlert (msg$)
 			'
 		CASE ELSE
 			cCh = GetWindowTextLengthA (hCtr)		' get character count
@@ -9489,22 +9792,22 @@ FUNCTION autoDraw_clear (idList)
 		hWalk = LinkedList_StartWalk (list)
 
 		DO WHILE LinkedList_Walk (hWalk, @iData)
-			bOK = AUTODRAWRECORD_Get (iData, @record)
-			IFF bOK THEN
-				msg$ = "autoDraw_clear: Can't get auto draw" + STR$ (iData)
-				XstAlert (msg$)
-			ELSE
-				IF record.text.iString THEN
-					STRING_Delete (record.text.iString)
-					record.text.iString = 0
-				ENDIF
-				CombineRgn (binding.hUpdateRegion, binding.hUpdateRegion, record.hUpdateRegion, $$RGN_OR)
-				DeleteObject (record.hUpdateRegion)
-				record.hUpdateRegion = 0
-				AUTODRAWRECORD_Delete (iData)
+			AUTODRAWRECORD_Get (iData, @record)
+' old---
+'			IF record.draw = &drawText () THEN
+'				STRING_Delete (record.text.iString)
+'			ENDIF
+' old~~~
+' new+++
+			IF record.text.iString THEN
+				STRING_Delete (record.text.iString)
+				record.text.iString = 0
 			ENDIF
+' new~~~
+			DeleteObject (record.hUpdateRegion)
+			record.hUpdateRegion = 0
+			AUTODRAWRECORD_Delete (iData)
 		LOOP
-
 		LinkedList_EndWalk (hWalk)
 		LinkedList_DeleteAll (@list)
 
@@ -9706,7 +10009,7 @@ FUNCTION autoSizer (AUTOSIZERINFO	sizerBlock, direction, x0, y0, nw, nh, currPos
 		ENDIF
 
 		leftInfo = GetPropA (sizerBlock.hWnd, &$$LeftSubSizer$)
-		rightInfo = GetPropA (sizerBlock.hWnd, &"WinXRightSubSizer")
+		rightInfo = GetPropA (sizerBlock.hWnd, &$$RightSubSizer$)
 		IF leftInfo THEN
 			series = @leftInfo(sizerBlock.hWnd, &rect)
 			autoSizerGroup_size (series, sizerBlock.x+boxX+rect.left, sizerBlock.y+boxY+rect.top, (rect.right-rect.left), (rect.bottom-rect.top))
@@ -10139,16 +10442,17 @@ END FUNCTION
 FUNCTION binding_update (id, BINDING binding)
 	SHARED		BINDING	bindings[]
 
-	bOK = $$FALSE
 	slot = id - 1
 	IF (slot >= 0) && (slot <= UBOUND (bindings[])) THEN
 		IF binding.hWnd = bindings[slot].hWnd THEN
 			' must be same window
 			bindings[slot] = binding
-			bOK = $$TRUE
+			RETURN $$TRUE
 		ENDIF
 	ENDIF
-	RETURN bOK
+	msg$ = "binding_update: invalid id" + STR$ (id)
+	XstAlert (msg$)
+
 END FUNCTION
 '
 ' ##############################
