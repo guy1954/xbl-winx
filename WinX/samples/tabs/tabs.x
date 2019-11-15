@@ -24,7 +24,7 @@ VERSION	"1.00"
 	IMPORT	"WinX"			' The Xwin GUI library
 
 'Define constants
-$$tabOptions = 100
+$$ID_TABS = 100
 $$ID_BUTTON1 = 101
 $$ID_BUTTON2 = 102
 $$ID_BUTTON3 = 103
@@ -46,7 +46,7 @@ FUNCTION Entry ()
 	'quit if this fails
 	IF initWindow () THEN QUIT(0)
 
-	WinXDoEvents ()
+	WinXDoEvents (0)
 
 END FUNCTION
 '
@@ -59,28 +59,36 @@ END FUNCTION
 FUNCTION initWindow ()
 
 	'Create the main window
-	#winMain = WinXNewWindow (0, "Tab control demo", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+	#hMain = WinXNewWindow (0, "Tab control demo " + WinXVersion$ (), -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 
 	'Make the tab control and add it to the auto sizer
-	#tabOptions = WinXAddTabs (#winMain, $$FALSE, $$tabOptions)
-	WinXAutoSizer_SetSimpleInfo (#tabOptions, -1, 0, 1, 0)
-	'WinXAutoSizer_SetInfo (#tabOptions, -1, 0, 1, 0, 0, 1, 1, 0)
+	hTabs = WinXAddTabs (#hMain, $$FALSE, $$ID_TABS)
+	WinXAutoSizer_SetSimpleInfo (hTabs, -1, 0.00, 1.00, 0)
+'	main_series = WinXAutoSizer_GetMainSeries (#hMain) ' get the main series
+'	space# = 0.00	' first control (0%)
+'	size# = 1.00	' the size of this control (100%)
+'	x# = 0.00			' left margin (0%)
+'	y# = 0.00			' top margin (0%)
+'	w# = 0.98			' width (98%)
+'	h# = 0.98			' height (98%)
+'	flags = 0
+'	WinXAutoSizer_SetInfo (hTabs, main_series, space#, size#, x#, y#, w#, h#, flags)
 
 	'add some tabs
-	WinXTabs_AddTab (#tabOptions, "Tab 1", -1)
-	WinXTabs_AddTab (#tabOptions, "Tab 2", -1)
-	WinXTabs_AddTab (#tabOptions, "Tab 3", -1)
+	WinXTabs_AddTab (hTabs, "Tab 1", -1)
+	WinXTabs_AddTab (hTabs, "Tab 2", -1)
+	WinXTabs_AddTab (hTabs, "Tab 3", -1)
 
 	'now add some controls to those tabs
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 1", 0, $$ID_BUTTON1), WinXTabs_GetAutosizerSeries (#tabOptions, 0), 0, 1, 0)
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 2", 0, $$ID_BUTTON2), WinXTabs_GetAutosizerSeries (#tabOptions, 1), 0, 0.5, 0)
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 3", 0, $$ID_BUTTON3), WinXTabs_GetAutosizerSeries (#tabOptions, 1), 0, 0.5, 0)
-	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#winMain, "Button 4", 0, $$ID_BUTTON4), WinXTabs_GetAutosizerSeries (#tabOptions, 2), 0, 1, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 1", 0, $$ID_BUTTON1), WinXTabs_GetAutosizerSeries (hTabs, 0), 0, 1, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 2", 0, $$ID_BUTTON2), WinXTabs_GetAutosizerSeries (hTabs, 1), 0, 0.5, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 3", 0, $$ID_BUTTON3), WinXTabs_GetAutosizerSeries (hTabs, 1), 0, 0.5, 0)
+	WinXAutoSizer_SetSimpleInfo (WinXAddButton (#hMain, "Button 4", 0, $$ID_BUTTON4), WinXTabs_GetAutosizerSeries (hTabs, 2), 0, 1, 0)
 
 	'register the callback
-	WinXRegOnCommand (#winMain, &onCommand())
+	WinXRegOnCommand (#hMain, &onCommand())
 
-	WinXDisplay (#winMain)
+	WinXDisplay (#hMain)
 
 	RETURN 0
 END FUNCTION
