@@ -1,41 +1,46 @@
 '
+'
 ' ####################
 ' #####  PROLOG  #####
 ' ####################
+'
+PROGRAM "bars"
+VERSION "1.00"
 '
 ' Demonstrates progress bars and trackbars, in what is a rather silly scenario
 ' also includes tooltips
 '
 ' This program is public domain
 '
-VERSION	"1.00"
+' XBLite headers
 '
-	IMPORT	"xst"   		' standard library	: required by most programs
-'	IMPORT  "xsx"				' extended std library
-'	IMPORT	"xio"				' console io library
-	IMPORT	"gdi32"     ' gdi32.dll
-	IMPORT  "user32"    ' user32.dll
-	IMPORT  "kernel32"  ' kernel32.dll
-	IMPORT  "comctl32"	' comctl32.dll			: common controls library
-'	IMPORT	"comdlg32"  ' comdlg32.dll	    : common dialog library
-'	IMPORT	"xma"   		' math library			: Sin/Asin/Sinh/Asinh/Log/Exp/Sqrt...
-'	IMPORT	"xcm"				' complex math library
-'	IMPORT  "msvcrt"		' msvcrt.dll				: C function library
-'	IMPORT  "shell32"   ' shell32.dll
-	IMPORT	"WinX"			' The Xwin GUI library
-
+	IMPORT "xst"		' XBLite Standard Library
+	IMPORT "xsx"		' XBLite Standard eXtended Library
+'	IMPORT "xio"		' console library
+	IMPORT "WinX"		' Callum Lowcay's Windows GUI library
+'
+' WinAPI DLL headers
+'
+	IMPORT "kernel32"			' Operating System
+'
+' ---Note: import gdi32 BEFORE shell32 and user32
+	IMPORT "gdi32"				' Graphic Device Interface
+	IMPORT "shell32"			' interface to Operating System
+	IMPORT "user32"				' Windows management
+	IMPORT "comctl32"			' Common controls; ==> initialize w/ InitCommonControlsEx ()
+'
+DECLARE FUNCTION Entry () ' program entry point
+DECLARE FUNCTION StartUp () ' program setup
+DECLARE FUNCTION CreateWindows () ' create the windows of the program
+DECLARE FUNCTION Main_onCommand (id, code, hWnd) ' handles message WM_COMMAND
+DECLARE FUNCTION Main_onTimer (hWnd, uMsg, idEvent, dwTime)
+DECLARE FUNCTION onTrackerPos (id, pos)
+'
 $$ID_PROG				= 100
 $$ID_OPERATION	= 101
 $$ID_MARQUEE		= 102
 $$OP_TIMER			= 103
 $$ID_TRACKER		= 104
-'
-DECLARE FUNCTION Entry ()
-DECLARE FUNCTION initApp ()
-DECLARE FUNCTION initWindow ()
-DECLARE FUNCTION onCommand (id, code, hWnd)
-DECLARE FUNCTION onTimer (hWnd, uMsg, idEvent, dwTime)
-DECLARE FUNCTION onTrackerPos (id, pos)
 '
 '
 ' ######################
@@ -47,20 +52,20 @@ FUNCTION Entry ()
 	IF WinX() THEN QUIT(0)
 
 	'quit if either of these fail
-  IF initApp () THEN QUIT(0)
-	IF initWindow () THEN QUIT(0)
+  IF StartUp () THEN QUIT(0)
+	IF CreateWindows () THEN QUIT(0)
 
-	WinXDoEvents ()
+	WinXDoEvents (0)
 
 END FUNCTION
 '
 ' #####################
-' #####  initApp  #####
+' #####  StartUp  #####
 ' #####################
 '
 '
 '
-FUNCTION initApp ()
+FUNCTION StartUp ()
 	SHARED operation
 	SHARED marquee
 	SHARED pos
@@ -74,15 +79,15 @@ FUNCTION initApp ()
 END FUNCTION
 '
 ' ########################
-' #####  initWindow  #####
+' #####  CreateWindows  #####
 ' ########################
 '
 '
 '
-FUNCTION initWindow ()
+FUNCTION CreateWindows ()
 
 	'create the main window
-	#hMain = WinXNewWindow (0, "Progress bar demonstration", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+	#hMain = WinXNewWindow (0, "Progress bar demonstration " + WinXVersion$ (), -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 
 	'add the controls
 	WinXAutoSizer_SetInfo (WinXAddProgressBar (#hMain, $$FALSE, $$ID_PROG), WinXAutoSizer_GetMainSeries (#hMain), 0, 25, 0, 0, 1, 1, 0)
@@ -102,19 +107,19 @@ FUNCTION initWindow ()
 	WinXAddTooltip (GetDlgItem (#hMain, $$ID_OPERATION), "Start/stop the progress bar")
 	WinXAddTooltip (GetDlgItem (#hMain, $$ID_MARQUEE), "Run the progress bar in marquee mode (requires Windows XP and manifest)")
 
-	WinXRegOnCommand (#hMain, &onCommand())
+	WinXRegOnCommand (#hMain, &Main_onCommand())
 	WinXDisplay (#hMain)
 
 	RETURN 0
 END FUNCTION
 '
-' #######################
-' #####  onCommand  #####
-' #######################
+' ############################
+' #####  Main_onCommand  #####
+' ############################
 '
 '
 '
-FUNCTION onCommand (id, code, hWnd)
+FUNCTION Main_onCommand (id, code, hWnd)
 	SHARED operation
 	SHARED marquee
 	SHARED pos
@@ -122,7 +127,7 @@ FUNCTION onCommand (id, code, hWnd)
 	SELECT CASE id
 		'insert cases for your ids here.
 		CASE $$ID_OPERATION
-			IF marquee THEN onCommand ($$ID_MARQUEE, $$BN_CLICKED, #hMain)
+			IF marquee THEN Main_onCommand ($$ID_MARQUEE, $$BN_CLICKED, #hMain)
 			IF operation THEN
 				'stop the operation
 				pos = 0
@@ -137,43 +142,41 @@ FUNCTION onCommand (id, code, hWnd)
 			ELSE
 				'start the operation
 				'notice how standard Win32 timers are used with WinX
-				#hTimer = SetTimer (0, 0, 30, &onTimer())
+				#hTimer = SetTimer (0, 0, 30, &Main_onTimer())
 				EnableWindow (GetDlgItem (#hMain, $$ID_TRACKER), $$FALSE)
 				WinXSetText (GetDlgItem (#hMain, $$ID_OPERATION), "Stop lengthy operation")
 				operation = $$TRUE
 			END IF
 		CASE $$ID_MARQUEE
-			IF operation THEN onCommand ($$ID_OPERATION, $$BN_CLICKED, #hMain)
-			IF marquee THEN
-				'switch out of marquee mode
-				hProg = GetDlgItem (#hMain, $$ID_PROG)
-				WinXProgress_SetMarquee (hProg, $$FALSE)
-				'redraw the progress bar
-				WinXUpdate (hProg)
-				WinXSetText (GetDlgItem (#hMain, $$ID_MARQUEE), "Start Marquee")
-				marquee = $$FALSE
-			ELSE
-				WinXProgress_SetMarquee (GetDlgItem (#hMain, $$ID_PROG), $$TRUE)
-				WinXSetText (GetDlgItem (#hMain, $$ID_MARQUEE), "Stop Marquee")
-				marquee = $$TRUE
-			END IF
+			IF operation THEN Main_onCommand ($$ID_OPERATION, $$BN_CLICKED, #hMain)
+			'
+			'toggle marquee mode
+			marquee = NOT marquee
+			'
+			'redraw the progress bar
+			hProg = GetDlgItem (#hMain, $$ID_PROG)
+			WinXProgress_SetMarquee (hProg, marquee)
+			WinXUpdate (hProg)
+			'
+			IF marquee THEN text$ = "Stop" ELSE text$ = "Start Marquee"
+			WinXSetText (GetDlgItem (#hMain, $$ID_MARQUEE), text$)
 	END SELECT
 
 END FUNCTION
 '
 ' #####################
-' #####  onTimer  #####
+' #####  Main_onTimer  #####
 ' #####################
 '
 '
 '
-FUNCTION onTimer (hWnd, uMsg, idEvent, dwTime)
+FUNCTION Main_onTimer (hWnd, uMsg, idEvent, dwTime)
 	SHARED pos
 
 	INC pos
 	IF pos > 100 THEN
 		'simulate an event to make to stop the timer
-		onCommand ($$ID_OPERATION, $$BN_CLICKED, #hMain)
+		Main_onCommand ($$ID_OPERATION, $$BN_CLICKED, #hMain)
 	ELSE
 		WinXProgress_SetPos (GetDlgItem (#hMain, $$ID_PROG), DOUBLE(pos)/100.0)
 		WinXTracker_SetPos (GetDlgItem (#hMain, $$ID_TRACKER), pos)
