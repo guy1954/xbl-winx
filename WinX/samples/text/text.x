@@ -88,15 +88,8 @@ FUNCTION onCommand (id, code, hWnd)
 	SELECT CASE id
 		CASE $$BT_FONT
 			WinXDraw_GetFontDialog (#hMain, @logFont, @colour)
-'
-' GL-31oct19-Note+++
-' WinXDraw_Clear is supposed to clear all the graphics in a window;
-' code for "erase previously displayed text" missing?
-'
-			WinXDraw_Clear (#hMain)
-			WinXDrawText (#hMain, #hFont, "____________", 2, 24, 0x00FFFFFF, colour)
-' GL-31oct19-Note~~~
-
+			WinXDraw_Clear (#hMain)		' clear the main window of all auto draw graphics
+			WinXUpdate (#hMain)				' make the results visible
 			DeleteObject (#hFont)
 			#hFont = CreateFontIndirectA (&logFont)
 			WinXDrawText (#hMain, #hFont, "Hello World!", 2, 24, 0x00FFFFFF, colour)
