@@ -42,7 +42,7 @@ FUNCTION Entry ()
 	'quit if either of these fail
 	IF initWindow () THEN QUIT(0)
 
-	WinXDoEvents ()
+	WinXDoEvents (0)
 
 END FUNCTION
 '
@@ -57,25 +57,20 @@ FUNCTION initWindow ()
 	SHARED colour
 	'this is where you create and initialise your window
 
-	#winMain = WinXNewWindow (0, "Text output", -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
+	#hMain = WinXNewWindow (0, "Text output " + WinXVersion$ (), -1, -1, 400, 300, $$XWSS_APP, 0, 0, 0)
 
 	'this is a good place to add controls such as status bars and buttons to your window
-	MoveWindow (WinXAddButton (#winMain, "Select Font", 0, $$BT_FONT), 2, 2, 80, 20, $$TRUE)
+	MoveWindow (WinXAddButton (#hMain, "Select Font", 0, $$BT_FONT), 2, 2, 80, 20, $$TRUE)
 
 	'remember to register callbacks
-	WinXRegOnCommand (#winMain, &onCommand())
+	WinXRegOnCommand (#hMain, &onCommand())
 
-	WinXDisplay (#winMain)
+	WinXDisplay (#hMain)
 
 	logFont = WinXDraw_MakeLogFont ("Arial", 30, $$FONT_BOLD|$$FONT_ITALIC|$$FONT_UNDERLINE)
 	#hFont = CreateFontIndirectA (&logFont)
 	colour = 0
-	WinXDrawText (#winMain, #hFont, "Hello World!", 2, 24, 0x00FFFFFF, colour)
-
-	text$ = "Welcome to the VIXEN Setup Wizard"
-	backCol = $$LightGrey ' $$COLOR_BTNFACE + 1
-	forCol  = $$Black
-	WinXDrawText (#winMain, #hFont, text$, 160, 60, backCol, forCol)
+	WinXDrawText (#hMain, #hFont, "Hello World!", 2, 24, 0x00FFFFFF, colour)
 
 	RETURN 0
 END FUNCTION
@@ -92,13 +87,20 @@ FUNCTION onCommand (id, code, hWnd)
 
 	SELECT CASE id
 		CASE $$BT_FONT
-			WinXDraw_GetFontDialog (#winMain, @logFont, @colour)
+			WinXDraw_GetFontDialog (#hMain, @logFont, @colour)
+'
+' GL-31oct19-Note+++
+' WinXDraw_Clear is supposed to clear all the graphics in a window;
+' code for "erase previously displayed text" missing?
+'
+			WinXDraw_Clear (#hMain)
+			WinXDrawText (#hMain, #hFont, "____________", 2, 24, 0x00FFFFFF, colour)
+' GL-31oct19-Note~~~
 
 			DeleteObject (#hFont)
 			#hFont = CreateFontIndirectA (&logFont)
-			WinXClear (#winMain)
-			WinXDrawText (#winMain, #hFont, "Hello World!", 2, 24, 0x00FFFFFF, colour)
-			WinXUpdate (#winMain)
+			WinXDrawText (#hMain, #hFont, "Hello World!", 2, 24, 0x00FFFFFF, colour)
+			WinXUpdate (#hMain)
 	END SELECT
 
 END FUNCTION
