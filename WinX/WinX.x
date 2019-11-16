@@ -71,8 +71,8 @@ VERSION "0.6.0.2"
 ' Static build---
 '	IMPORT "xst_s.lib"
 '	IMPORT "xsx_s.lib"
-'	IMPORT "xma_s.lib"
 ''	IMPORT "xio_s.lib"
+'	IMPORT "xma_s.lib"
 '	IMPORT "adt_s.lib"
 ' Static build~~~
 '
@@ -5127,30 +5127,31 @@ FUNCTION WinXListView_GetSelectionArray (hLV, r_indexList[])
 	SetLastError (0)
 	r_cSel = 0
 
-	IF hLV THEN
-		r_cSel = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
-		IF r_cSel > 0 THEN
-			DIM indexList[r_cSel - 1]
+	SELECT CASE hLV
+		CASE 0
+		CASE ELSE
+			r_cSel = SendMessageA (hLV, $$LVM_GETSELECTEDCOUNT, 0, 0)
+			IFZ r_cSel THEN EXIT SELECT		' no selected items in The list view
 
-			slot = 0
+			DIM r_indexList[r_cSel - 1]
+
 			' now iterate over all the items to locate the selected ones
 			upp = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0) - 1
+			iAdd = 0
 			FOR i = 0 TO upp
 				IF SendMessageA (hLV, $$LVM_GETITEMSTATE, i, $$LVIS_SELECTED) THEN
-					indexList[slot] = i
-					INC slot
-					IF slot >= r_cSel THEN
-						' the very last selection
-						EXIT FOR
-					ENDIF
+					' item selected
+					r_indexList[iAdd] = i
+					INC iAdd
+					IF iAdd >= r_cSel THEN EXIT FOR		' the very last selection
 				ENDIF
 			NEXT i
-		ENDIF
-	ENDIF
 
-	IF r_cSel <= 0 THEN
-		r_cSel = 0		' just in case
-		DIM r_indexList[]		' reset the returned array
+	END SELECT
+
+	IFZ r_cSel THEN
+		' returned array is empty
+		DIM r_indexList[]
 	ENDIF
 
 	RETURN r_cSel
