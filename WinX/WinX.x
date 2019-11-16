@@ -5952,17 +5952,14 @@ FUNCTION WinXNewWindow (hOwner, title$, x, y, w, h, simpleStyle, exStyle, hIcon,
 	BINDING binding
 	RECT	rect
 	LINKEDLIST autoDrawList
-'
-' 0.6.0.2-new+++
+
 	SetLastError (0)
 	IFZ hInst THEN
 		hInst = GetModuleHandleA (0)
 	ENDIF
-' 0.6.0.2-new~~~
-'
+
 	rect.right = w
 	rect.bottom = h
-
 	style = XWSStoWS(simpleStyle)
 '
 ' 0.6.0.2-old---
@@ -11525,18 +11522,19 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 				@binding.onEnterLeave (hWnd, $$TRUE)
 			ENDIF
 
-			IF (tvDragButton = $$MBT_LEFT) || (tvDragButton = $$MBT_RIGHT) THEN
-				GOSUB dragTreeViewItem
-				IFZ ret_value THEN
-					cursor = $$IDC_NO
-				ELSE
-					cursor = $$IDC_ARROW
-				ENDIF
-				SetCursor (LoadCursorA (0, cursor))
-				ret_value = 0
-			ELSE
-				ret_value = @binding.onMouseMove(hWnd, LOWORD (lParam), HIWORD (lParam))
-			ENDIF
+			SELECT CASE tvDragButton
+				CASE $$MBT_LEFT, $$MBT_RIGHT
+					GOSUB dragTreeViewItem
+					IFZ ret_value THEN
+						cursor = $$IDC_NO
+					ELSE
+						cursor = $$IDC_ARROW
+					ENDIF
+					SetCursor (LoadCursorA (0, cursor))
+					ret_value = 0
+				CASE ELSE
+					ret_value = @binding.onMouseMove(hWnd, LOWORD (lParam), HIWORD (lParam))
+			END SELECT
 			RETURN ret_value
 
 		CASE $$WM_MOUSELEAVE
@@ -12172,19 +12170,14 @@ FUNCTION sizeWindow (hWnd, wNew, hNew)
 	SELECT CASE Get_binding (hWnd, @idBinding, @binding)
 		CASE $$TRUE
 			'handle the minimum width
-			bResize = $$FALSE
 			IF wNew < binding.minW THEN
 				wNew = binding.minW
-				bResize = $$TRUE
 			ENDIF
 
 			'handle the minimum height
 			IF hNew < binding.minH THEN
 				hNew = binding.minH
-				bResize = $$TRUE
 			ENDIF
-
-			IF bResize THEN SetWindowPos (hWnd, $$HWND_TOP, 0, 0, wNew, hNew, $$SWP_NOMOVE)
 
 			IF binding.hBar THEN
 				'now handle the toolbar
