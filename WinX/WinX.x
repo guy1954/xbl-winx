@@ -1,4 +1,27 @@
 '
+' ***** Testing and Validations *****
+'
+' C:\xblite\MyProgs\WinXsamples\animation\animate.x OK!
+' C:\xblite\MyProgs\WinXsamples\bars\bars.x OK!
+' C:\xblite\MyProgs\WinXsamples\calendar\calendar.x OK!
+' C:\xblite\MyProgs\WinXsamples\clipboard\clipboard.x OK!
+' C:\xblite\MyProgs\WinXsamples\combo boxes\combo.x OK!
+' C:\xblite\MyProgs\WinXsamples\dragListBox\dragList.x OK!
+' C:\xblite\MyProgs\WinXsamples\drawing\drawing.x OK!
+' C:\xblite\MyProgs\WinXsamples\DrawLines\DrawLines.x OK!
+' C:\xblite\MyProgs\WinXsamples\FunctionMover\functionMover.x Crashes on button Up only for functions 3 and 4!
+' C:\xblite\MyProgs\WinXsamples\groups\groups.x OK!
+' C:\xblite\MyProgs\WinXsamples\images\images.x OK!
+' C:\xblite\MyProgs\WinXsamples\listview\listview.x OK!
+' C:\xblite\MyProgs\WinXsamples\LV_mult_sel\listview.x OK!
+' C:\xblite\MyProgs\WinXsamples\palette\palette.x OK!
+' C:\xblite\MyProgs\WinXsamples\printing\printing.x OK!
+' C:\xblite\MyProgs\WinXsamples\scrolling\scrolling.x OK!
+' C:\xblite\MyProgs\WinXsamples\splitter\splitterInfo.x OK!
+' C:\xblite\MyProgs\WinXsamples\tabs\tabs.x OK!
+' C:\xblite\MyProgs\WinXsamples\text\text.x OK!
+' C:\xblite\MyProgs\WinXsamples\treeview\treeview.x OK!
+'
 '
 ' ####################
 ' #####  PROLOG  #####
@@ -6,6 +29,8 @@
 '
 PROGRAM	"WinX"
 VERSION "0.6.0.2"		' GL-28oct09
+'CONSOLE
+' Needs the M4 macro preprocessor.
 '
 ' WinX - *The* GUI library for XBLite
 ' Copyright (c) LGPL Callum Lowcay 2007-2008.
@@ -394,9 +419,6 @@ DECLARE FUNCTION binding_update (id, BINDING binding) ' update window binding
 '
 ' Message Handlers
 DECLARE FUNCTION handler_add (group, MSGHANDLER FnMsgHandler)
-DECLARE FUNCTION handler_get (group, index, MSGHANDLER @FnMsgHandler)
-DECLARE FUNCTION handler_update (group, index, MSGHANDLER FnMsgHandler)
-DECLARE FUNCTION handler_delete (group, index)
 
 DECLARE FUNCTION handler_call (group, @ret_value, hWnd, wMsg, wParam, lParam)
 DECLARE FUNCTION handler_find (group, wMsg)
@@ -751,7 +773,7 @@ FUNCTION WinX ()
 	OSVERSIONINFOEX os		' to tweack widgets depending on Windows version
 
 	SetLastError (0)
-	IF #bReentry THEN RETURN $$FALSE		' enter once
+	IF #bReentry THEN RETURN $$FALSE		' already initialized!
 '
 ' Uncomment this for a static build.
 ' Static build---
@@ -849,7 +871,9 @@ FUNCTION WinX ()
 	InitCommonControlsEx (&iccex)
 ' 0.6.0.2-new~~~
 '
-	'set wcex.hIcon with WinX's Icon
+' Retrieve WinX's Icon from WinX.dll
+' to set wcex.hIcon with it.
+'
 	hWinXIcon = 0
 	hLib = LoadLibraryA (&"WinX.dll")
 	IF hLib THEN
@@ -1026,9 +1050,10 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 	ENDIF
 ' 0.6.0.2-new~~~
 '
-	window_handle = CreateWindowExA (exStyle, &$$MAIN_CLASS$, &titleBar$, dwStyle, winLeft, winTop, winWidth, winHeight, hOwner, menu, GetModuleHandleA(0), 0)
+	binding.hWnd = CreateWindowExA (exStyle, &$$MAIN_CLASS$, &titleBar$, dwStyle, winLeft, winTop, winWidth, winHeight, _
+	hOwner, menu, GetModuleHandleA(0), 0)
 
-	SELECT CASE window_handle
+	SELECT CASE binding.hWnd
 		CASE 0
 			'
 		CASE ELSE
@@ -1040,8 +1065,8 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 '
 ' 0.6.0.2-old---
 '			IF hIcon THEN
-'				SendMessageA (window_handle, $$WM_SETICON, $$ICON_BIG  , hIcon)
-'				SendMessageA (window_handle, $$WM_SETICON, $$ICON_SMALL, hIcon)
+'				SendMessageA (binding.hWnd, $$WM_SETICON, $$ICON_BIG  , hIcon)
+'				SendMessageA (binding.hWnd, $$WM_SETICON, $$ICON_SMALL, hIcon)
 '			ENDIF
 ' 0.6.0.2-old~~~
 ' 0.6.0.2-new+++
@@ -1050,7 +1075,7 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 			arr[1] = $$ICON_SMALL
 			FOR i = 0 TO 1
 				SetLastError (0)
-				ret = SendMessageA (window_handle, $$WM_SETICON, arr[i], hIcon)
+				ret = SendMessageA (binding.hWnd, $$WM_SETICON, arr[i], hIcon)
 				IFZ ret THEN
 					msg$ = "WinXNewWindow: Can't set the window icon"
 					GuiTellApiError (msg$)
@@ -1062,7 +1087,7 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 			IF menu THEN
 				'activate the menubar
 				SetLastError (0)
-				ret = SetMenu (window_handle, menu)		' activate the menubar
+				ret = SetMenu (binding.hWnd, menu)		' activate the menubar
 				IFZ ret THEN
 					msg$ = "WinXNewWindow: Can't activate the menubar"
 					GuiTellApiError (msg$)
@@ -1072,9 +1097,8 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 '
 ' Fill the binding record.
 '
-			binding.hWnd = window_handle
 			dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
-			binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, 0, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, window_handle, 0, GetModuleHandleA (0), 0)
+			binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, 0, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, binding.hWnd, 0, GetModuleHandleA (0), 0)
 			'
 			'allocate a message handler
 			binding.msgHandlers = handler_addGroup ()
@@ -1088,13 +1112,13 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 '
 ' 0.6.0.1-old---
 '			'store the binding id in class data area
-'			SetWindowLongA (window_handle, $$GWL_USERDATA, binding_add(binding))
+'			SetWindowLongA (binding.hWnd, $$GWL_USERDATA, binding_add(binding))
 ' 0.6.0.1-old~~~
 ' 0.6.0.1-new+++
 			'store the binding id in class data area
 			idBinding = binding_add (binding)
 			IF idBinding > 0 THEN
-				SetWindowLongA (window_handle, $$GWL_USERDATA, idBinding)
+				SetWindowLongA (binding.hWnd, $$GWL_USERDATA, idBinding)
 			ELSE
 				idBinding = 0
 				msg$ = "WinXNewWindow: Can't add binding to the new window"
@@ -1105,7 +1129,7 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 	END SELECT
 
 	'and we're done
-	RETURN window_handle
+	RETURN binding.hWnd
 END FUNCTION
 '
 ' ############################
@@ -1160,18 +1184,21 @@ FUNCTION WinXDisplay (hWnd)
 	IFZ hWnd THEN
 		hWnd = GetActiveWindow ()
 	ENDIF
+
 	bPreviouslyVisible = $$FALSE
 	IFZ hWnd THEN RETURN $$FALSE		' fail
 
 	'refresh the window
 	GetClientRect (hWnd, &rect)
 
-	sizeWindow (hWnd, rect.right-rect.left, rect.bottom-rect.top)		' resize the window
+	'resize the window
+	sizeWindow (hWnd, rect.right-rect.left, rect.bottom-rect.top)
 
 	ret = ShowWindow (hWnd, $$SW_SHOWNORMAL)
 	IF ret THEN
 		bPreviouslyVisible = $$TRUE
 	ENDIF
+
 	RETURN bPreviouslyVisible		' success
 END FUNCTION
 '
@@ -1190,58 +1217,58 @@ END FUNCTION
 '	Examples    = WinXDoEvents (0)
 '	*/
 FUNCTION WinXDoEvents (passed_accel)
+
 	BINDING binding
-	MSG msg		' will be sent to the window callback function when an event occurs
+	MSG msg		' will be sent to window callback function when an event occurs
 '
 ' Main Message Loop
 ' =================
 ' Supervise system messages until
 ' - the User decides to leave the application (RETURN $$FALSE)
-' - an error occurred (returns bErr: $$TRUE on error)
+' - an error occurred (RETURN $$TRUE)
 '
 	DO		' the message loop
 		' retrieve next message from queue
 		ret = GetMessageA (&msg, 0, 0, 0)
 		SELECT CASE ret
 			CASE  0 : RETURN $$FALSE		' received a QUIT message
-			CASE -1 : RETURN $$TRUE							' fail
+			CASE -1 : RETURN $$TRUE			' error
 			CASE ELSE
 				' deal with window messages
-				'hWnd = SLONGAT (&msg)
 				hWnd = GetActiveWindow ()
-				'
 				IFZ hWnd THEN DO DO		' fail
+				'
+				ret = 0
+				' retrieve current window's acceleration table
+				hAccel = 0
+				'
 				'get the binding
 				idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
 				bOK =  binding_get (idBinding, @binding)
-				'
-				' Process accelerator keys for menu commands.
-				IFF bOK THEN
+				IF bOK THEN
 					' default to the passed acceleration table (if any)
-					binding.hAccelTable = passed_accel
-				ELSE
-					' use the acceleration table attached to the window
-					' or default to the passed acceleration table (if any)
-					IFZ binding.hAccelTable THEN binding.hAccelTable = passed_accel
-				ENDIF
-				'
-				bDispatch = $$FALSE
-				IF binding.useDialogInterface THEN
-					IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &msg)) THEN		' send only non-dialog messages
-						bDispatch = $$TRUE
+					IF binding.hAccelTable THEN
+						' retrieve current window's acceleration table
+						hAccel = binding.hAccelTable
+					ELSE
+						hAccel = passed_accel
 					ENDIF
-				ELSE
-					bDispatch = $$TRUE
 				ENDIF
 				'
-				IF bDispatch THEN
-					' send only non-dialog messages
-					' translate virtual-key messages into character messages
-					' ex.: SHIFT + a is translated as "A"
-					TranslateMessage (&msg)
-					'
-					' send message to the window callback function
-					DispatchMessageA (&msg)
+				IF hAccel THEN
+					ret = TranslateAcceleratorA (hWnd, hAccel, &msg)
+				ENDIF
+				'
+				IFZ ret THEN
+					IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &msg)) THEN
+						' send only non-dialog messages
+						' translate virtual-key messages into character messages
+						' ex.: SHIFT + a is translated as "A"
+						TranslateMessage (&msg)
+						'
+						' send message to window callback function
+						DispatchMessageA (&msg)
+					ENDIF
 				ENDIF
 				'
 		END SELECT
@@ -3568,13 +3595,21 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION binding_update (id, BINDING binding)
 	SHARED		BINDING	bindings[]
-	DEC id
 
-	IF id < 0 || id > UBOUND(bindings[]) THEN RETURN $$FALSE		' fail
-	IFZ bindings[id].hWnd THEN RETURN $$FALSE		' fail
+	bOK = $$FALSE
+	slot = id - 1
+	SELECT CASE TRUE
+		CASE slot >= 0 && slot <= UBOUND (bindings[])
+			IFZ bindings[slot].hWnd THEN
+				msg$ = "binding_update: Warning - the window handle is null"
+				WinXDialog_Error (msg$, "WinX-Debug", 0)
+			ENDIF
+			bindings[slot] = binding
+			bOK = $$TRUE		' success
+			'
+	END SELECT
+	RETURN bOK
 
-	bindings[id] = binding
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' #########################
@@ -3621,59 +3656,6 @@ FUNCTION handler_add (group, MSGHANDLER handler)
 	'now finish it off
 	handlers[group,slot] = handler
 	RETURN slot
-END FUNCTION
-'
-' #########################
-' #####  handler_get  #####
-' #########################
-' Retrieve a handler from the handler array.
-' group and id are the group and id of the handler to retreive
-' handler = the variable to store the handler
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_get (group, id, MSGHANDLER handler)
-	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
-
-	IF group < 0 || group > UBOUND(handlers[]) THEN RETURN $$FALSE
-	IF id < 0 || id > UBOUND(handlers[group,]) THEN RETURN $$FALSE
-	IFZ handlers[group,id].msg THEN RETURN $$FALSE
-
-	handler = handlers[group, id]
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ############################
-' #####  handler_update  #####
-' ############################
-' Updates an existing handler
-' group and id are the group and id of the handler to update
-' handler is the new version of the handler
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_update (group, id, MSGHANDLER handler)
-	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
-
-	IF group < 0 || group > UBOUND(handlers[]) THEN RETURN $$FALSE
-	IF id < 0 || id > UBOUND(handlers[group,]) THEN RETURN $$FALSE
-	IFZ handlers[group,id].msg THEN RETURN $$FALSE
-
-	handlers[group, id] = handler
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ############################
-' #####  handler_delete  #####
-' ############################
-' Delete a single handler
-' group and id = the group and id of the handler to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION handler_delete (group, id)
-	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
-
-	IF group < 0 || group > UBOUND(handlers[]) THEN RETURN $$FALSE
-	IF id < 0 || id > UBOUND(handlers[group,]) THEN RETURN $$FALSE
-	IF handlers[group,id].msg = 0 THEN RETURN $$FALSE
-
-	handlers[group, id].msg = 0
-	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' ##########################
@@ -5150,7 +5132,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpDis, hBmpH
 ' Generate a grayscaled version of hBmpButtons.
 '
 ' To get luminance of a color, use the formula recommended by CIE (Commission Internationale de l'Eclairage):
-'  L  =  0.2126 \D7 R   +   0.7152 \D7 G   +   0.0722 \D7 B
+'  L  =  0.2126 x R   +   0.7152 x G   +   0.0722 x B
 ' http://www.rosettacode.org/wiki/Grayscale_image
 '
 				' hBmpDis = hBmpButtons
@@ -5887,31 +5869,6 @@ FUNCTION WinXListBox_AddItem (hListBox, index, Item$)
 	RETURN SendMessageA (hListBox, wMsg, after, &Item$)
 END FUNCTION
 '
-' ##################################
-' #####  WinXListBox_GetItem$  #####
-' ##################################
-' Gets a list box item.
-' hListBox = the handle to the list box to get the item from
-' index = the index of the item to get
-' returns the string of the item or an empty string on fail
-FUNCTION WinXListBox_GetItem$ (hListBox, index)
-
-	SetLastError (0)
-	IFZ hListBox THEN RETURN ""		' fail
-	IF index < 0 THEN RETURN ""		' fail
-
-	cChar = SendMessageA (hListBox, $$LB_GETTEXTLEN, index, 0)
-	IF cChar > 0 THEN
-		szBuf$ = NULL$ (cChar)
-		SetLastError (0)
-		cChar = SendMessageA (hListBox, $$LB_GETTEXT, index, &szBuf$)
-		IF cChar > 0 THEN
-			RETURN CSTRING$ (&szBuf$)
-		ENDIF
-	ENDIF
-	RETURN ""		' fail
-END FUNCTION
-'
 ' ####################################
 ' #####  WinXListBox_RemoveItem  #####
 ' ####################################
@@ -6460,6 +6417,31 @@ FUNCTION WinXDialog_SaveFile$ (hOwner, title$, extensions$, initialName$, overwr
 	r_savedPath$ = CSTRING$ (ofn.lpstrFile)
 	RETURN r_savedPath$
 
+END FUNCTION
+'
+' ##################################
+' #####  WinXListBox_GetItem$  #####
+' ##################################
+' Gets a list box item.
+' hListBox = the handle to the list box to get the item from
+' index = the index of the item to get
+' returns the string of the item or an empty string on fail
+FUNCTION WinXListBox_GetItem$ (hListBox, index)
+
+	SetLastError (0)
+	IFZ hListBox THEN RETURN ""		' fail
+	IF index < 0 THEN RETURN ""		' fail
+
+	cChar = SendMessageA (hListBox, $$LB_GETTEXTLEN, index, 0)
+	IF cChar > 0 THEN
+		szBuf$ = NULL$ (cChar)
+		SetLastError (0)
+		cChar = SendMessageA (hListBox, $$LB_GETTEXT, index, &szBuf$)
+		IF cChar > 0 THEN
+			RETURN CSTRING$ (&szBuf$)
+		ENDIF
+	ENDIF
+	RETURN ""		' fail
 END FUNCTION
 '
 ' ##################################
@@ -11135,23 +11117,29 @@ END FUNCTION
 ' #####  WinXAttachAccelerators  #####
 ' ####################################
 ' Attaches an accelerator table to a window.
-' hWnd = window to add the accelerator table to
-' hAccel = accelerator table handle
+' hWnd         = window to add the accelerator table to
+' passed_accel = accelerator table handle
+' ===> passing a zero accelerator table's handle clears binding.hAccelTable
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION WinXAttachAccelerators (hWnd, hAccel)
+FUNCTION WinXAttachAccelerators (hWnd, passed_accel)
 	BINDING binding
 
+	bOK = $$FALSE
 	IF hWnd THEN
-		IF hAccel THEN
-			' get the binding
-			bOK = binding_get (GetWindowLongA (hWnd, $$GWL_USERDATA), @binding)
-			IF bOK THEN
-				binding.hAccelTable = hAccel
-				bOK = binding_update (idBinding, binding)
-				IF bOK THEN RETURN $$TRUE		' success
+		' get the binding
+		idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
+		bOK = binding_get (idBinding, @binding)
+		IF bOK THEN
+			binding.hAccelTable = passed_accel
+			bOK = binding_update (idBinding, binding)
+			IFF bOK THEN
+				msg$ = "WinXAttachAccelerators: Attached an accelerator table to the window."
+				msg$ = msg$ + "\r\nFail!"
+				WinXDialog_Error (msg$, "WinX-Debug", 2)
 			ENDIF
 		ENDIF
 	ENDIF
+	RETURN bOK
 
 END FUNCTION
 '
