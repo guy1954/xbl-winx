@@ -1,27 +1,4 @@
 '
-' ***** Testing and Validations *****
-'
-' C:\xblite\MyProgs\WinXsamples\animation\animate.x OK!
-' C:\xblite\MyProgs\WinXsamples\bars\bars.x OK!
-' C:\xblite\MyProgs\WinXsamples\calendar\calendar.x OK!
-' C:\xblite\MyProgs\WinXsamples\clipboard\clipboard.x OK!
-' C:\xblite\MyProgs\WinXsamples\combo boxes\combo.x OK!
-' C:\xblite\MyProgs\WinXsamples\dragListBox\dragList.x OK!
-' C:\xblite\MyProgs\WinXsamples\drawing\drawing.x OK!
-' C:\xblite\MyProgs\WinXsamples\DrawLines\DrawLines.x OK!
-' C:\xblite\MyProgs\WinXsamples\FunctionMover\functionMover.x Crashes on button Up only for functions 3 and 4!
-' C:\xblite\MyProgs\WinXsamples\groups\groups.x OK!
-' C:\xblite\MyProgs\WinXsamples\images\images.x OK!
-' C:\xblite\MyProgs\WinXsamples\listview\listview.x OK!
-' C:\xblite\MyProgs\WinXsamples\LV_mult_sel\listview.x OK!
-' C:\xblite\MyProgs\WinXsamples\palette\palette.x OK!
-' C:\xblite\MyProgs\WinXsamples\printing\printing.x OK!
-' C:\xblite\MyProgs\WinXsamples\scrolling\scrolling.x OK!
-' C:\xblite\MyProgs\WinXsamples\splitter\splitterInfo.x OK!
-' C:\xblite\MyProgs\WinXsamples\tabs\tabs.x OK!
-' C:\xblite\MyProgs\WinXsamples\text\text.x OK!
-' C:\xblite\MyProgs\WinXsamples\treeview\treeview.x OK!
-'
 '
 ' ####################
 ' #####  PROLOG  #####
