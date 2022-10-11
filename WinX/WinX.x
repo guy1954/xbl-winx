@@ -1,11 +1,34 @@
 '
+' ***** Testing and Validations *****
+'
+' C:/xblite/MyProgs/WinXsamples/animation/animate.x OK!
+' C:/xblite/MyProgs/WinXsamples/bars/bars.x OK!
+' C:/xblite/MyProgs/WinXsamples/calendar/calendar.x OK!
+' C:/xblite/MyProgs/WinXsamples/clipboard/clipboard.x OK!
+' C:/xblite/MyProgs/WinXsamples/combo boxes/combo.x OK!
+' C:/xblite/MyProgs/WinXsamples/dragListBox/dragList.x OK!
+' C:/xblite/MyProgs/WinXsamples/drawing/drawing.x OK!
+' C:/xblite/MyProgs/WinXsamples/DrawLines/DrawLines.x OK!
+' C:/xblite/MyProgs/WinXsamples/FunctionMover/functionMover.x Crashes on button Up only for functions 3 and 4!
+' C:/xblite/MyProgs/WinXsamples/groups/groups.x OK!
+' C:/xblite/MyProgs/WinXsamples/images/images.x OK!
+' C:/xblite/MyProgs/WinXsamples/listview/listview.x OK!
+' C:/xblite/MyProgs/WinXsamples/LV_mult_sel/listview.x OK!
+' C:/xblite/MyProgs/WinXsamples/palette/palette.x OK!
+' C:/xblite/MyProgs/WinXsamples/printing/printing.x OK!
+' C:/xblite/MyProgs/WinXsamples/scrolling/scrolling.x OK!
+' C:/xblite/MyProgs/WinXsamples/splitter/splitterInfo.x OK!
+' C:/xblite/MyProgs/WinXsamples/tabs/tabs.x OK!
+' C:/xblite/MyProgs/WinXsamples/text/text.x OK!
+' C:/xblite/MyProgs/WinXsamples/treeview/treeview.x OK!
+'
 '
 ' ####################
 ' #####  PROLOG  #####
 ' ####################
 '
 PROGRAM	"WinX"
-VERSION "0.6.0.2"		' GL-28oct09
+VERSION "0.6.0.4"		' GL-10oct22
 'CONSOLE
 ' Needs the M4 macro preprocessor.
 '
@@ -19,6 +42,311 @@ VERSION "0.6.0.2"		' GL-28oct09
 ' which should be included in the WinX distribution.
 ' ------------------------------------------------------------------------------
 '
+'
+' ***** Description *****
+'
+' WinX.dll: the Windows API made easy!
+'
+' WinX.x is a Windows GUI library for XBLite.
+' WinX.dll is easy to use, with a comprehensive set of functions and is
+' perfect to experiment GUI programming with quick prototypes.
+'
+' Author: Callum Lowcay
+' Admin.: Guy Lonne, e-mail: <guy1954@users.sourceforge.net>
+'
+'
+' ***** Notes *****
+'
+' Notes from Guy Lonne
+' ====================
+'
+' I often generate (without saving the project) my applications with viXen
+' set to "WinX generation" to get a feeling of the look of my GUI
+' application.
+'
+' WinAPI programming in XBLite is mainly done by sending messages to the
+' OS thru the routine SendMessageA. Only practice gives a good command of
+' this technique: the more you put it to use, the easier it gets.
+'
+' But even a steady practice did not bring me comfort: since I like to
+' perform meticulous run-time error checking, I do not call SendMessageA
+' directly. I used instead wrappers to the SendMessageA calls that ensure
+' careful check of the API returned code. Out of habit, I started to
+' externalise these wrappers into GUI libraries. Lucky for me, Callum
+' Lowcay developed in XBLite a ready-to-use open-source GUI library:
+' WinX.x.
+'
+' If I am satisfied by the appearance of the generated application, I
+' might then switch back to WinAPI generation, knowing that it is a step
+' backwards: I will need additional coding just to get the same
+' functionalities.
+'
+' NOTE 1: Code bloat.
+' ======
+'
+' Some FUNCTIONs found their way in WinX.dll from viXen, against Callum's
+' recommendation, who wanted to keep WinX lightweight.
+' However, my rational to add them here is:
+' 1.they were interesting enough to be shared among Xbliters
+' 2.they were fully tested by using viXen
+' 3.I use them in my tool production:
+' - viXen     : XBLite GUI designer
+' - XblCockpit: application launcher
+' - SortSource: Sort PROGRAM's FUNCTIONs
+' - U16toWide : Converter To Wide String WinAPI
+' .             (tool for converting to UTF-18 the ANSI WinAPIs within
+' .             an XBLite source program, which I used on WinX.x to create WinU16.x)
+' 4.viXen version 2.00 will be a WinU16 GUI application.
+'
+'
+' NOTE 2: WinX's FUNCTIONs RETURNs bOK, not bErr.
+' ======
+'
+' Contrary to the XBasic/XBLite convention of RETURNing an error flag bErr,
+' WinX RETURNs bOK, which IMHO is more "application-friendly":
+' I read better a code that does not negate its test conditions.
+'
+' As a for instance, compare:
+'' Check if file$ exists:
+' bErr = XstFileExists (file$)
+' IFF bErr THEN      ' file$ exists
+'
+' to:
+'' Check if directory dir$ exists:
+' IF WinXDir_Exists (dir$) THEN      ' directory dir$ exists
+'
+' This is paramount for system routines to allow for easy error checking.
+' I thing that XBasic's is a good design decision. However, it is less
+' appropriate for applications development. Priority to the job to perform,
+' error checking only second. This is why WinX is ported to UNICODE with
+' the same "RETURN bOK".
+'
+' How to Re-build WinX
+' ====================
+'
+' 1. All functions are prefixed by "WinX"
+' 2. Use SHIFT+F9 to compile
+' 3. Use F10 to build WinX.dll
+' 4. Use compiler switch -m4
+'
+'
+' ***** Versions *****
+'
+' Contributor:
+'     Callum Lowcay (original version 0.6.0.1)
+'
+'0.4.2 New Controls:
+'- WinX Splitter: Splitter controls that works with Auto Sizer
+'- List View Support (no dragging yet)
+'
+'New Functions:
+'- WinXDrawEllipse
+'
+'New Auto Draw functions
+'- WinXDrawRect
+'- WinXDrawBezier
+'- WinXDrawArc
+'- WinXDrawFilledArea
+'- WinXRegOnClose        : Callback to trap window close event
+'- WinXSetSimpleSizerInfo: Simplified Auto Sizer registration
+'- WinXAddListView
+'
+'List View support functions
+'- WinXListView_SetView
+'- WinXListView_AddColumn
+'- WinXListView_DeleteColumn
+'- WinXListView_AddItem
+'- WinXListView_DeleteItem
+'- WinXListView_GetSelection
+'- WinXListView_SetSelection
+'- WinXListView_SetItemText
+'
+'Changed Functions:
+'- WinXSetAutosizerInfo: Now supports reverse series (right to left)
+'
+'Bug Fixes:
+'- Scroll Bars not updating under Win2K and WinXP with classic skin
+'- Direct LBItemFromPt calls removed
+'- Fixed WinXOpenFile$ multiselect bugs
+'- Possibly others
+'
+'0.5 New Functions:
+'- WinXDraw_MakeLogFont Font and text management
+'- WinXDraw_GetFontDialog
+'- WinXDraw_GetTextWidth
+'- WinXPixelsPerPoint
+'- WinXDrawText
+'- WinXDraw_GetColour Colour dialog
+'- WinXDraw_CreateImage
+'
+'Image support
+'- WinXDraw_LoadImage
+'- WinXDraw_DeleteImage
+'- WinXDraw_Snapshot
+'- WinXDraw_SaveImage
+'- WinXDraw_ResizeImage
+'- WinXDraw_SetImagePixel
+'- WinXDraw_GetImagePixel
+'- WinXDraw_SetConstantAlpha
+'- WinXDraw_SetImageChannel
+'- WinXDraw_GetImageChannel
+'- WinXDraw_GetImageInfo
+'- WinXDraw_CopyImage
+'- WinXDraw_PremultiplyImage
+'- WinXDrawImage
+'- WinXPrint
+'
+'Start Printing support
+'- WinXLogUnitsPerPoint
+'- WinXDevUnitsPerInch
+'- WinXPrint_PageSetup
+'- WinXPrint_Page
+'- WinXPrint_Done
+'
+'Bug Fixes
+'- WinXSaveFile$ didn't append default extension
+'
+'0.5.0.1 Bug Fixes:
+'- WinXOpenFile$ and WinXSaveFile$, fixed the initial filename parameter
+'
+'0.6 Bug Fixes:
+'- Major changes to the internal implementation of AutoDraw eliminating serious crashing bugs
+'- Removal of bugs preventing multiple windows
+'- Fixed WinXDraw_GetImageInfo (it didn't work at all)
+'- Changes to AutoDraw and AutoSizer to reduce flicker
+'- numerous other bug fixes New Features
+'- Splitter docking
+'- Clipboard
+'- Registry access
+'- Increased window customisation, set background colour, cursor, font (for some controls)
+'- New dialog boxes: message, question
+'- New ListView and TreeView functions
+'
+'New Controls:
+'- Calendar
+'- Date/Time Picker
+'
+'Functions with new parameters:
+'- WinXNewWindow
+'- WinXMakeMenu (also renamed to WinXNewMenu)
+'
+'Renamed Functions:
+'The renames are intended to make the WinX API more logical and consistent.
+'Hopefully this will be the last time I need to do a large scale rename.
+'
+'+-------------------------------------------------------+
+'| Old Name                | New Name                    |
+'|-------------------------|-----------------------------|
+'| WinXSetControlText      | WinXSetText                 |
+'| WinXGetControlText$     | WinXGetText$                |
+'| WinXSetAutosizerInfo    | WinXAutoSizer_SetInfo       |
+'| WinXMakeMenu            | WinXNewMenu                 |
+'| WinXAttachSubMenu       | WinXMenu_Attach             |
+'| WinXMakeToolbar         | WinXNewToolbar              |
+'| WinXMakeToolbarUsingIls | WinXNewToolbarUsingIls      |
+'| WinXOpenFile$           | WinXDialog_OpenFile$        |
+'| WinXSaveFile$           | WinXDialog_SaveFile$        |
+'| WinXMakeAutoSizerSeries | WinXNewAutoSizerSeries      |
+'| WinXErrorBox            | WinXDialog_Error            |
+'| WinXSetSimpleSizerInfo  | WinXAutoSizer_SetSimpleInfo |
+'| WinXPixelsPerPoint      | WinXDraw_PixelsPerPoint     |
+'| WinXLogUnitsPerPoint    | WinXPrint_LogUnitsPerPoint  |
+'| WinXDevUnitsPerInch     | WinXPrint_DevUnitsPerInch   |
+'| WinXGetMainSeries       | WinXAutoSizer_GetMainSeries |
+'+-------------------------------------------------------+
+'
+'New Functions:
+'- WinXNewChildWindow (parent, STRING title, style, exStyle, id)
+'- WinXRegOnFocusChange (hWnd, FUNCADDR onFocusChange)
+'- WinXSetWindowColour (hWnd, colour)
+'- WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
+'- WinXDialog_Message (hWnd, text, iIcon, hMod)
+'- WinXDialog_Question (hWnd, text, cancel, defaultButton)
+'- WinXSplitter_SetProperties (series, hCtrl, min, max, dock)
+'- WinXRegistry_ReadInt (hKey, subKey, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result)
+'- WinXRegistry_ReadString (hKey, subKey, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
+'- WinXRegistry_ReadBin (hKey, subKey, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
+'- WinXRegistry_WriteInt (hKey, subKey, SECURITY_ATTRIBUTES sa, int)
+'- WinXRegistry_WriteString (hKey, subKey, SECURITY_ATTRIBUTES sa, buffer$)
+'- WinXRegistry_WriteBin (hKey, subKey, SECURITY_ATTRIBUTES sa, buffer$)
+'- WinXAddAccelerator (ACCEL @accel[], cmd, key, control, alt, shift)
+'- WinXSplitter_GetPos (series, hCtrl, @position, @docked)
+'- WinXSplitter_SetPos (series, hCtrl, position, docked) WinXClip_IsString ()
+'- WinXClip_PutString (Stri$) WinXClip_GetString$ ()
+'- WinXRegOnClipChange (hWnd, FUNCADDR onClipChange)
+'- SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
+'- WinXSetCursor (hWnd, hCursor)
+'- WinXScroll_GetPos (hWnd, direction, @pos)
+'- WinXScroll_SetPos (hWnd, direction, pos)
+'- WinXRegOnItem (hWnd, FUNCADDR onItem)
+'- WinXRegOnColumnClick (hWnd, FUNCADDR onColumnClick)
+'- WinXRegOnEnterLeave (hWnd, FUNCADDR onEnterLeave)
+'- WinXListView_GetItemFromPoint (hLV, x, y)
+'- WinXListView_Sort (hLV, iCol, desc)
+'- WinXTreeView_GetItemFromPoint (hTreeView, x, y)
+'- WinXGetPlacement (hWnd, @minMax, RECT @restored)
+'- WinXSetPlacement (hWnd, minMax, RECT restored)
+'- WinXGetMousePos (hWnd, @x, @y)
+'- WinXAddCalendar (parent, @monthsX, @monthsY, id)
+'- WinXCalendar_SetSelection (hCal, SYSTEMTIME time)
+'- WinXCalendar_GetSelection (hCal, SYSTEMTIME @time)
+'- WinXRegOnCalendarSelect (hWnd, FUNCADDR onCalendarSelect)
+'- WinXAddTimePicker (parent, format, SYSTEMTIME initialTime, timeValid, id)
+'- WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
+'- WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid)
+'- WinXSetFont (hCtrl, hFont)
+'- WinXClip_IsImage ()
+'- WinXClip_GetImage ()
+'- WinXClip_PutImage (hImage)
+'- WinXRegOnDropFiles (hWnd, FUNCADDR onDrag)
+'- WinXDraw_GetFontHeight (hFont, @ascent, @descenct)
+'
+'0.6.0.1 Bug Fixes:
+'- Bug in WinXDrawImage which miscalculated update region
+'
+'
+' Contributor:
+'     Guy "GL" Lonne (evolutions after version 0.6.0.1)
+'
+'0.6.0.1-Callum Lowcay-Original version.
+'         GL-Made some text changes:
+' ".firstItem"	:= ".iHead"
+' ".lastItem"	:= ".iTail"
+' ".forColor"	:= ".forColour"
+' ".backColor"	:= ".backColour"
+' "colour"	:= "color"
+' "customColours["	:= "#CustomColors["
+' "$$DOCK_FORWARD"	:= "$$DOCK_FORWARD"
+' "FUNCTION"	:= "FUNCTION"
+' "Seperator"	:= "Separator"
+'
+'0.6.0.2-GL-10sep08-added hideReadOnly argument to WinXDialog_OpenFile$.
+'        GL-28oct09-REVERTED to show again the check box "Read Only"
+'        to allow to open "Read Only" (no lock) the selected file(s).
+'
+'0.6.0.2-GL-10sep08 New Functions:
+'
+' Up-Down Control (Spinner)
+'- WinXAddSpinner: create a new spinner control
+'
+'- WinXPath_Trim$       : trim a file path
+'- WinXMakeFilterString$: make a filter string
+'
+' Wrappers
+'- WinXSetWindowColour: wrapper to WinXSetWindowColor
+'- WinXDraw_GetColour : wrapper to WinXDraw_GetColor
+'- WinXAddCheckBox    : wrapper to WinXAddCheckButton
+'- WinXDraw_Clear     : wrapper to WinXClear
+'
+'0.6.0.3-GL-10nov08-corrected function WinXListBox_GetSelection,
+'- replaced wMsg by $$LB_GETSELITEMS since wMsg was not set and would be zero.
+'
+'0.6.0.4-GL-10sep08-added the new functions
+' Accelerators
+'- WinXAddAcceleratorTable: create an accelerator table
+'- WinXAttachAccelerator  : attach accelerator table to window
+'
+'- WinXVersion$: retrieve WinX's current version
 '
 '
 ' ##############################
@@ -62,6 +390,12 @@ VERSION "0.6.0.2"		' GL-28oct09
 	IMPORT "advapi32"			' advanced API: security, services, registry ...
 	IMPORT "msimg32"			' image manipulation
 '
+'
+' #######################
+' #####  M4 macros  #####
+' #######################
+' Notes:
+' - use the compiler switch -m4
 m4_include(`accessors.m4')
 '
 '
@@ -120,7 +454,8 @@ TYPE BINDING
 	FUNCADDR	.onColumnClick(SLONG, SLONG)		' idCtr, iColumn
 	FUNCADDR	.onCalendarSelect(SLONG, SYSTEMTIME)	' idCtr, time
 	FUNCADDR	.onDropFiles(SLONG, SLONG, SLONG, STRING[])		' hWnd, x, y, @fileList$[]
-'new in 0.6.0.2
+'
+'new in 0.6.0.4
 	SLONG			.hAccelTable		' handle to the window's accelerator table
 
 END TYPE
@@ -386,6 +721,7 @@ DECLARE FUNCTION printAbortProc (hDC, nCode)
 
 END EXPORT
 '
+'
 'These functions abstract away access to the arrays
 '
 ' Window/Dialog Binding
@@ -396,6 +732,9 @@ DECLARE FUNCTION binding_update (id, BINDING binding) ' update window binding
 '
 ' Message Handlers
 DECLARE FUNCTION handler_add (group, MSGHANDLER FnMsgHandler)
+DECLARE FUNCTION handler_get (group, index, MSGHANDLER @FnMsgHandler)
+DECLARE FUNCTION handler_update (group, index, MSGHANDLER FnMsgHandler)
+DECLARE FUNCTION handler_delete (group, index)
 
 DECLARE FUNCTION handler_call (group, @ret_value, hWnd, wMsg, wParam, lParam)
 DECLARE FUNCTION handler_find (group, wMsg)
@@ -441,8 +780,8 @@ DECLARE FUNCTION drawBezier (hDC, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION drawText (hDC, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION drawImage (hDC, AUTODRAWRECORD record, x0, y0)
 
-DECLARE FUNCTION tabs_SizeContents (hTabs, pRect)
-DECLARE FUNCTION groupBox_SizeContents (hGB, pRect)
+DECLARE FUNCTION sizeTabsContents (hTabs, pRect)
+DECLARE FUNCTION sizeGroupBoxContents (hGB, pRect)
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 '
 '
@@ -476,11 +815,15 @@ DECLARE FUNCTION WinXUndo (hWnd, idDraw) ' undo a drawing operation
 DECLARE FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR FnOnKeyDown) ' handles message WM_KEYDOWN
 DECLARE FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR FnOnKeyUp) ' handles message WM_KEYUP
 DECLARE FUNCTION WinXRegOnChar (hWnd, FUNCADDR FnOnChar)
+'
+' Keyboard
 DECLARE FUNCTION WinXIsKeyDown (key)
+'
+' Mouse
 DECLARE FUNCTION WinXIsMousePressed (button)
 
 DECLARE FUNCTION WinXAddControl (parent, class$, text$, style, exStyle, id) ' add custom control
-DECLARE FUNCTION WinXAddListBox (parent, sort, multiSelect, id) ' add list box
+DECLARE FUNCTION WinXAddListBox (parent, sort, multiSelect, id) ' add list box control
 DECLARE FUNCTION WinXAddComboBox (parent, listHeight, canEdit, images, id) ' add combo box
 '
 ' List Box
@@ -538,8 +881,10 @@ DECLARE FUNCTION WinXEnableDialogInterface (hWnd, enable) ' enable/disable a dia
 ' Animation
 DECLARE FUNCTION WinXAni_Play (hAni) ' start playing the animation
 DECLARE FUNCTION WinXAni_Stop (hAni) ' stop playing the animation
-
+'
+' List Box
 DECLARE FUNCTION WinXListBox_SetCaret (hListBox, index)
+
 DECLARE FUNCTION WinXSetStyle (hWnd, add, addEx, sub, subEx) ' set style and extended style
 '
 ' Tree View
@@ -569,12 +914,12 @@ DECLARE FUNCTION WinXToolbar_AddSeparator (hToolbar)
 DECLARE FUNCTION WinXToolbar_AddControl (hToolbar, hControl, w)
 DECLARE FUNCTION WinXToolbar_EnableButton (hToolbar, iButton, enable)
 DECLARE FUNCTION WinXToolbar_ToggleButton (hToolbar, iButton, on)
-'0.4.1
+'new in 0.4.1.0
 DECLARE FUNCTION WinXComboBox_GetEditText$ (hCombo)
 DECLARE FUNCTION WinXComboBox_SetEditText (hCombo, text$)
 DECLARE FUNCTION WinXAddGroupBox (parent, text$, id) ' add group box
 DECLARE FUNCTION WinXGroupBox_GetAutosizerSeries (hGB)
-'new in 0.4.2
+'new in 0.4.2.0
 DECLARE FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 DECLARE FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 DECLARE FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
@@ -607,7 +952,7 @@ DECLARE FUNCTION WinXDraw_DeleteImage (hImage)
 DECLARE FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 DECLARE FUNCTION WinXDraw_SaveImage (hImage, fileName$, fileType)
 DECLARE FUNCTION WinXDraw_ResizeImage (hImage, w, h)
-DECLARE FUNCTION WinXDraw_SetImagePixel (hImage, x, y, codeRGB)
+DECLARE FUNCTION WinXDraw_SetImagePixel (hImage, x, y, pixelRGB)
 DECLARE FUNCTION RGBA WinXDraw_GetImagePixel (hImage, x, y)
 DECLARE FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 DECLARE FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE @data[])
@@ -668,7 +1013,12 @@ DECLARE FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect) ' h
 DECLARE FUNCTION WinXAddTimePicker (parent, format, SYSTEMTIME initialTime, timeValid, id) ' add time picker control
 DECLARE FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid) ' set the time for a Date/Time Picker control
 DECLARE FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME @time, @timeValid) ' get time from a Date/Time Picker control
+
+' Font
+DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderline, bStrikeOut) ' create a logical font
 DECLARE FUNCTION WinXSetFont (hCtr, hFont) ' apply font to control
+DECLARE FUNCTION WinXSetFontAndRedraw (hCtr, hFont, bRedraw) ' apply font to control, eventually redraw it
+
 DECLARE FUNCTION WinXClip_IsImage ()
 DECLARE FUNCTION WinXClip_GetImage ()
 DECLARE FUNCTION WinXClip_PutImage (hImage)
@@ -683,7 +1033,7 @@ END EXPORT
 ' ***********************************
 EXPORT
 '
-'new in 0.6.0.2
+'new in 0.6.0.4
 ' Accelerators
 DECLARE FUNCTION WinXAddAcceleratorTable (ACCEL @accel[]) ' create an accelerator table
 DECLARE FUNCTION WinXAttachAccelerators (hWnd, hAccel) ' attach accelerator table to window
@@ -697,7 +1047,7 @@ DECLARE FUNCTION WinXMakeFilterString$ (file_filter$) ' make a filter string
 DECLARE FUNCTION WinXCleanUp () ' optional cleanup
 '
 ' Version
-DECLARE FUNCTION WinXVersion$ () ' get WinX's current version
+DECLARE FUNCTION WinXVersion$ () ' retrieve WinX's current version
 '
 ' Wrappers
 DECLARE FUNCTION WinXSetWindowColour (hWnd, backRGB)
@@ -721,7 +1071,7 @@ DECLARE FUNCTION GuiTellRunError (msg$) ' display a run-time error message
 ' Description = Initializes the WinX library.
 ' Function    = WinX ()
 ' ArgCount    = 0
-' Return      = $$FALSE on success, else $$TRUE on fail
+'	Return      = $$FALSE on success, else $$TRUE on fail.
 ' Remarks     = Sometimes this gets called automatically.  If your program crashes as soon as you call WinXNewWindow then WinX has not been initialized properly.
 '	See Also    =
 '	Examples    = IFF WinX () THEN QUIT(0)
@@ -729,7 +1079,6 @@ DECLARE FUNCTION GuiTellRunError (msg$) ' display a run-time error message
 FUNCTION WinX ()
 
 	SHARED		SBYTE #bReentry
-	SHARED		hInst		' instance handle
 	SHARED		hWinXIcon		' WinX's Icon
 	SHARED		BINDING	bindings[]			'a simple array of bindings
 
@@ -760,9 +1109,6 @@ FUNCTION WinX ()
 '	Xma ()		' initialize Math Library
 ' Static build~~~
 '
-	SetLastError (0)
-	hInst = GetModuleHandleA (0)
-
 	DIM tbbd[0]
 	DIM tbbdUM[0]
 '
@@ -841,8 +1187,8 @@ FUNCTION WinX ()
 	             $$ICC_WIN95_CLASSES
 '
 ' 0.6.0.2-old---
-' GL-don't bother error checking!
-'	IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE
+' GL-04mar09-don't bother error checking!
+'	IFF InitCommonControlsEx (&iccex) THEN RETURN $$TRUE ' fail
 ' 0.6.0.2-old~~~
 ' 0.6.0.2-new+++
 	InitCommonControlsEx (&iccex)
@@ -875,7 +1221,7 @@ FUNCTION WinX ()
 	wcex.lpszMenuName = 0
 	wcex.cbClsExtra = 0		' no extra bytes after the window class
 	wcex.cbWndExtra = 4		' space for the index to a BINDING structure
-	wcex.hInstance			= hInst
+	wcex.hInstance			= GetModuleHandleA(0)
 	wcex.hIcon					= hWinXIcon
 	wcex.hCursor				= LoadCursorA (0, $$IDC_ARROW)
 '
@@ -903,7 +1249,7 @@ FUNCTION WinX ()
 	wcex.lpszMenuName = 0
 	wcex.cbClsExtra			= 0		' no extra bytes after the window class
 	wcex.cbWndExtra			= 4		' space for the index to a SPLITTERINFO structure
-	wcex.hInstance			= hInst
+	wcex.hInstance			= GetModuleHandleA(0)
 	wcex.hIcon					= 0
 	wcex.hCursor				= 0
 '
@@ -1074,7 +1420,7 @@ FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, hIc
 '
 ' Fill the binding record.
 '
-			dwStyle = $$WS_POPUP | $$TTS_NOPREFIX | $$TTS_ALWAYSTIP
+			dwStyle = $$WS_POPUP OR $$TTS_NOPREFIX OR $$TTS_ALWAYSTIP
 			binding.hToolTips = CreateWindowExA (0, &$$TOOLTIPS_CLASS, 0, dwStyle, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, binding.hWnd, 0, GetModuleHandleA (0), 0)
 			'
 			'allocate a message handler
@@ -1361,10 +1707,10 @@ FUNCTION WinXAddButton (parent, text$, hImage, id)
 	IF hImage THEN
 		SELECT CASE LCASE$ (text$)
 			CASE "icon"
-				style = style | $$BS_ICON
+				style = style OR $$BS_ICON
 				imageType = $$IMAGE_ICON
 			CASE "bitmap"
-				style = style | $$BS_BITMAP
+				style = style OR $$BS_BITMAP
 				imageType = $$IMAGE_BITMAP
 		END SELECT
 	ENDIF
@@ -1425,7 +1771,7 @@ FUNCTION WinXGetText$ (hwnd)
 	ret = GetWindowTextA (hwnd, &szBuf$, sizeBuf)		' get the text
 	IFZ ret THEN RETURN ""		' fail
 
-	'ret$ = LEFT$ (szBuf$, ret)
+	'-ret$ = LEFT$ (szBuf$, ret)
 	ret$ = CSTRING$ (&szBuf$)
 	RETURN ret$		' success
 END FUNCTION
@@ -1523,7 +1869,7 @@ END FUNCTION
 ' returns a handle to the new edit control or 0 on fail
 FUNCTION WinXAddEdit (parent, text$, flags, id)
 	style = flags		' passed style flags
-	style = style | $$WS_TABSTOP | $$WS_BORDER '| $$WS_GROUP
+	style = style OR $$WS_TABSTOP OR $$WS_BORDER '| $$WS_GROUP
 	IF style AND $$ES_MULTILINE THEN
 		' multiline edit box
 		style = style|$$WS_VSCROLL|$$WS_HSCROLL
@@ -3238,7 +3584,7 @@ END FUNCTION
 ' #####  autoSizer  #####
 ' #######################
 ' The auto-sizer function, resizes child windows.
-' returns the new current position or 0 on fail.
+' returns the new current position or 0 on fail
 FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, currPos)
 	RECT rect
 	SPLITTERINFO splitterInfo
@@ -3633,6 +3979,59 @@ FUNCTION handler_add (group, MSGHANDLER handler)
 	'now finish it off
 	handlers[group,slot] = handler
 	RETURN slot
+END FUNCTION
+'
+' #########################
+' #####  handler_get  #####
+' #########################
+' Retrieve a handler from the handler array.
+' group and id are the group and id of the handler to retreive
+' handler = the variable to store the handler
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION handler_get (group, id, MSGHANDLER handler)
+	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
+
+	IF group < 0 || group > UBOUND(handlers[]) THEN RETURN $$FALSE
+	IF id < 0 || id > UBOUND(handlers[group,]) THEN RETURN $$FALSE
+	IFZ handlers[group,id].msg THEN RETURN $$FALSE
+
+	handler = handlers[group, id]
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ############################
+' #####  handler_update  #####
+' ############################
+' Updates an existing handler
+' group and id are the group and id of the handler to update
+' handler is the new version of the handler
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION handler_update (group, id, MSGHANDLER handler)
+	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
+
+	IF group < 0 || group > UBOUND(handlers[]) THEN RETURN $$FALSE
+	IF id < 0 || id > UBOUND(handlers[group,]) THEN RETURN $$FALSE
+	IFZ handlers[group,id].msg THEN RETURN $$FALSE
+
+	handlers[group, id] = handler
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ############################
+' #####  handler_delete  #####
+' ############################
+' Delete a single handler
+' group and id = the group and id of the handler to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION handler_delete (group, id)
+	SHARED		MSGHANDLER	handlers[]	'a 2D array of handlers
+
+	IF group < 0 || group > UBOUND(handlers[]) THEN RETURN $$FALSE
+	IF id < 0 || id > UBOUND(handlers[group,]) THEN RETURN $$FALSE
+	IF handlers[group,id].msg = 0 THEN RETURN $$FALSE
+
+	handlers[group, id].msg = 0
+	RETURN $$TRUE		' success
 END FUNCTION
 '
 ' ##########################
@@ -4349,13 +4748,13 @@ FUNCTION drawImage (hDC, AUTODRAWRECORD record, x0, y0)
 END FUNCTION
 '
 ' ###############################
-' #####  tabs_SizeContents  #####
+' #####  sizeTabsContents  #####
 ' ###############################
 ' Resizes a tabstrip.
 ' hTabs = tabs control
 ' pRect = pointer to a RECT structure
 ' returns the auto-sizer series or -1 on fail
-FUNCTION tabs_SizeContents (hTabs, pRect)
+FUNCTION sizeTabsContents (hTabs, pRect)
 
 	SetLastError (0)
 	IFZ hTabs THEN RETURN -1		' fail
@@ -4371,12 +4770,12 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 	RETURN series		' success
 END FUNCTION
 '
-' ###################################
-' #####  groupBox_SizeContents  #####
-' ###################################
+' ##################################
+' #####  sizeGroupBoxContents  #####
+' ##################################
 ' Gets the viewable area for a group box.
 ' returns the auto-sizer series or -1 on fail
-FUNCTION groupBox_SizeContents (hGB, pRect)
+FUNCTION sizeGroupBoxContents (hGB, pRect)
 	RECT rect
 
 	SetLastError (0)
@@ -5141,7 +5540,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpDis, hBmpH
 '						gray = (red + green + blue) / 3
 ' GL-27jul21-old~~~
 ' GL-27jul21-new+++
-						' get luminance of a color by using the formula recommended by CIE:
+						' get luminance of a color by using the formula recommended by the CIE:
 						luminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
 						gray = ULONG (luminance)
 
@@ -6299,7 +6698,7 @@ FUNCTION WinXDialog_SaveFile$ (hOwner, title$, extensions$, initialName$, overwr
 
 	defExt$ = ""
 '
-' use the 1st extension as a default----------------vvv
+' use the first extension as a default--------------vvv
 ' i.e.: fileFilter$ = "Image Files (*.bmp, *.jpg)|*.bmp;*.jpg|"
 ' .            posSepBeg-------------------------^     ^     ^
 ' .        posSemiColumn-------------------------------+     |
@@ -6328,7 +6727,7 @@ FUNCTION WinXDialog_SaveFile$ (hOwner, title$, extensions$, initialName$, overwr
 ' .     posLast-------------------+
 '
 				IFZ defExt$ THEN
-					posFirst = pos		' position of the 1st separator '|'
+					posFirst = pos		' position of the first separator '|'
 					posLast = INSTR (fileFilter$, "|", posFirst)		' position of the 2nd separator '|'
 					posSemiColumn = INSTR (fileFilter$, ";", posFirst)		' position of an eventual extensions list separator ';'
 					'
@@ -6340,7 +6739,7 @@ FUNCTION WinXDialog_SaveFile$ (hOwner, title$, extensions$, initialName$, overwr
 						cCh = posLast - posFirst		' i.e. "|*.ext1|"
 					ENDIF
 					IF cCh > 0 THEN
-						' extract the default extension from the pattern (it's the 1st of the list)
+						' extract the default extension from the pattern (it's the first of the list)
 						defExt$ = MID$ (fileFilter$, posFirst, cCh)		' clip up to the separator (';' or '|')
 						' remove the leading dot from the extension
 						pos = INSTR (defExt$, ".")
@@ -6768,7 +7167,7 @@ FUNCTION WinXAddTabs (parent, multiline, id)
 		SetWindowLongA (parent, $$GWL_STYLE, parent_style)
 	ENDIF
 
-	SetPropA (hTabs, &$$LeftSubSizer$, &tabs_SizeContents())
+	SetPropA (hTabs, &$$LeftSubSizer$, &sizeTabsContents())
 '
 ' 0.6.0.2-needed?
 '	series = autoSizerInfo_addGroup ($$DIR_VERT)
@@ -6796,7 +7195,8 @@ FUNCTION WinXAddAnimation (parent, file$, id)
 
 	SetLastError (0)
 	hAni = CreateWindowExA (0, &"SysAnimate32", 0, $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP| _
-	$$ACS_CENTER, 0, 0, 0, 0, parent, id, GetModuleHandleA (0), 0)
+				$$ACS_CENTER, 0, 0, 0, 0, parent, id, _
+				GetModuleHandleA (0), 0)
 	IFZ hAni THEN RETURN 0		' fail
 	IF file$ THEN
 		SetLastError (0)
@@ -7541,7 +7941,7 @@ END FUNCTION
 ' Usage:
 ' hNodeAdd = WinXTreeView_AddItem (hTreeView, hTree_root, $$TVI_LAST, 5, 4, label$)		' add last
 ' IF hNodeAdd < 0 THEN
-'		msg$ = "WinXTreeView_AddItem: Can't add treeview node '" + label$ + "'"
+'		msg$ = "WinXTreeView_AddItem: Can't add treeview item '" + label$ + "'"
 '		XstAlert (msg$)
 ' ENDIF
 '
@@ -7767,6 +8167,7 @@ END FUNCTION
 FUNCTION WinXTreeView_CopyItem (hTreeView, hNodeParent, hNodeAfter, hNodeToMove)
 	TV_ITEM tvi
 	TV_INSERTSTRUCT tvis
+	SLONG new_handle		' handle to the copied item
 
 	SetLastError (0)
 	IFZ hTreeView THEN RETURN 0		' fail
@@ -7797,8 +8198,8 @@ FUNCTION WinXTreeView_CopyItem (hTreeView, hNodeParent, hNodeAfter, hNodeToMove)
 
 	SetLastError (0)
 '	tvis.item.hItem = SendMessageA (hTreeView, $$TVM_INSERTITEM, 0, &tvis)
-	r_new_handle = SendMessageA (hTreeView, $$TVM_INSERTITEM, 0, &tvis)
-	IFZ r_new_handle THEN
+	new_handle = SendMessageA (hTreeView, $$TVM_INSERTITEM, 0, &tvis)
+	IFZ new_handle THEN
 		msg$ = "WinXTreeView_CopyItem: Can't insert item after node " + STRING$ (hNodeAfter)
 		GuiTellApiError (msg$)
 		RETURN 0		' fail
@@ -7808,13 +8209,15 @@ FUNCTION WinXTreeView_CopyItem (hTreeView, hNodeParent, hNodeAfter, hNodeToMove)
 		prevChild = $$TVI_FIRST
 		child = WinXTreeView_GetChildItem (hTreeView, hNodeToMove)
 		DO WHILE child
-			WinXTreeView_CopyItem (hTreeView, r_new_handle, prevChild, child)
+			WinXTreeView_CopyItem (hTreeView, new_handle, prevChild, child)
 			prevChild = child
 			child = WinXTreeView_GetNextItem (hTreeView, prevChild)
 		LOOP
 	ENDIF
 
-	RETURN r_new_handle
+	' return the handle to the copied item
+	RETURN new_handle
+
 END FUNCTION
 '
 ' #############################
@@ -7902,6 +8305,7 @@ END FUNCTION
 ' iTab = the index of the new current tab
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
+
 	SetLastError (0)
 	IFZ hTabs THEN RETURN $$FALSE		' fail
 	count = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
@@ -7915,6 +8319,7 @@ FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
 		IFZ ret THEN RETURN $$FALSE		' fail
 	ENDIF
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' #########################################
@@ -7925,7 +8330,7 @@ END FUNCTION
 ' commandId    = the command constant the button will generate
 ' iImage       = the zero-based index of the image for this button
 ' toolTipText$ = the text for this button's tooltip
-' mutex = $$TRUE if this toggle is mutually exclusive, ie. only one from a group can be toggled at a time
+' mutex        = $$TRUE if this toggle is mutually exclusive, ie. only one from a group can be toggled at a time
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXToolbar_AddToggleButton (hToolbar, commandId, iImage, toolTipText$, mutex, optional, moveable)
 	TBBUTTON bt
@@ -8017,25 +8422,13 @@ FUNCTION WinXToolbar_EnableButton (hToolbar, idButton, enable)
 ' GL-old~~~
 ' GL-new+++
 	IF enable THEN
-		fEnableNew = 1
+		fEnable = 1
 	ELSE
-		fEnableNew = 0
+		fEnable = 0
 	ENDIF
-
-	' determine whether button idButton is enabled or disabled
-	fEnableOld = SendMessageA (hToolbar, $$TB_ISBUTTONENABLED, idButton, 0)
-	IF fEnableOld THEN fEnableOld = 1		' 1 = enabled
-
-	IF fEnableNew <> fEnableOld THEN
-		' toggle the state
-		ret = SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, fEnableNew)
-		IF ret THEN
-			' check if the state was really toggled
-			SetLastError (0)
-			ret = SendMessageA (hToolbar, $$TB_ISBUTTONENABLED, idButton, 0)
-			IF ret = fEnableNew THEN RETURN $$TRUE		' success
-		ENDIF
-	ENDIF
+	SetLastError (0)
+	ret = SendMessageA (hToolbar, $$TB_ENABLEBUTTON, idButton, fEnable)
+	IF ret THEN RETURN $$TRUE		' success
 	RETURN $$FALSE		' fail
 ' GL-new~~~
 '
@@ -8112,8 +8505,21 @@ FUNCTION WinXAddGroupBox (parent, text$, id)
 	hGB = CreateWindowExA (0, &$$BUTTON, &text$, style, 0, 0, 0, 0, parent, id, GetModuleHandleA (0), 0)
 	IFZ hGB THEN RETURN 0		' fail
 	SendMessageA (hGB, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
-	SetPropA (hGB, &$$LeftSubSizer$, &groupBox_SizeContents())
-	SetPropA (hGB, &$$AutoSizer$, autoSizerInfo_addGroup ($$DIR_VERT))
+	SetPropA (hGB, &$$LeftSubSizer$, &sizeGroupBoxContents())
+'
+' GL-10oct22-old---
+'	SetPropA (hGB, &$$AutoSizer$, autoSizerInfo_addGroup ($$DIR_VERT))
+' GL-10oct22-old~~~
+' GL-10oct22-new+++
+	' add an auto-sizer to group box
+	series = autoSizerInfo_addGroup ($$DIR_VERT)
+	SetPropA (hGB, &$$AutoSizer$, series)
+	IF series < 0 THEN
+		msg$ = "WinXAddGroupBox: Can't add auto-sizer to group box, series = " + STRING$ (series)
+		WinXDialog_Error (msg$, "WinX-Debug", 2)
+	ENDIF
+' GL-10oct22-new~~~
+'
 	RETURN hGB
 END FUNCTION
 '
@@ -8486,8 +8892,8 @@ END FUNCTION
 ' ####################################
 ' Adds a column to a list view control
 ' for use in reportview control.
-' iColumn = the zero-based index for the new column
-' wColumn = the width of the column
+' iColumn    = the zero-based index for the new column
+' wColumn    = the width of the column
 ' label = the label for the column
 ' numSubItem = the 1-based subscript of the sub item the column displays
 ' returns the index to the new column or -1 on fail
@@ -8496,14 +8902,34 @@ FUNCTION WinXListView_AddColumn (hLV, iColumn, wColumn, STRING label, numSubItem
 
 	SetLastError (0)
 	IFZ hLV THEN RETURN -1		' fail
-
-	lvCol.mask = $$LVCF_FMT|$$LVCF_ORDER|$$LVCF_SUBITEM|$$LVCF_TEXT|$$LVCF_WIDTH
+'
+' GL-10oct22-old---
+'	lvCol.mask = $$LVCF_FMT OR $$LVCF_ORDER OR $$LVCF_SUBITEM OR $$LVCF_TEXT OR $$LVCF_WIDTH
+' GL-10oct22-old~~~
+' GL-10oct22-new+++
+	lvCol.mask = $$LVCF_FMT OR $$LVCF_WIDTH OR $$LVCF_TEXT OR $$LVCF_SUBITEM		' OR $$LVCF_ORDER?
+' GL-10oct22-new~~~
+'
 	lvCol.fmt = $$LVCFMT_LEFT
 	lvCol.cx = wColumn
 	lvCol.pszText = &label
-	lvCol.iSubItem = numSubItem
-	lvCol.iOrder = iColumn
-	RETURN SendMessageA (hLV, $$LVM_INSERTCOLUMN, iColumn, &lvCol)
+'
+' GL-10oct22-new+++
+	lvCol.cchTextMax = LEN (label)
+' GL-10oct22-new~~~
+'
+	lvCol.iOrder = numSubItem
+	lvCol.iSubItem = iColumn		' specifies the index of subitem associated with column
+'
+' GL-10oct22-old---
+'	RETURN SendMessageA (hLV, $$LVM_INSERTCOLUMN, iColumn, &lvCol)
+' GL-10oct22-old~~~
+' GL-10oct22-new+++
+	ret = SendMessageA (hLV, $$LVM_INSERTCOLUMN, iColumn, &lvCol)
+	IF ret >= 0 THEN RETURN ret		' success
+	RETURN -1		' fail
+' GL-10oct22-new~~~
+'
 END FUNCTION
 '
 ' #######################################
@@ -8539,77 +8965,86 @@ END FUNCTION
 '
 FUNCTION WinXListView_AddItem (hLV, iItem, item$, iIcon)
 
-	LV_ITEM	lvi
-
-	IFZ hLV THEN RETURN -1		' fail
-	IFZ item$ THEN RETURN -1		' fail
-'
-' 0.6.0.1-old---
-'	'parse the string
-'	XstParseStringToStringArray (item$, "\0", @s$[])
-'	IF UBOUND (s$[]) < 0 THEN RETURN -1		' fail
-' 0.6.0.1-old~~~
-' 0.6.0.1-new+++
-'
-' Replace all embedded zero-characters by separator "|".
-'
-	upp = LEN (item$) - 2		' ignore the nul terminator
-	FOR i = 0 TO upp
-		IFZ item${i} THEN item${i} = '|'
-	NEXT i
-'
-' Extract the values separated by | from item$
-' and place each of them in s$[].
-'
-	IFZ INSTR (item$, "|") THEN
-		DIM s$[0]
-		s$[0] = item$
-	ELSE
-		errNum = ERROR ($$FALSE)
-		bErr = XstParseStringToStringArray (item$, "|", @s$[])
-		IF bErr THEN
-			msg$ = "WinXListView_AddItem: Can't parse <" + item$ + ">"
-			GuiTellRunError (msg$)
-			RETURN -1		' fail
-		ENDIF
-	ENDIF
-	IFZ s$[] THEN RETURN -1		' fail
-' 0.6.0.1-new~~~
-'
-' Set the listview item.
-'
-	lvi.mask = $$LVIF_TEXT
-	IF iIcon >= 0 THEN lvi.mask = lvi.mask|$$LVIF_IMAGE
-
-	count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
-	IF iItem >= 0 && iItem < count THEN
-		lvi.iItem = iItem
-	ELSE
-		lvi.iItem = count
-	ENDIF
-
-	' insert item and set the first sub-item
-	lvi.iSubItem = 0
-	lvi.pszText = &s$[0]
-	lvi.iImage = iIcon
+	LV_ITEM lvi
 
 	SetLastError (0)
-	indexAdd = SendMessageA (hLV, $$LVM_INSERTITEM, 0, &lvi)
-	IF indexAdd < 0 THEN RETURN -1		' fail
+	indexAdd = -1		' not an index
 
-	'set the other sub-items
-	upp = UBOUND(s$[])
-	FOR i = 1 TO upp		' ignore the 1st listview item
-		lvi.iItem = indexAdd
-		lvi.mask = $$LVIF_TEXT
-		lvi.iSubItem = i
-		lvi.pszText = &s$[i]
-		'
-		SetLastError (0)
-		ret = SendMessageA (hLV, $$LVM_SETITEM, 0, &lvi)
-	NEXT i
+	SELECT CASE hLV
+		CASE 0
+			'
+		CASE ELSE
+			source$ = TRIM$ (item$)
+			IFZ source$ THEN EXIT SELECT	' fail
+			'
+			' Replace all embedded zero-characters by separator "|".
+			FOR i = LEN (source$) - 1 TO 0 STEP -1
+				IFZ source${i} THEN source${i} = '|'
+			NEXT i
+			'
+			' Extract the values separated by | from source$
+			' and place each of them in s$[].
+			' - source$   : The source string to parse.
+			' - delimiter$: The delimiting character(s).
+			' - s$[]      : Returned string array.
+			'
+			delimiter$ = "|"
+			IFZ INSTR (source$, delimiter$) THEN
+				DIM s$[0]
+				s$[0] = source$
+			ELSE
+				errNum = ERROR ($$FALSE)
+				bErr = XstParseStringToStringArray (source$, delimiter$, @s$[])
+				IF bErr THEN
+					msg$ = "WinXListView_AddItem: Can't parse <" + source$ + ">"
+					GuiTellRunError (msg$)
+					EXIT SELECT		' fail
+				ENDIF
+			ENDIF
+			'
+			' Set the listview item.
+			lvi.mask = $$LVIF_TEXT
+			IF iIcon >= 0 THEN lvi.mask = lvi.mask OR $$LVIF_IMAGE
+			'
+			count = SendMessageA (hLV, $$LVM_GETITEMCOUNT, 0, 0)
+			IF iItem >= 0 && iItem < count THEN
+				lvi.iItem = iItem
+			ELSE
+				lvi.iItem = count
+			ENDIF
+			'
+			' insert item and set the first sub-item
+			lvi.iSubItem = 0
+			lvi.pszText = &s$[0]
+			lvi.iImage = iIcon
+			'
+			SetLastError (0)
+			indexAdd = SendMessageA (hLV, $$LVM_INSERTITEM, 0, &lvi)
+			IF indexAdd < 0 THEN
+				msg$ = "WinXListView_AddItem: Can't insert item <" + source$ + ">, index: " + STRING$ (lvi.iItem)
+				GuiTellApiError (msg$)
+				EXIT SELECT		' fail
+			ENDIF
+			'
+			' set the other sub-items
+			upp = UBOUND (s$[])
+			FOR i = 1 TO upp		' ignore the first listview item
+				lvi.mask = $$LVIF_TEXT
+				lvi.iItem = indexAdd
+				lvi.iSubItem = i
+				lvi.pszText = &s$[i]
+				SetLastError (0)
+				ret = SendMessageA (hLV, $$LVM_SETITEM, 0, &lvi)
+				IFZ ret THEN
+					msg$ = "WinXListView_AddItem: Can't set subitem" + STR$ (i) + ", value <" + s$[i] + ">"
+					GuiTellApiError (msg$)
+				ENDIF
+			NEXT i
+			'
+	END SELECT
 
 	RETURN indexAdd
+
 END FUNCTION
 '
 ' #####################################
@@ -9201,10 +9636,19 @@ FUNCTION WinXDraw_SetImagePixel (hImage, x, y, codeRGB)
 
 	SetLastError (0)
 	IFZ hImage THEN RETURN $$FALSE		' fail
+	IF codeRGB < 0 THEN RETURN $$FALSE		' fail
+
 	IFZ GetObjectA (hImage, SIZE(BITMAP), &bmp) THEN RETURN $$FALSE		' fail
 	IF x < 0 || x >= bmp.width || y < 0 || y >= bmp.height THEN RETURN $$FALSE		' fail
-	IF codeRGB < 0 THEN RETURN $$FALSE		' fail
-	codeRGB = codeRGB MOD (1 + RGB (0xFF, 0xFF, 0xFF))		' assign a valid RGB color
+'
+' GL-10oct22-old---
+'	codeRGB = codeRGB MOD (1 + RGB (0xFF, 0xFF, 0xFF))		' assign a valid RGB color
+' GL-10oct22-old~~~
+' GL-10oct22-new+++
+	' make sure codeRGB is a valid RGB color
+	codeRGB = codeRGB AND 0xFFFFFF
+' GL-10oct22-new~~~
+'
 	ULONGAT(bmp.bits, ((bmp.height-1-y)*bmp.width+x)<<2) = codeRGB
 	RETURN $$TRUE		' success
 END FUNCTION
@@ -9252,9 +9696,8 @@ FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 				ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) AND 0x00FFFFFFFF) OR ulongAlpha
 			NEXT i
 			RETURN $$TRUE		' success
-		CASE ELSE
-			RETURN $$FALSE		' fail
 	END SELECT
+	RETURN $$FALSE		' fail
 END FUNCTION
 '
 ' ######################################
@@ -9284,9 +9727,8 @@ FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE data[])
 				ULONGAT (bmp.bits, i << 2) = (ULONGAT (bmp.bits, i << 2) AND mask) OR ULONG (data[i]) << upshift
 			NEXT i
 			RETURN $$TRUE		' success
-		CASE ELSE
-			RETURN $$FALSE		' fail
 	END SELECT
+	RETURN $$FALSE		' fail
 END FUNCTION
 '
 ' ######################################
@@ -9319,9 +9761,8 @@ FUNCTION WinXDraw_GetImageChannel (hImage, channel, UBYTE r_data[])
 				r_data[i] = UBYTE ((pixel >> downshift) AND 0x000000FF)
 			NEXT i
 			RETURN $$TRUE		' success
-		CASE ELSE
-			RETURN $$FALSE		' fail
 	END SELECT
+	RETURN $$FALSE		' fail
 END FUNCTION
 '
 ' ###################################
@@ -9723,22 +10164,19 @@ END FUNCTION
 ' ################################
 ' Creates a new child window (control).
 FUNCTION WinXNewChildWindow (parent, STRING title, style, exStyle, id)
-	SHARED		hInst
+
 	BINDING binding
 	LINKEDLIST autoDraw
 
-	IFZ hInst THEN
-		hInst = GetModuleHandleA (0)
-	ENDIF
-
-	hChild = CreateWindowExA (exStyle, &$$MAIN_CLASS$, &title, style|$$WS_VISIBLE|$$WS_CHILD, 0, 0, 0, 0, parent, id, hInst, 0)
+	hChild = CreateWindowExA (exStyle, &$$MAIN_CLASS$, &title, style|$$WS_VISIBLE|$$WS_CHILD, 0, 0, 0, 0, parent, id, GetModuleHandleA(0), 0)
 	IFZ hChild THEN RETURN 0		' fail
 
 	'make a binding
 	binding.hWnd = hChild
 	style = $$WS_POPUP|$$TTS_NOPREFIX|$$TTS_ALWAYSTIP
 	binding.hToolTips = CreateWindowExA(0, &$$TOOLTIPS_CLASS, 0, style, _
-											$$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hChild, 0, hInst, 0)
+				$$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, $$CW_USEDEFAULT, hChild, 0, _
+				GetModuleHandleA(0), 0)
 
 	binding.msgHandlers = handler_addGroup ()
 	LinkedList_Init (@autoDraw)
@@ -9803,7 +10241,7 @@ END FUNCTION
 ' returns $$TRUE on success or $$FALSE on fail
 '
 ' Usage:
-'	retrieve the first 2 columns of the 1st item
+'	retrieve the first 2 columns of the first item
 '	bOK = WinXListView_GetItemText (hLV, 0, 1, @aSubItem$[])
 '
 FUNCTION WinXListView_GetItemText (hLV, iItem, cSubItems, @text$[])
@@ -9837,12 +10275,8 @@ END FUNCTION
 ' hMod = the handle to the module from which the icon comes, 0 for this module
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXDialog_Message (hOwner, text$, title$, iIcon, hMod)
-	SHARED hInst
-	MSGBOXPARAMS mb
 
-	IFZ hInst THEN
-		hInst = GetModuleHandleA (0)
-	ENDIF
+	MSGBOXPARAMS mb
 
 	mb.cbSize = SIZE(MSGBOXPARAMS)
 
@@ -9852,7 +10286,7 @@ FUNCTION WinXDialog_Message (hOwner, text$, title$, iIcon, hMod)
 	ENDIF
 
 	IFZ hMod THEN
-		mb.hInstance = hInst
+		mb.hInstance = GetModuleHandleA(0)
 	ELSE
 		mb.hInstance = hMod
 	ENDIF
@@ -10423,6 +10857,7 @@ FUNCTION SECURITY_ATTRIBUTES WinXNewACL (ssd$, inherit)
 	ENDIF
 
 	RETURN ret
+
 END FUNCTION
 '
 ' ###########################
@@ -10443,6 +10878,7 @@ FUNCTION WinXSetCursor (hWnd, hCursor)
 	binding.hCursor = hCursor
 	bOK = binding_update (idBinding, binding)
 	RETURN bOK
+
 END FUNCTION
 '
 ' ###############################
@@ -10467,6 +10903,7 @@ FUNCTION WinXScroll_GetPos (hWnd, direction, @pos)
 	pos = si.nPos
 
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ###############################
@@ -10496,6 +10933,7 @@ FUNCTION WinXScroll_SetPos (hWnd, direction, pos)
 	SetScrollInfo (hWnd, typeBar, &si, 1)
 
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ###########################
@@ -10516,6 +10954,7 @@ FUNCTION WinXRegOnItem (hWnd, FUNCADDR FnOnItem)
 	binding.onItem = FnOnItem
 	bOK = binding_update (idBinding, binding)
 	RETURN bOK
+
 END FUNCTION
 '
 ' ##################################
@@ -10536,6 +10975,7 @@ FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR FnOnColumnClick)
 	binding.onColumnClick = FnOnColumnClick
 	bOK = binding_update (idBinding, binding)
 	RETURN bOK
+
 END FUNCTION
 '
 ' #################################
@@ -10556,6 +10996,7 @@ FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR FnOnEnterLeave)
 	binding.onEnterLeave = FnOnEnterLeave
 	bOK = binding_update (idBinding, binding)
 	RETURN bOK
+
 END FUNCTION
 '
 ' ###########################################
@@ -10567,14 +11008,16 @@ END FUNCTION
 ' returns the index of the item or -1 on fail
 FUNCTION WinXListView_GetItemFromPoint (hLV, x, y)
 
-	LVHITTESTINFO ht
+	LVHITTESTINFO lvHit
 
+	SetLastError (0)
 	IFZ hLV THEN RETURN $$FALSE		' fail
-	ht.pt.x = x
-	ht.pt.y = y
-	ret = SendMessageA (hLV, $$LVM_HITTEST, 0, &ht)
+	lvHit.pt.x = x
+	lvHit.pt.y = y
+	ret = SendMessageA (hLV, $$LVM_HITTEST, 0, &lvHit)
 	IF ret THEN RETURN $$TRUE		' hit
 	RETURN $$FALSE		' not hit
+
 END FUNCTION
 '
 ' ###############################
@@ -10595,24 +11038,28 @@ FUNCTION WinXListView_Sort (hLV, iCol, desc)
 	ret = SendMessageA (hLV, $$LVM_SORTITEMSEX, hLV, &CompareLVItems())
 	IF ret THEN RETURN $$TRUE		' success
 	RETURN $$FALSE		' fail
+
 END FUNCTION
 '
 ' ###########################################
 ' #####  WinXTreeView_GetItemFromPoint  #####
 ' ###########################################
-' Gets a tree view item given its coordinates.
+' Gets a treeview item given its coordinates.
 ' hTreeView = the control to get the item from
 ' x, y = the x and y coordinates to find the item at
-' returns the item index or 0 on fail
+' returns a handle to the item or 0 on fail
 FUNCTION WinXTreeView_GetItemFromPoint (hTreeView, x, y)
-	TV_HITTESTINFO ht
 
-	IFZ hTreeView THEN RETURN $$FALSE		' fail
-	ht.pt.x = x
-	ht.pt.y = y
-	ret = SendMessageA (hTreeView, $$TVM_HITTEST, 0, &ht)
-	IF ret THEN RETURN $$TRUE		' hit
-	RETURN $$FALSE		' not hit
+	TV_HITTESTINFO tvHit
+
+	SetLastError (0)
+	IFZ hTreeView THEN RETURN 0		' fail
+	tvHit.pt.x = x
+	tvHit.pt.y = y
+
+	' Find out which item (if any) the cursor is over.
+	RETURN SendMessageA (hTreeView, $$TVM_HITTEST, 0, &tvHit)
+
 END FUNCTION
 '
 ' ##############################
@@ -10641,6 +11088,7 @@ FUNCTION WinXGetPlacement (hWnd, @minMax, RECT restored)
 	minMax = wp.showCmd
 
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ##############################
@@ -10669,6 +11117,7 @@ FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 	sizeWindow (hWnd, rect.right-rect.left, rect.bottom-rect.top)		' resize the window
 
 	RETURN bOK
+
 END FUNCTION
 '
 ' #############################
@@ -10700,6 +11149,7 @@ FUNCTION WinXGetMousePos (hWnd, @x, @y)
 	x = pt.x
 	y = pt.y
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' #############################
@@ -10727,6 +11177,7 @@ FUNCTION WinXAddCalendar (parent, @monthsX, @monthsY, id)
 
 	SetLastError (0)		' reset any error code
 	RETURN hCal
+
 END FUNCTION
 '
 ' #######################################
@@ -10738,10 +11189,12 @@ END FUNCTION
 ' end = the end of the selection range
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXCalendar_SetSelection (hCal, SYSTEMTIME time)
+
 	SetLastError (0)
 	IFZ hCal THEN RETURN $$FALSE		' fail
 	IFZ SendMessageA (hCal, $$MCM_SETCURSEL, 0, &time) THEN RETURN $$FALSE		' fail
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' #######################################
@@ -10800,6 +11253,7 @@ FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR FnOnCalendarSelect)
 	binding.onCalendarSelect = FnOnCalendarSelect
 	bOK = binding_update (idBinding, binding)
 	RETURN bOK
+
 END FUNCTION
 '
 ' ###############################
@@ -10817,13 +11271,13 @@ FUNCTION WinXAddTimePicker (parent, format, SYSTEMTIME initialTime, timeValid, i
 
 	' the format for the control should be $$DTS_LONGDATEFORMAT, $$DTS_SHORTDATEFORMAT or $$DTS_TIMEFORMAT
 	IF (format & $$DTS_LONGDATEFORMAT) THEN
-		style = style | $$DTS_LONGDATEFORMAT
+		style = style OR $$DTS_LONGDATEFORMAT
 	ELSE
 		IF (format & $$DTS_SHORTDATEFORMAT) THEN
-			style = style | $$DTS_SHORTDATEFORMAT
+			style = style OR $$DTS_SHORTDATEFORMAT
 		ELSE
 			IF (format & $$DTS_TIMEFORMAT) THEN
-				style = style | $$DTS_TIMEFORMAT
+				style = style OR $$DTS_TIMEFORMAT
 			ENDIF
 		ENDIF
 	ENDIF
@@ -10843,6 +11297,7 @@ FUNCTION WinXAddTimePicker (parent, format, SYSTEMTIME initialTime, timeValid, i
 	SendMessageA (hDTP, $$DTM_SETSYSTEMTIME, wParam, lParam)
 
 	RETURN hDTP
+
 END FUNCTION
 '
 ' ####################################
@@ -10896,22 +11351,164 @@ FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME time, @timeValid)
 	END SELECT
 
 	RETURN $$TRUE		' success
+
+END FUNCTION
+'
+' #########################
+' #####  WinXNewFont  #####
+' #########################
+'
+' Creates a logical font.
+' fontName$ = name of the font
+' pointSize = size of the font in points
+' weight    = weight of the font as $$FW_THIN,...
+' bItalic   = $$TRUE for italic characters
+' bUnderL   = $$TRUE for underlined characters
+' bStrike   = $$TRUE for striken-out characters
+' returns a handle to the new font or 0 on fail
+'
+FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
+
+	LOGFONT logFont
+	SLONG bErr		' $$TRUE for fail
+
+	SetLastError (0)
+	r_hFont = 0
+
+	' check fontName$ not empty
+	fontName$ = TRIM$ (fontName$)
+	IFZ fontName$ THEN
+		msg$ = "WinXNewFont: empty font face"
+		XstAlert (msg$)
+		RETURN		' fail
+	ENDIF
+
+	' hFontToClone provides with a well-formed font structure
+	SetLastError (0)
+	hFontToClone = GetStockObject ($$DEFAULT_GUI_FONT)		' get a font to clone
+	IFZ hFontToClone THEN
+		msg$ = "WinXNewFont: Can't get a font to clone"
+		bErr = GuiTellApiError (msg$)
+		IFF bErr THEN XstAlert (msg$)
+	ENDIF
+
+	bytes = 0		' number of bytes stored into the buffer
+	bErr = $$FALSE
+	SetLastError (0)
+	bytes = GetObjectA (hFontToClone, SIZE (LOGFONT), &logFont)		' fill allocated structure logFont
+	IF bytes <= 0 THEN
+		msg$ = "WinXNewFont: Can't fill allocated structure logFont"
+		bErr = GuiTellApiError (msg$)
+		IFF bErr THEN XstAlert (msg$)
+		RETURN
+	ENDIF
+
+	' release the cloned font
+	DeleteObject (hFontToClone)		' free memory space
+	hFontToClone = 0
+
+	' set the cloned font structure with the passed parameters
+	logFont.faceName = fontName$
+
+	IFZ pointSize THEN
+		logFont.height = 0
+	ELSE
+		' character height is specified (in points)
+		pointH = pointSize
+		IF pointH < 0 THEN pointH = -pointH		' make it positive
+		'
+		' convert pointSize to pixels
+		SetLastError (0)
+		hDC = GetDC ($$HWND_DESKTOP)		' get a handle to the desktop context
+		IFZ hDC THEN
+			msg$ = "WinXNewFont: Can't get a handle to the desktop context"
+			bErr = GuiTellApiError (msg$)
+			IF bErr THEN RETURN		' invalid handle
+		ENDIF
+		'
+		' Windows expects the font height to be in pixels and negative
+		logFont.height = MulDiv (pointH, GetDeviceCaps (hDC, $$LOGPIXELSY), -72)
+		ReleaseDC ($$HWND_DESKTOP, hDC)		' release the handle to the desktop context
+	ENDIF
+
+	SELECT CASE weight
+		CASE $$FW_THIN, $$FW_EXTRALIGHT, $$FW_LIGHT, $$FW_NORMAL, $$FW_MEDIUM, _
+		     $$FW_SEMIBOLD, $$FW_BOLD, $$FW_EXTRABOLD, $$FW_HEAVY, $$FW_DONTCARE
+			logFont.weight = weight
+		CASE ELSE
+			logFont.weight = $$FW_NORMAL
+	END SELECT
+
+	IF bItalic THEN logFont.italic    = 1 ELSE logFont.italic    = 0
+	IF bUnderL THEN logFont.underline = 1 ELSE logFont.underline = 0
+	IF bStrike THEN logFont.strikeOut = 1 ELSE logFont.strikeOut = 0
+
+	SetLastError (0)
+	r_hFont = CreateFontIndirectA (&logFont)		' create logical font r_hFont
+	IFZ r_hFont THEN
+		msg$ = "WinXNewFont: Can't create logical font r_hFont"
+		bErr = GuiTellApiError (msg$)
+		IFF bErr THEN XstAlert (msg$)
+		RETURN
+	ENDIF
+
+	RETURN r_hFont
+
 END FUNCTION
 '
 ' #########################
 ' #####  WinXSetFont  #####
 ' #########################
-' Sets the font for a control.
-' hCtr = the handle to the control
-' hFont = the handle to the font
+' Applies the font to a control and redraw it.
+' Note: Wrapper to WinXSetFontAndRedraw.
+' hCtr = a handle to the control
+' hFont = a handle to the logical font
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXSetFont (hCtr, hFont)
-	IFZ hCtr THEN RETURN $$FALSE		' fail
-	IFZ hFont THEN
-		hFont = GetStockObject ($$ANSI_VAR_FONT)		' get the ANSI Default Font
-	ENDIF
-	SendMessageA (hCtr, $$WM_SETFONT, hFont, $$TRUE)
-	RETURN $$TRUE		' success
+
+	bOK = WinXSetFontAndRedraw (hCtr, hFont, $$FALSE)		' do not redraw
+	RETURN bOK
+
+END FUNCTION
+'
+' ##################################
+' #####  WinXSetFontAndRedraw  #####
+' ##################################
+'
+' Applies a font to control.
+'
+' hCtr    = a handle to the control
+' hFont   = a handle to the logical font
+' bRedraw = $$TRUE to redraw the control after setting the font
+' returns $$TRUE on success or $$FALSE on fail
+'
+FUNCTION WinXSetFontAndRedraw (hCtr, hFont, bRedraw)
+	SHARED hFontDefault ' standard font
+
+	SetLastError (0)
+	bOK = $$FALSE
+
+	SELECT CASE hCtr
+		CASE 0
+			'
+		CASE ELSE
+			IFZ hFont THEN
+				' create default font
+				IFZ hFontDefault THEN
+					hFontDefault = GetStockObject ($$ANSI_VAR_FONT)
+				ENDIF
+				hFont = hFontDefault
+			ENDIF
+			'
+			IF bRedraw THEN lParam = 1 ELSE lParam = 0
+			SendMessageA (hCtr, $$WM_SETFONT, hFont, lParam)		' $$WM_SETFONT does not return a value
+			'
+			bOK = $$TRUE
+			'
+	END SELECT
+
+	RETURN bOK
+
 END FUNCTION
 '
 ' ##############################
@@ -10920,8 +11517,10 @@ END FUNCTION
 ' Checks to see if the clipboard contains an image.
 ' returns $$TRUE on success or $$FALSE on fail
 FUNCTION WinXClip_IsImage ()
+
 	IFZ IsClipboardFormatAvailable ($$CF_DIB) THEN RETURN $$FALSE		' fail
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ###############################
@@ -10971,6 +11570,7 @@ FUNCTION WinXClip_GetImage ()
 	DeleteDC (hDC)
 
 	RETURN hImage
+
 END FUNCTION
 '
 ' ###############################
@@ -11003,6 +11603,7 @@ FUNCTION WinXClip_PutImage (hImage)
 	CloseClipboard ()
 
 	RETURN $$TRUE		' success
+
 END FUNCTION
 '
 ' ################################
@@ -11024,6 +11625,7 @@ FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR FnOnDropFiles)
 	binding.onDropFiles = FnOnDropFiles
 	bOK = binding_update (idBinding, binding)
 	RETURN bOK
+
 END FUNCTION
 '
 ' ####################################
@@ -11058,6 +11660,7 @@ FUNCTION WinXDraw_GetFontHeight (hFont, @ascent, @descenct)
 	ascent = tm.ascent
 	descent = tm.descent
 	RETURN tm.height
+
 END FUNCTION
 '
 ' #####################################
@@ -11116,6 +11719,7 @@ FUNCTION WinXAttachAccelerators (hWnd, passed_accel)
 			ENDIF
 		ENDIF
 	ENDIF
+
 	RETURN bOK
 
 END FUNCTION
@@ -11129,24 +11733,20 @@ END FUNCTION
 ' id     = unique ID constant for the spinner button
 ' returns the new spinner button handle or 0 on fail
 FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, uppVal, lowVal, curVal, id)
-	SHARED hInst		' instance handle
-
-	IFZ hInst THEN
-		hInst = GetModuleHandleA (0)		' Unlikely!
-	ENDIF
 
 	SetLastError (0)		' reset any prior WinAPI error
 	hCtr = 0
 
-	style = $$WS_CHILD | $$WS_VISIBLE | $$WS_TABSTOP
+	style = $$WS_CHILD OR $$WS_VISIBLE OR $$WS_TABSTOP
 
 	' $$UDS_ARROWKEYS  : Arrow keys
-	style = style | $$UDS_ARROWKEYS		' arrow keys
+	style = style OR $$UDS_ARROWKEYS		' arrow keys
 
 	SELECT CASE hBuddy
 		CASE 0
 			SetLastError (0)		' reset any prior WinAPI error
-			hCtr = CreateWindowExA (0, &$$UPDOWN_CLASS, 0, style, 0, 0, 0, 0, parent, id, hInst, 0)
+			hCtr = CreateWindowExA (0, &$$UPDOWN_CLASS, 0, style, 0, 0, 0, 0, parent, id, _
+									GetModuleHandleA(0), 0)
 			IFZ hCtr THEN
 				msg$ = "WinXAddSpinner: Can't create the up-down control"
 				GuiTellApiError (msg$)
@@ -11175,10 +11775,10 @@ FUNCTION WinXAddSpinner (parent, hBuddy, buddy_x, buddy_y, buddy_w, buddy_h, upp
 			' $$UDS_SETBUDDYINT: Set buddy
 			' $$UDS_ALIGNRIGHT : Align right
 			' $$UDS_NOTHOUSANDS: no thousand separator
-			style = style | $$UDS_SETBUDDYINT | $$UDS_ALIGNRIGHT | $$UDS_NOTHOUSANDS
+			style = style OR $$UDS_SETBUDDYINT OR $$UDS_ALIGNRIGHT OR $$UDS_NOTHOUSANDS
 			'
 			SetLastError (0)		' reset any prior WinAPI error
-			hCtr = CreateUpDownControl (style, buddy_x, buddy_y, 15, buddy_h, parent, id, hInst, hBuddy, uppVal, lowVal, curVal)
+			hCtr = CreateUpDownControl (style, buddy_x, buddy_y, 15, buddy_h, parent, id, GetModuleHandleA(0), hBuddy, uppVal, lowVal, curVal)
 			'
 	END SELECT
 
@@ -11403,7 +12003,7 @@ END FUNCTION
 ' #####  WinXVersion$  #####
 ' ##########################
 '
-' Gets library WinX's current version.
+' Retrieves WinX's current version.
 ' Usage:
 '	version$ = WinXVersion$ ()
 '
@@ -11430,7 +12030,9 @@ END FUNCTION
 ' ################################
 ' Wraps to WinXDraw_GetColour().
 FUNCTION WinXDraw_GetColour (hOwner, initialRGB)
+
 	RETURN WinXDraw_GetColor (hOwner, initialRGB)
+
 END FUNCTION
 '
 ' #############################
@@ -11438,7 +12040,9 @@ END FUNCTION
 ' #############################
 ' Wraps to WinXAddCheckButton(.
 FUNCTION WinXAddCheckBox (parent, text$, isFirst, pushlike, id)
+
 	bOK = WinXAddCheckButton (parent, text$, isFirst, pushlike, id)
+
 	RETURN bOK
 END FUNCTION
 '
@@ -11447,7 +12051,9 @@ END FUNCTION
 ' ############################
 ' Wraps to WinXClear().
 FUNCTION WinXDraw_Clear (hWnd)
+
 	RETURN WinXClear (hWnd)
+
 END FUNCTION
 '
 ' #############################
@@ -11465,9 +12071,9 @@ FUNCTION GuiTellApiError (msg$)
 	fmtMsg$ = "Last error code " + STRING$ (errNum) + ": "
 
 	' set up FormatMessageA arguments
-	dwFlags = $$FORMAT_MESSAGE_FROM_SYSTEM | $$FORMAT_MESSAGE_IGNORE_INSERTS
+	dwFlags = $$FORMAT_MESSAGE_FROM_SYSTEM OR $$FORMAT_MESSAGE_IGNORE_INSERTS
 	sizeBuf = 1020
-	szBuf$ = NULL$ (sizeBuf)		' NULL$() adds a nul-terminator
+	szBuf$ = NULL$ (sizeBuf)		' NULL$() always adds a nul-terminator
 	ret = FormatMessageA (dwFlags, 0, errNum, 0, &szBuf$, sizeBuf, 0)
 	IFZ ret THEN
 		fmtMsg$ = fmtMsg$ + "(unknown)"
@@ -11536,8 +12142,20 @@ FUNCTION GuiTellDialogError (hOwner, title$)
 	END SELECT
 
 	fmtMsg$ = "GuiTellDialogError: Last error code " + STRING$ (extErr) + ": " + fmtMsg$
-	WinXDialog_Error (fmtMsg$, "WinX-API Error", 2)		' error
-
+'
+' GL-10oct22-old---
+'	WinXDialog_Error (fmtMsg$, "WinX-API Error", 2)		' error
+' GL-10oct22-old~~~
+' GL-10oct22-new+++
+	IFZ hOwner THEN
+		hOwner = GetActiveWindow ()
+	ENDIF
+	IFZ TRIM$(title$) THEN
+		title$ = "WinX-Standard Dialog Error"
+	ENDIF
+	MessageBoxA (hOwner, &fmtMsg$, &title$, $$MB_ICONSTOP)
+' GL-10oct22-new~~~
+'
 	RETURN $$TRUE		' an error really occurred!
 
 END FUNCTION
