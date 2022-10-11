@@ -2012,7 +2012,7 @@ FUNCTION WinXSetMinSize (hWnd, winWidth, winHeight)
 		IF winWidth >= cxminimized THEN
 			binding.minW = winWidth
 			'msg$ = "WinXSetMinSize: binding.minW =" + STR$ (binding.minW)
-			'XstAlert (msg$)
+			'WinXDialog_Error (msg$, "WinX-Debug", 0)		' information
 		ENDIF
 	ENDIF
 
@@ -2023,7 +2023,7 @@ FUNCTION WinXSetMinSize (hWnd, winWidth, winHeight)
 		IF winHeight >= cyminimized THEN
 			binding.minH = winHeight
 			'msg$ = "WinXSetMinSize: binding.minH =" + STR$ (binding.minH)
-			'XstAlert (msg$)
+			'WinXDialog_Error (msg$, "WinX-Debug", 0)		' information
 		ENDIF
 	ENDIF
 ' 0.6.0.2-new~~~
@@ -11379,7 +11379,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	fontName$ = TRIM$ (fontName$)
 	IFZ fontName$ THEN
 		msg$ = "WinXNewFont: empty font face"
-		XstAlert (msg$)
+		WinXDialog_Error (msg$, "WinX-Internal Error", 2)
 		RETURN		' fail
 	ENDIF
 
@@ -11389,7 +11389,8 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	IFZ hFontToClone THEN
 		msg$ = "WinXNewFont: Can't get a font to clone"
 		bErr = GuiTellApiError (msg$)
-		IFF bErr THEN XstAlert (msg$)
+		IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
+		RETURN		' invalid handle
 	ENDIF
 
 	bytes = 0		' number of bytes stored into the buffer
@@ -11399,7 +11400,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	IF bytes <= 0 THEN
 		msg$ = "WinXNewFont: Can't fill allocated structure logFont"
 		bErr = GuiTellApiError (msg$)
-		IFF bErr THEN XstAlert (msg$)
+		IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
 		RETURN
 	ENDIF
 
@@ -11423,7 +11424,8 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 		IFZ hDC THEN
 			msg$ = "WinXNewFont: Can't get a handle to the desktop context"
 			bErr = GuiTellApiError (msg$)
-			IF bErr THEN RETURN		' invalid handle
+			IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
+			RETURN		' invalid handle
 		ENDIF
 		'
 		' Windows expects the font height to be in pixels and negative
@@ -11448,7 +11450,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	IFZ r_hFont THEN
 		msg$ = "WinXNewFont: Can't create logical font r_hFont"
 		bErr = GuiTellApiError (msg$)
-		IFF bErr THEN XstAlert (msg$)
+		IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
 		RETURN
 	ENDIF
 
