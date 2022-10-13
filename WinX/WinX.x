@@ -405,103 +405,103 @@ m4_include(`accessors.m4')
 '
 'the data type to manage bindings
 TYPE BINDING
-	SLONG			.hWnd						'handle to the window this binds to, when 0, this binding record is not in use
-	SLONG			.backCol				'window background color
-	SLONG			.hStatus				'handle to the status bar, if there is one
-	SLONG			.statusParts		'the upper index of partitions in the status bar
-	SLONG			.msgHandlers		'index into an array of arrays of message handlers
+	XLONG			.hWnd						'handle to the window this binds to, when 0, this binding record is not in use
+	XLONG			.backCol				'window background color
+	XLONG			.hStatus				'handle to the status bar, if there is one
+	XLONG			.statusParts		'the upper index of partitions in the status bar
+	XLONG			.msgHandlers		'index into an array of arrays of message handlers
 ' .minW and .minH = the minimum width and height of the window rectangle
-	SLONG			.minW
-	SLONG			.minH
+	XLONG			.minW
+	XLONG			.minH
 ' .maxW and .maxH = the maximum width and height of the window rectangle
-	SLONG			.maxW
-	SLONG			.maxH
-	SLONG			.autoDrawInfo		'information for the auto-draw (id >= 1)
-	SLONG			.autoSizerInfo	'information for the auto-sizer (valid: binding.autoSizerInfo >= 0)
-	SLONG			.hBar						'either a toolbar or a rebar
-	SLONG			.hToolTips			'each window gets a tooltip control
+	XLONG			.maxW
+	XLONG			.maxH
+	XLONG			.autoDrawInfo		'information for the auto-draw (id >= 1)
+	XLONG			.autoSizerInfo	'information for the auto-sizer (valid: binding.autoSizerInfo >= 0)
+	XLONG			.hBar						'either a toolbar or a rebar
+	XLONG			.hToolTips			'each window gets a tooltip control
 	DOUBLE		.hScrollPageM		'the high level scrolling data
-	SLONG			.hScrollPageC
-	SLONG			.hScrollUnit
+	XLONG			.hScrollPageC
+	XLONG			.hScrollUnit
 	DOUBLE		.vScrollPageM
-	SLONG			.vScrollPageC
-	SLONG			.vScrollUnit
-	SLONG			.useDialogInterface		'true to enable dialog style keyboard navigation amoung controls
-	SLONG			.hWndNextClipViewer		'if .onClipChange() is used, we become a clipboard viewer
-	SLONG			.hCursor							'custom cursor for this window
-	SLONG			.isMouseInWindow
-	SLONG			.hUpdateRegion
+	XLONG			.vScrollPageC
+	XLONG			.vScrollUnit
+	XLONG			.useDialogInterface		'true to enable dialog style keyboard navigation amoung controls
+	XLONG			.hWndNextClipViewer		'if .onClipChange() is used, we become a clipboard viewer
+	XLONG			.hCursor							'custom cursor for this window
+	XLONG			.isMouseInWindow
+	XLONG			.hUpdateRegion
 'Callback Handlers
-	FUNCADDR	.paint (SLONG, SLONG)	'hWnd, hDC : paint the window
-	FUNCADDR	.dimControls (SLONG, SLONG, SLONG)	'hWnd, w, h : dimension the controls
-	FUNCADDR	.onCommand(SLONG, SLONG, SLONG)		'idCtr, notifyCode, hCtr
-	FUNCADDR	.onMouseMove(SLONG, SLONG, SLONG)	'hWnd, x, y
-	FUNCADDR	.onMouseDown(SLONG, SLONG, SLONG, SLONG)		'hWnd, MBT_const, x, y
-	FUNCADDR	.onMouseUp(SLONG, SLONG, SLONG, SLONG)		'hWnd, MBT_const, x, y
-	FUNCADDR	.onMouseWheel(SLONG, SLONG, SLONG, SLONG)	'hWnd, delta, x, y
-	FUNCADDR	.onKeyDown(SLONG, SLONG)			'hWnd, VK
-	FUNCADDR	.onKeyUp(SLONG, SLONG)				'hWnd, VK
-	FUNCADDR	.onChar(SLONG, SLONG)				'hWnd, char
-	FUNCADDR	.onScroll(SLONG, SLONG, SLONG)	'pos, hWnd, direction
-	FUNCADDR	.onTrackerPos(SLONG, SLONG)		'idCtr, pos
-	FUNCADDR	.onDrag(SLONG, SLONG, SLONG, SLONG, SLONG)		'idCtr, drag_const, drag_item, drag_x, drag_y
-	FUNCADDR	.onLabelEdit(SLONG, SLONG, SLONG, STRING)		'idCtr, edit_const, edit_item, newLabel$
-	FUNCADDR	.onClose(SLONG)	' hWnd
-	FUNCADDR	.onFocusChange(SLONG, SLONG)	' hWnd, hasFocus
+	FUNCADDR	.paint (XLONG, XLONG)	'hWnd, hDC : paint the window
+	FUNCADDR	.dimControls (XLONG, XLONG, XLONG)	'hWnd, w, h : dimension the controls
+	FUNCADDR	.onCommand(XLONG, XLONG, XLONG)		'idCtr, notifyCode, hCtr
+	FUNCADDR	.onMouseMove(XLONG, XLONG, XLONG)	'hWnd, x, y
+	FUNCADDR	.onMouseDown(XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT_const, x, y
+	FUNCADDR	.onMouseUp(XLONG, XLONG, XLONG, XLONG)		'hWnd, MBT_const, x, y
+	FUNCADDR	.onMouseWheel(XLONG, XLONG, XLONG, XLONG)	'hWnd, delta, x, y
+	FUNCADDR	.onKeyDown(XLONG, XLONG)			'hWnd, VK
+	FUNCADDR	.onKeyUp(XLONG, XLONG)				'hWnd, VK
+	FUNCADDR	.onChar(XLONG, XLONG)				'hWnd, char
+	FUNCADDR	.onScroll(XLONG, XLONG, XLONG)	'pos, hWnd, direction
+	FUNCADDR	.onTrackerPos(XLONG, XLONG)		'idCtr, pos
+	FUNCADDR	.onDrag(XLONG, XLONG, XLONG, XLONG, XLONG)		'idCtr, drag_const, drag_item, drag_x, drag_y
+	FUNCADDR	.onLabelEdit(XLONG, XLONG, XLONG, STRING)		'idCtr, edit_const, edit_item, newLabel$
+	FUNCADDR	.onClose(XLONG)	' hWnd
+	FUNCADDR	.onFocusChange(XLONG, XLONG)	' hWnd, hasFocus
 	FUNCADDR	.onClipChange()	' Sent when clipboard changes
-	FUNCADDR	.onEnterLeave(SLONG, SLONG)	' hWnd, mouseInWindow
-	FUNCADDR	.onItem(SLONG, SLONG, SLONG)		' idCtr, event, parameter (virtualKey for NM_KEYDOWN)
-	FUNCADDR	.onColumnClick(SLONG, SLONG)		' idCtr, iColumn
-	FUNCADDR	.onCalendarSelect(SLONG, SYSTEMTIME)	' idCtr, time
-	FUNCADDR	.onDropFiles(SLONG, SLONG, SLONG, STRING[])		' hWnd, x, y, @fileList$[]
+	FUNCADDR	.onEnterLeave(XLONG, XLONG)	' hWnd, mouseInWindow
+	FUNCADDR	.onItem(XLONG, XLONG, XLONG)		' idCtr, event, parameter (virtualKey for NM_KEYDOWN)
+	FUNCADDR	.onColumnClick(XLONG, XLONG)		' idCtr, iColumn
+	FUNCADDR	.onCalendarSelect(XLONG, SYSTEMTIME)	' idCtr, time
+	FUNCADDR	.onDropFiles(XLONG, XLONG, XLONG, STRING[])		' hWnd, x, y, @fileList$[]
 '
 'new in 0.6.0.4
-	SLONG			.hAccelTable		' handle to the window's accelerator table
+	XLONG			.hAccelTable		' handle to the window's accelerator table
 
 END TYPE
 'message handler data type
 TYPE MSGHANDLER
-	SLONG			.msg	'when 0, this record is not in use
-	FUNCADDR	.handler(SLONG, SLONG, SLONG, SLONG)		' hWnd, wMsg, wParam, lParam
+	XLONG			.msg	'when 0, this record is not in use
+	FUNCADDR	.handler(XLONG, XLONG, XLONG, XLONG)		' hWnd, wMsg, wParam, lParam
 END TYPE
 'Headers for grouped lists
 TYPE DRAWLISTHEAD
-	SLONG			.inUse
-	SLONG			.iHead
-	SLONG			.iTail
+	XLONG			.inUse
+	XLONG			.iHead
+	XLONG			.iTail
 END TYPE
 TYPE SIZELISTHEAD
-	SLONG			.inUse
-	SLONG			.iHead
-	SLONG			.iTail
-	SLONG			.direction
+	XLONG			.inUse
+	XLONG			.iHead
+	XLONG			.iTail
+	XLONG			.direction
 END TYPE
 'info for the auto-sizer
 TYPE AUTOSIZERINFO
-	SLONG			.prevItem
-	SLONG			.nextItem
-	SLONG			.hWnd
-	SLONG			.hSplitter
+	XLONG			.prevItem
+	XLONG			.nextItem
+	XLONG			.hWnd
+	XLONG			.hSplitter
 	DOUBLE		.space
 	DOUBLE		.size
 	DOUBLE		.x
 	DOUBLE		.y
 	DOUBLE		.w
 	DOUBLE		.h
-	SLONG			.flags
+	XLONG			.flags
 END TYPE
 '
 'info for WinX splitter
 TYPE SPLITTERINFO
-	SLONG			.group
-	SLONG			.id			'actually, it's an index
-	SLONG			.direction
-	SLONG			.maxSize
+	XLONG			.group
+	XLONG			.id			'actually, it's an index
+	XLONG			.direction
+	XLONG			.maxSize
 
-	SLONG			.min
-	SLONG			.max
-	SLONG			.dock
-	SLONG			.docked	' 0 if not docked, old position when docked
+	XLONG			.min
+	XLONG			.max
+	XLONG			.dock
+	XLONG			.docked	' 0 if not docked, old position when docked
 END TYPE
 '
 $$DOCK_DISABLED	= 0
@@ -509,50 +509,50 @@ $$DOCK_FORWARD  = 1
 $$DOCK_BACKWARD	= 2
 'data structures for auto-draw
 TYPE DRAWRECT
-	SLONG		.x1
-	SLONG		.y1
-	SLONG		.x2
-	SLONG		.y2
+	XLONG		.x1
+	XLONG		.y1
+	XLONG		.x2
+	XLONG		.y2
 END TYPE
 TYPE DRAWRECTCONTROL
-	SLONG		.x1
-	SLONG		.y1
-	SLONG		.x2
-	SLONG		.y2
-	SLONG		.xC1
-	SLONG		.yC1
-	SLONG		.xC2
-	SLONG		.yC2
+	XLONG		.x1
+	XLONG		.y1
+	XLONG		.x2
+	XLONG		.y2
+	XLONG		.xC1
+	XLONG		.yC1
+	XLONG		.xC2
+	XLONG		.yC2
 END TYPE
 TYPE SIMPLEFILL
-	SLONG		.x
-	SLONG		.y
-	SLONG		.col
+	XLONG		.x
+	XLONG		.y
+	XLONG		.col
 END TYPE
 TYPE DRAWTEXT
-	SLONG		.x
-	SLONG		.y
-	SLONG		.iString
-	SLONG		.forColor
-	SLONG		.backColor
+	XLONG		.x
+	XLONG		.y
+	XLONG		.iString
+	XLONG		.forColor
+	XLONG		.backColor
 END TYPE
 TYPE DRAWIMAGE
-	SLONG		.x
-	SLONG		.y
-	SLONG		.w
-	SLONG		.h
-	SLONG		.xSrc
-	SLONG		.ySrc
-	SLONG		.hImage
-	SLONG		.blend
+	XLONG		.x
+	XLONG		.y
+	XLONG		.w
+	XLONG		.h
+	XLONG		.xSrc
+	XLONG		.ySrc
+	XLONG		.hImage
+	XLONG		.blend
 END TYPE
 TYPE AUTODRAWRECORD
-	SLONG			.toDelete
-	SLONG			.hUpdateRegion
-	SLONG			.hPen
-	SLONG			.hBrush
-	SLONG			.hFont
-	FUNCADDR	.draw(SLONG, AUTODRAWRECORD, SLONG, SLONG)
+	XLONG			.toDelete
+	XLONG			.hUpdateRegion
+	XLONG			.hPen
+	XLONG			.hBrush
+	XLONG			.hFont
+	FUNCADDR	.draw(XLONG, AUTODRAWRECORD, XLONG, XLONG)
 	UNION
 		DRAWRECT				.rect
 		DRAWRECTCONTROL	.rectControl
@@ -562,24 +562,24 @@ TYPE AUTODRAWRECORD
 	END UNION
 END TYPE
 TYPE PRINTINFO
-	SLONG		.hDevMode
-	SLONG		.hDevNames
-	SLONG		.rangeMin
-	SLONG		.rangeMax
-	SLONG		.marginLeft
-	SLONG		.marginRight
-	SLONG		.marginTop
-	SLONG		.marginBottom
-	SLONG		.printSetupFlags
-	SLONG		.continuePrinting
-	SLONG		.hCancelDlg
+	XLONG		.hDevMode
+	XLONG		.hDevNames
+	XLONG		.rangeMin
+	XLONG		.rangeMax
+	XLONG		.marginLeft
+	XLONG		.marginRight
+	XLONG		.marginTop
+	XLONG		.marginBottom
+	XLONG		.printSetupFlags
+	XLONG		.continuePrinting
+	XLONG		.hCancelDlg
 END TYPE
 $$DLGCANCEL_ST_PAGE = 100
 
 'Data structure for customising toolbars
 TYPE TBBUTTONDATA
-	SLONG			.enabled
-	SLONG			.optional
+	XLONG			.enabled
+	XLONG			.optional
 	TBBUTTON	.tbb
 END TYPE
 '
@@ -1466,7 +1466,7 @@ END FUNCTION
 '	Arg1        = hWnd : The handle to the window to register the callback for
 ' Arg2				= FnOnPaint : The address of the function to use for the callback
 '	Return      = $$TRUE on success or $$FALSE on fail
-' Remarks     = The callback function must take a single SLONG parameter called \n
+' Remarks     = The callback function must take a single XLONG parameter called \n
 'hDC, this parameter is the handle to the device context to draw on. \n
 'If you register this callback function, auto-draw is disabled.\n
 '	See Also    =
@@ -1614,7 +1614,7 @@ END FUNCTION
 ' Remarks     = This function is designed for developers who need custom processing of a windows message, \n
 'for example, to use a custom control that sends custom messages. \n
 'If you register a handler for a message WinX normally handles itself then the message handler is called \n
-'first, then WinX performs the default behaviour. The callback function takes 4 SLONG parameters, hWnd, wMsg, \n
+'first, then WinX performs the default behaviour. The callback function takes 4 XLONG parameters, hWnd, wMsg, \n
 'wParam and lParam
 '	See Also    =
 '	Examples    = WinXRegMessageHandler (#hMain, $$WM_NOTIFY, &handleNotify())\n
@@ -1657,7 +1657,7 @@ END FUNCTION
 '	Return      = $$TRUE on success or $$FALSE on fail
 ' Remarks     = This function allows you to use your own control sizing code instead of the default \n
 'WinX auto-sizer.  You will have to resize all controls, including status bars and toolbars, if you use \n
-'this callback function.  The callback function has two SLONG parameters, w and h.
+'this callback function.  The callback function has two XLONG parameters, w and h.
 '	See Also    =
 '	Examples    = WinXRegControlSizer (#hMain, &customSizer())
 '	*/
@@ -2061,7 +2061,7 @@ END FUNCTION
 ' A wrapper for the troublesome WinAPI LBItemFromPt().
 '
 FUNCTION ApiLBItemFromPt (hLB, x, y, bAutoScroll)
-	SLONG args[3]
+	XLONG args[3]
 
 	SetLastError (0)
 	args[0] = hLB
@@ -2094,7 +2094,7 @@ FUNCTION ApiAlphaBlend (hdcDest, nXOriginDest, nYOrigDest, nWidthDest, nHeightDe
 	args[7] = nYOriginSrc
 	args[8] = nWidthSrc
 	args[9] = nHeightSrc
-	args[10] = SLONGAT(&blendFunction)
+	args[10] = XLONGAT(&blendFunction)
 
 	ret = XstCall ("AlphaBlend", "msimg32.dll", @args[])
 	RETURN ret
@@ -2124,7 +2124,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	PAINTSTRUCT	ps
 	BINDING binding
 
-	SLONG MBT_const		' = $$MBT_LEFT...
+	XLONG MBT_const		' = $$MBT_LEFT...
 '
 ' Unused---
 '	BINDING innerBinding
@@ -2139,12 +2139,12 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	POINT mouseXY
 	TRACKMOUSEEVENT tme
 
-	SLONG notifyCode, id, hCtr
+	XLONG notifyCode, id, hCtr
 
 	' Message handled with a return code.
-	SLONG handled		' handled = $$TRUE => message handled
-	SLONG ret		' return code when handled = $$TRUE
-	SLONG x, y
+	XLONG handled		' handled = $$TRUE => message handled
+	XLONG ret		' return code when handled = $$TRUE
+	XLONG x, y
 
 	SetLastError (0)
 
@@ -2843,7 +2843,7 @@ FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam)
 	SELECT CASE wMsg
 		CASE $$WM_CREATE
 			'lParam format = iSlitterInfo
-			SetWindowLongA (hSplitter, $$GWL_USERDATA, SLONGAT(lParam))
+			SetWindowLongA (hSplitter, $$GWL_USERDATA, XLONGAT(lParam))
 			mouseIn = 0
 			'
 			DIM vertex[2]
@@ -3243,7 +3243,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 	RECT rect
 	SYSTEMTIME sysTime		' for message MCN_SELCHANGE
 
-	SLONG ret		' return code when handled = $$TRUE
+	XLONG ret		' return code when handled = $$TRUE
 
 	ULONG pNmhdr		' pointer to nmhdr
 	ULONG pNmkey		' pointer to nmkey
@@ -3588,8 +3588,8 @@ END FUNCTION
 FUNCTION autoSizer (AUTOSIZERINFO	autoSizerBlock, direction, x0, y0, nw, nh, currPos)
 	RECT rect
 	SPLITTERINFO splitterInfo
-	FUNCADDR leftInfo (SLONG, SLONG)
-	FUNCADDR rightInfo (SLONG, SLONG)
+	FUNCADDR leftInfo (XLONG, XLONG)
+	FUNCADDR rightInfo (XLONG, XLONG)
 
 	IFZ autoSizerBlock.hWnd THEN RETURN 0		' fail
 '
@@ -7099,7 +7099,7 @@ END FUNCTION
 ' id = the unique id constant for this control
 ' returns a handle to the progress bar or 0 on fail
 FUNCTION WinXAddProgressBar (parent, smooth, id)
-	SLONG minMax	' = MAKELONG (0, 1000)
+	XLONG minMax	' = MAKELONG (0, 1000)
 
 	style = $$WS_CHILD|$$WS_VISIBLE|$$WS_TABSTOP|$$WS_GROUP
 	IF smooth THEN style = style|$$PBS_SMOOTH
@@ -8167,7 +8167,7 @@ END FUNCTION
 FUNCTION WinXTreeView_CopyItem (hTreeView, hNodeParent, hNodeAfter, hNodeToMove)
 	TV_ITEM tvi
 	TV_INSERTSTRUCT tvis
-	SLONG new_handle		' handle to the copied item
+	XLONG new_handle		' handle to the copied item
 
 	SetLastError (0)
 	IFZ hTreeView THEN RETURN 0		' fail
@@ -9826,9 +9826,9 @@ FUNCTION WinXDraw_PremultiplyImage (hImage)
 	FOR i = 0 TO maxPixel
 		'get pixel
 		ULONGAT(&rgba) = ULONGAT(bmp.bits, i<<2)
-		rgba.blue		= UBYTE((SLONG(rgba.blue)*SLONG(rgba.alpha))\255)
-		rgba.green	= UBYTE((SLONG(rgba.green)*SLONG(rgba.alpha))\255)
-		rgba.red		= UBYTE((SLONG(rgba.red)*SLONG(rgba.alpha))\255)
+		rgba.blue		= UBYTE((XLONG(rgba.blue)*XLONG(rgba.alpha))\255)
+		rgba.green	= UBYTE((XLONG(rgba.green)*XLONG(rgba.alpha))\255)
+		rgba.red		= UBYTE((XLONG(rgba.red)*XLONG(rgba.alpha))\255)
 		ULONGAT(bmp.bits, i<<2) = ULONGAT(&rgba)
 	NEXT i
 
@@ -10065,10 +10065,10 @@ FUNCTION WinXPrint_PageSetup (hOwner)
 	GetLocaleInfoA ($$LOCALE_USER_DEFAULT, $$LOCALE_IMEASURE, &localeInfo[], SIZE (localeInfo[]))
 	IF (localeInfo[0] = '0') THEN
 		'The user prefers the metric system, so convert the units
-		pageSetupDlg.rtMargin.left = SLONG(DOUBLE(pageSetupDlg.rtMargin.left)*2.54)
-		pageSetupDlg.rtMargin.right = SLONG(DOUBLE(pageSetupDlg.rtMargin.right)*2.54)
-		pageSetupDlg.rtMargin.top = SLONG(DOUBLE(pageSetupDlg.rtMargin.top)*2.54)
-		pageSetupDlg.rtMargin.bottom = SLONG(DOUBLE(pageSetupDlg.rtMargin.bottom)*2.54)
+		pageSetupDlg.rtMargin.left = XLONG(DOUBLE(pageSetupDlg.rtMargin.left)*2.54)
+		pageSetupDlg.rtMargin.right = XLONG(DOUBLE(pageSetupDlg.rtMargin.right)*2.54)
+		pageSetupDlg.rtMargin.top = XLONG(DOUBLE(pageSetupDlg.rtMargin.top)*2.54)
+		pageSetupDlg.rtMargin.bottom = XLONG(DOUBLE(pageSetupDlg.rtMargin.bottom)*2.54)
 	ENDIF
 
 	IF PageSetupDlgA (&pageSetupDlg) THEN
@@ -10079,10 +10079,10 @@ FUNCTION WinXPrint_PageSetup (hOwner)
 		IFZ printInfo.hDevMode THEN printInfo.hDevMode = pageSetupDlg.hDevMode
 		IFZ printInfo.hDevNames THEN printInfo.hDevNames = pageSetupDlg.hDevNames
 		IF pageSetupDlg.flags AND $$PSD_INHUNDREDTHSOFMILLIMETERS THEN
-			printInfo.marginLeft = SLONG(DOUBLE(printInfo.marginLeft) / 2.54)
-			printInfo.marginRight = SLONG(DOUBLE(printInfo.marginRight) / 2.54)
-			printInfo.marginTop = SLONG(DOUBLE(printInfo.marginTop) / 2.54)
-			printInfo.marginBottom = SLONG(DOUBLE(printInfo.marginBottom) / 2.54)
+			printInfo.marginLeft = XLONG(DOUBLE(printInfo.marginLeft) / 2.54)
+			printInfo.marginRight = XLONG(DOUBLE(printInfo.marginRight) / 2.54)
+			printInfo.marginTop = XLONG(DOUBLE(printInfo.marginTop) / 2.54)
+			printInfo.marginBottom = XLONG(DOUBLE(printInfo.marginBottom) / 2.54)
 		ENDIF
 		RETURN $$TRUE		' success
 	ENDIF
@@ -11370,7 +11370,7 @@ END FUNCTION
 FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 
 	LOGFONT logFont
-	SLONG bErr		' $$TRUE for fail
+	XLONG bErr		' $$TRUE for fail
 
 	SetLastError (0)
 	r_hFont = 0
@@ -11931,7 +11931,7 @@ FUNCTION WinXCleanUp ()
 	SHARED hClipMem		' global memory for clipboard operations
 '	SHARED #drag_image		' image list for the dragging effect
 	SHARED BINDING bindings[]
-	SLONG window_handle[]		' local copy of the array of active windows
+	XLONG window_handle[]		' local copy of the array of active windows
 
 	SetLastError (0)
 '
