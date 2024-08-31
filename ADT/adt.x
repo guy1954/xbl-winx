@@ -1,16 +1,16 @@
 '
 '
 ' ####################
-' ##### PROLOG #####
+' #####  PROLOG  #####
 ' ####################
 '
 PROGRAM "adt"
-VERSION "0.2"		' GL-30may13
+VERSION "0.2"		' GL-30 May 2013
 'CONSOLE
 '
 ' ADT - Abstract Data Types for XBLite
 ' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
-' Evolutions: Guy Lonne 2009-2013.
+' Evolutions: Guy Lonne 2009-2024.
 '
 ' ------------------------------------------------------------------------------
 ' The ADT library is distributed under the
@@ -21,7 +21,7 @@ VERSION "0.2"		' GL-30may13
 '
 ' ***** Description *****
 '
-' ADT library: "First step in object programming!" (Says Xbliter GL ;-)
+' The ADT library: "First step in object programming!" (Says Xbliter GL ;-)
 ' adt.dll gives some object-like methods to handle
 ' XBLite's STRING arrays and arrays of TYPEs.
 '
@@ -55,7 +55,7 @@ VERSION "0.2"		' GL-30may13
 '
 ' 0.1-Callum Lowcay-2008-Original version.
 '
-' 0.2-GL-25mar11-small changes in accessors.m4.
+' 0.2-GL-25mar11-Small changes in accessors.m4.
 '     GL-21apr11-Re-coded LinkedList_IsLastNode().
 '     GL-07nov11-Prevented adt.dll re-entry with SHARED variable #bReentry.
 '     GL-30may13-Re-coded accessors.m4.
@@ -72,15 +72,15 @@ VERSION "0.2"		' GL-30may13
 	IMPORT "xst"		' XBLite Standard Library
 	IMPORT "xsx"		' XBLite Standard eXtended Library
 '	IMPORT "xio"		' console library
-' DLL build~~~
+' DLL build===
 '
 ' The above is commented for a static build:
 ' Static build---
 '	-- The following IMPORTs are needed for a static build.
-'	IMPORT "xst_s.lib"
-'	IMPORT "xsx_s.lib"
-''	IMPORT "xio_s.lib"
-' Static build~~~
+'	IMPORT "xst_s.lib"		' XBLite Standard Library
+'	IMPORT "xsx_s.lib"		' XBLite Standard eXtended Library
+''	IMPORT "xio_s.lib"		' console library
+' Static build===
 '
 '
 ' #######################
@@ -97,8 +97,8 @@ m4_include(`accessors.m4')
 '
 EXPORT
 '
-' ADT - Abstract Data Types for XBLite
-' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
+' ADT - Abstract Data Types library for XBLite
+' Copyright (c) Callum Lowcay 2008 - Licensed under the GNU LGPL
 ' Evolutions: Guy Lonne 2009-2013.
 '
 ' *****************************
@@ -131,7 +131,7 @@ END TYPE
 '
 ' GL-10apr11-old---
 'EXPORT
-' GL-10apr11-old~~~
+' GL-10apr11-old===
 '
 $$ADT_PREORDER	= 0
 $$ADT_INORDER		= 1
@@ -237,8 +237,10 @@ DECLARE FUNCTION BinTree_RealUninit (iNode, FUNCADDR keyDeleter)
 DECLARE FUNCTION BinTree_RealFind (FUNCADDR comparator, @iParentNode, iKey, @iData)
 DECLARE FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 '
-' M4 Declarations.
 '
+' #############################
+' #####  M4 Declarations  #####
+' #############################
 DeclareAccess(LINKEDNODE)
 
 DeclareAccess(LINKEDWALK)
@@ -248,23 +250,27 @@ DeclareAccess(BINNODE)
 DeclareAccess(BINWALK)
 
 DeclareAccess(STACK)
+
+' Character difficult to spot in code.
+$$DOUBLE_QU  = 0x22		' double quote character
 '
 '
 ' ####################
 ' #####  ADT ()  #####
 ' ####################
-' Initialises the ADT library
-' returns $$TRUE on error otherwise $$FALSE
+' Initializes the ADT library.
+' returns $$FALSE on success, else $$TRUE on fail
 FUNCTION ADT ()
 
-	IF #bReentry THEN RETURN $$FALSE		' already initialized!
+	IF #bReentry THEN RETURN $$FALSE		' enter once...
+	#bReentry = $$TRUE		' ...and then no more
 '
-' Uncomment for a static build.
+' Uncomment this for a static build.
 ' Static build---
 '	Xst ()		' initialize Standard Library
 '	Xsx ()		' initialize Standard eXtended Library
 ''	Xio ()		' Console input/ouput library
-' Static build~~~
+' Static build===
 '
 	STRING_Init()
 	LINKEDNODE_Init()
@@ -272,462 +278,88 @@ FUNCTION ADT ()
 	BINNODE_Init()
 	BINWALK_Init()
 	STACK_Init()
-
-	#bReentry = $$TRUE	' protect for reentry
 	RETURN $$FALSE		' success
+
 END FUNCTION
 '
-' #############################
-' ##### LinkedList_Init #####
-' #############################
-' Initialises a linked list
-' list = the linked list structure to initialise
+' ##############################
+' #####  AssocArray_Clear  #####
+' ##############################
+' Deletes all the items in an associative array so you can safely delete the array
+' array = the array to clear
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_Init (LINKEDLIST list)
-	LINKEDNODE head
-
-	IFF #bReentry THEN ADT ()		' 0.2-initialize Abstract Data Types library
-
-	head.iData = 0
-	head.iNext = 0
-
-	list.iHead = LINKEDNODE_New(head)
-	list.iTail = list.iHead
-	list.cItems = 0
-	RETURN $$TRUE		' success
+FUNCTION AssocArray_Clear (ASSOCARRAY array)
+	BinTree_Uninit (@array.tree)
 END FUNCTION
 '
 ' ###############################
-' ##### LinkedList_Append #####
+' #####  AssocArray_Delete  #####
 ' ###############################
-' Appends an item to a linked list
-' list = the linked list to append to
-' iData = the data to append to the linked list
+' Deletes an item from an associative array
+' array = the array to delete the item from
+' key$ = the key for the item
+' iData = the variable to store the data of the item
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_Append (LINKEDLIST list, iData)
-	LINKEDNODE tail
-	LINKEDNODE new
-
-	IFF LINKEDNODE_Get(list.iTail, @tail) THEN RETURN $$FALSE
-	new.iData = iData
-	new.iNext = 0
-	tail.iNext = LINKEDNODE_New(new)
-	LINKEDNODE_Update(list.iTail, @tail)
-
-	list.iTail = tail.iNext
-	INC list.cItems
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ###############################
-' ##### LinkedList_Insert #####
-' ###############################
-' Inserts an item into a linked list
-' list = the list to insert into
-' index = the 0 based index to insert the item at
-' iData = the data to insert into the list
-' returns $$TRUE on succcess or $$FALSE on fail
-FUNCTION LinkedList_Insert (LINKEDLIST list, index, iData)
-	LINKEDNODE previous
-	LINKEDNODE new
-
-	' get the previous node
-	IFF LINKEDLIST_GetNode (list, index-1, @iPrevious) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN $$FALSE
-
-	new.iData = iData
-	new.iNext = previous.iNext
-
-	previous.iNext = LINKEDNODE_New(new)
-
-	IF iPrevious = list.iTail THEN list.iTail = previous.iNext
-	IFZ previous.iNext THEN RETURN $$FALSE
-
-	IFF LINKEDNODE_Update(iPrevious, previous) THEN RETURN $$FALSE
-
-	INC list.cItems
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ################################
-' ##### LinkedList_GetItem #####
-' ################################
-' Retrieves a particular item from a linked list
-' list = the list to get the item from
-' index = the 0 based index of the item to get
-' iData = the variable to store the data
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_GetItem (LINKEDLIST list, index, @iData)
-	LINKEDNODE node
-
-	IFF LINKEDLIST_GetNode(list, index, @iNode) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Get(iNode, @node) THEN RETURN $$FALSE
-
-	iData = node.iData
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ##################################
-' ##### LinkedList_StartWalk #####
-' ##################################
-' Initialises a walk of a linked list
-' list = the list to walk
-' returns a walk handle which you must pass to subsequent calls to LinkedList_Walk and LinkedList_EndWalk,
-'         or 0 on fail
-FUNCTION LinkedList_StartWalk (LINKEDLIST list)
-	LINKEDNODE currNode
-	LINKEDWALK walk
-
-	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN 0
-	walk.first = list.iHead
-	walk.iPrev = list.iHead
-	walk.iCurrentNode = -1
-	walk.iNext = currNode.iNext
-	walk.last = iTail
-
-	RETURN LINKEDWALK_New (walk)
-END FUNCTION
-'
-' #############################
-' ##### LinkedList_Walk #####
-' #############################
-' Gets the next data item in a linked list
-' hWalk = the walk handle generated with the LinkedList_StartWalk call
-' iData = the variable to store the data
-' returns $$TRUE if iData is valid,
-' or $$FALSE if the walk is complete or there is an error
-FUNCTION LinkedList_Walk (hWalk, @iData)
-	LINKEDNODE currNode
-	LINKEDWALK walk
-
-	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE
-	'? "> ";walk.iPrev, walk.iCurrentNode, walk.iNext
-
-	IFF LINKEDNODE_Get(walk.iNext, @currNode) THEN RETURN $$FALSE
-
-	iData = currNode.iData
-	walk.iPrev = walk.iCurrentNode
-	walk.iCurrentNode = walk.iNext
-	walk.iNext = currNode.iNext
-	IFF LINKEDWALK_Update(hWalk, @walk) THEN RETURN $$FALSE
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' #############################
-' ##### LinkedList_Jump #####
-' #############################
-' Jumps to the specified item, hence, item will be the next item returned by LinkedList_Walk
-' hWalk = the walk handle
-' iItem = the index of the item to jump to
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_Jump (hWalk, iItem)
-	LINKEDNODE currNode
-	LINKEDWALK walk
-
-	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Get (walk.first, @currNode) THEN RETURN $$FALSE
-
-	walk.iPrev = 0
-	iNode = walk.first
-	FOR i = 0 TO iItem-1
-		walk.iPrev = iNode
-		iNode = currNode.iNext
-		IFF LINKEDNODE_Get (currNode.iNext, @currNode) THEN RETURN $$FALSE
-	NEXT i
-
-	iData = currNode.iData
-	walk.iNext = currNode.iNext
-	IFF LINKEDWALK_Update(hWalk, @walk) THEN RETURN $$FALSE
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ###################################
-' ##### LinkedList_IsLastNode #####
-' ###################################
-' Checks to see if hWalk is on the last node
-' hWalk = the walk to check
-' returns $$TRUE if on last node, or $$FALSE
-FUNCTION LinkedList_IsLastNode (hWalk)
-	LINKEDWALK walk
-'
-' 0.2-old---
-'	IFF LINKEDWALK_Get(hWalk, @walk) THEN RETURN $$FALSE
-'	IFZ walk.iNext THEN RETURN $$TRUE ELSE RETURN $$FALSE
-' 0.2-old~~~
-' 0.2-new+++
-	bLast = $$FALSE		' regular node
-	IFF LINKEDWALK_Get (hWalk, @walk) THEN
-		bLast = $$TRUE		' last node
-	ELSE
-		IFZ walk.iNext THEN bLast = $$TRUE		' last node
-	ENDIF
-	RETURN bLast
-' 0.2-new~~~
-'
-END FUNCTION
-'
-' ##################################
-' ##### LinkedList_ResetWalk #####
-' ##################################
-' Resets a walk, so the next item it returns is the first item in the list
-' hWalk = the walk to reset
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_ResetWalk (hWalk)
-	LINKEDWALK walk
-	LINKEDNODE node
-
-	IFF LINKEDWALK_Get(hWalk, @walk) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Get(walk.first, @node) THEN RETURN $$FALSE
-	walk.iPrev = walk.first
-	walk.iCurrentNode = -1
-	walk.iNext = node.iNext
-	RETURN LINKEDWALK_Update (hWalk, walk)
-END FUNCTION
-'
-' ###################################
-' ##### LinkedList_DeleteThis #####
-' ###################################
-' Deletes the item LinkedList_Walk just returned
-' hWalk = the walk handle
-' list = the list the walk is associated with. Need this to change item count
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST list)
-	LINKEDNODE currNode
-	LINKEDWALK walk
-
-	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE
-	IF walk.iPrev < 0 THEN
-		IFF LINKEDNODE_Get (walk.first, @currNode) THEN RETURN $$FALSE
-		currNode.iNext = walk.iNext
-		IFF LINKEDNODE_Update (walk.first, currNode) THEN RETURN $$FALSE
-	ELSE
-		IFF LINKEDNODE_Get (walk.iPrev, @currNode) THEN RETURN $$FALSE
-		currNode.iNext = walk.iNext
-		IFF LINKEDNODE_Update (walk.iPrev, currNode) THEN RETURN $$FALSE
-	ENDIF
-
-	IFF LINKEDNODE_Delete (walk.iCurrentNode) THEN RETURN $$FALSE
-	DEC list.cItems
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ################################
-' ##### LinkedList_EndWalk #####
-' ################################
-' Closes a walk handle
-' hWalk = the walk handle to close
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_EndWalk (hWalk)
-	RETURN LINKEDWALK_Delete(hWalk)
-END FUNCTION
-'
-' ###################################
-' ##### LinkedList_DeleteItem #####
-' ###################################
-' Deletes an item from a linked list
-' list = the list to delete from
-' index = the 0 based index of the item to delete
-' Returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_DeleteItem (LINKEDLIST list, index)
-	LINKEDNODE previous
-	LINKEDNODE currNode
-
-	' Prevent the user from deleting the head node
-	IF index < 0 THEN RETURN $$FALSE
-
-	' get the previous node
-	IFF LINKEDLIST_GetNode (list, index-1, @iPrevious) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN $$FALSE
-
-	' Update the tail pointer if necessary
-	IF previous.iNext = list.iTail THEN list.iTail = iPrevious
-
-	' Now get the node we want to delete
-	iCurrNode = previous.iNext
-	IFF LINKEDNODE_Get (iCurrNode, @currNode) THEN RETURN $$FALSE
-
-	' And delete
-	previous.iNext = currNode.iNext
-	IFF LINKEDNODE_Update(iPrevious, previous) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Delete(iCurrNode) THEN RETURN $$FALSE
-
-	DEC list.cItems
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ##################################
-' ##### LinkedList_DeleteAll #####
-' ##################################
-' Deletes every item in a linked list
-' list = the list to delete the items from
-' returns $$TRUE on success or $$FALSE on fail.
-FUNCTION LinkedList_DeleteAll (LINKEDLIST list)
-	LINKEDNODE currNode
-
-	' Get the head
-	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN $$FALSE
-
-	DO WHILE currNode.iNext
-		' Get the next node
-		iCurrNode = currNode.iNext
-		IFF LINKEDNODE_Get(iCurrNode, @currNode) THEN RETURN $$FALSE
-
-		' Process this node
-		IFF LINKEDNODE_Delete(iCurrNode) THEN RETURN $$FALSE
-	LOOP
-
-	' Update the head node
-	LINKEDNODE_Get(list.iHead, @currNode)
-	currNode.iNext = 0
-	LINKEDNODE_Update (list.iHead, currNode)
-
-	list.iTail = list.iHead
-	list.cItems = 0
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ############################
-' ##### LinkedList_Map #####
-' ############################
-' Calls a function for every item in a linked list.
-' list = the linked list to map
-' callBack = the function to map onto the list
-' result = the result returned from the callback function
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_Map (LINKEDLIST list, FUNCADDR callBack, @result)
-	LINKEDNODE currNode
-	FUNCADDR func (XLONG, XLONG, XLONG)
-
-	func = callBack
-
-	' Get the head
-	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN $$FALSE
-
-	i = 0
-	DO WHILE currNode.iNext
-		' Get the next node
-		iCurrNode = currNode.iNext
-		IFF LINKEDNODE_Get(iCurrNode, @currNode) THEN RETURN $$FALSE
-
-		' Process this node
-		IFF @func(i, currNode.iData, @result) THEN RETURN $$TRUE		' success
-		INC i
-	LOOP
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ###############################
-' ##### LinkedList_Uninit #####
-' ###############################
-' Uninitialises a linked list. Call if you are about to delete a linked list
-' list = the linkedlist to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LinkedList_Uninit (LINKEDLIST list)
-	IFF LinkedList_DeleteAll (@list) THEN RETURN $$FALSE
-	IFF LINKEDNODE_Delete (list.iHead) THEN RETURN $$FALSE
-	list.iHead = 0
-	list.iTail = 0
-	RETURN $$TRUE		' success
-END FUNCTION
-'
-' ########################
-' ##### Stack_Init #####
-' ########################
-' Initialises a stack
-' stack = the stack to initialise
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION Stack_Init (STACK stack)
-	IFF #bReentry THEN ADT ()		' 0.2-initialize Abstract Data Types library
-	RETURN LinkedList_Init (@stack.list)
-END FUNCTION
-'
-' ##########################
-' ##### Stack_Uninit #####
-' ##########################
-' Uninitialises a stack, use prior to deleting
-' stack = the stack to uninitialise
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION Stack_Uninit (STACK stack)
-	RETURN LinkedList_Uninit (@stack.list)
-END FUNCTION
-'
-' ########################
-' ##### Stack_Push #####
-' ########################
-' Pushes an item onto the stack
-' stack = the stack to push the item onto
-' iData = the item to push onto the stack
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION Stack_Push (STACK stack, iData)
-	ret = LinkedList_Append (@stack.list, iData)
+FUNCTION AssocArray_Delete (ASSOCARRAY array, key$, @iData)
+	iKey = STRING_New (key$)
+	ret = BinTree_Remove (@array.tree, iKey, @iData)
+	STRING_Delete (iKey)
 	RETURN ret
 END FUNCTION
 '
-' #######################
-' ##### Stack_Pop #####
-' #######################
-' Pops an item off the stack
-' stack = the stack to pop the data from
-' iData = the variable to store the data popped off the stack, unchanged on fail
+' #############################
+' #####  AssocArray_Find  #####
+' #############################
+' Locates an item in an associative array
+' array = the array to locate the item in
+' key$ = the key of the item to locate
+' iData = the variable to store the data for the item
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION Stack_Pop (STACK stack, @iData)
-	LINKEDNODE node
-
-	' Is the stack empty?
-	IF stack.list.iHead = stack.list.iTail THEN RETURN $$FALSE
-
-	IFF LINKEDNODE_Get(stack.list.iTail, @node) THEN RETURN $$FALSE
-	IFF LinkedList_DeleteItem (@stack.list, stack.list.cItems-1) THEN RETURN $$FALSE
-
-	iData = node.iData
-	RETURN $$TRUE		' success
+FUNCTION AssocArray_Find (ASSOCARRAY array, key$, @iData)
+'
+' 0.2-old---
+'	iKey = STRING_New (key$)
+'	ret = BinTree_Find (@array.tree, iKey, @iData)
+'	STRING_Delete (iKey)
+'	RETURN ret
+' 0.2-old===
+' 0.2-new+++
+	iKey = STRING_New (key$)
+	bFound = BinTree_Find (@array.tree, iKey, @iData)
+	IF bFound THEN STRING_Delete (iKey)
+	RETURN bFound
+' 0.2-new===
+'
 END FUNCTION
 '
-' ########################
-' ##### Stack_Peek #####
-' ########################
-' Peeks at an item on the stack
-' stack = the stack to peek off
-' iData = the variable to store the data peeked from the stack, unchanged on fail
+' #############################
+' #####  AssocArray_Init  #####
+' #############################
+' Initializes an associative array.
+' array = the array to initialise
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION Stack_Peek (STACK stack, @iData)
-	LINKEDNODE node
-
-	' Is the stack empty?
-	IF stack.list.iHead = stack.list.iTail THEN RETURN $$FALSE
-
-	IFF LINKEDNODE_Get(stack.list.iTail, @node) THEN RETURN $$FALSE
-
-	iData = node.iData
-	RETURN $$TRUE		' success
+FUNCTION AssocArray_Init (ASSOCARRAY array)
+	array.tree.comparator = &StringCompare ()
+	array.tree.keyDeleter = &STRING_Delete ()
 END FUNCTION
 '
-' ##########################
-' ##### BinTree_Init #####
-' ##########################
-' Initialises a bin tree
-' tree = the tree to initialise
-' comparator = user comparator function for sorting keys
-'                     comparator(id_1, id_2)
-' keyDeleter = User delete function: keyDeleter(indexDelete)
+' ###############################
+' #####  AssocArray_Insert  #####
+' ###############################
+' Inserts an item into an associative array
+' array = the array to insert the item into
+' key$ = the key for the item
+' iData = the data for the item
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_Init (BINTREE tree, FUNCADDR comparator, FUNCADDR keyDeleter)
-	IFF #bReentry THEN ADT ()		' 0.2-initialize Abstract Data Types library
-	tree.comparator = comparator
-	tree.keyDeleter = keyDeleter
-	tree.iHead = 0
-	RETURN $$TRUE		' success
+FUNCTION AssocArray_Insert (ASSOCARRAY array, key$, iData)
+	iKey = STRING_New (key$)
+	RETURN BinTree_Add (@array.tree, iKey, iData)
 END FUNCTION
 '
 ' #########################
-' ##### BinTree_Add #####
+' #####  BinTree_Add  #####
 ' #########################
-' Adds an item to a bin tree
+' Adds an item to a bin tree.
 ' tree = the tree to add the item to
 ' iKey = the key used to locate the item
 ' iData = the item to add to the tree
@@ -749,7 +381,7 @@ FUNCTION BinTree_Add (BINTREE tree, iKey, iData)
 '
 '	' We should never get here
 '	RETURN $$FALSE		' fail
-' 0.2-old~~~
+' 0.2-old===
 ' 0.2-new+++
 	bOK = $$FALSE
 	IFZ tree.iHead THEN
@@ -763,14 +395,71 @@ FUNCTION BinTree_Add (BINTREE tree, iKey, iData)
 		bOK = BinTree_RealAdd (tree.comparator, tree.iHead, iKey, iData)
 	ENDIF
 	RETURN bOK
-' 0.2-new~~~
+' 0.2-new===
 '
 END FUNCTION
 '
+' ##################################
+' #####  BinTree_EndTraversal  #####
+' ##################################
+' Ends a BinTree traversal.
+' traverse = the traversal to end
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION BinTree_EndTraversal (traverse)
+	STACK traverseStack
+
+	IFF STACK_Get (traverse, @traverseStack) THEN RETURN $$FALSE		' fail
+
+	DO WHILE Stack_Pop (@traverseStack, @iData)
+		BINWALK_Delete (iData)
+	LOOP
+
+	RETURN STACK_Delete (traverse)
+END FUNCTION
+'
+' ##########################
+' #####  BinTree_Find  #####
+' ##########################
+' Finds an item in a bin tree
+' tree = the tree to find the item in
+' iKey = the key of the item to locate
+' iData = the variable to store the item
+' returns $$TRUE if the item is found, otherwise $$FALSE
+FUNCTION BinTree_Find (BINTREE tree, iKey, @iData)
+'
+' 0.2-old---
+'	iParentNode = tree.iHead
+'	IF BinTree_RealFind (tree.comparator, @iParentNode, iKey, @iData) THEN RETURN $$TRUE ELSE RETURN $$FALSE
+' 0.2-old===
+' 0.2-new+++
+	iParentNode = tree.iHead
+	bFound = BinTree_RealFind (tree.comparator, @iParentNode, iKey, @iData)
+	RETURN bFound
+' 0.2-new===
+'
+END FUNCTION
+'
+' ##########################
+' #####  BinTree_Init  #####
+' ##########################
+' Initializes a bin tree.
+' tree = the tree to initialise
+' comparator = user comparator function for sorting keys
+'              comparator(id_1, id_2)
+' keyDeleter = User delete function: keyDeleter(indexDelete)
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION BinTree_Init (BINTREE tree, FUNCADDR comparator, FUNCADDR keyDeleter)
+	IFF #bReentry THEN ADT ()		' 0.2-initialize Abstract Data Types library
+	tree.comparator = comparator
+	tree.keyDeleter = keyDeleter
+	tree.iHead = 0
+	RETURN $$TRUE		' success
+END FUNCTION
+'
 ' ############################
-' ##### BinTree_Remove #####
+' #####  BinTree_Remove  #####
 ' ############################
-' Removes an item from a bin tree
+' Removes an item from a bin tree.
 ' tree = the tree to remove the item from
 ' iKey = the key of the item to remove
 ' iData = the variable to store the item removed from the tree, you can use the to correctly deallocate it
@@ -797,48 +486,12 @@ FUNCTION BinTree_Remove (BINTREE tree, iKey, @iData)
 	RETURN BinTree_RealRemove (tree.keyDeleter, iNode, iParentNode)
 END FUNCTION
 '
-' ##########################
-' ##### BinTree_Find #####
-' ##########################
-' Finds an item in a bin tree
-' tree = the tree to find the item in
-' iKey = the key of the item to locate
-' iData = the variable to store the item
-' returns $$TRUE if the item is found, otherwise $$FALSE
-FUNCTION BinTree_Find (BINTREE tree, iKey, @iData)
-'
-' 0.2-old---
-'	iParentNode = tree.iHead
-'	IF BinTree_RealFind (tree.comparator, @iParentNode, iKey, @iData) THEN RETURN $$TRUE ELSE RETURN $$FALSE
-' 0.2-old~~~
-' 0.2-new+++
-	iParentNode = tree.iHead
-	bFound = BinTree_RealFind (tree.comparator, @iParentNode, iKey, @iData)
-	RETURN bFound
-' 0.2-new~~~
-'
-END FUNCTION
-'
-' ############################
-' ##### BinTree_Uninit #####
-' ############################
-' Deallocates all the resources associated with a bin tree
-' tree = the tree to uninit
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_Uninit (BINTREE tree)
-	IF tree.iHead THEN
-		tree.iHead = 0
-		RETURN BinTree_RealUninit (tree.iHead, tree.keyDeleter)
-	ENDIF
-	RETURN $$TRUE		' success
-END FUNCTION
-'
 ' ####################################
-' ##### BinTree_StartTraversal #####
+' #####  BinTree_StartTraversal  #####
 ' ####################################
-' Starts traversing a bintree
+' Starts traversing a bintree.
 ' order = the traversal order
-' returns the id of the traversal object or 0 on fail
+' returns the item id of the traversal object or 0 on fail
 FUNCTION BinTree_StartTraversal (BINTREE tree, order)
 	STACK traverseStack
 	BINWALK traverse
@@ -852,7 +505,7 @@ FUNCTION BinTree_StartTraversal (BINTREE tree, order)
 END FUNCTION
 '
 ' ##############################
-' ##### BinTree_Traverse #####
+' #####  BinTree_Traverse  #####
 ' ##############################
 ' Traverses a bintree according to a traversal object
 ' traverse = the traversal to use
@@ -864,10 +517,10 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 	BINWALK TOS
 	BINNODE node
 
-	IFF STACK_Get (traverse, @traverseStack) THEN RETURN $$FALSE
+	IFF STACK_Get (traverse, @traverseStack) THEN RETURN $$FALSE		' fail
 
-	IFF Stack_Peek (traverseStack, @iTOS) THEN RETURN $$FALSE
-	IFF BINWALK_Get (iTOS, @TOS) THEN RETURN $$FALSE
+	IFF Stack_Peek (traverseStack, @iTOS) THEN RETURN $$FALSE		' fail
+	IFF BINWALK_Get (iTOS, @TOS) THEN RETURN $$FALSE		' fail
 
 	' Which item should we return?
 	done = $$FALSE
@@ -928,7 +581,8 @@ FUNCTION BinTree_Traverse (traverse, @iData, @iKey)
 						GOSUB PopJunkNode
 				END SELECT
 			CASE $$ADT_POSTORDER
-				' Notice that I have swapped nextItem codes 2 and 3. This is to eliminate code duplication
+				' Notice that I have swapped nextItem codes 2 and 3.
+				' This is to eliminate code duplication
 				SELECT CASE TOS.nextItem
 					CASE 0		' Get right node
 						GOSUB GetRightmostNode
@@ -1002,191 +656,29 @@ SUB GetRightNode
 END SUB
 SUB PopJunkNode
 	BINWALK_Delete (iTos)
-	IFF Stack_Pop (@traverseStack, @iTOS) THEN RETURN $$FALSE
-	IFF Stack_Peek (traverseStack, @iTOS) THEN RETURN $$FALSE
-	IFF BINWALK_Get (iTOS, @TOS) THEN RETURN $$FALSE
+	IFF Stack_Pop (@traverseStack, @iTOS) THEN RETURN $$FALSE		' fail
+	IFF Stack_Peek (traverseStack, @iTOS) THEN RETURN $$FALSE		' fail
+	IFF BINWALK_Get (iTOS, @TOS) THEN RETURN $$FALSE		' fail
 END SUB
 END FUNCTION
 '
-' ##################################
-' ##### BinTree_EndTraversal #####
-' ##################################
-' Ends a BinTree traversal
-' traverse = the traversal to end
+' ############################
+' #####  BinTree_Uninit  #####
+' ############################
+' Deallocates all the resources associated with a bin tree.
+' tree = the tree to uninit
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_EndTraversal (traverse)
-	STACK traverseStack
-
-	IFF STACK_Get (traverse, @traverseStack) THEN RETURN $$FALSE
-
-	DO WHILE Stack_Pop (@traverseStack, @iData)
-		BINWALK_Delete (iData)
-	LOOP
-
-	RETURN STACK_Delete (traverse)
-END FUNCTION
-'
-' ###############################
-' ##### AssocArray_Insert #####
-' ###############################
-' Inserts an item into an associative array
-' array = the array to insert the item into
-' key$ = the key for the item
-' iData = the data for the item
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AssocArray_Insert (ASSOCARRAY array, key$, iData)
-	iKey = STRING_New (key$)
-	RETURN BinTree_Add (@array.tree, iKey, iData)
-END FUNCTION
-'
-' ###############################
-' ##### AssocArray_Delete #####
-' ###############################
-' Deletes an item from an associative array
-' array = the array to delete the item from
-' key$ = the key for the item
-' iData = the variable to store the data of the item
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AssocArray_Delete (ASSOCARRAY array, key$, @iData)
-	iKey = STRING_New (key$)
-	ret = BinTree_Remove (@array.tree, iKey, @iData)
-	STRING_Delete (iKey)
-	RETURN ret
-END FUNCTION
-'
-' #############################
-' ##### AssocArray_Find #####
-' #############################
-' Locates an item in an associative array
-' array = the array to locate the item in
-' key$ = the key of the item to locate
-' iData = the variable to store the data for the item
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AssocArray_Find (ASSOCARRAY array, key$, @iData)
-'
-' 0.2-old---
-'	iKey = STRING_New (key$)
-'	ret = BinTree_Find (@array.tree, iKey, @iData)
-'	STRING_Delete (iKey)
-'	RETURN ret
-' 0.2-old~~~
-' 0.2-new+++
-	iKey = STRING_New (key$)
-	bFound = BinTree_Find (@array.tree, iKey, @iData)
-	IF bFound THEN STRING_Delete (iKey)
-	RETURN bFound
-' 0.2-new~~~
-'
-END FUNCTION
-'
-' ##############################
-' ##### AssocArray_Clear #####
-' ##############################
-' Deletes all the items in an associative array so you can safely delete the array
-' array = the array to clear
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION AssocArray_Clear (ASSOCARRAY array)
-	BinTree_Uninit (@array.tree)
-END FUNCTION
-'
-' #############################
-' ##### AssocArray_Init #####
-' #############################
-' Initialises an associative arary
-' array = the array to initialise
-' Returns $$TRUE on success or $$FALSE on fail
-FUNCTION AssocArray_Init (ASSOCARRAY array)
-	array.tree.comparator = &StringCompare ()
-	array.tree.keyDeleter = &STRING_Delete ()
-END FUNCTION
-'
-' ########################
-' ##### IntCompare #####
-' ########################
-' A comparator for integers
-FUNCTION IntCompare (a, b)
-'
-' GL-21apr11-old---
-'	RETURN b - a
-' GL-21apr11-old~~~
-' GL-21apr11-new+++
-	IF a = b THEN
-		ret = 0
-	ELSE
-		IF a > b THEN ret = 1 ELSE ret = -1
+FUNCTION BinTree_Uninit (BINTREE tree)
+	IF tree.iHead THEN
+		tree.iHead = 0
+		RETURN BinTree_RealUninit (tree.iHead, tree.keyDeleter)
 	ENDIF
-	RETURN ret
-' GL-21apr11-new~~~
-'
+	RETURN $$TRUE		' success
 END FUNCTION
-'
-' ###########################
-' ##### StringCompare #####
-' ###########################
-' A comparator for strings
-'
-' 0.2-old---
-' FUNCTION StringCompare (a, b)
-' STRING_Get (a, @a$)
-' STRING_Get (b, @b$)
-'
-' FOR i = 0 TO MIN (UBOUND (a$), UBOUND (b$))
-' 	IF a${i} < b${i} THEN RETURN -1
-' 	IF a${i} > b${i} THEN RETURN 1
-' NEXT i
-' IF UBOUND (a$) < UBOUND (b$) THEN RETURN -1
-' IF UBOUND (a$) > UBOUND (b$) THEN RETURN 1
-'
-' RETURN 0
-' END FUNCTION
-' 0.2-old~~~
-' 0.2-new+++
-FUNCTION StringCompare (a, b)
-	STRING_Get (a, @a$)
-	STRING_Get (b, @b$)
-
-	upp_a = LEN (a$) - 1
-	upp_b = LEN (b$) - 1
-
-	' compare the characters up to the smaller length (but not zero)
-	upperMin = MIN (upp_a, upp_b)
-	IF upperMin > -1 THEN
-		' non-empty strings
-		FOR i = 0 TO upperMin
-			IF a${i} = b${i} THEN DO NEXT
-			'
-			IF a${i} > b${i} THEN
-				RETURN 1		' a$ > b$
-			ELSE
-				RETURN -1		' a$ < b$
-			ENDIF
-		NEXT i
-	ENDIF
-
-	SELECT CASE TRUE
-		CASE upp_a = upp_b
-			'
-		CASE upp_a > upp_b
-			' a$ is longer than b$
-			FOR i = upperMin + 1 TO upp_a
-				IF a${i} <> ' ' THEN RETURN 1		' a$ > b$
-			NEXT i
-			' a$ contains only trailing spaces
-			'
-		CASE ELSE
-			' b$ is longer than a$
-			FOR i = upperMin + 1 TO upp_b
-				IF b${i} <> ' ' THEN RETURN -1		' a$ < b$
-			NEXT i
-			' b$ contains only trailing spaces
-			'
-	END SELECT
-	RETURN 0		' a$ == b$
-END FUNCTION
-' 0.2-new~~~
+' 0.2-new===
 '
 ' ############################
-' ##### IStringCompare #####
+' #####  IStringCompare  #####
 ' ############################
 ' A case insensitive comparator for strings
 '
@@ -1207,7 +699,7 @@ END FUNCTION
 '
 '	RETURN 0
 'END FUNCTION
-' 0.2-old~~~
+' 0.2-old===
 ' 0.2-new+++
 FUNCTION IStringCompare (a, b)
 	STRING_Get (a, @a$)
@@ -1252,7 +744,390 @@ FUNCTION IStringCompare (a, b)
 
 	RETURN 0		' a$ == b$
 END FUNCTION
+'
+' ######################
+' ##### IntCompare #####
+' ######################
+' A comparator for integers
+FUNCTION IntCompare (a, b)
+'
+' GL-21apr11-old---
+'	RETURN b - a
+' GL-21apr11-old===
+' GL-21apr11-new+++
+	IF a = b THEN
+		ret = 0
+	ELSE
+		IF a > b THEN ret = 1 ELSE ret = -1
+	ENDIF
+	RETURN ret
+' GL-21apr11-new===
+'
+END FUNCTION
+'
+' ###############################
+' #####  LinkedList_Append  #####
+' ###############################
+' Appends an item to a linked list
+' list = the linked list to append to
+' iData = the data to append to the linked list
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_Append (LINKEDLIST list, iData)
+	LINKEDNODE tail
+	LINKEDNODE new
 
+	IFF LINKEDNODE_Get(list.iTail, @tail) THEN RETURN $$FALSE		' fail
+	new.iData = iData
+	new.iNext = 0
+	tail.iNext = LINKEDNODE_New(new)
+	LINKEDNODE_Update(list.iTail, @tail)
+
+	list.iTail = tail.iNext
+	INC list.cItems
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ##################################
+' #####  LinkedList_DeleteAll  #####
+' ##################################
+' Deletes every item in a linked list
+' list = the list to delete the items from
+' returns $$TRUE on success or $$FALSE on fail.
+FUNCTION LinkedList_DeleteAll (LINKEDLIST list)
+	LINKEDNODE currNode
+
+	' Get the head
+	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN $$FALSE		' fail
+
+	DO WHILE currNode.iNext
+		' Get the next node
+		iCurrNode = currNode.iNext
+		IFF LINKEDNODE_Get(iCurrNode, @currNode) THEN RETURN $$FALSE		' fail
+
+		' Process this node
+		IFF LINKEDNODE_Delete(iCurrNode) THEN RETURN $$FALSE		' fail
+	LOOP
+
+	' Update the head node
+	LINKEDNODE_Get(list.iHead, @currNode)
+	currNode.iNext = 0
+	LINKEDNODE_Update (list.iHead, currNode)
+
+	list.iTail = list.iHead
+	list.cItems = 0
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ###################################
+' #####  LinkedList_DeleteItem  #####
+' ###################################
+' Deletes an item from a linked list.
+' list = the list to delete from
+' index = the 0 based index of the item to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_DeleteItem (LINKEDLIST list, index)
+	LINKEDNODE previous
+	LINKEDNODE currNode
+
+	' Prevent the user from deleting the head node
+	IF index < 0 THEN RETURN $$FALSE		' fail
+
+	' get the previous node
+	IFF LINKEDLIST_GetNode (list, index-1, @iPrevious) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN $$FALSE		' fail
+
+	' Update the tail pointer if necessary
+	IF previous.iNext = list.iTail THEN list.iTail = iPrevious
+
+	' Now get the node we want to delete
+	iCurrNode = previous.iNext
+	IFF LINKEDNODE_Get (iCurrNode, @currNode) THEN RETURN $$FALSE		' fail
+
+	' And delete
+	previous.iNext = currNode.iNext
+	IFF LINKEDNODE_Update(iPrevious, previous) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Delete(iCurrNode) THEN RETURN $$FALSE		' fail
+
+	DEC list.cItems
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ###################################
+' #####  LinkedList_DeleteThis  #####
+' ###################################
+' Deletes the item LinkedList_Walk just returned
+' hWalk = the walk handle
+' list = the list the walk is associated with.  Need this to change item count
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST list)
+	LINKEDNODE currNode
+	LINKEDWALK walk
+
+	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE		' fail
+	IF walk.iPrev < 0 THEN
+		IFF LINKEDNODE_Get (walk.first, @currNode) THEN RETURN $$FALSE		' fail
+		currNode.iNext = walk.iNext
+		IFF LINKEDNODE_Update (walk.first, currNode) THEN RETURN $$FALSE		' fail
+	ELSE
+		IFF LINKEDNODE_Get (walk.iPrev, @currNode) THEN RETURN $$FALSE		' fail
+		currNode.iNext = walk.iNext
+		IFF LINKEDNODE_Update (walk.iPrev, currNode) THEN RETURN $$FALSE		' fail
+	ENDIF
+
+	IFF LINKEDNODE_Delete (walk.iCurrentNode) THEN RETURN $$FALSE		' fail
+	DEC list.cItems
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ################################
+' #####  LinkedList_EndWalk  #####
+' ################################
+' Closes a walk handle
+' hWalk = the walk handle to close
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_EndWalk (hWalk)
+	RETURN LINKEDWALK_Delete(hWalk)
+END FUNCTION
+'
+' ################################
+' #####  LinkedList_GetItem  #####
+' ################################
+' Retrieves a particular item from a linked list
+' list = the list to get the item from
+' index = the 0 based index of the item to get
+' iData = the variable to store the data
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_GetItem (LINKEDLIST list, index, @iData)
+	LINKEDNODE node
+
+	IFF LINKEDLIST_GetNode(list, index, @iNode) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Get(iNode, @node) THEN RETURN $$FALSE		' fail
+
+	iData = node.iData
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' #############################
+' #####  LinkedList_Init  #####
+' #############################
+' Initializes a linked list.
+' list = the linked list structure to initialise
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_Init (LINKEDLIST list)
+	LINKEDNODE head
+
+	IFF #bReentry THEN ADT ()		' 0.2-initialize Abstract Data Types library
+
+	head.iData = 0
+	head.iNext = 0
+
+	list.iHead = LINKEDNODE_New(head)
+	list.iTail = list.iHead
+	list.cItems = 0
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ###############################
+' #####  LinkedList_Insert  #####
+' ###############################
+' Inserts an item into a linked list
+' list = the list to insert into
+' index = the 0 based index to insert the item at
+' iData = the data to insert into the list
+' returns $$TRUE on succcess or $$FALSE on fail
+FUNCTION LinkedList_Insert (LINKEDLIST list, index, iData)
+	LINKEDNODE previous
+	LINKEDNODE new
+
+	' get the previous node
+	IFF LINKEDLIST_GetNode (list, index - 1, @iPrevious) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Get (iPrevious, @previous) THEN RETURN $$FALSE		' fail
+
+	new.iData = iData
+	new.iNext = previous.iNext
+
+	previous.iNext = LINKEDNODE_New(new)
+
+	IF iPrevious = list.iTail THEN list.iTail = previous.iNext
+	IFZ previous.iNext THEN RETURN $$FALSE		' fail
+
+	IFF LINKEDNODE_Update(iPrevious, previous) THEN RETURN $$FALSE		' fail
+
+	INC list.cItems
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ###################################
+' #####  LinkedList_IsLastNode  #####
+' ###################################
+' Checks to see if hWalk is on the last node
+' hWalk = the walk to check
+' returns $$TRUE if on last node, or $$FALSE
+FUNCTION LinkedList_IsLastNode (hWalk)
+	LINKEDWALK walk
+'
+' 0.2-old---
+'	IFF LINKEDWALK_Get(hWalk, @walk) THEN RETURN $$FALSE		' fail
+'	IFZ walk.iNext THEN RETURN $$TRUE ELSE RETURN $$FALSE
+' 0.2-old===
+' 0.2-new+++
+	' GL-21apr11-Code tightening
+	bLast = $$FALSE		' regular node
+	IFF LINKEDWALK_Get (hWalk, @walk) THEN
+		bLast = $$TRUE		' last node
+	ELSE
+		IFZ walk.iNext THEN bLast = $$TRUE		' last node
+	ENDIF
+	RETURN bLast
+' 0.2-new===
+'
+END FUNCTION
+'
+' #############################
+' #####  LinkedList_Jump  #####
+' #############################
+' Jumps to the specified item, hence, item will be the next item returned by LinkedList_Walk
+' hWalk = the walk handle
+' iItem = the index of the item to jump to
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_Jump (hWalk, iItem)
+	LINKEDNODE currNode
+	LINKEDWALK walk
+
+	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Get (walk.first, @currNode) THEN RETURN $$FALSE		' fail
+
+	walk.iPrev = 0
+	iNode = walk.first
+	FOR i = 0 TO iItem-1
+		walk.iPrev = iNode
+		iNode = currNode.iNext
+		IFF LINKEDNODE_Get (currNode.iNext, @currNode) THEN RETURN $$FALSE		' fail
+	NEXT i
+
+	iData = currNode.iData
+	walk.iNext = currNode.iNext
+	IFF LINKEDWALK_Update(hWalk, @walk) THEN RETURN $$FALSE		' fail
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ############################
+' #####  LinkedList_Map  #####
+' ############################
+' Calls a function for every item in a linked list.
+' list = the linked list to map
+' callBack = the function to map onto the list
+' result = the result returned from the callback function
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_Map (LINKEDLIST list, FUNCADDR callBack, @result)
+	LINKEDNODE currNode
+	FUNCADDR func (XLONG, XLONG, XLONG)
+
+	func = callBack
+
+	' Get the head
+	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN $$FALSE		' fail
+
+	i = 0
+	DO WHILE currNode.iNext
+		' Get the next node
+		iCurrNode = currNode.iNext
+		IFF LINKEDNODE_Get(iCurrNode, @currNode) THEN RETURN $$FALSE		' fail
+
+		' Process this node
+		IFF @func(i, currNode.iData, @result) THEN RETURN $$TRUE		' success
+		INC i
+	LOOP
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ##################################
+' #####  LinkedList_ResetWalk  #####
+' ##################################
+' Resets a walk, so the next item it returns is the first item in the list
+' hWalk = the walk to reset
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_ResetWalk (hWalk)
+	LINKEDWALK walk
+	LINKEDNODE node
+
+	IFF LINKEDWALK_Get(hWalk, @walk) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Get(walk.first, @node) THEN RETURN $$FALSE		' fail
+	walk.iPrev = walk.first
+	walk.iCurrentNode = -1
+	walk.iNext = node.iNext
+	RETURN LINKEDWALK_Update (hWalk, walk)
+END FUNCTION
+'
+' ##################################
+' #####  LinkedList_StartWalk  #####
+' ##################################
+' Initializes a walk of a linked list.
+' list = the list to walk
+' returns a walk handle which you must pass to subsequent calls to LinkedList_Walk and LinkedList_EndWalk,
+'         or 0 on fail
+FUNCTION LinkedList_StartWalk (LINKEDLIST list)
+	LINKEDNODE currNode
+	LINKEDWALK walk
+
+	IFF LINKEDNODE_Get(list.iHead, @currNode) THEN RETURN 0
+	walk.first = list.iHead
+	walk.iPrev = list.iHead
+	walk.iCurrentNode = -1
+	walk.iNext = currNode.iNext
+	walk.last = iTail
+
+	RETURN LINKEDWALK_New (walk)
+END FUNCTION
+'
+' ###############################
+' #####  LinkedList_Uninit  #####
+' ###############################
+' Uninitialises a linked list.
+' (Call if you are about to delete a linked list)
+'
+' list = the linkedlist to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LinkedList_Uninit (LINKEDLIST list)
+	IFF LinkedList_DeleteAll (@list) THEN RETURN $$FALSE		' fail
+	IFF LINKEDNODE_Delete (list.iHead) THEN RETURN $$FALSE		' fail
+	list.iHead = 0
+	list.iTail = 0
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' #############################
+' #####  LinkedList_Walk  #####
+' #############################
+' Gets the next data item in a linked list.
+' hWalk = the walk handle generated with the LinkedList_StartWalk call
+' iData = the variable to store the data
+' returns $$TRUE if iData is valid,
+'      or $$FALSE if the walk is complete or there is an error
+FUNCTION LinkedList_Walk (hWalk, @iData)
+	LINKEDNODE currNode
+	LINKEDWALK walk
+
+	IFF LINKEDWALK_Get (hWalk, @walk) THEN RETURN $$FALSE		' fail
+	'PRINT "> ";walk.iPrev, walk.iCurrentNode, walk.iNext
+
+	IFF LINKEDNODE_Get(walk.iNext, @currNode) THEN RETURN $$FALSE		' fail
+
+	iData = currNode.iData
+	walk.iPrev = walk.iCurrentNode
+	walk.iCurrentNode = walk.iNext
+	walk.iNext = currNode.iNext
+	IFF LINKEDWALK_Update(hWalk, @walk) THEN RETURN $$FALSE		' fail
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' === STRING pool ===
+'
 FUNCTION STRING_Delete (id)
 	SHARED STRINGarray$[]
 	SHARED UBYTE STRINGarrayUM[]
@@ -1266,6 +1141,54 @@ FUNCTION STRING_Delete (id)
 		bOK = $$TRUE
 	ENDIF
 	RETURN bOK
+END FUNCTION
+'
+' #############################
+' #####  STRING_Extract$  #####
+' #############################
+'
+' Extracts a sub-string from a string.
+'
+' text$    = the passed string
+' beginPos = position of the first character of the sub-string
+'             < 1 indicates "first character"
+' posEnd   = position of the last character of the sub-string
+'             < 1 indicates "up to the last character"
+'
+' Usage:
+'posSepPrev = 0
+'posSep = INSTR (csv$, ",")
+'
+'DO WHILE posSep > 1
+'	' extract the next CSV field
+'	start = posSepPrev + 1
+'	end = posSep - 1
+'	'
+'	field$ = STRING_Extract$ (csv$, start, end)
+'	'
+'	' (...)
+'	'
+'	posSepPrev = posSep
+'	posSep = INSTR (csv$, ",", posSep + 1)
+'	'
+'LOOP
+'
+FUNCTION STRING_Extract$ (text$, beginPos, posEnd)
+
+	IF beginPos < 1 THEN beginPos = 1
+
+	IF posEnd < beginPos THEN posEnd = LEN (text$)
+	IF posEnd > LEN (text$) THEN posEnd = LEN (text$)
+
+	IF posEnd < beginPos THEN
+		ret$ = ""
+	ELSE
+		length = posEnd - beginPos + 1
+		ret$ = TRIM$ (MID$ (text$, beginPos, length))
+	ENDIF
+
+	RETURN ret$
+
 END FUNCTION
 '
 ' Gets a STRING item from the STRING Pool.
@@ -1296,6 +1219,80 @@ FUNCTION STRING_Get (id, @r_item$)
 
 	IFF bOK THEN r_item$ = ""
 	RETURN bOK
+
+END FUNCTION
+'
+' ##################################
+' #####  STRING_GetQuotedText  #####
+' ##################################
+'
+' Extracts a quoted text from a string.
+'
+' text$     = the passed string
+' pos1Quote = position of the first double-quote
+'             < 1 indicates "first character"
+' r_lit$    = returned literal
+'
+' returns bOK: $$TRUE if the literal was extracted successfully.
+'
+FUNCTION STRING_GetQuotedText (text$, pos1Quote, @r_lit$)
+
+	bOK = $$FALSE
+
+	final = LEN (text$)		' 0 offset to null-terminator
+	SELECT CASE final
+		CASE 0		' the passed string is empty
+			r_lit$ = ""
+			'
+		CASE ELSE
+			IF (pos1Quote <= 0) THEN pos1Quote = 1
+			'
+			GOSUB double_quote
+			'
+	END SELECT
+
+	RETURN bOK
+
+SUB double_quote
+
+	start = pos1Quote		' 1 offset to opening double-quote
+	SELECT CASE text${pos1Quote - 1}
+		CASE $$DOUBLE_QU
+		CASE ELSE
+			IF (start > 0) THEN
+				' not starting by a character double-quote
+				DEC start
+			ENDIF
+	END SELECT
+
+	' look for the closing double-quote
+	prevChar = 0		' the previous character is not a backslash
+	length = 0
+	FOR scans = start TO final
+		SELECT CASE text${scans}
+			CASE $$DOUBLE_QU
+				SELECT CASE prevChar
+					CASE '\\'
+						' \" == character double-quote
+						SELECT CASE text${pos1Quote - 1}
+							CASE $$DOUBLE_QU
+								' OK: character double-quote within quotes
+								bOK = $$TRUE
+						END SELECT
+						EXIT FOR		' done!
+				END SELECT
+		END SELECT
+		INC length
+		prevChar = text${scans}
+	NEXT scans
+
+	IFZ length THEN
+		r_lit$ = ""
+	ELSE
+		r_lit$ = MID$ (text$, (start + 1), length)
+	ENDIF
+
+END SUB
 
 END FUNCTION
 '
@@ -1392,150 +1389,145 @@ FUNCTION STRING_Update (id, item$)
 	RETURN bOK
 END FUNCTION
 '
-' #############################
-' #####  STRING_Extract$  #####
-' #############################
-'
-' Extracts a sub-string from a string.
-'
-' text$    = the passed string
-' beginPos = position of the first character of the sub-string
-'             < 1 indicates "first character"
-' posEnd   = position of the last character of the sub-string
-'             < 1 indicates "up to the last character"
-'
-' Usage:
-'posSepPrev = 0
-'posSep = INSTR (csv$, ",")
-'
-'DO WHILE posSep > 1
-'	' extract the next CSV field
-'	start = posSepPrev + 1
-'	end = posSep - 1
-'	'
-'	field$ = STRING_Extract$ (csv$, start, end)
-'	'
-'	' (...)
-'	'
-'	posSepPrev = posSep
-'	posSep = INSTR (csv$, ",", posSep + 1)
-'	'
-'LOOP
-'
-FUNCTION STRING_Extract$ (text$, beginPos, posEnd)
-
-	IF beginPos < 1 THEN beginPos = 1
-
-	IF posEnd < beginPos THEN posEnd = LEN (text$)
-	IF posEnd > LEN (text$) THEN posEnd = LEN (text$)
-
-	IF posEnd < beginPos THEN
-		ret$ = ""
-	ELSE
-		length = posEnd - beginPos + 1
-		ret$ = TRIM$ (MID$ (text$, beginPos, length))
-	ENDIF
-
-	RETURN ret$
-
-END FUNCTION
-'
-' ##################################
-' #####  STRING_GetQuotedText  #####
-' ##################################
-'
-' Extracts a quoted text from a string.
-'
-' text$     = the passed string
-' pos1Quote = position of the first DOUBLE-QUOTE
-'             < 1 indicates "first character"
-' r_lit$    = returned literal
-'
-' Returns bOK: $$TRUE if the literal was extracted successfully.
-'
-FUNCTION STRING_GetQuotedText (text$, pos1Quote, @r_lit$)
-
-	bOK = $$FALSE
-
-	final = LEN (text$)		' 0 offset to null-terminator
-	SELECT CASE final
-		CASE 0		' the passed string is empty
-			r_lit$ = ""
-			'
-		CASE ELSE
-			IF (pos1Quote <= 0) THEN pos1Quote = 1
-			'
-			GOSUB double_quote
-			'
-	END SELECT
-
-	RETURN bOK
-
-SUB double_quote
-
-	start = pos1Quote		' 1 offset to opening DOUBLE-QUOTE
-	SELECT CASE text${pos1Quote - 1}
-		CASE '"'
-		CASE ELSE
-			IF (start > 0) THEN DEC start		' not starting by a character DOUBLE-QUOTE
-
-	END SELECT
-
-	prevChar = 0 : cCh = 0
-	FOR scans = start TO final
-		SELECT CASE text${scans}
-			CASE '"'
-				SELECT CASE prevChar
-					CASE '\\'
-						' \" == character DOUBLE-QUOTE
-						SELECT CASE text${pos1Quote - 1}
-							CASE '"' : bOK = $$TRUE		' OK: character DOUBLE-QUOTE within quotes
-
-						END SELECT
-						EXIT FOR		' done!
-
-				END SELECT
-
-		END SELECT
-		INC cCh
-		prevChar = text${scans}
-	NEXT scans
-
-	IFZ cCh THEN
-		r_lit$ = ""
-	ELSE
-		r_lit$ = MID$ (text$, (start + 1), cCh)
-	ENDIF
-
-END SUB
-
-END FUNCTION
-'
-' ################################
-' ##### LINKEDLIST_GETNODE #####
-' ################################
-' Gets a particular node from a linked list
-' list = the list to get a node from
-' index = the 0 based index of the node to get, use -1 to get the head node
-' iNode = the variable to store the index to the node
+' ########################
+' #####  Stack_Init  #####
+' ########################
+' Initializes a stack.
+' stack = the stack to initialise
 ' returns $$TRUE on success or $$FALSE on fail
-FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
+FUNCTION Stack_Init (STACK stack)
+	IFF #bReentry THEN ADT ()		' 0.2-initialize Abstract Data Types library
+	RETURN LinkedList_Init (@stack.list)
+END FUNCTION
+'
+' ########################
+' #####  Stack_Peek  #####
+' ########################
+' Peeks at an item on the stack
+' stack = the stack to peek off
+' iData = the variable to store the data peeked from the stack, unchanged on fail
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION Stack_Peek (STACK stack, @iData)
 	LINKEDNODE node
 
-	' Get the head node
-	iThis = list.iHead
+	' Is the stack empty?
+	IF stack.list.iHead = stack.list.iTail THEN RETURN $$FALSE		' fail
 
-	FOR i = -1 TO index-1
-		IFF LINKEDNODE_Get (iThis, @node) THEN RETURN $$FALSE
-		iThis = node.iNext
-	NEXT i
+	IFF LINKEDNODE_Get(stack.list.iTail, @node) THEN RETURN $$FALSE		' fail
 
-	iNode = iThis
+	iData = node.iData
 	RETURN $$TRUE		' success
 END FUNCTION
 '
+' #######################
+' #####  Stack_Pop  #####
+' #######################
+' Pops an item off the stack
+' stack = the stack to pop the data from
+' iData = the variable to store the data popped off the stack, unchanged on fail
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION Stack_Pop (STACK stack, @iData)
+	LINKEDNODE node
+
+	' Is the stack empty?
+	IF stack.list.iHead = stack.list.iTail THEN RETURN $$FALSE		' fail
+
+	IFF LINKEDNODE_Get(stack.list.iTail, @node) THEN RETURN $$FALSE		' fail
+	IFF LinkedList_DeleteItem (@stack.list, stack.list.cItems-1) THEN RETURN $$FALSE		' fail
+
+	iData = node.iData
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ########################
+' #####  Stack_Push  #####
+' ########################
+' Pushes an item onto the stack
+' stack = the stack to push the item onto
+' iData = the item to push onto the stack
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION Stack_Push (STACK stack, iData)
+	ret = LinkedList_Append (@stack.list, iData)
+	RETURN ret
+END FUNCTION
+'
+' ##########################
+' #####  Stack_Uninit  #####
+' ##########################
+' Uninitialises a stack, use prior to deleting
+' stack = the stack to uninitialise
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION Stack_Uninit (STACK stack)
+	RETURN LinkedList_Uninit (@stack.list)
+END FUNCTION
+'
+' ###########################
+' #####  StringCompare  #####
+' ###########################
+' A comparator for strings.
+'
+' 0.2-old---
+' FUNCTION StringCompare (a, b)
+' STRING_Get (a, @a$)
+' STRING_Get (b, @b$)
+'
+' FOR i = 0 TO MIN (UBOUND (a$), UBOUND (b$))
+' 	IF a${i} < b${i} THEN RETURN -1
+' 	IF a${i} > b${i} THEN RETURN 1
+' NEXT i
+' IF UBOUND (a$) < UBOUND (b$) THEN RETURN -1
+' IF UBOUND (a$) > UBOUND (b$) THEN RETURN 1
+'
+' RETURN 0
+' END FUNCTION
+' 0.2-old===
+' 0.2-new+++
+FUNCTION StringCompare (a, b)
+	STRING_Get (a, @a$)
+	STRING_Get (b, @b$)
+
+	upp_a = LEN (a$) - 1
+	upp_b = LEN (b$) - 1
+
+	' compare the characters up to the smaller length (but not zero)
+	upperMin = MIN (upp_a, upp_b)
+	IF upperMin > -1 THEN
+		' non-empty strings
+		FOR i = 0 TO upperMin
+			IF a${i} = b${i} THEN DO NEXT
+			'
+			IF a${i} > b${i} THEN
+				RETURN 1		' a$ > b$
+			ELSE
+				RETURN -1		' a$ < b$
+			ENDIF
+		NEXT i
+	ENDIF
+
+	SELECT CASE TRUE
+		CASE upp_a = upp_b
+			'
+		CASE upp_a > upp_b
+			' a$ is longer than b$
+			FOR i = upperMin + 1 TO upp_a
+				IF a${i} <> ' ' THEN RETURN 1		' a$ > b$
+			NEXT i
+			' a$ contains only trailing spaces
+			'
+		CASE ELSE
+			' b$ is longer than a$
+			FOR i = upperMin + 1 TO upp_b
+				IF b${i} <> ' ' THEN RETURN -1		' a$ < b$
+			NEXT i
+			' b$ contains only trailing spaces
+			'
+	END SELECT
+	RETURN 0		' a$ == b$
+
+END FUNCTION
+'
 ' #############################
-' ##### BinTree_RealAdd #####
+' #####  BinTree_RealAdd  #####
 ' #############################
 ' Adds an item to a bin tree
 ' comparator = the comparator to order the keys
@@ -1550,9 +1542,9 @@ FUNCTION BinTree_RealAdd (FUNCADDR comparator, iNode, iKey, iData)
 '
 ' 0.2-old---
 '	comp = comparator
-' 0.2-old~~~
+' 0.2-old===
 '
-	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
+	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE		' fail
 '
 ' 0.2-new+++
 	IF comparator THEN
@@ -1560,10 +1552,10 @@ FUNCTION BinTree_RealAdd (FUNCADDR comparator, iNode, iKey, iData)
 	ELSE
 		comp = &StringCompare()
 	ENDIF
-' 0.2-new~~~
+' 0.2-new===
 '
 	order = @comp (iKey, node.iKey)
-	IFZ order THEN RETURN $$FALSE ' duplicate key
+	IFZ order THEN RETURN $$FALSE		' duplicate key
 	IF order < 0 THEN
 		IFZ node.iLeft THEN
 			newNode.iKey = iKey
@@ -1598,39 +1590,8 @@ FUNCTION BinTree_RealAdd (FUNCADDR comparator, iNode, iKey, iData)
 	RETURN $$FALSE		'fail
 END FUNCTION
 '
-' ################################
-' ##### BinTree_RealUninit #####
-' ################################
-' Deletes iNode and all its children
-' iNode = the node to delete
-' returns $$TRUE on success or $$FALSE on fail
-FUNCTION BinTree_RealUninit (iNode, FUNCADDR keyDeleter)
-	BINNODE node
-	FUNCADDR delete (XLONG)
-
-	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
-
-	IF node.iLeft THEN BinTree_RealUninit (node.iLeft, keyDeleter)
-	IF node.iRight THEN BinTree_RealUninit (node.iRight, keyDeleter)
-
-	delete = keyDeleter
-'
-' 0.2-old---
-'	@delete (node.iKey)
-' 0.2-old~~~
-' 0.2-new+++
-	IF delete THEN
-		@delete (node.iKey)
-	ENDIF
-' 0.2-new~~~
-'
-	BINNODE_Delete (iNode)
-
-	RETURN $$TRUE		' success
-END FUNCTION
-'
 ' ##############################
-' ##### BinTree_RealFind #####
+' #####  BinTree_RealFind  #####
 ' ##############################
 ' Finds a particular node in a bin tree
 ' comparator = the comparator used to order the keys
@@ -1685,7 +1646,7 @@ END SUB
 END FUNCTION
 '
 ' ################################
-' ##### BinTree_RealRemove #####
+' #####  BinTree_RealRemove  #####
 ' ################################
 ' Removes a node from a bin tree
 ' iNode = the node to remove
@@ -1697,8 +1658,8 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 	BINNODE childNode
 	FUNCADDR delete (XLONG)
 
-	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE
-	IFF BINNODE_Get (iParentNode, @parentNode) THEN RETURN $$FALSE
+	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE		' fail
+	IFF BINNODE_Get (iParentNode, @parentNode) THEN RETURN $$FALSE		' fail
 
 	delete = keyDeleter
 	SELECT CASE TRUE
@@ -1707,12 +1668,12 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 '
 ' 0.2-old---
 '			@delete (node.iKey)
-' 0.2-old~~~
+' 0.2-old===
 ' 0.2-new+++
 			IF delete THEN
 				@delete (node.iKey)
 			ENDIF
-' 0.2-new~~~
+' 0.2-new===
 '
 			iData = node.iData
 			BINNODE_Delete (iNode)
@@ -1738,12 +1699,12 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 '
 ' 0.2-old---
 '			@delete (node.iKey)
-' 0.2-old~~~
+' 0.2-old===
 ' 0.2-new+++
 			IF delete THEN
 				@delete (node.iKey)
 			ENDIF
-' 0.2-new~~~
+' 0.2-new===
 '
 			iData = node.iData
 
@@ -1787,12 +1748,12 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 '
 ' 0.2-old---
 '			@delete (node.iKey)
-' 0.2-old~~~
+' 0.2-old===
 ' 0.2-new+++
 			IF delete THEN
 				@delete (node.iKey)
 			ENDIF
-' 0.2-new~~~
+' 0.2-new===
 '
 			node.iKey = childNode.iKey
 			node.iData = childNode.iData
@@ -1805,7 +1766,64 @@ FUNCTION BinTree_RealRemove (FUNCADDR keyDeleter, iNode, iParentNode)
 
 END FUNCTION
 '
-' M4 Definitions.
+' ################################
+' #####  BinTree_RealUninit  #####
+' ################################
+' Deletes iNode and all its children
+' iNode = the node to delete
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION BinTree_RealUninit (iNode, FUNCADDR keyDeleter)
+	BINNODE node
+	FUNCADDR delete (XLONG)
+
+	IFF BINNODE_Get (iNode, @node) THEN RETURN $$FALSE		' fail
+
+	IF node.iLeft THEN BinTree_RealUninit (node.iLeft, keyDeleter)
+	IF node.iRight THEN BinTree_RealUninit (node.iRight, keyDeleter)
+
+	delete = keyDeleter
+'
+' 0.2-old---
+'	@delete (node.iKey)
+' 0.2-old===
+' 0.2-new+++
+	IF delete THEN
+		@delete (node.iKey)
+	ENDIF
+' 0.2-new===
+'
+	BINNODE_Delete (iNode)
+
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+' ################################
+' #####  LINKEDLIST_GETNODE  #####
+' ################################
+' Gets a particular node from a linked list
+' list = the list to get a node from
+' index = the 0 based index of the node to get, use -1 to get the head node
+' iNode = the variable to store the index to the node
+' returns $$TRUE on success or $$FALSE on fail
+FUNCTION LINKEDLIST_GetNode (LINKEDLIST list, index, iNode)
+	LINKEDNODE node
+
+	' Get the head node
+	iThis = list.iHead
+
+	FOR i = -1 TO index-1
+		IFF LINKEDNODE_Get (iThis, @node) THEN RETURN $$FALSE		' fail
+		iThis = node.iNext
+	NEXT i
+
+	iNode = iThis
+	RETURN $$TRUE		' success
+END FUNCTION
+'
+'
+' ############################
+' #####  M4 Definitions  #####
+' ############################
 '
 DefineAccess(LINKEDNODE)
 
