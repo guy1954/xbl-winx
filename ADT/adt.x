@@ -10,7 +10,7 @@ VERSION "0.2"		' GL-30 May 2013
 '
 ' ADT - Abstract Data Types for XBLite
 ' (C) Callum Lowcay 2008 - Licensed under the GNU LGPL
-' Evolutions: Guy Lonne 2009-2024.
+' Evolutions: Guy Lonne 2009-2013.
 '
 ' ------------------------------------------------------------------------------
 ' The ADT library is distributed under the
