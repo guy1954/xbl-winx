@@ -5,7 +5,7 @@
 ' ####################
 '
 PROGRAM "WinX"
-VERSION "0.6.0.4"		' 27 October 2024
+VERSION "0.6.0.5"		' 27 October 2024
 EXPLICIT
 'CONSOLE
 '
@@ -33,23 +33,22 @@ EXPLICIT
 '
 ' ***** Notes *****
 '
-' No longer requires m4 macro processing to compile
-' since accessors.m4 was replaced by GRAB statements.
+' No longer requires m4 macro processing to compile.
 '
 ' Deploying WinX.dll for dynamic calls
 ' ====================================
 ' 1.Use SHIFT+F9 to compile
 ' 2.Use F10 to build WinX.dll
 ' Created:
-' - .\WinX.dec
-' - .\WinX.lib
-' - .\WinX.dll
+' - ./WinX.dec
+' - ./WinX.lib
+' - ./WinX.dll
 ' 3.Enable 'clean' makefile option
 ' 4.Use again F10 to deploy WinX.dll
 ' Created:
-' - C:\xblite\include\WinX.dec
-' - C:\xblite\lib\WinX.lib
-' - C:\xblite\programs\WinX.dll
+' - C:/xblite/include/WinX.dec
+' - C:/xblite/lib/WinX.lib
+' - C:/xblite/programs/WinX.dll
 '
 ' Contrary to the XBasic/XBLite convention of RETURNing an error flag bErr,
 ' WinX functions return bOK ($$TRUE on success).
@@ -87,9 +86,16 @@ EXPLICIT
 '
 ' 0.6.0.4-GL-09apr24-Compile WinX.x is now "stand-alone".
 ' - GL removed any dependencies on:
+'     . M4 code snippets
 '     . xma.dll
 '     . adt.dll
-'     . M4 code snippets
+'
+' 0.6.0.5-GL-27oct24-Added 5 new functions.
+'-  WinXCtr_Adjust_size					: resize the control to reflect its window's new width and height
+'-  WinXCtr_Adjust_width				: change the control's width to reflect its window's new width
+'-  WinXCtr_Adjust_height				: change the control's height to reflect its window's new height
+'-  WinXCtr_Slide_left_or_right	: slide left or right the control
+'-  WinXCtr_Slide_up_or_down		: slide up or down the control
 '
 '
 ' ##############################
