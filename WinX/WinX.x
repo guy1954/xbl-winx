@@ -97,6 +97,8 @@ EXPLICIT
 '-  WinXCtr_Slide_left_or_right	: slide left or right the control
 '-  WinXCtr_Slide_up_or_down		: slide up or down the control
 '
+' Corrected WinXNewToolbar().
+'
 '
 ' ##############################
 ' #####  Import Libraries  #####
@@ -526,6 +528,7 @@ DECLARE FUNCTION WinXCtr_Slide_up_or_down		 (hWnd, win_initH, winHeight, bMenu, 
 ' Standard Win32 API Dialogs
 '
 DECLARE FUNCTION WinXDialog_Error (msg$, title$, severity) ' display an error dialog box
+DECLARE FUNCTION WinXDialog_Message (hParent, msg$, title$, icon$, hInst) ' display message dialog box
 DECLARE FUNCTION WinXDialog_OpenFile$ (hOwner, title$, extensions$, initialName$, multiSelect) ' File Open Dialog
 DECLARE FUNCTION WinXDialog_Question (hOwner, msg$, title$, cancel, defaultButton) ' display a dialog asking the User a question
 DECLARE FUNCTION WinXDialog_SaveFile$ (hOwner, title$, extensions$, initialName$, overwritePrompt) ' File Save Dialog
@@ -3317,6 +3320,58 @@ FUNCTION WinXDialog_Error (STRING message, STRING title, severity)
 ' 0.6.0.2-new===
 '
 	RETURN $$TRUE
+
+END FUNCTION
+'
+' ################################
+' #####  WinXDialog_Message  #####
+' ################################
+'
+' Displays a simple message dialog box
+' hParent = parent control handle window or 0 for none
+' text$ = text to display
+' title$ = title for the dialog
+' icon$ = name of the icon to use, "0" for the application icon
+' hMod = handle to the module from which the icon comes or 0 for this module
+' returns $$TRUE on success, or $$FALSE on fail
+'
+' Usage:
+' --> SHARED hInst ' is needed by WinXDialog_Message for the icon "00app_icon"
+' WinXClip_PutString (Stri$)
+' msg$ = Stri$
+' WinXDialog_Message (#winMain, msg$, "Copy to Clipboard", "00app_icon", hInst)
+'
+FUNCTION WinXDialog_Message (hParent, text$, title$, icon$, hMod)
+
+	MSGBOXPARAMS mb
+
+	SetLastError (0)
+
+	mb.hwndOwner = hParent
+	IFZ mb.hwndOwner THEN
+		mb.hwndOwner = GetActiveWindow ()
+	ENDIF
+
+	mb.hInstance = hMod
+	IFZ mb.hInstance THEN
+		mb.hInstance = GetModuleHandleA (0)
+	ENDIF
+
+	mb.lpszText = &text$
+	mb.lpszCaption = &title$
+	mb.lpszIcon = &icon$
+
+	mb.dwStyle = $$MB_OK
+	IFZ icon$ THEN
+		icon$ = "WinXIcon"
+	ELSE
+		mb.dwStyle = mb.dwStyle | $$MB_USERICON
+	ENDIF
+
+	mb.cbSize = SIZE (MSGBOXPARAMS)
+
+	MessageBoxIndirectA (&mb)
+	RETURN $$TRUE		' success
 
 END FUNCTION
 '
@@ -6453,146 +6508,265 @@ END FUNCTION
 '
 FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, toolTips, customisable)
 
-	XLONG hilButtons
-	XLONG hilGray
-	XLONG hilHot
+	BITMAP bitMap
 
-	XLONG pixelRGB
-	XLONG w					' width
-	XLONG hDC				' the handle of the Desktop context
+	XLONG ret				' win32 api return value (0 for fail)
+	XLONG bmpWidth		' = bitMap.width
+	XLONG bmpHeight		' = bitMap.height
+
+	XLONG hilButtons		' = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+	XLONG hilGray		' = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+	XLONG hilHot		' = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+	XLONG hDC				' the handle of the desktop context
 	XLONG hMem			' = CreateCompatibleDC (hDC)
 	XLONG hSource		' = CreateCompatibleDC (hDC)
 	XLONG hblankS		' = SelectObject (hSource, hBmpButtons)
-	XLONG hBmpMask	' = CreateCompatibleBitmap (hSource, w, hButton)
+	XLONG hBmpMask	' = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
 	XLONG hblankM		' = SelectObject (hMem, hBmpMask)
 
-	XLONG x				' running index
-	XLONG y				' running index
+	XLONG flags
+	XLONG x					' running index
+	XLONG upper_x		' = bmpWidth - 1
+	XLONG y					' running index
+	XLONG upper_y		' = bmpHeight - 1
 
-	XLONG codeRGB		' RGB color format 0x808080
-	XLONG red
-	XLONG green
-	XLONG blue
+	DOUBLE luminance		' = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+
+	' ULONG is natural for bit operands
+	ULONG color
+	ULONG codeRGB
+	ULONG red
+	ULONG green
+	ULONG blue
+	ULONG gray				' = ULONG (luminance)
+	ULONG pixelRGB		' pixel color
+	XLONG hToolbar		' the handle of the new toolbar
 
 	SetLastError (0)
-	IFZ hBmpButtons THEN RETURN 0
 
-	w = wButton * nButtons
+	IFZ hBmpButtons THEN RETURN
 
-	'make image lists
-	hilButtons = ImageList_Create (wButton, hButton, $$ILC_COLOR24 OR $$ILC_MASK, nButtons, 0)
-	hilGray    = ImageList_Create (wButton, hButton, $$ILC_COLOR24 OR $$ILC_MASK, nButtons, 0)
-	hilHot     = ImageList_Create (wButton, hButton, $$ILC_COLOR24 OR $$ILC_MASK, nButtons, 0)
+	hToolbar = 0
 
-	'make 2 memory DCs for image manipulations
-	hDC = GetDC (GetDesktopWindow ())
-	hMem = CreateCompatibleDC (hDC)
-	hSource = CreateCompatibleDC (hDC)
-	ReleaseDC (GetDesktopWindow (), hDC)
-	hDC = 0
+	' GL-some argument checking...
+	IF nButtons <= 0 THEN nButtons = 1
 
-	'make a mask for the normal buttons
-	hblankS = SelectObject (hSource, hBmpButtons)
-	hBmpMask = CreateCompatibleBitmap (hSource, w, hButton)
-	hblankM = SelectObject (hMem, hBmpMask)
-	BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
-	GOSUB makeMask
-	hBmpButtons = SelectObject (hSource, hblankS)
-	hBmpMask = SelectObject (hMem, hblankM)
+	' bmpWidth = wButton*nButtons
+	ret = GetObjectA (hBmpButtons, SIZE (BITMAP), &bitMap)		' get bitmap's sizes
+	SELECT CASE ret
+		CASE 0
+			' Too bad: using the passed height!
+			SELECT CASE TRUE
+				CASE hButton <= 20 : hButton = 16
+				CASE hButton < 30 : hButton = 24
+				CASE ELSE : hButton = 32
+			END SELECT
+			wButton = hButton
 
-	'Add to the image list
-	ImageList_Add (hilButtons, hBmpButtons, hBmpMask)
+		CASE ELSE
+			' Good: using bitmap size!
+			hButton = 32
+			SELECT CASE TRUE
+				CASE bitMap.height <= 20 : hButton = 16
+				CASE bitMap.height < 30 : hButton = 24
+			END SELECT
+			wButton = hButton
 
-	'now let's do the gray buttons
-	IFZ hBmpGray THEN
-		'generate hBmpGray
-		hblankS = SelectObject (hSource, hBmpMask)
-		hBmpGray = CreateCompatibleBitmap (hSource, w, hButton)
-		hblankM = SelectObject (hMem, hBmpGray)
-		FOR y = 0 TO (hButton - 1)
-			FOR x = 0 TO (w - 1)
-				codeRGB = GetPixel (hSource, x, y)
-				IFZ codeRGB THEN SetPixel (hMem, x, y, 0x808080)
-			NEXT x
-		NEXT y
-	ELSE
-		'generate a mask
-		hblankS = SelectObject (hSource, hBmpGray)
-		hblankM = SelectObject (hMem, hBmpMask)
-		BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
-		GOSUB makeMask
-	ENDIF
+			' save bitmap size for later use
+			bmpWidth = bitMap.width
+			bmpHeight = bitMap.height
 
-	SelectObject (hSource, hblankS)
-	SelectObject (hMem, hblankM)
-	ImageList_Add (hilGray, hBmpGray, hBmpMask)
+			' make image lists
+			flags = $$ILC_COLOR24 OR $$ILC_MASK
+			hilButtons = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+			hilGray = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
+			hilHot = ImageList_Create (wButton, bmpHeight, flags, nButtons, 0)
 
-	'and finally, the hot buttons
-	IFZ hBmpHot THEN
-		'generate a brighter version of hBmpButtons
-'		hBmpHot = hBmpButtons
-		hblankS = SelectObject (hSource, hBmpButtons)
-		'hBmpHot = CopyImage (hBmpButtons, $$IMAGE_BITMAP, w, hButton, 0)
-		hBmpHot = CreateCompatibleBitmap (hSource, w, hButton)
-		hblankM = SelectObject (hMem, hBmpHot)
-		FOR y = 0 TO (hButton - 1)
-			FOR x = 0 TO (w - 1)
-				codeRGB = GetPixel (hSource, x, y)
+			' make 2 memory DCs for image manipulations
+			hDC = GetDC (GetDesktopWindow ())
+			hMem = CreateCompatibleDC (hDC)
+			hSource = CreateCompatibleDC (hDC)
+			ReleaseDC (GetDesktopWindow (), hDC)
+			hDC = 0		' no longer valid
 
-				red = (codeRGB AND 0x000000FF)
-				IF red < 215 THEN
-					red = red + 40		'red+((0xFF-red)\3)
-				ENDIF
+			' make a mask for the normal buttons
+			hblankS = SelectObject (hSource, hBmpButtons)
+			hBmpMask = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
+			hblankM = SelectObject (hMem, hBmpMask)
+			BitBlt (hMem, 0, 0, bmpWidth, bmpHeight, hSource, 0, 0, $$SRCCOPY)
 
-				green = (codeRGB AND 0x0000FF00) >> 8
-				IF green < 215 THEN
-					green = green + 40		'green+((0xFF-green)\3)
-				ENDIF
+			GOSUB makeMask
 
-				blue = (codeRGB AND 0x00FF0000) >> 16
-				IF blue < 215 THEN
-					blue = blue + 40		'blue+((0xFF-blue)\3)
-				ENDIF
+			hBmpButtons = SelectObject (hSource, hblankS)
+			hBmpMask = SelectObject (hMem, hblankM)
 
-				codeRGB = red OR (green << 8) OR (blue << 16)
-				SetPixel (hMem, x, y, codeRGB)
-			NEXT x
-		NEXT y
-	ELSE
-		'generate a mask
-		hblankS = SelectObject (hSource, hBmpHot)
-		hblankM = SelectObject (hMem, hBmpMask)
-		BitBlt (hMem, 0, 0, w, hButton, hSource, 0, 0, $$SRCCOPY)
-		GOSUB makeMask
-	ENDIF
+			' Add to image list
+			ImageList_Add (hilButtons, hBmpButtons, hBmpMask)
 
-	SelectObject (hSource, hblankS)
-	SelectObject (hMem, hblankM)
-
-	ImageList_Add (hilHot, hBmpHot, hBmpMask)
-
-	'ok, now clean up
-	DeleteObject (hBmpMask)
-	IF hBmpGray THEN DeleteObject (hBmpGray)
-	DeleteDC (hMem)
-	DeleteDC (hSource)
+			' secondly, the disabled buttons
+			IF hBmpGray THEN
+				' generate a mask
+				hblankS = SelectObject (hSource, hBmpGray)
+				hblankM = SelectObject (hMem, hBmpMask)
+				BitBlt (hMem, 0, 0, bmpWidth, bmpHeight, hSource, 0, 0, $$SRCCOPY)
+				GOSUB makeMask
+			ELSE
 '
-' Finally, make the toolbar and
-' return the handle of the toolbar.
+' GL-26jul21-old---
+'				' generate hBmpGray
+'				hblankS = SelectObject (hSource, hBmpMask)
+' GL-26jul21-old===
+' GL-26jul21-new+++
+' Generate a grayscaled version of hBmpButtons.
 '
-	RETURN WinXNewToolbarUsingIls (hilButtons, hilGray, hilHot, toolTips, customisable)
+' To get luminance of a color, use the formula recommended by CIE (Commission Internationale de l'Eclairage):
+' L = 0.2126 * R + 0.7152 * G + 0.0722 * B
+' http://www.rosettacode.org/wiki/Grayscale_image
+'
+				'generate hBmpGray
+				hblankS = SelectObject (hSource, hBmpButtons)
+				hBmpGray = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
+				hblankM = SelectObject (hMem, hBmpGray)
+
+				upper_x = bmpWidth - 1
+				upper_y = bmpHeight - 1
+				FOR y = 0 TO upper_y
+					FOR x = 0 TO upper_x
+						codeRGB = GetPixel (hSource, x, y)
+'
+' GL-26jul21-old---
+'						'IF codeRGB = 0x00000000 THEN SetPixel (hMem, x, y, 0x00808080)
+'						IFZ codeRGB THEN SetPixel (hMem, x, y, $$MediumGrey)
+' GL-26jul21-old===
+' GL-26jul21-new+++
+						' extract the red, green, blue values from the RGB color
+						red = codeRGB AND 0xFF
+						green = (codeRGB >> 8) AND 0xFF
+						blue = (codeRGB >> 16) AND 0xFF
+'
+' GL-27jul21-old---
+'						gray = (red + green + blue) / 3
+' GL-27jul21-old===
+' GL-27jul21-new+++
+						' get luminance of a color by using the formula recommended by CIE:
+						luminance = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+						gray = ULONG (luminance)
+
+						' make sure gray is a valid RGB color
+						gray = gray AND 0xFFFFFF
+' GL-27jul21-new===
+'
+						color = gray OR (gray << 8) OR (gray << 16)
+						SetPixel (hMem, x, y, color)
+' GL-26jul21-new===
+'
+					NEXT x
+				NEXT y
+			ENDIF
+
+			SelectObject (hSource, hblankS)
+			SelectObject (hMem, hblankM)
+
+			ImageList_Add (hilGray, hBmpGray, hBmpMask)
+
+			' and finaly, the hot buttons
+			IF hBmpHot THEN
+				' generate a mask
+				hblankS = SelectObject (hSource, hBmpHot)
+				hblankM = SelectObject (hMem, hBmpMask)
+				BitBlt (hMem, 0, 0, bmpWidth, bmpHeight, hSource, 0, 0, $$SRCCOPY)
+				GOSUB makeMask
+			ELSE
+				' generate a brighter version of hBmpButtons
+				' hBmpHot = hBmpButtons
+				hblankS = SelectObject (hSource, hBmpButtons)
+
+				' hBmpHot = CopyImage (hBmpButtons, $$IMAGE_BITMAP, bmpWidth, bmpHeight, 0)
+				hBmpHot = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
+				hblankM = SelectObject (hMem, hBmpHot)
+
+				upper_x = bmpWidth - 1
+				upper_y = bmpHeight - 1
+				FOR y = 0 TO upper_y
+					FOR x = 0 TO upper_x
+						codeRGB = GetPixel (hSource, x, y)
+
+						red = codeRGB AND 0xFF
+						green = (codeRGB >> 8) AND 0xFF
+						blue = (codeRGB >> 16) AND 0xFF
+
+						IF red < 215 THEN red = red + 40		'red+((0xFF-red)\3)
+						IF green < 215 THEN green = green + 40		'green+((0xFF-green)\3)
+						IF blue < 215 THEN blue = blue + 40		'blue+((0xFF-blue)\3)
+
+						color = red OR (green << 8) OR (blue << 16)
+						SetPixel (hMem, x, y, color)
+					NEXT x
+				NEXT y
+			ENDIF
+
+			SelectObject (hSource, hblankS)
+			SelectObject (hMem, hblankM)
+
+			ImageList_Add (hilHot, hBmpHot, hBmpMask)
+
+			' ok, now clean up
+			IF hMem THEN
+				DeleteDC (hMem)
+				hMem = 0
+			ENDIF
+			IF hSource THEN
+				DeleteDC (hSource)
+				hSource = 0
+			ENDIF
+
+			' GL-10dec19-release Device Context hDC
+			IF hDC THEN
+				ReleaseDC (GetDesktopWindow (), hDC)
+				hDC = 0
+			ENDIF
+
+			' delete the bitmap handles they are no longer need
+			IF hBmpMask THEN
+				DeleteObject (hBmpMask)
+				hBmpMask = 0
+			ENDIF
+			IF hBmpButtons THEN
+				DeleteObject (hBmpButtons)
+				hBmpButtons = 0
+			ENDIF
+			IF hBmpGray THEN
+				DeleteObject (hBmpGray)
+				hBmpGray = 0
+			ENDIF
+			IF hBmpHot THEN
+				DeleteObject (hBmpHot)
+				hBmpHot = 0
+			ENDIF
+
+			' and make the toolbar
+			hToolbar = WinXNewToolbarUsingIls (hilButtons, hilGray, hilHot, toolTips, customisable)
+
+			' GL-28mar16-set the ToolBar bitmap size
+			SendMessageA (hToolbar, $$TB_SETBITMAPSIZE, 0, MAKELONG (wButton, hButton))
+
+	END SELECT
+
+	' return the handle of the new toolbar
+	RETURN hToolbar
 
 	SUB makeMask
-		FOR y = 0 TO (hButton - 1)
-			FOR x = 0 TO (w - 1)
-				'get source's pixel
-				codeRGB = GetPixel (hSource, x, y)
+		IFZ hMem THEN EXIT SUB
+		upper_x = bmpWidth - 1
+		upper_y = bmpHeight - 1
+		FOR y = 0 TO upper_y
+			FOR x = 0 TO upper_x
+				codeRGB = GetPixel (hSource, x, y)		' get source's pixel
 				IF codeRGB = transparentRGB THEN
-					' replace transparency by $$White
-					SetPixel (hSource, x, y, $$White)
+					' transparency
 					pixelRGB = $$White
+					SetPixel (hSource, x, y, pixelRGB)		' reset source's pixel
 				ELSE
-					' the target's pixel is $$Black
 					pixelRGB = $$Black
 				ENDIF
 				' set target's pixel
@@ -11454,6 +11628,133 @@ FUNCTION STRING_New (item$)
 
 END FUNCTION
 '
+' ################################
+' #####  UnregisterWinClass  #####
+' ################################
+'
+' Unregisters a window class.
+' returns bOK; $$TRUE for success
+'
+FUNCTION UnregisterWinClass (STRING window_class, bDebugMode, STRING DebugText)
+
+	SHARED hInst		' handle of current module
+
+	XLONG hWndFound	' actual window that happens to belong the the preview class
+	XLONG window_count	' window count
+
+	XLONG bErr			' $$TRUE for error
+	XLONG ret				' win32 api return value (0 for fail)
+	XLONG errNum		' win32 api last error CODE
+	XLONG bOK				' $$TRUE for success
+'
+' UnregisterClassA: Handled win32 api return codes.
+'
+	$ERROR_CLASS_DOES_NOT_EXIST = 1411
+	$ERROR_CLASS_HAS_WINDOWS		= 1412
+
+	IFZ hInst THEN
+		' (unlikely!)
+		hInst = GetModuleHandleA (0)		' get the handle of current module
+	ENDIF
+'
+' Unregister window class window_class.
+'
+	SetLastError (0)
+	ret = UnregisterClassA (&window_class, hInst)
+	IF ret THEN RETURN $$TRUE		' success
+'
+' FAIL: get the last error CODE
+'
+	SELECT CASE GetLastError ()
+		CASE $ERROR_CLASS_HAS_WINDOWS
+
+		CASE $ERROR_CLASS_DOES_NOT_EXIST
+			RETURN $$TRUE		' success
+
+		CASE ELSE
+'
+' GL-29sep24-new+++
+			IF bDebugMode THEN
+				' alert the user
+				msg$ = DebugText + "\r\nUnregisterWinClass: Can't unregister window class '" + window_class + "'"
+				GOSUB Alert_the_user
+			ENDIF
+' GL-29sep24-new+++
+'
+		RETURN $$FALSE		' fail
+
+	END SELECT
+'
+' Check that there are still active windows in the window class
+' and destroy any such window.
+'
+	window_count = 0
+	hWndFound = FindWindowA (&window_class, 0)
+	DO WHILE hWndFound
+		INC window_count
+		IF window_count > 100 THEN
+			IF bDebugMode THEN
+				' alert the user
+				msg$ = DebugText + "\r\nUnregisterWinClass: Found more than a hundred(!) windows in window class '" + window_class + "'"
+				XstAlert (@msg$)
+			ENDIF
+
+			EXIT DO
+		ENDIF
+
+		' hide the window
+		SetLastError (0)
+		ret = ShowWindow (hWndFound, $$SW_HIDE)
+		IFZ ret THEN
+'
+' GL-29sep24-new+++
+			IF bDebugMode THEN
+				' alert the user
+				msg$ = DebugText + "\r\nUnregisterWinClass: Can't hide this active window"
+				GOSUB Alert_the_user
+			ENDIF
+' GL-29sep24-new+++
+'
+		ENDIF
+
+		SetLastError (0)
+		ret = DestroyWindow (hWndFound)
+		IFZ ret THEN
+'
+' GL-29sep24-new+++
+			IF bDebugMode THEN
+				' alert the user
+				msg$ = DebugText + "\r\nUnregisterWinClass: Window destroying failed"
+				GOSUB Alert_the_user
+			ENDIF
+'			EXIT DO
+' GL-29sep24-new+++
+'
+		ENDIF
+
+		hWndFound = FindWindowA (&window_class, 0)
+	LOOP
+'
+' Retry unregistering window class window_class.
+'
+	UnregisterClassA (&window_class, hInst)
+	RETURN $$TRUE		' GL-What else to do?
+
+SUB Alert_the_user
+
+	errNum = GetLastError ()
+	last_error_code$ = STRING$ (errNum)
+
+	bErr = GuiTellApiError (@msg$)
+	IFF bErr THEN
+		msg$ = msg$ + $$CRLF$ + "(last error code " + last_error_code$ + ")"
+		XstAlert (@msg$)
+	ENDIF
+
+END SUB
+
+END FUNCTION
+'
 ' ######################
 ' #####  XWSStoWS  #####
 ' ######################
@@ -14429,133 +14730,6 @@ FUNCTION tabs_SizeContents (hTabs, pRect)
 		ENDIF
 	ENDIF
 	RETURN series
-
-END FUNCTION
-'
-' ################################
-' #####  UnregisterWinClass  #####
-' ################################
-'
-' Unregisters a window class.
-' returns bOK; $$TRUE for success
-'
-FUNCTION UnregisterWinClass (STRING window_class, bDebugMode, STRING DebugText)
-
-	SHARED hInst		' handle of current module
-
-	XLONG hWndFound	' actual window that happens to belong the the preview class
-	XLONG window_count	' window count
-
-	XLONG bErr			' $$TRUE for error
-	XLONG ret				' win32 api return value (0 for fail)
-	XLONG errNum		' win32 api last error CODE
-	XLONG bOK				' $$TRUE for success
-'
-' UnregisterClassA: Handled win32 api return codes.
-'
-	$ERROR_CLASS_DOES_NOT_EXIST = 1411
-	$ERROR_CLASS_HAS_WINDOWS		= 1412
-
-	IFZ hInst THEN
-		' (unlikely!)
-		hInst = GetModuleHandleA (0)		' get the handle of current module
-	ENDIF
-'
-' Unregister window class window_class.
-'
-	SetLastError (0)
-	ret = UnregisterClassA (&window_class, hInst)
-	IF ret THEN RETURN $$TRUE		' success
-'
-' FAIL: get the last error CODE
-'
-	SELECT CASE GetLastError ()
-		CASE $ERROR_CLASS_HAS_WINDOWS
-
-		CASE $ERROR_CLASS_DOES_NOT_EXIST
-			RETURN $$TRUE		' success
-
-		CASE ELSE
-'
-' GL-29sep24-new+++
-			IF bDebugMode THEN
-				' alert the user
-				msg$ = DebugText + "\r\nUnregisterWinClass: Can't unregister window class '" + window_class + "'"
-				GOSUB Alert_the_user
-			ENDIF
-' GL-29sep24-new+++
-'
-		RETURN $$FALSE		' fail
-
-	END SELECT
-'
-' Check that there are still active windows in the window class
-' and destroy any such window.
-'
-	window_count = 0
-	hWndFound = FindWindowA (&window_class, 0)
-	DO WHILE hWndFound
-		INC window_count
-		IF window_count > 100 THEN
-			IF bDebugMode THEN
-				' alert the user
-				msg$ = DebugText + "\r\nUnregisterWinClass: Found more than a hundred(!) windows in window class '" + window_class + "'"
-				XstAlert (@msg$)
-			ENDIF
-
-			EXIT DO
-		ENDIF
-
-		' hide the window
-		SetLastError (0)
-		ret = ShowWindow (hWndFound, $$SW_HIDE)
-		IFZ ret THEN
-'
-' GL-29sep24-new+++
-			IF bDebugMode THEN
-				' alert the user
-				msg$ = DebugText + "\r\nUnregisterWinClass: Can't hide this active window"
-				GOSUB Alert_the_user
-			ENDIF
-' GL-29sep24-new+++
-'
-		ENDIF
-
-		SetLastError (0)
-		ret = DestroyWindow (hWndFound)
-		IFZ ret THEN
-'
-' GL-29sep24-new+++
-			IF bDebugMode THEN
-				' alert the user
-				msg$ = DebugText + "\r\nUnregisterWinClass: Window destroying failed"
-				GOSUB Alert_the_user
-			ENDIF
-'			EXIT DO
-' GL-29sep24-new+++
-'
-		ENDIF
-
-		hWndFound = FindWindowA (&window_class, 0)
-	LOOP
-'
-' Retry unregistering window class window_class.
-'
-	UnregisterClassA (&window_class, hInst)
-	RETURN $$TRUE		' GL-What else to do?
-
-SUB Alert_the_user
-
-	errNum = GetLastError ()
-	last_error_code$ = STRING$ (errNum)
-
-	bErr = GuiTellApiError (@msg$)
-	IFF bErr THEN
-		msg$ = msg$ + $$CRLF$ + "(last error code " + last_error_code$ + ")"
-		XstAlert (@msg$)
-	ENDIF
-
-END SUB
 
 END FUNCTION
 
