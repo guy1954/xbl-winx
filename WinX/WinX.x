@@ -97,7 +97,7 @@ EXPLICIT
 '-  WinXCtr_Slide_left_or_right	: slide left or right the control
 '-  WinXCtr_Slide_up_or_down		: slide up or down the control
 '
-' Corrected WinXNewToolbar().
+' Corrected WinXNewToolbar() and WinXAddStatic().
 '
 '
 ' ##############################
@@ -1824,7 +1824,7 @@ FUNCTION WinXAddStatic (hParent, STRING title, hImage, flags, idCtr)
 
 	IF hImage THEN
 		'add the image
-		SELECT CASE LCASE$(text$)
+		SELECT CASE LCASE$(title)
 			CASE "icon"
 				style = style OR $$SS_ICON
 				imageType = $$IMAGE_ICON
@@ -1832,6 +1832,7 @@ FUNCTION WinXAddStatic (hParent, STRING title, hImage, flags, idCtr)
 				style = style OR $$SS_BITMAP
 				imageType = $$IMAGE_BITMAP
 		END SELECT
+		title = ""
 	ENDIF
 
 	'make the window
