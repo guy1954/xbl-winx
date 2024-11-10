@@ -831,6 +831,17 @@ DECLARE FUNCTION LINKEDLIST_Init () ' LINKEDLIST Pool initialization
 DECLARE FUNCTION LINKEDLIST_New (LINKEDLIST item) ' add a new LINKEDLIST item to LINKEDLIST Pool
 DECLARE FUNCTION LINKEDLIST_Update (id, LINKEDLIST item) ' update LINKEDLIST item
 '
+' Linked Lists
+'
+DECLARE FUNCTION LinkedList_Append (LINKEDLIST @list, iData) ' append an item to a linked list
+DECLARE FUNCTION LinkedList_DeleteAll (LINKEDLIST @list) ' delete every item in a linked list
+DECLARE FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST @list) ' delete the item LinkedList_Walk just returned
+DECLARE FUNCTION LinkedList_EndWalk (hWalk) ' close a walk handle
+DECLARE FUNCTION LinkedList_Init (LINKEDLIST @list) ' initialize a linked list
+DECLARE FUNCTION LinkedList_StartWalk (LINKEDLIST list) ' initialize a walk of a linked list
+DECLARE FUNCTION LinkedList_Uninit (LINKEDLIST @list) ' uninitialize a linked list
+DECLARE FUNCTION LinkedList_Walk (hWalk, @iData) ' get the next data item in a linked list
+'
 ' Generic Linked List Node
 '
 DECLARE FUNCTION LINKEDNODE_Delete (id) ' delete LINKEDNODE item
@@ -844,18 +855,7 @@ DECLARE FUNCTION LINKEDWALK_Get (id, LINKEDWALK @item) ' get LINKEDWALK item
 DECLARE FUNCTION LINKEDWALK_Init () ' LINKEDWALK Pool initialization
 DECLARE FUNCTION LINKEDWALK_New (LINKEDWALK item) ' add a new LINKEDWALK item to LINKEDWALK Pool
 DECLARE FUNCTION LINKEDWALK_Update (id, LINKEDWALK item) ' update LINKEDWALK item
-'
-' Linked Lists
-'
-DECLARE FUNCTION LinkedList_Append (LINKEDLIST @list, iData) ' append an item to a linked list
-DECLARE FUNCTION LinkedList_DeleteAll (LINKEDLIST @list) ' delete every item in a linked list
-DECLARE FUNCTION LinkedList_DeleteThis (hWalk, LINKEDLIST @list) ' delete the item LinkedList_Walk just returned
-DECLARE FUNCTION LinkedList_EndWalk (hWalk) ' close a walk handle
-DECLARE FUNCTION LinkedList_Init (LINKEDLIST @list) ' initialize a linked list
-DECLARE FUNCTION LinkedList_StartWalk (LINKEDLIST list) ' initialize a walk of a linked list
-DECLARE FUNCTION LinkedList_Uninit (LINKEDLIST @list) ' uninitialize a linked list
-DECLARE FUNCTION LinkedList_Walk (hWalk, @iData) ' get the next data item in a linked list
-'
+
 ' WinX Splitter
 '
 DECLARE FUNCTION SPLITTERINFO_Delete (idBlock) ' delete splitter info block
@@ -1141,8 +1141,7 @@ FUNCTION WinX ()
 		g_hWinXIcon = LoadIconA (hLib, &"WinXIcon")
 		IFZ g_hWinXIcon THEN
 			msg$ = "WinX-LoadIconA: WinX application icon is null"
-			bErr = GuiTellApiError (@msg$)
-			IFF bErr THEN WinXDialog_Error (@msg$, @"WinX-Alert", 2)
+			GuiTellApiError (@msg$)
 		ENDIF
 ' 0.6.0.1-new===
 '
@@ -1161,8 +1160,7 @@ FUNCTION WinX ()
 	ret = GetVersionExA (&os)
 	IFZ ret THEN
 		msg$ = "WinX-GetVersionExA: Can't identify the current Operating System"
-		bErr = GuiTellApiError (@msg$)
-		IFF bErr THEN WinXDialog_Error (@msg$, @"WinX-Alert", 2)
+		GuiTellApiError (@msg$)
 		os.dwMajorVersion = 5		' unlikely fail: default to Windows XP
 	ENDIF
 ' 0.6.0.3-new===
@@ -1197,8 +1195,7 @@ FUNCTION WinX ()
 	ret = RegisterClassExA (&wcex)
 	IFZ ret THEN
 		msg$ = "WinX-RegisterClassExA: Can't register the main window class"
-		bErr = GuiTellApiError (@msg$)
-		IFF bErr THEN WinXDialog_Error (@msg$, @"WinX-Alert", 2)
+		GuiTellApiError (@msg$)
 		'-RETURN 3		' fail
 	ENDIF
 
@@ -1237,8 +1234,7 @@ FUNCTION WinX ()
 ' 0.6.0.2-new+++
 	IFZ ret THEN
 		msg$ = "WinX-RegisterClassExA: Can't register the WinX Splitter window class"
-		bErr = GuiTellApiError (@msg$)
-		IFF bErr THEN WinXDialog_Error (@msg$, @"WinX-Alert", 2)
+		GuiTellApiError (@msg$)
 		' -RETURN 4		' fail
 	ENDIF
 ' 0.6.0.2-new===
@@ -1324,8 +1320,7 @@ FUNCTION WinXAddAcceleratorTable (ACCEL accel[])
 		hAccel = CreateAcceleratorTableA (&accel[0], cEntries)
 		IFZ hAccel THEN
 			msg$ = "WinX-WinXAddAcceleratorTable: Can't create accelerator table"
-			bErr = GuiTellApiError (@msg$)
-			IFF bErr THEN WinXDialog_Error (@msg$, @"WinX-Alert", 2)
+			GuiTellApiError (@msg$)
 		ENDIF
 	ENDIF
 	RETURN hAccel
@@ -2121,7 +2116,7 @@ FUNCTION WinXAddTooltip (hControl, STRING tooltipText)
 			SetLastError (0)
 			ret = SendMessageA (binding.hToolTips, wMsg, 0, &ti)
 			IF ret THEN
-				bOK = $$TRUE
+				bOK = $$TRUE		' success
 			ELSE
 				msg$ = "WinX-WinXAddTooltip: Can't add tooltips " + tooltipText
 				GuiTellApiError (@msg$)
@@ -2392,7 +2387,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 		IFZ SetPropA (sizer_block.hWnd, &"autoSizerInfoBlock", idBlock) THEN
 			RETURN $$FALSE
 		ELSE
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 
 		'make a new splitter if we need one
@@ -3456,7 +3451,7 @@ FUNCTION WinXDialog_OpenFile$ (hOwner, title$, extensions$, initialName$, multiS
 	LOOP
 '
 ' debug+++
-'msg$ = "WinXDialog_OpenFile$: initialName$ = " + initialName$
+'msg$ = "WinX-WinXDialog_OpenFile$: initialName$ = " + initialName$
 'WinXDialog_Error (@msg$, @"WinX-Information", 0)
 ' debug===
 '
@@ -3498,7 +3493,7 @@ FUNCTION WinXDialog_OpenFile$ (hOwner, title$, extensions$, initialName$, multiS
 	END SELECT
 '
 ' debug+++
-'msg$ = "WinXDialog_OpenFile$: initFN$ = <" + initFN$ + ">, initExt$ = <" + initExt$ + ">"
+'msg$ = "WinX-WinXDialog_OpenFile$: initFN$ = <" + initFN$ + ">, initExt$ = <" + initExt$ + ">"
 'WinXDialog_Error (@msg$, @"WinX-Information", 0)
 ' debug===
 '
@@ -3557,7 +3552,7 @@ FUNCTION WinXDialog_OpenFile$ (hOwner, title$, extensions$, initialName$, multiS
 	ENDIF
 '
 ' debug+++
-'msg$ = "WinXDialog_OpenFile$: initFN$ = <" + initFN$ + ">, initExt$ = <" + initExt$ + ">"
+'msg$ = "WinX-WinXDialog_OpenFile$: initFN$ = <" + initFN$ + ">, initExt$ = <" + initExt$ + ">"
 'WinXDialog_Error (@msg$, @"WinX-Information", 0)
 ' debug===
 '
@@ -4706,7 +4701,7 @@ FUNCTION WinXDraw_GetFontDialog (hOwner, LOGFONT r_font, @r_codeRGB)
 			ENDIF
 			r_codeRGB = fontPicker.rgbColors		' returned text color
 		ENDIF
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 
 	RETURN bOK
@@ -5166,7 +5161,7 @@ FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE data[])
 				ULONGAT(bitmap.bits, ulong_val) = (ULONGAT(bitmap.bits, ulong_val) AND mask) OR ULONG (data[i]) << upshift
 			NEXT i
 
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 
 	END SELECT
 
@@ -6297,8 +6292,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	hFontToClone = GetStockObject ($$DEFAULT_GUI_FONT)		' get a font to clone
 	IFZ hFontToClone THEN
 		msg$ = "WinX-WinXNewFont: Can't get a font to clone"
-		bErr = GuiTellApiError (msg$)
-		IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
+		GuiTellApiError (msg$)
 		RETURN		' invalid handle
 	ENDIF
 
@@ -6308,8 +6302,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	bytes = GetObjectA (hFontToClone, SIZE(LOGFONT), &logFont)		' fill allocated structure logFont
 	IF bytes <= 0 THEN
 		msg$ = "WinX-WinXNewFont: Can't fill allocated structure logFont"
-		bErr = GuiTellApiError (msg$)
-		IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
+		GuiTellApiError (msg$)
 		RETURN
 	ENDIF
 
@@ -6332,8 +6325,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 		hDC = GetDC ($$HWND_DESKTOP)		' get a handle to the desktop context
 		IFZ hDC THEN
 			msg$ = "WinX-WinXNewFont: Can't get a handle to the desktop context"
-			bErr = GuiTellApiError (msg$)
-			IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
+			GuiTellApiError (msg$)
 			RETURN		' invalid handle
 		ENDIF
 		'
@@ -6358,8 +6350,7 @@ FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderL, bStrike)
 	r_hFont = CreateFontIndirectA (&logFont)		' create logical font r_hFont
 	IFZ r_hFont THEN
 		msg$ = "WinX-WinXNewFont: Can't create logical font r_hFont"
-		bErr = GuiTellApiError (msg$)
-		IFF bErr THEN WinXDialog_Error (msg$, "WinX-Internal Error", 2)
+		GuiTellApiError (msg$)
 		RETURN
 	ENDIF
 
@@ -6502,8 +6493,7 @@ END FUNCTION
 '	#tbrMain = WapiNewToolbar (16, 16, nButtons, hBmpButtons, 0, 0, transparentRGB, $$TRUE, $$FALSE)
 '	IFZ #tbrMain THEN
 '		msg$ = "WndProc-winMain_Create: Can't create tool bar $$tbrMain"
-'		bErr = GuiTellApiError (@msg$)
-'		IFF bErr THEN WapiDialog_Error (@msg$, @title$, 2)		' Alert
+'		GuiTellApiError (@msg$)
 '	ENDIF
 ' --------------------------------------------------------------------------
 '
@@ -6527,9 +6517,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 
 	XLONG flags
 	XLONG x					' running index
-	XLONG upper_x		' = bmpWidth - 1
 	XLONG y					' running index
-	XLONG upper_y		' = bmpHeight - 1
 
 	DOUBLE luminance		' = (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
 
@@ -6558,18 +6546,18 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 		CASE 0
 			' Too bad: using the passed height!
 			SELECT CASE TRUE
-				CASE hButton <= 20 : hButton = 16
-				CASE hButton < 30 : hButton = 24
-				CASE ELSE : hButton = 32
+				CASE hButton <= 20	: hButton = 16
+				CASE hButton < 30		: hButton = 24
+				CASE ELSE				: hButton = 32
 			END SELECT
 			wButton = hButton
 
 		CASE ELSE
 			' Good: using bitmap size!
-			hButton = 32
 			SELECT CASE TRUE
-				CASE bitMap.height <= 20 : hButton = 16
-				CASE bitMap.height < 30 : hButton = 24
+				CASE bitMap.height <= 20	: hButton = 16
+				CASE bitMap.height < 30	: hButton = 24
+				CASE ELSE				: hButton = 32
 			END SELECT
 			wButton = hButton
 
@@ -6601,7 +6589,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 			hBmpButtons = SelectObject (hSource, hblankS)
 			hBmpMask = SelectObject (hMem, hblankM)
 
-			' Add to image list
+			'Add to the image list
 			ImageList_Add (hilButtons, hBmpButtons, hBmpMask)
 
 			' secondly, the disabled buttons
@@ -6629,10 +6617,8 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 				hBmpGray = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
 				hblankM = SelectObject (hMem, hBmpGray)
 
-				upper_x = bmpWidth - 1
-				upper_y = bmpHeight - 1
-				FOR y = 0 TO upper_y
-					FOR x = 0 TO upper_x
+				FOR y = bmpHeight - 1 TO 0 STEP -1
+					FOR x = bmpWidth - 1 TO 0 STEP -1
 						codeRGB = GetPixel (hSource, x, y)
 '
 ' GL-26jul21-old---
@@ -6686,10 +6672,8 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 				hBmpHot = CreateCompatibleBitmap (hSource, bmpWidth, bmpHeight)
 				hblankM = SelectObject (hMem, hBmpHot)
 
-				upper_x = bmpWidth - 1
-				upper_y = bmpHeight - 1
-				FOR y = 0 TO upper_y
-					FOR x = 0 TO upper_x
+				FOR y = bmpHeight - 1 TO 0 STEP -1
+					FOR x = bmpWidth - 1 TO 0 STEP -1
 						codeRGB = GetPixel (hSource, x, y)
 
 						red = codeRGB AND 0xFF
@@ -6758,16 +6742,18 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 
 	SUB makeMask
 		IFZ hMem THEN EXIT SUB
-		upper_x = bmpWidth - 1
-		upper_y = bmpHeight - 1
-		FOR y = 0 TO upper_y
-			FOR x = 0 TO upper_x
+
+		FOR y = bmpHeight - 1 TO 0 STEP -1
+			FOR x = bmpWidth - 1 TO 0 STEP -1
 				codeRGB = GetPixel (hSource, x, y)		' get source's pixel
 				IF codeRGB = transparentRGB THEN
 					' transparency
+					SetPixel (hSource, x, y, $$White)		' reset source's pixel
+
+					' replace transparency by $$White
 					pixelRGB = $$White
-					SetPixel (hSource, x, y, pixelRGB)		' reset source's pixel
 				ELSE
+					' the target's pixel is $$Black
 					pixelRGB = $$Black
 				ENDIF
 				' set target's pixel
@@ -7869,7 +7855,7 @@ FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &result$, LEN (result$))
-						IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+						IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 					ENDIF
 				CASE $$REG_OPENED_EXISTING_KEY
 					GOSUB QueryVariable
@@ -7892,12 +7878,12 @@ SUB QueryVariable
 			CASE $$REG_EXPAND_SZ, $$REG_SZ, $$REG_MULTI_SZ
 				result$ = NULL$ (cbSize)
 				zeroOK = RegQueryValueExA (hSubKey, &value$, 0, &type, &result$, &cbSize)
-				IFZ zeroOK THEN bOK = $$TRUE
+				IFZ zeroOK THEN bOK = $$TRUE		' success
 		END SELECT
 	ELSE
 		IF createOnOpenFail THEN
 			zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_EXPAND_SZ, &result$, LEN (result$) + 1)
-			IFZ zeroOK THEN bOK = $$TRUE
+			IFZ zeroOK THEN bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 
@@ -7939,11 +7925,11 @@ FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY
 		' IF RegQueryValueExA (hSubKey, &value$, 0, &type, &result, &four) = $$ERROR_SUCCESS THEN
 		zeroOK = RegQueryValueExA (hSubKey, &value$, 0, &type, &result, &four)
 		IFZ zeroOK THEN		' (0 is for success)
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ELSE
 			IF createOnOpenFail THEN
 				zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &result, 4)
-				IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+				IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 			ENDIF
 		ENDIF
 
@@ -7955,11 +7941,11 @@ FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &result, 4)
-						IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+						IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 					ENDIF
 				CASE $$REG_OPENED_EXISTING_KEY
 					zeroOK = RegQueryValueExA (hSubKey, &value$, 0, &type, &result, &four)
-					IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+					IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 			END SELECT
 
 			RegCloseKey (hSubKey)
@@ -8014,7 +8000,7 @@ FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECUR
 				CASE $$REG_CREATED_NEW_KEY
 					IF createOnOpenFail THEN
 						zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_EXPAND_SZ, &result$, LEN (result$) + 1)
-						IFZ zeroOK THEN bOK = $$TRUE
+						IFZ zeroOK THEN bOK = $$TRUE		' success
 					ENDIF
 
 			END SELECT
@@ -8036,12 +8022,12 @@ SUB QueryVariable
 			CASE $$REG_EXPAND_SZ, $$REG_SZ, $$REG_MULTI_SZ
 				result$ = NULL$ (cbSize)
 				zeroOK = RegQueryValueExA (hSubKey, &value$, 0, &type, &result$, &cbSize)
-				IFZ zeroOK THEN bOK = $$TRUE
+				IFZ zeroOK THEN bOK = $$TRUE		' success
 		END SELECT
 	ELSE
 		IF createOnOpenFail THEN
 			zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_EXPAND_SZ, &result$, LEN (result$) + 1)
-			IFZ zeroOK THEN bOK = $$TRUE
+			IFZ zeroOK THEN bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 
@@ -8076,13 +8062,13 @@ FUNCTION WinXRegistry_WriteBin (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, s
 	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ OR $$KEY_WRITE, &hSubKey)
 	IFZ zeroOK THEN		' (0 is for success)
 		zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &szBuf$, LEN (szBuf$))
-		IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+		IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 		RegCloseKey (hSubKey)
 	ELSE
 		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ OR $$KEY_WRITE, pSA, &hSubKey, &disposition)
 		IFZ zeroOK THEN		' (0 is for success)
 			zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_BINARY, &szBuf$, LEN (szBuf$))
-			IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+			IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 			RegCloseKey (hSubKey)
 		ENDIF
 	ENDIF
@@ -8118,13 +8104,13 @@ FUNCTION WinXRegistry_WriteInt (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, i
 	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ OR $$KEY_WRITE, &hSubKey)
 	IFZ zeroOK THEN		' (0 is for success)
 		zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &integer, 4)
-		IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+		IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 		RegCloseKey (hSubKey)
 	ELSE
 		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ OR $$KEY_WRITE, pSA, &hSubKey, &disposition)
 		IFZ zeroOK THEN		' (0 is for success)
 			zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_DWORD, &integer, 4)
-			IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+			IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 			RegCloseKey (hSubKey)
 		ENDIF
 	ENDIF
@@ -8160,13 +8146,13 @@ FUNCTION WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa
 	zeroOK = RegOpenKeyExA (hKey, &subKey$, 0, $$KEY_READ OR $$KEY_WRITE, &hSubKey)
 	IFZ zeroOK THEN		' (0 is for success)
 		zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_SZ, &szBuf$, LEN (szBuf$))
-		IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+		IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 		RegCloseKey (hSubKey)
 	ELSE
 		zeroOK = RegCreateKeyExA (hKey, &subKey$, 0, 0, 0, $$KEY_READ OR $$KEY_WRITE, pSA, &hSubKey, &disposition)
 		IFZ zeroOK THEN		' (0 is for success)
 			zeroOK = RegSetValueExA (hSubKey, &value$, 0, $$REG_SZ, &szBuf$, LEN (szBuf$))
-			IFZ zeroOK THEN bOK = $$TRUE		' (0 is for success)
+			IFZ zeroOK THEN bOK = $$TRUE		' success (zeroOK == 0 is for success)
 			RegCloseKey (hSubKey)
 		ENDIF
 	ENDIF
@@ -8481,9 +8467,6 @@ FUNCTION WinXSetMinSize (hWnd, min_width, min_height)
 	BINDING binding
 	XLONG idBinding		' binding id
 	XLONG bUpdated
-
-	XLONG corr_w
-	XLONG corr_h
 
 	bUpdated = $$FALSE
 
@@ -9129,7 +9112,7 @@ FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME time, @r_timeValid)
 	XLONG bOK				' $$TRUE for success
 
 	SetLastError (0)
-	bOK = $$TRUE
+	bOK = $$TRUE		' success
 	r_timeValid = $$FALSE		' invalid
 
 	SELECT CASE SendMessageA (hDTP, $$DTM_GETSYSTEMTIME, 0, &time)
@@ -9174,8 +9157,7 @@ FUNCTION WinXTimePicker_SetTime (hDTP, SYSTEMTIME time, timeValid)
 			RETURN $$TRUE		' success
 		ELSE
 			msg$ = "WinX-WinXTimePicker_SetTime$: Can't set the time for a Date/Time Picker control"
-			bErr = GuiTellApiError (@msg$)
-			IFF bErr THEN WinXDialog_Error (@msg$, @"WinX-Alert", 2)
+			GuiTellApiError (@msg$)
 		ENDIF
 	ENDIF
 
@@ -9931,7 +9913,7 @@ FUNCTION AUTODRAWRECORD_Delete (id)
 	IF (slot >= 0) && (slot <= UBOUND(AUTODRAWRECORDarrayUM[])) THEN
 		AUTODRAWRECORDarray[slot] = null_item
 		AUTODRAWRECORDarrayUM[slot] = $$FALSE
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 
 	RETURN bOK
@@ -9963,7 +9945,7 @@ FUNCTION AUTODRAWRECORD_Get (id, AUTODRAWRECORD item)
 	IF (slot >= 0) && (slot <= UBOUND(AUTODRAWRECORDarrayUM[])) THEN
 		IF AUTODRAWRECORDarrayUM[slot] THEN
 			item = AUTODRAWRECORDarray[slot]
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	IFF bOK THEN
@@ -10000,8 +9982,8 @@ END FUNCTION
 ' Usage:
 ' AUTODRAWRECORD_id = AUTODRAWRECORD_New (AUTODRAWRECORD_item)
 ' IFZ AUTODRAWRECORD_id THEN
-' msg$ = "AUTODRAWRECORD_New: Can't add a new item to AUTODRAWRECORD Pool"
-' PRINT msg$
+' 	msg$ = "AUTODRAWRECORD_New: Can't add a new item to AUTODRAWRECORD Pool"
+' 	PRINT msg$
 ' ENDIF
 '
 FUNCTION AUTODRAWRECORD_New (AUTODRAWRECORD item)
@@ -10076,7 +10058,7 @@ FUNCTION AUTODRAWRECORD_Update (id, AUTODRAWRECORD item)
 	IF (slot >= 0) && (slot <= UBOUND(AUTODRAWRECORDarrayUM[])) THEN
 		IF AUTODRAWRECORDarrayUM[slot] THEN
 			AUTODRAWRECORDarray[slot] = item
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	RETURN bOK
@@ -10193,8 +10175,7 @@ FUNCTION CleanUp ()
 				ret = DestroyWindow (window_handle[slot])
 				IFZ ret THEN
 					msg$ = "WinX-CleanUp: Can't destroy window, index = " + STRING$ (slot)
-					bErr = GuiTellApiError (@msg$)
-					IFF bErr THEN WinXDialog_Error (@msg$, @ "WinX-Alert", 2)
+					GuiTellApiError (@msg$)
 				ENDIF
 
 				window_handle[slot] = 0
@@ -10375,8 +10356,8 @@ END FUNCTION
 '	IFZ hImage THEN
 '		msg$ = "LoadImageA: Can't load Image File\r\n"
 '		msg$ = msg$ + file$
-'		bErr = GuiTellApiError (@msg$)
-'		IF bErr THEN RETURN $$TRUE		' fail
+'		GuiTellApiError (@msg$)
+'		RETURN $$TRUE		' fail
 '	ENDIF
 '
 FUNCTION GuiTellApiError (msg$)
@@ -10491,9 +10472,9 @@ END FUNCTION
 ' errNum = ERROR ($$FALSE)		' reset any prior run-time error
 ' fileNumber = OPEN (fileName$, $$WRNEW)
 ' IF fileNumber < 1 THEN
-' msg$ = "OPEN: Can't open file\r\n"
-' msg$ = msg$ + fileName$
-' GuiTellRunError (@msg$)
+'		msg$ = "OPEN: Can't open file\r\n"
+'		msg$ = msg$ + fileName$
+' 	GuiTellRunError (@msg$)
 ' ENDIF
 '
 FUNCTION GuiTellRunError (msg$)
@@ -10544,7 +10525,7 @@ FUNCTION LINKEDLIST_Delete (id)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDLISTarrayUM[])) THEN
 		LINKEDLISTarray[slot] = null_item
 		LINKEDLISTarrayUM[slot] = $$FALSE
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 
 	RETURN bOK
@@ -10576,7 +10557,7 @@ FUNCTION LINKEDLIST_Get (id, LINKEDLIST item)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDLISTarrayUM[])) THEN
 		IF LINKEDLISTarrayUM[slot] THEN
 			item = LINKEDLISTarray[slot]
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	IFF bOK THEN
@@ -10689,7 +10670,7 @@ FUNCTION LINKEDLIST_Update (id, LINKEDLIST item)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDLISTarrayUM[])) THEN
 		IF LINKEDLISTarrayUM[slot] THEN
 			LINKEDLISTarray[slot] = item
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	RETURN bOK
@@ -10722,7 +10703,7 @@ FUNCTION LINKEDNODE_Delete (id)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDNODEarrayUM[])) THEN
 		LINKEDNODEarray[slot] = null_item
 		LINKEDNODEarrayUM[slot] = $$FALSE
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 
 	RETURN bOK
@@ -10754,7 +10735,7 @@ FUNCTION LINKEDNODE_Get (id, LINKEDNODE item)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDNODEarrayUM[])) THEN
 		IF LINKEDNODEarrayUM[slot] THEN
 			item = LINKEDNODEarray[slot]
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	IFF bOK THEN
@@ -10867,7 +10848,7 @@ FUNCTION LINKEDNODE_Update (id, LINKEDNODE item)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDNODEarrayUM[])) THEN
 		IF LINKEDNODEarrayUM[slot] THEN
 			LINKEDNODEarray[slot] = item
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	RETURN bOK
@@ -10900,7 +10881,7 @@ FUNCTION LINKEDWALK_Delete (id)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDWALKarrayUM[])) THEN
 		LINKEDWALKarray[slot] = null_item
 		LINKEDWALKarrayUM[slot] = $$FALSE
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 
 	RETURN bOK
@@ -10932,7 +10913,7 @@ FUNCTION LINKEDWALK_Get (id, LINKEDWALK item)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDWALKarrayUM[])) THEN
 		IF LINKEDWALKarrayUM[slot] THEN
 			item = LINKEDWALKarray[slot]
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	IFF bOK THEN
@@ -11045,7 +11026,7 @@ FUNCTION LINKEDWALK_Update (id, LINKEDWALK item)
 	IF (slot >= 0) && (slot <= UBOUND(LINKEDWALKarrayUM[])) THEN
 		IF LINKEDWALKarrayUM[slot] THEN
 			LINKEDWALKarray[slot] = item
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	RETURN bOK
@@ -11298,7 +11279,7 @@ FUNCTION SPLITTERINFO_Delete (idBlock)
 	IF (slot >= 0) && (slot <= UBOUND(SPLITTERINFOarrayUM[])) THEN
 		SPLITTERINFOarray[slot] = null_item
 		SPLITTERINFOarrayUM[slot] = $$FALSE
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 
 	RETURN bOK
@@ -11330,7 +11311,7 @@ FUNCTION SPLITTERINFO_Get (idBlock, SPLITTERINFO splitter_block)
 	IF (slot >= 0) && (slot <= UBOUND(SPLITTERINFOarrayUM[])) THEN
 		IF SPLITTERINFOarrayUM[slot] THEN
 			splitter_block = SPLITTERINFOarray[slot]
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	IFF bOK THEN
@@ -11442,7 +11423,7 @@ FUNCTION SPLITTERINFO_Update (idBlock, SPLITTERINFO splitter_block)
 	IF (slot >= 0) && (slot <= UBOUND(SPLITTERINFOarrayUM[])) THEN
 		IF SPLITTERINFOarrayUM[slot] THEN
 			SPLITTERINFOarray[slot] = splitter_block
-			bOK = $$TRUE
+			bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 	RETURN bOK
@@ -11466,7 +11447,7 @@ FUNCTION STRING_Delete (id)
 		' clear slot STRINGarray$[slot]
 		STRINGarray$[slot] = ""
 		STRINGarrayUM[slot] = $$FALSE
-		bOK = $$TRUE
+		bOK = $$TRUE		' success
 	ENDIF
 	RETURN bOK
 END FUNCTION
@@ -11544,7 +11525,7 @@ FUNCTION STRING_Get (id, @r_item$)
 		IF STRINGarrayUM[slot] THEN
 			' retrieve used slot STRINGarray$[slot]
 			r_item$ = STRINGarray$[slot]
-			IF r_item$ THEN bOK = $$TRUE
+			IF r_item$ THEN bOK = $$TRUE		' success
 		ENDIF
 	ENDIF
 
@@ -14553,7 +14534,7 @@ FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam)
 				' refresh the parent window
 				hParent = GetParent(hSplitter)
 				GetClientRect (hParent, &rect)
-				sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
+				sizeWindow (hParent, rect.right-rect.left, rect.bottom-rect.top)		' resize the parent window
 
 				mousePos = newMousePos
 			ENDIF
@@ -14581,7 +14562,7 @@ FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam)
 					' refresh the parent window
 					hParent = GetParent(hSplitter)
 					GetClientRect (hParent, &rect)
-					sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
+					sizeWindow (hParent, rect.right-rect.left, rect.bottom-rect.top)		' resize the parent window
 				ELSE
 					autoSizerInfo_get (splitter_block.group, splitter_block.id, @sizer_block)
 					splitter_block.docked = sizer_block.size
@@ -14594,7 +14575,7 @@ FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam)
 					' refresh the parent window
 					hParent = GetParent(hSplitter)
 					GetClientRect (hParent, &rect)
-					sizeWindow (hParent, rect.right - rect.left, rect.bottom - rect.top)
+					sizeWindow (hParent, rect.right-rect.left, rect.bottom-rect.top)		' resize the parent window
 				ENDIF
 			ELSE
 				dragging = $$FALSE
