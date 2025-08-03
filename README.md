@@ -2,7 +2,7 @@ Win.dll
 GUI library for XBlite
 
 (c) Callum Lowcay 2007-2008  Distributed under the terms of the GNU LGPL.
-    Guy Lonne     2011-2019
+    Guy Lonne     2011-2025
 
 The WinX library (ie WinX.x and any binaries derived from that file) may only be used or redistributed under the terms of the GNU LGPL.  Please see COPYING_LIB for a full copy of this licence.
 
