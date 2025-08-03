@@ -5,7 +5,7 @@
 ' ####################
 '
 PROGRAM	"WinX"
-VERSION "0.6.0.5"		' 15 April 2025
+VERSION "0.6.0.5"		' 3 August 2025
 EXPLICIT
 'CONSOLE
 '
@@ -442,7 +442,7 @@ DECLARE FUNCTION WinXAddCalendar (hParent, @monthsX, @monthsY, idCtr) ' add cale
 DECLARE FUNCTION WinXAddCheckBox (hParent, text$, isFirst, pushlike, idCtr) ' add checkbox
 DECLARE FUNCTION WinXAddCheckButton (hParent, text$, isFirst, pushlike, idCtr) ' add check button
 DECLARE FUNCTION WinXAddComboBox (hParent, listHeight, canEdit, images, idCtr) ' add combo box
-DECLARE FUNCTION WinXAddControl (hParent, class$, text$, style, exStyle, idCtr) ' add custom control
+DECLARE FUNCTION WinXAddControl (hParent, className$, text$, style, exStyle, idCtr) ' add custom control
 DECLARE FUNCTION WinXAddEdit (hParent, text$, style, idCtr) ' add edit control
 DECLARE FUNCTION WinXAddGroupBox (hParent, text$, idCtr) ' add group box
 DECLARE FUNCTION WinXAddListBox (hParent, sort, multiSelect, idCtr) ' add list box control
@@ -569,7 +569,7 @@ DECLARE FUNCTION WinXDraw_ResizeImage (hImage, w, h)
 DECLARE FUNCTION WinXDraw_SaveImage (hImage, fileName$, fileType)
 DECLARE FUNCTION WinXDraw_SetConstantAlpha (hImage, DOUBLE alpha)
 DECLARE FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE @data[])
-DECLARE FUNCTION WinXDraw_SetImagePixel (hImage, x, y, codeRGB)
+DECLARE FUNCTION WinXDraw_SetImagePixel (hImage, x, y, rgbColor)
 DECLARE FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 
 DECLARE FUNCTION WinXDraw_Undo (hWnd, idDraw) ' undo a drawing operation
@@ -807,8 +807,8 @@ DECLARE FUNCTION CleanUp () ' program clean-up
 DECLARE FUNCTION CompareLVItems (item1, item2, hLV)
 '
 'new in 0.6.0.2
-DECLARE FUNCTION Delete_the_binding (idBinding) ' delete a binding accessed by its id
-DECLARE FUNCTION Get_the_binding (hWnd, @idBinding, BINDING @binding) ' get data of binding accessed by its id
+DECLARE FUNCTION Delete_the_binding (binding_id) ' delete a binding accessed by its id
+DECLARE FUNCTION Get_the_binding (hWnd, @binding_id, BINDING @binding) ' get data of binding accessed by its id
 '
 ' Debug
 '
@@ -897,9 +897,9 @@ DECLARE FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam) ' WinX splitter 
 ' Window/Dialog Binding
 '
 DECLARE FUNCTION binding_add (BINDING binding)
-DECLARE FUNCTION binding_delete (idBinding)
-DECLARE FUNCTION binding_get (idBinding, BINDING @binding)
-DECLARE FUNCTION binding_update (idBinding, BINDING binding)
+DECLARE FUNCTION binding_delete (binding_id)
+DECLARE FUNCTION binding_get (binding_id, BINDING @binding)
+DECLARE FUNCTION binding_update (binding_id, BINDING binding)
 
 DECLARE FUNCTION drawArc (hdc, AUTODRAWRECORD record, x0, y0)
 DECLARE FUNCTION drawBezier (hdc, AUTODRAWRECORD record, x0, y0)
@@ -1399,6 +1399,7 @@ FUNCTION WinXAddButton (hParent, STRING title, hImage, idCtr)
 				imageType = $$IMAGE_BITMAP
 		END SELECT
 	ENDIF
+
 	style = style OR $$WS_TABSTOP OR $$WS_GROUP
 
 	'make the window
@@ -1418,7 +1419,7 @@ FUNCTION WinXAddButton (hParent, STRING title, hImage, idCtr)
 	ENDIF
 
 	'and we're done
-	RETURN hButton
+	RETURN hButton		' success
 END FUNCTION
 '
 ' #############################
@@ -1468,9 +1469,9 @@ END FUNCTION
 ' Creates a new checkbox.
 ' Note: Legacy wrapper to WinXAddCheckButton()
 FUNCTION WinXAddCheckBox (hParent, text$, isFirst, pushlike, idCtr)
-	XLONG bOK				' $$TRUE for success
-	bOK = WinXAddCheckButton (hParent, text$, isFirst, pushlike, idCtr)
-	RETURN bOK
+
+	RETURN WinXAddCheckButton (hParent, text$, isFirst, pushlike, idCtr)
+
 END FUNCTION
 '
 ' ################################
@@ -1500,7 +1501,7 @@ FUNCTION WinXAddCheckButton (hParent, STRING title, isFirst, pushlike, idCtr)
 	'give it a nice font
 	SendMessageA (hCtr, $$WM_SETFONT, GetStockObject ($$DEFAULT_GUI_FONT), $$FALSE)
 
-	RETURN hCtr
+	RETURN hCtr		' success
 END FUNCTION
 '
 ' #############################
@@ -1517,6 +1518,7 @@ FUNCTION WinXAddComboBox (hParent, listHeight, canEdit, images, idCtr)
 	XLONG hCtr				' the handle of the new control
 
 	style = $$WS_TABSTOP OR $$WS_GROUP
+
 	IF canEdit THEN
 		' $$CBS_DROPDOWN     : Editable Drop Down List
 		style = style OR $$CBS_DROPDOWN
@@ -1537,7 +1539,8 @@ FUNCTION WinXAddComboBox (hParent, listHeight, canEdit, images, idCtr)
 		SetLastError (0)
 		SendMessageA (hCtr, $$CBEM_SETIMAGELIST, 0, images)
 	ENDIF
-	RETURN hCtr
+
+	RETURN hCtr		' success
 END FUNCTION
 '
 ' ############################
@@ -1855,7 +1858,7 @@ END FUNCTION
 ' returns the new status bar's handle, or 0 on fail
 FUNCTION WinXAddStatusBar (hWnd, initialStatus$, idCtr)
 	BINDING			binding
-	XLONG				idBinding		' binding id
+	XLONG				binding_id		' binding id
 
 	RECT	rect
 	XLONG window_style				' window's style
@@ -1869,7 +1872,7 @@ FUNCTION WinXAddStatusBar (hWnd, initialStatus$, idCtr)
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0
 
 	style = 0
 
@@ -1937,7 +1940,7 @@ FUNCTION WinXAddStatusBar (hWnd, initialStatus$, idCtr)
 	NEXT i
 
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	RETURN binding.hStatus
 END FUNCTION
@@ -2047,14 +2050,14 @@ FUNCTION WinXAddTooltip (hControl, STRING tooltipText)
 	SHARED		hInst		' handle of current module
 
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	TOOLINFO ti
 	XLONG hParent		' parent control of the tooltips control
 	XLONG wMsg			' Windows message
 	XLONG fInfo			' info on this control
 	XLONG style			' tooltips style
 	XLONG ret				' win32 api return value (0 for fail)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	SetLastError (0)
 	bOK = $$FALSE
@@ -2076,7 +2079,7 @@ FUNCTION WinXAddTooltip (hControl, STRING tooltipText)
 			hParent = GetParent(hControl)
 			IFZ hParent THEN EXIT SELECT
 			'
-			IFF Get_the_binding (hParent, @idBinding, @binding) THEN EXIT SELECT
+			IFF Get_the_binding (hParent, @binding_id, @binding) THEN EXIT SELECT
 			'
 			ti.uFlags = $$TTF_SUBCLASS OR $$TTF_IDISHWND
 			ti.hwnd = hParent
@@ -2230,8 +2233,8 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXAttachAccelerators (hWnd, hAccel)
 	BINDING			binding
-	XLONG		idBinding		' binding id
-	XLONG bOK				' $$TRUE for success
+	XLONG		binding_id		' binding id
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -2242,11 +2245,11 @@ FUNCTION WinXAttachAccelerators (hWnd, hAccel)
 			IFZ hAccel THEN EXIT SELECT
 
 			'get the binding
-			bOK = Get_the_binding (hWnd, @idBinding, @binding)
+			bOK = Get_the_binding (hWnd, @binding_id, @binding)
 			IF bOK THEN
 				' and update the binding
 				binding.hAccelTable = hAccel
-				bOK = binding_update (idBinding, binding)
+				bOK = binding_update (binding_id, binding)
 				IFF bOK THEN
 					msg$ = "WinX-WinXAttachAccelerators: Can't update the binding"
 					WinXDialog_Error (@msg$, @"WinX-Run-time Error", 2)		' Alert
@@ -2283,7 +2286,7 @@ END FUNCTION
 '
 FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG series
 '
 ' 0.6.0.4-new+++
@@ -2294,7 +2297,7 @@ FUNCTION WinXAutoSizer_GetMainSeries (hWnd)
 '
 	IFZ hWnd THEN RETURN -1		' fail
 	'get the binding
-	IF Get_the_binding (hWnd, @idBinding, @binding) THEN
+	IF Get_the_binding (hWnd, @binding_id, @binding) THEN
 		series = binding.autoSizerInfo
 	ENDIF
 	IF series < -1 THEN
@@ -2331,7 +2334,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 	SHARED	SIZELISTHEAD	autoSizerInfoUM[]		' for the auto-sizing direction
 
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	AUTOSIZERINFO	sizer_block
 	SPLITTERINFO splitter_block
 	RECT parentRect
@@ -2342,7 +2345,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 	XLONG hParent			' parent control
 	XLONG idBlock			' the id of the auto-sizer information block
 	XLONG slot
-	XLONG bOK					' $$TRUE for success
+	XLONG bOK					' $$TRUE on success
 
 	SetLastError (0)
 	bOK = $$FALSE
@@ -2350,7 +2353,7 @@ FUNCTION WinXAutoSizer_SetInfo (hCtr, series, DOUBLE space, DOUBLE size, DOUBLE 
 	IF series < 0 THEN
 		'get the binding of the parent window
 		hParent = GetParent(hCtr)
-		IFF Get_the_binding (hParent, @idBinding, @binding) THEN RETURN $$FALSE
+		IFF Get_the_binding (hParent, @binding_id, @binding) THEN RETURN $$FALSE
 
 		series = binding.autoSizerInfo
 	ENDIF
@@ -2552,16 +2555,16 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXClear (hWnd)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	RECT	rect
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE		' fail
 
 	SetLastError (0)
 	GetClientRect (hWnd, &rect)
 	binding.hUpdateRegion = CreateRectRgn (0, 0, rect.right + 2, rect.bottom + 2)
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	RETURN autoDraw_clear (binding.autoDrawInfo)
 END FUNCTION
@@ -2718,7 +2721,7 @@ FUNCTION WinXClip_PutImage (hImage)
 	XLONG hClip			' = OpenClipboard (0)
 	XLONG hData			' = GlobalLock (hData)
 	XLONG pGlobalMem
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	SetLastError (0)
 	bOK = $$FALSE
@@ -3935,15 +3938,15 @@ END FUNCTION
 '	*/
 FUNCTION WinXDoEvents ()
 
-	BINDING			binding
-	XLONG		idBinding		' binding id
+	BINDING	binding
+	XLONG		binding_id		' binding id
 
-	MSG msg		' will be sent to the active window callback function when an event occurs
-	XLONG ret				' win32 api return value (0 for fail)
+	MSG messages		' will be sent to the active window callback function when an event occurs
 	XLONG hWnd			' the handle of the active window
-	XLONG bOK				' $$TRUE for success
-	XLONG hAccel		' the handle for the active accelerator table
-	XLONG bDispatch	' to deal with window messages
+	XLONG hAccel		' the handle of the active accelerator table
+
+	XLONG ret				' win32 api return value (0 for fail)
+	XLONG bOK				' $$TRUE on success
 '
 ' Main Message Loop
 ' =================
@@ -3953,21 +3956,22 @@ FUNCTION WinXDoEvents ()
 '
 	DO		' the message loop
 		' retrieve next message from queue
-		ret = GetMessageA (&msg, 0, 0, 0)
-		SELECT CASE ret
-			'CASE 0 : RETURN msg.wParam		' received a $$WM_QUIT message
+		SELECT CASE GetMessageA (&messages, 0, 0, 0)
+'
+' GL-old---
+'			CASE 0 : RETURN messages.wParam		' received a $$WM_QUIT message
+' GL-old===
+'
 			CASE  0 : RETURN $$FALSE		' received a $$WM_QUIT message
 			CASE -1 : RETURN $$TRUE			' error
 			CASE ELSE
-				'-hWnd = XLONGAT(&msg)
 				hWnd = GetActiveWindow ()
-
+				'
 				'get the binding
-				bOK = Get_the_binding (hWnd, @idBinding, @binding)
+				bOK = Get_the_binding (hWnd, @binding_id, @binding)
 				'
 				' Process accelerator keys for menu commands.
 				'
-				ret = 0
 				' retrieve current window's acceleration table
 				hAccel = 0
 				IF bOK THEN
@@ -3978,29 +3982,18 @@ FUNCTION WinXDoEvents ()
 				ret = 0
 				IF hAccel THEN
 					' "translate" the accelerator keys
-					ret = TranslateAcceleratorA (hWnd, hAccel, &msg)
+					ret = TranslateAcceleratorA (hWnd, hAccel, &messages)
 				ENDIF
 
 				' Deal with window messages.
-				bDispatch = $$FALSE
-				IFZ ret THEN
-					IFF binding.useDialogInterface THEN
-						bDispatch = $$TRUE
-					ELSE
-						IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &msg)) THEN		' send only non-dialog messages
-							bDispatch = $$TRUE
-						ENDIF
-					ENDIF
-				ENDIF
-
-				IF bDispatch THEN
+				IF (!IsWindow (hWnd)) || (!IsDialogMessageA (hWnd, &messages)) THEN
 					' send only non-dialog messages
 					' translate virtual-key messages into character messages
 					' ex.: SHIFT + a is translated as "A"
-					TranslateMessage (&msg)
+					TranslateMessage (&messages)
 
 					' send message to the window callback
-					DispatchMessageA (&msg)
+					DispatchMessageA (&messages)
 				ENDIF
 
 		END SELECT
@@ -4017,7 +4010,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	LONGDOUBLE theta_1_normal
 	LONGDOUBLE theta_2_normal
 
@@ -4028,7 +4021,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0		' fail
 
 	halfW = (x2 - x1) / 2
 	halfH = (y2 - y1) / 2
@@ -4103,7 +4096,7 @@ FUNCTION WinXDrawArc (hWnd, hPen, x1, y1, x2, y2, DOUBLE theta1, DOUBLE theta2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4118,13 +4111,13 @@ END FUNCTION
 FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw		' the id of the auto-draw info block
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0		' fail
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -4145,7 +4138,7 @@ FUNCTION WinXDrawBezier (hWnd, hPen, x1, y1, x2, y2, xC1, yC1, xC2, yC2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4160,17 +4153,17 @@ END FUNCTION
 FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw		' the id of the auto-draw info block
 	XLONG hBrush		' the handle of the solid brush
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0		' fail
 '
 ' GL-MISSING???
-'	hBrush = CreateSolidBrush (codeRGB)
+'	hBrush = CreateSolidBrush (rgbColor)
 ' GL-MISSING===
 '
 	record.hPen = hPen
@@ -4189,7 +4182,7 @@ FUNCTION WinXDrawEllipse (hWnd, hPen, x1, y1, x2, y2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4204,14 +4197,14 @@ END FUNCTION
 FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw		' the id of the auto-draw info block
 	RECT	rect
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0
 
 	GetWindowRect (hWnd, &rect)
 	record.hUpdateRegion = CreateRectRgn (rect.left, rect.top, rect.right, rect.bottom)
@@ -4228,7 +4221,7 @@ FUNCTION WinXDrawFilledArea (hWnd, hBrush, colBound, x, y)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4248,13 +4241,13 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw			' the id of the auto-draw info block
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0		' fail
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -4272,7 +4265,7 @@ FUNCTION WinXDrawFilledEllipse (hWnd, hPen, hBrush, x1, y1, x2, y2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4290,13 +4283,13 @@ END FUNCTION
 FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw			' the id of the auto-draw info block
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -4314,7 +4307,7 @@ FUNCTION WinXDrawFilledRect (hWnd, hPen, hBrush, x1, y1, x2, y2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4337,13 +4330,13 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw			' the id of the auto-draw info block
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0
 
 	record.hUpdateRegion = CreateRectRgn (x - 1, y - 1, x + w + 2, y + h + 2)
 	record.image.x = x
@@ -4363,7 +4356,7 @@ FUNCTION WinXDrawImage (hWnd, hImage, x, y, w, h, xSrc, ySrc, blend)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4383,13 +4376,13 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw			' the id of the auto-draw info block
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0
 
 	record.hPen = hPen
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
@@ -4406,7 +4399,7 @@ FUNCTION WinXDrawLine (hWnd, hPen, x1, y1, x2, y2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4422,13 +4415,13 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw			' the id of the auto-draw info block
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0
 
 	record.hUpdateRegion = CreateRectRgn (MIN (x1, x2) - 10, MIN (y1, y2) - 10, MAX (x1, x2) + 10, MAX (y1, y2) + 10)
 	record.hPen = hPen
@@ -4445,7 +4438,7 @@ FUNCTION WinXDrawRect (hWnd, hPen, x1, y1, x2, y2)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4469,14 +4462,14 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 	BINDING			binding
 	TEXTMETRIC tm
 	SIZEAPI size
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG idDraw			' the id of the auto-draw info block
 	XLONG hDC					' the handle of the context
 
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN 0		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN 0		' fail
 
 	hDC = CreateCompatibleDC (0)
 	SelectObject (hDC, hFont)
@@ -4501,7 +4494,7 @@ FUNCTION WinXDrawText (hWnd, hFont, STRING text, x, y, backCol, forCol)
 		binding.hUpdateRegion = record.hUpdateRegion
 	ENDIF
 	' and update the binding
-	binding_update (idBinding, binding)
+	binding_update (binding_id, binding)
 
 	idDraw = AUTODRAWRECORD_New (record)
 	autoDraw_add (binding.autoDrawInfo, idDraw)
@@ -4619,7 +4612,7 @@ FUNCTION WinXDraw_GetColour (hOwner, initialRGB)
 	CHOOSECOLOR colorPicker
 	XLONG i					' running index
 	XLONG ret				' win32 api return value (0 for fail)
-	XLONG r_codeRGB	' returned color
+	XLONG r_rgbColor	' returned color
 
 	IFZ #CustomColors[] THEN
 		' First time enter: Initialize the custom colors.
@@ -4648,13 +4641,13 @@ FUNCTION WinXDraw_GetColour (hOwner, initialRGB)
 	SetLastError (0)
 	ret = ChooseColorA (&colorPicker)
 	IF ret THEN
-		r_codeRGB = colorPicker.rgbResult		' User clicked button OK
+		r_rgbColor = colorPicker.rgbResult		' User clicked button OK
 	ELSE
 		caption$ = "WinXDraw_GetColour: Color Picker Error"
 		GuiTellDialogError (hOwner, caption$)
 	ENDIF
 
-	RETURN r_codeRGB
+	RETURN r_rgbColor
 '
 ' Initialize the custom colors.
 '
@@ -4696,20 +4689,20 @@ END FUNCTION
 ' Displays the get font dialog box.
 ' hOwner = the owner of the dialog
 ' r_font = the LOGFONT structure to initialize the dialog and store the output
-' r_codeRGB = the color of the returned font,
+' r_rgbColor = the color of the returned font,
 '             eventualy used as initial text color.
 ' returns $$TRUE on success, or $$FALSE on fail
-FUNCTION WinXDraw_GetFontDialog (hOwner, LOGFONT r_font, @r_codeRGB)
+FUNCTION WinXDraw_GetFontDialog (hOwner, LOGFONT r_font, @r_rgbColor)
 
 	CHOOSEFONT fontPicker
 	XLONG ret				' win32 api return value (0 for fail)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	SetLastError (0)
 	bOK = $$FALSE
 
 	' set initial text color
-	fontPicker.rgbColors = r_codeRGB
+	fontPicker.rgbColors = r_rgbColor
 
 	' $$Black = 0, $$White = RGB (0xFF, 0xFF, 0xFF)
 	IF fontPicker.rgbColors > $$White THEN
@@ -4740,7 +4733,7 @@ FUNCTION WinXDraw_GetFontDialog (hOwner, LOGFONT r_font, @r_codeRGB)
 ' strikeout, and text color), and a script (or character set)
 ' -------------------------------------------------------------------
 '
-	r_codeRGB = 0
+	r_rgbColor = 0
 	SetLastError (0)
 	ret = ChooseFontA (&fontPicker)
 	IFZ ret THEN
@@ -4754,7 +4747,7 @@ FUNCTION WinXDraw_GetFontDialog (hOwner, LOGFONT r_font, @r_codeRGB)
 			IF r_font.height < 0 THEN
 				r_font.height = - r_font.height
 			ENDIF
-			r_codeRGB = fontPicker.rgbColors		' returned text color
+			r_rgbColor = fontPicker.rgbColors		' returned text color
 		ENDIF
 		bOK = $$TRUE
 	ENDIF
@@ -5202,7 +5195,7 @@ FUNCTION WinXDraw_SetImageChannel (hImage, channel, UBYTE data[])
 	ULONG ulong_val
 	ULONG upshift
 	XLONG mask
-	XLONG bOK		' $$TRUE for success
+	XLONG bOK		' $$TRUE on success
 
 	XLONG i				' running index
 	XLONG maxPixel		' upper index
@@ -5238,14 +5231,14 @@ END FUNCTION
 ' Sets a pixel on a WinX image.
 ' hImage = the handle of the image
 ' x, y = the coordinates of the pixel
-' codeRGB = the color for the pixel
+' rgbColor = the color for the pixel
 ' returns $$TRUE on success, or $$FALSE on fail
-FUNCTION WinXDraw_SetImagePixel (hImage, x, y, codeRGB)
+FUNCTION WinXDraw_SetImagePixel (hImage, x, y, rgbColor)
 	BITMAP bitmap		' BITMAP structure
 
 	IFZ GetObjectA (hImage, SIZE(BITMAP), &bitmap) THEN RETURN $$FALSE
 	IF x < 0 || x >= bitmap.width || y < 0 || y >= bitmap.height THEN RETURN $$FALSE
-	ULONGAT(bitmap.bits, ((bitmap.height - 1 - y) * bitmap.width + x) << 2) = codeRGB
+	ULONGAT(bitmap.bits, ((bitmap.height - 1 - y) * bitmap.width + x) << 2) = rgbColor
 
 	RETURN $$TRUE		' success
 
@@ -5262,13 +5255,13 @@ END FUNCTION
 FUNCTION WinXDraw_Snapshot (hWnd, x, y, hImage)
 
 	BINDING			binding
-	XLONG				idBinding		' binding id
+	XLONG				binding_id		' binding id
 	XLONG hDC								' the handle of the compatible context
 	XLONG hOld							' = SelectObject (hDC, hImage)
 
 	SetLastError (0)
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	hDC = CreateCompatibleDC (0)
 	hOld = SelectObject (hDC, hImage)
@@ -5301,12 +5294,12 @@ END FUNCTION
 FUNCTION WinXEnableDialogInterface (hWnd, enable)
 
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	SetLastError (0)
 
 	'get the binding
-	IF Get_the_binding (hWnd, @idBinding, @binding) THEN
+	IF Get_the_binding (hWnd, @binding_id, @binding) THEN
 		IF enable THEN
 			binding.useDialogInterface = $$TRUE
 		ELSE
@@ -5321,7 +5314,7 @@ FUNCTION WinXEnableDialogInterface (hWnd, enable)
 '			WinXSetStyle (hWnd, $$WS_OVERLAPPED, 0, $$WS_POPUPWINDOW, 0)
 '		ENDIF
 '
-		RETURN binding_update (idBinding, binding)
+		RETURN binding_update (binding_id, binding)
 	ENDIF
 
 END FUNCTION
@@ -5420,11 +5413,11 @@ END FUNCTION
 '
 FUNCTION WinXGetUseableRect (hWnd, RECT rectUseable)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	RECT client_rect
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	GetClientRect (hWnd, &rectUseable)
 	IF binding.hBar THEN
@@ -6307,7 +6300,7 @@ FUNCTION WinXNewChildWindow (hParent, STRING title, style, exStyle, idCtr)
 	SHARED		hInst
 
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	LINKEDLIST autoDraw
 	XLONG hWnd				' the handle of the new child window
 	XLONG dwStyle					' window style
@@ -6624,7 +6617,7 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 
 	' ULONG is natural for bit operands
 	ULONG color
-	ULONG codeRGB
+	ULONG rgbColor
 	ULONG red
 	ULONG green
 	ULONG blue
@@ -6722,17 +6715,17 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 				upper_y = bmpHeight - 1
 				FOR y = 0 TO upper_y
 					FOR x = 0 TO upper_x
-						codeRGB = GetPixel (hSource, x, y)
+						rgbColor = GetPixel (hSource, x, y)
 '
 ' GL-26jul21-old---
-'						'IF codeRGB = 0x00000000 THEN SetPixel (hMem, x, y, 0x00808080)
-'						IFZ codeRGB THEN SetPixel (hMem, x, y, $$MediumGrey)
+'						'IF rgbColor = 0x00000000 THEN SetPixel (hMem, x, y, 0x00808080)
+'						IFZ rgbColor THEN SetPixel (hMem, x, y, $$MediumGrey)
 ' GL-26jul21-old===
 ' GL-26jul21-new+++
 						' extract the red, green, blue values from the RGB color
-						red = codeRGB AND 0xFF
-						green = (codeRGB >> 8) AND 0xFF
-						blue = (codeRGB >> 16) AND 0xFF
+						red = rgbColor AND 0xFF
+						green = (rgbColor >> 8) AND 0xFF
+						blue = (rgbColor >> 16) AND 0xFF
 '
 ' GL-27jul21-old---
 '						gray = (red + green + blue) / 3
@@ -6779,11 +6772,11 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 				upper_y = bmpHeight - 1
 				FOR y = 0 TO upper_y
 					FOR x = 0 TO upper_x
-						codeRGB = GetPixel (hSource, x, y)
+						rgbColor = GetPixel (hSource, x, y)
 
-						red = codeRGB AND 0xFF
-						green = (codeRGB >> 8) AND 0xFF
-						blue = (codeRGB >> 16) AND 0xFF
+						red = rgbColor AND 0xFF
+						green = (rgbColor >> 8) AND 0xFF
+						blue = (rgbColor >> 16) AND 0xFF
 
 						IF red < 215 THEN red = red + 40		'red+((0xFF-red)\3)
 						IF green < 215 THEN green = green + 40		'green+((0xFF-green)\3)
@@ -6851,8 +6844,8 @@ FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmp
 		upper_y = bmpHeight - 1
 		FOR y = 0 TO upper_y
 			FOR x = 0 TO upper_x
-				codeRGB = GetPixel (hSource, x, y)		' get source's pixel
-				IF codeRGB = transparentRGB THEN
+				rgbColor = GetPixel (hSource, x, y)		' get source's pixel
+				IF rgbColor = transparentRGB THEN
 					' transparency
 					pixelRGB = $$White
 					SetPixel (hSource, x, y, pixelRGB)		' reset source's pixel
@@ -6954,7 +6947,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 ' .maxH = GetSystemMetrics ($$SM_CYSCREEN)
 '
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	RECT	rect
 	LINKEDLIST autoDraw
 
@@ -7124,11 +7117,11 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 '	SetWindowLongA (window_handle, $$GWL_USERDATA, binding_add(binding))
 ' 0.6.0.2-old===
 ' 0.6.0.2-new+++
-	idBinding = binding_add (binding)
-	IF idBinding > 0 THEN
-		SetWindowLongA (window_handle, $$GWL_USERDATA, idBinding)
+	binding_id = binding_add (binding)
+	IF binding_id > 0 THEN
+		SetWindowLongA (window_handle, $$GWL_USERDATA, binding_id)
 	ELSE
-		idBinding = 0
+		binding_id = 0
 		msg$ = "WinX-WinXNewWindow: Can't add binding to the new window"
 		msg$ = msg$ + "\r\n" + title
 		WinXDialog_Error (@msg$, @"WinX-Internal Error", 2)
@@ -7214,7 +7207,7 @@ FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pag
 	SHARED	PRINTINFO	printInfo
 '	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	RECT	rect
 	XLONG hRgn		' = CreateRectRgnIndirect (&rect)
 
@@ -7222,7 +7215,7 @@ FUNCTION WinXPrint_Page (hPrinter, hWnd, x, y, cxLog, cyLog, cxPhys, cyPhys, pag
 	IFZ hPrinter THEN RETURN $$FALSE		' fail
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	'get the clipping rect for the printer
 	rect.left = (GetDeviceCaps (hPrinter, $$LOGPIXELSX) * printInfo.marginLeft) \ 1000
@@ -7485,14 +7478,14 @@ END FUNCTION
 '	*/
 FUNCTION WinXRegControlSizer (hWnd, FUNCADDR onSize)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE		' fail
 
 	' set the function
 	binding.dimControls = onSize
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ###################################
@@ -7520,11 +7513,11 @@ END FUNCTION
 '	*/
 FUNCTION WinXRegMessageHandler (hWnd, wMsg, FUNCADDR msgHandler)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	MSGHANDLER handler
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE		' fail
 
 	' prepare the handler
 	handler.msg = wMsg
@@ -7545,13 +7538,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnCalendarSelect (hWnd, FUNCADDR onCalendarSelect)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onCalendarSelect = onCalendarSelect
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ###########################
@@ -7563,13 +7556,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnChar (hWnd, FUNCADDR onChar)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onChar = onChar
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' #################################
@@ -7581,15 +7574,15 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnClipChange (hWnd, FUNCADDR onClipChange)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.hWndNextClipViewer = SetClipboardViewer (hWnd)
 
 	binding.onClipChange = onClipChange
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ############################
@@ -7598,13 +7591,13 @@ END FUNCTION
 ' Registers an onClose callback of a window.
 FUNCTION WinXRegOnClose (hWnd, FUNCADDR onClose)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onClose = onClose
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ##################################
@@ -7616,13 +7609,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnColumnClick (hWnd, FUNCADDR onColumnClick)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onColumnClick = onColumnClick
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ##############################
@@ -7634,12 +7627,12 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnCommand (hWnd, FUNCADDR onCommand)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG				binding_id		' binding id
 
 	'get the binding
-	IF Get_the_binding (hWnd, @idBinding, @binding) THEN
+	IF Get_the_binding (hWnd, @binding_id, @binding) THEN
 		binding.onCommand = onCommand
-		IF binding_update (idBinding, binding) THEN
+		IF binding_update (binding_id, binding) THEN
 			RETURN $$TRUE		' success
 		ELSE
 			msg$ = "WinX-WinXRegOnCommand: Can't update the binding"
@@ -7661,13 +7654,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnDrag (hWnd, FUNCADDR onDrag)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onDrag = onDrag
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ################################
@@ -7679,14 +7672,14 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnDropFiles (hWnd, FUNCADDR onDropFiles)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	DragAcceptFiles (hWnd, $$TRUE)
 	binding.onDropFiles = onDropFiles
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' #################################
@@ -7698,13 +7691,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnEnterLeave (hWnd, FUNCADDR onEnterLeave)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onEnterLeave = onEnterLeave
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ##################################
@@ -7716,13 +7709,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnFocusChange (hWnd, FUNCADDR onFocusChange)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onFocusChange = onFocusChange
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ###########################
@@ -7734,13 +7727,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnItem (hWnd, FUNCADDR onItem)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onItem = onItem
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ##############################
@@ -7757,13 +7750,13 @@ END FUNCTION
 '
 FUNCTION WinXRegOnKeyDown (hWnd, FUNCADDR onKeyDown)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onKeyDown = onKeyDown
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ############################
@@ -7775,13 +7768,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnKeyUp (hWnd, FUNCADDR onKeyUp)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onKeyUp = onKeyUp
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ################################
@@ -7793,13 +7786,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnLabelEdit (hWnd, FUNCADDR onLabelEdit)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onLabelEdit = onLabelEdit
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ################################
@@ -7811,13 +7804,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnMouseDown (hWnd, FUNCADDR onMouseDown)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onMouseDown = onMouseDown
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ################################
@@ -7829,13 +7822,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnMouseMove (hWnd, FUNCADDR onMouseMove)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onMouseMove = onMouseMove
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ##############################
@@ -7847,13 +7840,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnMouseUp (hWnd, FUNCADDR onMouseUp)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onMouseUp = onMouseUp
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' #################################
@@ -7865,13 +7858,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnMouseWheel (hWnd, FUNCADDR onMouseWheel)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onMouseWheel = onMouseWheel
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ############################
@@ -7893,14 +7886,14 @@ END FUNCTION
 '	*/
 FUNCTION WinXRegOnPaint (hWnd, FUNCADDR onPaint)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	' set the paint function
 	binding.paint = onPaint
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' #############################
@@ -7912,13 +7905,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnScroll (hWnd, FUNCADDR onScroll)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onScroll = onScroll
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' #################################
@@ -7930,13 +7923,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegOnTrackerPos (hWnd, FUNCADDR onTrackerPos)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.onTrackerPos = onTrackerPos
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ##################################
@@ -7952,7 +7945,7 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegistry_ReadBin (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
 	XLONG pSA				' = &sa
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG zeroOK		' = 0 => OK!
 
 	XLONG hSubKey
@@ -8026,7 +8019,7 @@ END FUNCTION
 ' result = the integer read from the registry
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegistry_ReadInt (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG zeroOK		' = 0 => OK!
 	XLONG pSA				' = &sa
 
@@ -8091,7 +8084,7 @@ END FUNCTION
 ' result$ = the string read from the registry
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegistry_ReadString (hKey, subKey$, value$, createOnOpenFail, SECURITY_ATTRIBUTES sa, @result$)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG zeroOK		' = 0 => OK!
 	XLONG pSA				' = &sa
 
@@ -8171,7 +8164,7 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegistry_WriteBin (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, szBuf$)
 	XLONG pSA				' = &sa
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG zeroOK		' = 0 => OK!
 
 	XLONG hSubKey
@@ -8212,7 +8205,7 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegistry_WriteInt (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, int)
 	XLONG pSA				' = &sa
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG zeroOK		' = 0 => OK!
 
 	XLONG hSubKey
@@ -8255,7 +8248,7 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXRegistry_WriteString (hKey, subKey$, value$, SECURITY_ATTRIBUTES sa, szBuf$)
 	XLONG pSA				' = &sa
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG zeroOK		' = 0 => OK!
 
 	XLONG hSubKey
@@ -8370,7 +8363,7 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	RECT	rect
 	SCROLLINFO si
 	XLONG typeBar			' status bar type
@@ -8384,7 +8377,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 	SetLastError (0)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE		' fail
 
 	GetClientRect (hWnd, &rect)
 
@@ -8419,7 +8412,7 @@ FUNCTION WinXScroll_SetPage (hWnd, direction, DOUBLE mul, constant, scrollUnit)
 	SetScrollInfo (hWnd, typeBar, &si, $$TRUE)
 
 	' and update the binding
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' ###############################
@@ -8547,13 +8540,13 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXSetCursor (hWnd, hCursor)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	binding.hCursor = hCursor
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 END FUNCTION
 '
 ' #########################
@@ -8588,7 +8581,7 @@ END FUNCTION
 FUNCTION WinXSetMinSize (hWnd, min_width, min_height)
 
 	BINDING binding
-	XLONG idBinding		' binding id
+	XLONG binding_id		' binding id
 	XLONG bUpdated
 
 	XLONG corr_w
@@ -8601,7 +8594,7 @@ FUNCTION WinXSetMinSize (hWnd, min_width, min_height)
 
 		CASE ELSE
 			' get the binding
-			IFF Get_the_binding (hWnd, @idBinding, @binding) THEN EXIT SELECT		' fail
+			IFF Get_the_binding (hWnd, @binding_id, @binding) THEN EXIT SELECT		' fail
 
 			IF min_width > 0 THEN
 				binding.minW = min_width
@@ -8615,7 +8608,7 @@ FUNCTION WinXSetMinSize (hWnd, min_width, min_height)
 
 			IF bUpdated THEN
 				' and update the binding
-				bUpdated = binding_update (idBinding, binding)
+				bUpdated = binding_update (binding_id, binding)
 			ENDIF
 
 	END SELECT
@@ -8636,7 +8629,7 @@ FUNCTION WinXSetPlacement (hWnd, minMax, RECT restored)
 
 	WINDOWPLACEMENT wp
 	RECT	rect
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -8668,7 +8661,7 @@ END FUNCTION
 ' subEx = the extended styles to remove
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXSetStyle (hWnd, addStyle, addEx, subStyle, subEx)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG ret				' win32 api return value (0 for fail)
 '
 ' Window Style.
@@ -8846,10 +8839,10 @@ END FUNCTION
 '
 FUNCTION WinXSetWindowColour (hWnd, backRGB)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	IF binding.backCol THEN
 		DeleteObject (binding.backCol)
@@ -8857,7 +8850,7 @@ FUNCTION WinXSetWindowColour (hWnd, backRGB)
 	ENDIF
 	binding.backCol = CreateSolidBrush (backRGB)
 
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 
 END FUNCTION
 '
@@ -8870,12 +8863,12 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	IFZ hToolbar THEN RETURN $$FALSE
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	' set the toolbar parent
 	SetParent (hToolbar, hWnd)
@@ -8888,7 +8881,7 @@ FUNCTION WinXSetWindowToolbar (hWnd, hToolbar)
 	' and update the binding
 	binding.hBar = hToolbar
 
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 
 END FUNCTION
 '
@@ -9091,11 +9084,11 @@ END FUNCTION
 ' returns the status text from the specified part of the status bar, or the empty string on fail
 FUNCTION WinXStatus_GetText$ (hWnd, part)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG sizeBuf			' size of the buffer
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN ""
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN ""
 
 	IF part > binding.statusParts THEN RETURN ""
 
@@ -9117,10 +9110,10 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXStatus_SetText (hWnd, part, STRING text)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE		' fail
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE		' fail
 
 	IF part > binding.statusParts THEN RETURN $$FALSE		' fail
 
@@ -9207,7 +9200,7 @@ END FUNCTION
 ' iTab = the index of the new current tab
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXTabs_SetCurrentTab (hTabs, iTab)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG ret				' win32 api return value (0 for fail)
 	XLONG count			' = SendMessageA (hTabs, $$TCM_GETITEMCOUNT, 0, 0)
 
@@ -9238,7 +9231,7 @@ END FUNCTION
 ' r_timeValid = $$TRUE only if the returned time is valid
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXTimePicker_GetTime (hDTP, SYSTEMTIME time, @r_timeValid)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	SetLastError (0)
 	bOK = $$TRUE
@@ -9849,13 +9842,13 @@ FUNCTION WinXUndo (hWnd, idDraw)
 
 	AUTODRAWRECORD record
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	LINKEDLIST autoDraw
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	SetLastError (0)
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 '	LINKEDLIST_Get (binding.autoDrawInfo, @autoDraw)
 '	LinkedList_GetItem (autoDraw, idDraw, @idDraw)
@@ -9885,7 +9878,7 @@ FUNCTION WinXUndo (hWnd, idDraw)
 '	LINKEDLIST_Update (binding.autoDrawInfo, @autoDraw)
 
 	' and update the binding
-	bOK = binding_update (idBinding, binding)
+	bOK = binding_update (binding_id, binding)
 
 	RETURN bOK
 
@@ -9899,7 +9892,7 @@ END FUNCTION
 ' returns $$TRUE on success, or $$FALSE on fail
 FUNCTION WinXUpdate (hWnd)
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	RECT	rect
 
 	SetLastError (0)
@@ -9907,13 +9900,13 @@ FUNCTION WinXUpdate (hWnd)
 	'InvalidateRect (hWnd, &rect, $$TRUE)
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 '	PRINT binding.hUpdateRegion
 	InvalidateRgn (hWnd, binding.hUpdateRegion, $$TRUE)
 	DeleteObject (binding.hUpdateRegion)
 	binding.hUpdateRegion = 0
-	RETURN binding_update (idBinding, binding)
+	RETURN binding_update (binding_id, binding)
 
 END FUNCTION
 '
@@ -10036,7 +10029,7 @@ FUNCTION AUTODRAWRECORD_Delete (id)
 	XLONG slot		' array index
 	XLONG upper_slot	' upper index
 	XLONG i						' running index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10068,7 +10061,7 @@ FUNCTION AUTODRAWRECORD_Get (id, AUTODRAWRECORD item)
 
 	AUTODRAWRECORD null_item
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10181,7 +10174,7 @@ FUNCTION AUTODRAWRECORD_Update (id, AUTODRAWRECORD item)
 	SHARED SBYTE AUTODRAWRECORDarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10247,13 +10240,13 @@ FUNCTION CleanUp ()
 	SHARED #hClipMem					' global memory for clipboard operations
 	SHARED #drag_image				' image list for the dragging effect
 	SHARED BINDING bindings[]
-	XLONG idBinding			' binding id
+	XLONG binding_id			' binding id
 
 	XLONG window_handle[]	' local copy of the array of active windows
 	XLONG slot					' array index
 	XLONG upper_slot		' upper slot
 
-	XLONG bDebugMode		' $$TRUE for DEBUG mode
+	XLONG bDebugMode		' $$TRUE on DEBUG mode
 	XLONG bErr					' $$TRUE for error
 	XLONG ret						' win32 api return value (0 for fail)
 
@@ -10295,7 +10288,7 @@ FUNCTION CleanUp ()
 			' to destroy the main window last.
 			'
 			FOR slot = upper_slot TO 0 STEP -1
-				Delete_the_binding (idBinding)
+				Delete_the_binding (binding_id)
 
 				IFZ window_handle[slot] THEN DO NEXT
 
@@ -10403,14 +10396,14 @@ END FUNCTION
 ' ################################
 ' Deletes a binding from the binding table.
 ' "overloading" binding_delete
-' idBinding = id of the binding to delete
+' binding_id = id of the binding to delete
 ' returns $$TRUE on success, or $$FALSE on fail
-FUNCTION Delete_the_binding (idBinding)
+FUNCTION Delete_the_binding (binding_id)
 	BINDING			binding
 	LINKEDLIST autoDraw
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
-	bOK = binding_get (idBinding, @binding)
+	bOK = binding_get (binding_id, @binding)
 
 	SELECT CASE bOK
 		CASE $$TRUE
@@ -10432,7 +10425,7 @@ FUNCTION Delete_the_binding (idBinding)
 			' delete the auto-sizer info
 			autoSizerInfo_deleteGroup (binding.autoSizerInfo)
 
-			bOK = binding_delete (idBinding)
+			bOK = binding_delete (binding_id)
 
 	END SELECT
 
@@ -10446,20 +10439,20 @@ END FUNCTION
 ' Gets data of a binding accessed by its id
 ' by "overloading" binding_get.
 ' hWnd      = handle of the window
-' idBinding = returned id of binding
+' binding_id = returned id of binding
 ' binding   = returned data
 ' returns $$TRUE on success, or $$FALSE on fail
-FUNCTION Get_the_binding (hWnd, @idBinding, BINDING binding)
+FUNCTION Get_the_binding (hWnd, @binding_id, BINDING binding)
 	BINDING null_item
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	SetLastError (0)
 	bOK = $$FALSE
-	idBinding = 0
+	binding_id = 0
 
 	IF hWnd THEN
-		idBinding = GetWindowLongA (hWnd, $$GWL_USERDATA)
-		bOK = binding_get (idBinding, @binding)
+		binding_id = GetWindowLongA (hWnd, $$GWL_USERDATA)
+		bOK = binding_get (binding_id, @binding)
 	ENDIF
 
 	IFF bOK THEN
@@ -10489,7 +10482,7 @@ END FUNCTION
 '	ENDIF
 '
 FUNCTION GuiTellApiError (msg$)
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG errNum		' last error code
 	XLONG dwFlags
 	XLONG char_count			' character count
@@ -10608,7 +10601,7 @@ FUNCTION LINKEDLIST_Delete (id)
 	XLONG slot				' array index
 	XLONG upper_slot	' upper index
 	XLONG i						' running index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10640,7 +10633,7 @@ FUNCTION LINKEDLIST_Get (id, LINKEDLIST item)
 
 	LINKEDLIST null_item
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10753,7 +10746,7 @@ FUNCTION LINKEDLIST_Update (id, LINKEDLIST item)
 	SHARED SBYTE LINKEDLISTarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10786,7 +10779,7 @@ FUNCTION LINKEDNODE_Delete (id)
 	XLONG slot				' array index
 	XLONG upper_slot	' upper index
 	XLONG i						' running index
-	XLONG bOK					' $$TRUE for success
+	XLONG bOK					' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10818,7 +10811,7 @@ FUNCTION LINKEDNODE_Get (id, LINKEDNODE item)
 
 	LINKEDNODE null_item
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10931,7 +10924,7 @@ FUNCTION LINKEDNODE_Update (id, LINKEDNODE item)
 	SHARED SBYTE LINKEDNODEarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10964,7 +10957,7 @@ FUNCTION LINKEDWALK_Delete (id)
 	XLONG slot				' array index
 	XLONG upper_slot	' upper index
 	XLONG i						' running index
-	XLONG bOK					' $$TRUE for success
+	XLONG bOK					' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -10996,7 +10989,7 @@ FUNCTION LINKEDWALK_Get (id, LINKEDWALK item)
 
 	LINKEDWALK null_item
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -11109,7 +11102,7 @@ FUNCTION LINKEDWALK_Update (id, LINKEDWALK item)
 	SHARED SBYTE LINKEDWALKarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -11360,7 +11353,7 @@ FUNCTION SPLITTERINFO_Delete (idBlock)
 	XLONG slot				' array index
 	XLONG upper_slot	' upper index
 	XLONG i						' running index
-	XLONG bOK					' $$TRUE for success
+	XLONG bOK					' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = idBlock - 1
@@ -11392,7 +11385,7 @@ FUNCTION SPLITTERINFO_Get (idBlock, SPLITTERINFO splitter_block)
 
 	SPLITTERINFO null_item
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = idBlock - 1
@@ -11504,7 +11497,7 @@ FUNCTION SPLITTERINFO_Update (idBlock, SPLITTERINFO splitter_block)
 	SHARED SBYTE SPLITTERINFOarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = idBlock - 1
@@ -11527,7 +11520,7 @@ FUNCTION STRING_Delete (id)
 	SHARED UBYTE STRINGarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -11605,7 +11598,7 @@ FUNCTION STRING_Get (id, @r_item$)
 	SHARED UBYTE STRINGarrayUM[]
 
 	XLONG slot		' array index
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	bOK = $$FALSE
 	slot = id - 1
@@ -11703,7 +11696,7 @@ END FUNCTION
 ' ################################
 '
 ' Unregisters a window class.
-' returns bOK; $$TRUE for success
+' returns bOK; $$TRUE on success
 '
 FUNCTION UnregisterWinClass (STRING window_class, bDebugMode, STRING DebugText)
 
@@ -11715,7 +11708,7 @@ FUNCTION UnregisterWinClass (STRING window_class, bDebugMode, STRING DebugText)
 	XLONG bErr			' $$TRUE for error
 	XLONG ret				' win32 api return value (0 for fail)
 	XLONG errNum		' win32 api last error CODE
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 '
 ' UnregisterClassA: Handled win32 api return codes.
 '
@@ -11862,7 +11855,7 @@ END FUNCTION
 ' returns an index to the linked list on success, or -1 on fail
 FUNCTION autoDraw_add (idList, idDraw)
 	LINKEDLIST autoDraw
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 	XLONG slot				' array index
 
 	slot = -1		' not an index
@@ -11942,7 +11935,7 @@ FUNCTION autoDraw_draw (hdc, group, x0, y0)
 	XLONG hFont			' the handle of the logical font
 	XLONG hWalk			' running handle of the autoDraw's item
 	XLONG idDraw		' the id of the auto-draw info block
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -12340,7 +12333,7 @@ END FUNCTION
 FUNCTION autoSizerInfo_delete (group, idDraw)
 	SHARED		AUTOSIZERINFO	autoSizerInfo[]	'info for the auto-sizer
 	SHARED		SIZELISTHEAD autoSizerInfoUM[]
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -12406,7 +12399,7 @@ FUNCTION autoSizerInfo_get (group, idDraw, AUTOSIZERINFO sizer_block)
 	SHARED		AUTOSIZERINFO	autoSizerInfo[]	'info for the auto-sizer
 	SHARED		SIZELISTHEAD autoSizerInfoUM[]
 	AUTOSIZERINFO null_item
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -12443,7 +12436,7 @@ FUNCTION autoSizerInfo_showGroup (group, visible)
 
 	XLONG command
 	XLONG idDraw		' the id of the auto-draw info block
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -12491,7 +12484,7 @@ FUNCTION autoSizerInfo_sizeGroup (group, x0, y0, w, h)
 	XLONG currPos		' current position
 	XLONG idDraw		' the id of the auto-draw info block
 	XLONG nNumWindows
-	XLONG bOK				' $$TRUE for success
+	XLONG bOK				' $$TRUE on success
 
 	bOK = $$FALSE
 
@@ -13168,8 +13161,8 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 ' Unused===
 '
 	PAINTSTRUCT	ps
-	BINDING			binding
-	XLONG		idBinding		' binding id
+	BINDING	binding
+	XLONG		binding_id		' binding id
 '
 ' Unused---
 '	BINDING innerBinding
@@ -13199,7 +13192,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	XLONG scrollUnit
 
 	XLONG ret			' win32 api return value (0 for fail)
-	XLONG bOK			' $$TRUE for success
+	XLONG bOK			' $$TRUE on success
 
 	XLONG pMmi			' = &mmi
 	XLONG pNmkey		' = &nmkey
@@ -13237,7 +13230,7 @@ FUNCTION mainWndProc (hWnd, wMsg, wParam, lParam)
 	return_code = 0
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN
 		RETURN DefWindowProcA (hWnd, wMsg, wParam, lParam)
 	ENDIF
 
@@ -13522,7 +13515,7 @@ ASM mov d[mainWndProc.low], edx; = LOWORD
 				TrackMouseEvent (&tme)
 				' and update the binding
 				binding.isMouseInWindow = $$TRUE
-				binding_update (idBinding, binding)
+				binding_update (binding_id, binding)
 
 				@binding.onEnterLeave(hWnd, $$TRUE)
 			ENDIF
@@ -13543,7 +13536,7 @@ ASM mov d[mainWndProc.low], edx; = LOWORD
 		CASE $$WM_MOUSELEAVE
 			' and update the binding
 			binding.isMouseInWindow = $$FALSE
-			binding_update (idBinding, binding)
+			binding_update (binding_id, binding)
 
 			@binding.onEnterLeave(hWnd, $$FALSE)
 			RETURN 0
@@ -13867,14 +13860,14 @@ ASM mov d[mainWndProc.low], eax	; = LOWORD
 ' 0.6.0.2-old---
 '			IFZ binding.onClose THEN
 '				DestroyWindow (hWnd)
-'				PostQuitMessage($$WM_QUIT)		' quit program
+'				PostQuitMessage($$WM_QUIT)		' quit PROGRAM
 '				RETURN 0
 '			ELSE
 '				RETURN @binding.onClose(hWnd)
 '			ENDIF
 ' 0.6.0.2-old===
 ' 0.6.0.2-new+++
-			SELECT CASE idBinding
+			SELECT CASE binding_id
 				CASE 1
 					' main window
 					IFZ binding.onClose THEN
@@ -13919,7 +13912,7 @@ ASM mov d[mainWndProc.low], eax	; = LOWORD
 			ChangeClipboardChain (hWnd, binding.hWndNextClipViewer)
 
 			'clear the binding
-			Delete_the_binding (idBinding)
+			Delete_the_binding (binding_id)
 			handled = $$TRUE		' message handled
 	END SELECT
 
@@ -13988,7 +13981,7 @@ FUNCTION onNotify (hWnd, wParam, lParam, BINDING binding)
 	SHARED #drag_item
 	SHARED #drag_image
 
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	NMHDR nmhdr
 	TV_DISPINFO nmtvdi
 	NM_TREEVIEW nmtv
@@ -14245,7 +14238,7 @@ FUNCTION sizeWindow (hWnd, winWidth, winHeight)
 	STATIC maxX
 
 	BINDING			binding
-	XLONG		idBinding		' binding id
+	XLONG		binding_id		' binding id
 	XLONG style				' window style
 
 	SCROLLINFO si
@@ -14258,7 +14251,7 @@ FUNCTION sizeWindow (hWnd, winWidth, winHeight)
 	XLONG yoff
 
 	'get the binding
-	IFF Get_the_binding (hWnd, @idBinding, @binding) THEN RETURN $$FALSE
+	IFF Get_the_binding (hWnd, @binding_id, @binding) THEN RETURN $$FALSE
 
 	' now handle the bar
 	IF winWidth > maxX THEN
@@ -14344,7 +14337,10 @@ FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam)
 	XLONG i					' running index
 	XLONG state			' state to draw
 	XLONG cursor		' LoadCursorA (0, cursor)
-
+'
+' GL-Sean Penn. Just kidding! Seriously:
+' Some Pens.
+'
 	XLONG hShadPen				' = CreatePen ($$PS_SOLID, 1, GetSysColor($$COLOR_3DSHADOW))
 	XLONG hBlackPen				' = CreatePen ($$PS_SOLID, 1, 0x000000)
 	XLONG hBlackBrush			' = CreateSolidBrush (0x000000)
