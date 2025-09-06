@@ -5,7 +5,7 @@
 ' ####################
 '
 PROGRAM	"WinX"
-VERSION "0.6.0.5"		' 3 August 2025
+VERSION "0.6.0.5"		' 15 April 2025
 EXPLICIT
 'CONSOLE
 '
@@ -188,7 +188,7 @@ TYPE BINDING
 '
 ' Callback Handlers.
 '
-	FUNCADDR	.paint(XLONG, XLONG)	'hWnd, hdc : paint the window
+	FUNCADDR	.paint(XLONG, XLONG)	'hWnd, hDC : paint the window
 	FUNCADDR	.dimControls(XLONG, XLONG, XLONG)	'hWnd, w, h : dimension the controls
 	FUNCADDR	.onCommand(XLONG, XLONG, XLONG)		'id, code, hWnd
 	FUNCADDR	.onMouseMove(XLONG, XLONG, XLONG)	'hWnd, x, y
@@ -393,7 +393,7 @@ $$SIZER_WCOMPLEMENT	= 0x00000010
 $$SIZER_HCOMPLEMENT	= 0x00000020
 $$SIZER_SPLITTER		= 0x00000040
 '
-'WinX Splitter Flags
+'WinX splitter flags
 ' 0.6.0.2-$$CONTROL			= 0
 $$DIR_VERT		= 1
 $$DIR_HORIZ		= 2
@@ -630,7 +630,7 @@ DECLARE FUNCTION WinXNewChildWindow (hParent, title$, style, exStyle, idCtr)
 DECLARE FUNCTION WinXNewFont (fontName$, pointSize, weight, bItalic, bUnderline, bStrikeOut) ' create a logical font
 DECLARE FUNCTION WinXNewMenu (menuList$, firstID, isPopup)
 
-DECLARE FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, toolTips, customisable)
+DECLARE FUNCTION WinXNewToolbar (nButtons, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, toolTips, customisable)
 DECLARE FUNCTION WinXNewToolbarUsingIls (hilButtons, hilGray, hilHot, toolTips, customisable)
 
 DECLARE FUNCTION WinXNewWindow (hOwner, titleBar$, x, y, w, h, simpleStyle, exStyle, icon, menu) ' create a new window
@@ -2605,7 +2605,7 @@ FUNCTION WinXClip_GetImage ()
 
 			RtlMoveMemory (&bmi, pGlobalMem, ULONGAT(pGlobalMem))
 			hImage = WinXDraw_CreateImage (bmi.biWidth, bmi.biHeight)
-			hDC = CreateCompatibleDC (0)
+			hdc = CreateCompatibleDC (0)
 			hOld = SelectObject (hDC, hImage)
 
 			height = ABS (bmi.biHeight)
@@ -5580,12 +5580,14 @@ END FUNCTION
 ' Item$ = the string to add to the list
 ' returns the index of the string in the list or $$LB_ERR on fail
 FUNCTION WinXListBox_AddItem (hListBox, index, Item$)
+
 	XLONG style
 	XLONG wMsg
 	XLONG after
 
 	SetLastError (0)
 	IFZ hListBox THEN RETURN $$LB_ERR		' fail
+	IFZ Item$ THEN RETURN $$LB_ERR
 
 	style = GetWindowLongA (hListBox, $$GWL_STYLE)
 	IF style AND $$LBS_SORT THEN
@@ -6162,7 +6164,7 @@ FUNCTION WinXMakeFilterString$ (file_filter$)
 
 	IFZ INSTR (file_filter$, $sep$) THEN RETURN file_filter$
 '
-' Check if the User provided with 2 trailing separators;
+' Check if the user provided with 2 trailing separators;
 ' if not, make sure there are 2 trailing separators.
 '
 	IF RIGHT$ (file_filter$, 2) = $double_sep$ THEN
@@ -6537,8 +6539,7 @@ END FUNCTION
 ' #####  WinXNewToolbar  #####
 ' ############################
 ' Generates a new toolbar.
-' wButton = The width of a button image in pixels
-' hButton = the height of a button image in pixels
+'
 ' nButtons = the number of buttons images
 ' hBmpButtons = the handle of a bitmap containing the button images
 ' hBmpGray = the appearance of the buttons when disabled, or 0 for default
@@ -6562,7 +6563,7 @@ END FUNCTION
 '
 '	transparentRGB = RGB (0xFF, 0, 0xFF)		' color code for transparency
 '
-'	#tbrMain = WinXNewToolbar (16, 16, 9, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, $$TRUE, $$FALSE)
+'	#tbrMain = WinXNewToolbar (9, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, $$TRUE, $$FALSE)
 '
 ' Second Example
 ' ==============
@@ -6589,11 +6590,13 @@ END FUNCTION
 '	ENDIF
 ' --------------------------------------------------------------------------
 '
-FUNCTION WinXNewToolbar (wButton, hButton, nButtons, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, toolTips, customisable)
+FUNCTION WinXNewToolbar (nButtons, hBmpButtons, hBmpGray, hBmpHot, transparentRGB, toolTips, customisable)
 
+	XLONG wButton     ' The width  of a button image in pixels
+	XLONG hButton     ' the height of a button image in pixels
 	BITMAP bitMap
 
-	XLONG ret				' win32 api return value (0 for fail)
+	XLONG ret					' win32 api return value (0 for fail)
 	XLONG bmpWidth		' = bitMap.width
 	XLONG bmpHeight		' = bitMap.height
 
@@ -6951,7 +6954,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	RECT	rect
 	LINKEDLIST autoDraw
 
-	XLONG dwStyle					' window style
+	XLONG style						' window style
 	XLONG window_handle		' the handle of the new window
 
 	XLONG winLeft			' left position of the window
@@ -7008,12 +7011,12 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 ' and calculate the necessary window position and size to create that client size.
 '
 	' Set the size...
-	rect.right = winWidth
+	rect.right  = winWidth
 	rect.bottom = winHeight
 
 	' ...but not the position.
 	rect.left = 0
-	rect.top = 0
+	rect.top  = 0
 '
 ' Menus are not technically part of the client area,
 ' so it must be taken into consideration.
@@ -7025,7 +7028,7 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 	ENDIF
 
 	' adjust the size
-	AdjustWindowRectEx (&rect, dwStyle, fMenu, exStyle)
+	AdjustWindowRectEx (&rect, style, fMenu, exStyle)
 
 	' store the window adjusted width and height
 	winWidth = rect.right - rect.left		' width of the window
@@ -7051,12 +7054,12 @@ FUNCTION WinXNewWindow (hOwner, STRING title, x, y, w, h, simpleStyle, exStyle, 
 		winTop = (binding.maxH - winHeight) / 2
 	ENDIF
 
-	dwStyle = XWSStoWS (simpleStyle)
+	style = XWSStoWS (simpleStyle)
 '
 ' Create the window and use the result as the handle.
 '
 	SetLastError (0)
-	window_handle = CreateWindowExA (exStyle, &$$MAIN_CLASS$, &title, dwStyle, _
+	window_handle = CreateWindowExA (exStyle, &$$MAIN_CLASS$, &title, style, _
 		winLeft, winTop, winWidth, winHeight, _
 		hOwner, menu, hInst, 0)
 
@@ -7251,7 +7254,7 @@ END FUNCTION
 ' #################################
 ' #####  WinXPrint_PageSetup  #####
 ' #################################
-' Displays a page setup dialog box to the User and
+' Displays a page setup dialog box to the user and
 ' updates the print parameters according to the result.
 ' hOwner = the handle of the window that owns the dialog
 ' returns $$TRUE on success, or $$FALSE on fail
@@ -7307,8 +7310,8 @@ END FUNCTION
 ' #############################
 ' Optionally displays a print settings dialog box
 ' then starts printing.
-' minPage = the minimum page the User can select
-' maxPage = the maximum page the User can select
+' minPage = the minimum page the user can select
+' maxPage = the maximum page the user can select
 ' rangeMin = the initial minimum page, 0 for selection.  The User may change this value
 ' rangeMax = the initial maximum page, -1 for all pages.  The User may change this value
 ' cxPhys = the number of device pixels accross - the margins
@@ -11825,24 +11828,24 @@ END FUNCTION
 ' xwss = the simplified style
 ' returns a window style
 FUNCTION XWSStoWS (xwss)
-	XLONG dwStyle					' window style
+	XLONG style					' window style
 
-	dwStyle = 0
+	style = 0
 
 	SELECT CASE xwss
 		CASE $$XWSS_APP
-			dwStyle = $$WS_OVERLAPPEDWINDOW
+			style = $$WS_OVERLAPPEDWINDOW
 		CASE $$XWSS_APPNORESIZE
-			dwStyle = $$WS_OVERLAPPED OR $$WS_CAPTION OR $$WS_SYSMENU OR $$WS_MINIMIZEBOX
+			style = $$WS_OVERLAPPED OR $$WS_CAPTION OR $$WS_SYSMENU OR $$WS_MINIMIZEBOX
 		CASE $$XWSS_POPUP
-			dwStyle = $$WS_POPUPWINDOW OR $$WS_CAPTION
+			style = $$WS_POPUPWINDOW OR $$WS_CAPTION
 		CASE $$XWSS_POPUPNOTITLE
-			dwStyle = $$WS_POPUPWINDOW
+			style = $$WS_POPUPWINDOW
 		CASE $$XWSS_NOBORDER
-			dwStyle = $$WS_POPUP
+			style = $$WS_POPUP
 	END SELECT
 
-	RETURN dwStyle
+	RETURN style
 
 END FUNCTION
 '
@@ -14338,7 +14341,6 @@ FUNCTION splitterProc (hSplitter, wMsg, wParam, lParam)
 	XLONG state			' state to draw
 	XLONG cursor		' LoadCursorA (0, cursor)
 '
-' GL-Sean Penn. Just kidding! Seriously:
 ' Some Pens.
 '
 	XLONG hShadPen				' = CreatePen ($$PS_SOLID, 1, GetSysColor($$COLOR_3DSHADOW))
